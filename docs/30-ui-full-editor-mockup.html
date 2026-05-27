@@ -1,0 +1,1135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Photrez Desktop - Carbon Studio Windows UI</title>
+    <!-- TailwindCSS v4 Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts: Consolas/Segoe UI are native on Windows, so we don't even need to download external web fonts, which instantly removes the 'web app mockup' feel. We only load JetBrains Mono as a fallback for tech typography if desired. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+      body {
+        /* Windows 11 Native Fluent Typography Stack */
+        font-family: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Roboto", sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      .font-mono {
+        /* Windows Native Monospace Stack */
+        font-family: "Consolas", "Cascadia Code", "JetBrains Mono", monospace;
+      }
+      
+      /* Mica Material Emulation: Dark deep theme with a subtle desktop wallpaper bleed */
+      .mica-bg {
+        background-color: #0c0d10;
+        background-image: 
+          radial-gradient(circle at 0% 0%, rgba(47, 143, 245, 0.05) 0%, transparent 40%),
+          radial-gradient(circle at 100% 100%, rgba(127, 184, 255, 0.03) 0%, transparent 45%);
+      }
+
+      /* Windows Fluent Overlay Scrollbar */
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background-color: rgba(158, 168, 182, 0.2);
+        border-radius: 5px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(158, 168, 182, 0.4);
+      }
+
+      /* Premium Artboard Checkerboard Pattern (Dense & Professional) */
+      .canvas-checkerboard {
+        background-color: #121417;
+        background-image: 
+          linear-gradient(45deg, #0b0c0e 25%, transparent 25%), 
+          linear-gradient(-45deg, #0b0c0e 25%, transparent 25%), 
+          linear-gradient(45deg, transparent 75%, #0b0c0e 75%), 
+          linear-gradient(-45deg, transparent 75%, #0b0c0e 75%);
+        background-size: 12px 12px;
+        background-position: 0 0, 0 6px, 6px -6px, -6px 0px;
+      }
+
+      /* Fluent Input Bottom Highlight Border Effect */
+      .fluent-input {
+        background-color: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-bottom: 1.5px solid rgba(255, 255, 255, 0.4);
+        transition: all 0.15s cubic-bezier(0.1, 0.9, 0.2, 1);
+      }
+      .fluent-input:focus {
+        border-bottom: 2px solid #2f8ff5;
+        background-color: rgba(255, 255, 255, 0.07);
+        outline: none;
+      }
+
+      /* Fluent Primary Button Top Light Edge */
+      .fluent-btn-primary {
+        background: linear-gradient(180deg, #3d9cfc 0%, #2f8ff5 100%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-top: 1px solid rgba(255, 255, 255, 0.25);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+      .fluent-btn-primary:hover {
+        background: linear-gradient(180deg, #4fa5ff 0%, #3d9cfc 100%);
+      }
+      .fluent-btn-primary:active {
+        background: #237ad8;
+        transform: scale(0.98);
+      }
+
+      /* Selection Border Animation simulating active editing */
+      @keyframes dash {
+        to {
+          stroke-dashoffset: -20;
+        }
+      }
+      .active-vector-path {
+        stroke-dasharray: 5;
+        animation: dash 1s linear infinite;
+      }
+
+      /* Desktop Precise CAD Ruler Ticks (Figma/Photoshop Style) */
+      .ruler-x-ticks {
+        background-image: 
+          /* 100px major ticks (longer lines) */
+          linear-gradient(90deg, rgba(255,255,255,0.18) 1px, transparent 1px),
+          /* 50px medium ticks */
+          linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px),
+          /* 10px minor ticks (shorter lines) */
+          linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+        background-size: 100px 100%, 50px 55%, 10px 30%;
+        background-position: 0 0, 0 100%, 0 100%;
+        background-repeat: repeat-x;
+      }
+      .ruler-y-ticks {
+        background-image: 
+          /* 100px major ticks */
+          linear-gradient(180deg, rgba(255,255,255,0.18) 1px, transparent 1px),
+          /* 50px medium ticks */
+          linear-gradient(180deg, rgba(255,255,255,0.08) 1px, transparent 1px),
+          /* 10px minor ticks */
+          linear-gradient(180deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+        background-size: 100% 100px, 55% 50px, 30% 10px;
+        background-position: 0 0, 100% 0, 100% 0;
+        background-repeat: repeat-y;
+      }
+    </style>
+  </head>
+  <body class="mica-bg text-[#e7ebf0] select-none overflow-hidden h-screen w-screen">
+    <div class="app grid grid-rows-[32px_38px_1fr_26px] h-screen overflow-hidden">
+      
+      <!-- 1. TOP WINDOW HEADER & MENUBAR (Windows Fluent Integrated Style) -->
+      <header class="menubar flex items-center justify-between pl-3 pr-0 bg-[#0f1013]/90 backdrop-blur-md border-b border-white/5 select-none text-[13px] h-[32px] relative" aria-label="App Header">
+        <div class="flex items-center h-full">
+          <!-- Logo -->
+          <div class="flex items-center gap-1.5 mr-4 font-normal text-[12px] text-[#e7ebf0]">
+            <span class="w-4 h-4 bg-gradient-to-tr from-[#2f8ff5] to-[#7fb8ff] rounded-[3px] flex items-center justify-center text-[10px] font-black text-[#0a0b0d]">P</span>
+            <span class="font-semibold tracking-wide">Photrez</span>
+          </div>
+
+          <!-- Windows Style Flat Menu Bar -->
+          <nav class="flex items-center h-full text-[#e7ebf0]" aria-label="Main menu">
+            <div class="relative menu-container h-full flex items-center">
+              <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[12px] cursor-pointer">File</button>
+              <!-- Fluent Acrylic Dropdown Menu -->
+              <div class="absolute left-0 top-[32px] hidden menu-dropdown bg-[#16181d]/95 backdrop-blur-xl border border-white/10 rounded-[6px] shadow-2xl py-1 w-56 z-50">
+                <a href="#" class="flex items-center justify-between px-3.5 py-1.5 hover:bg-white/5 text-[#e7ebf0] text-[12px]"><span>New Document...</span><span class="font-mono text-[10px] text-white/40">Ctrl+N</span></a>
+                <a href="#" class="flex items-center justify-between px-3.5 py-1.5 hover:bg-white/5 text-[#e7ebf0] text-[12px]"><span>Open Image...</span><span class="font-mono text-[10px] text-white/40">Ctrl+O</span></a>
+                <div class="h-[1px] bg-white/10 my-1 mx-2"></div>
+                <a href="#" class="flex items-center justify-between px-3.5 py-1.5 hover:bg-white/5 text-[#e7ebf0] text-[12px]"><span>Save</span><span class="font-mono text-[10px] text-white/40">Ctrl+S</span></a>
+                <a href="#" class="flex items-center justify-between px-3.5 py-1.5 hover:bg-white/5 text-[#e7ebf0] text-[12px]"><span>Save As...</span><span class="font-mono text-[10px] text-white/40">Shift+S</span></a>
+                <div class="h-[1px] bg-white/10 my-1 mx-2"></div>
+                <a href="#" class="flex items-center justify-between px-3.5 py-1.5 hover:bg-white/5 text-[#e7ebf0] text-[12px]" id="menuOpenExport"><span>Export Graphic...</span><span class="font-mono text-[10px] text-white/40">Ctrl+E</span></a>
+              </div>
+            </div>
+            <div class="relative menu-container h-full flex items-center">
+              <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[12px] cursor-pointer">Edit</button>
+              <div class="absolute left-0 top-[32px] hidden menu-dropdown bg-[#16181d]/95 backdrop-blur-xl border border-white/10 rounded-[6px] shadow-2xl py-1 w-56 z-50">
+                <a href="#" class="flex items-center justify-between px-3.5 py-1.5 hover:bg-white/5 text-[#e7ebf0] text-[12px]"><span>Undo</span><span class="font-mono text-[10px] text-white/40">Ctrl+Z</span></a>
+                <a href="#" class="flex items-center justify-between px-3.5 py-1.5 hover:bg-white/5 text-[#e7ebf0] text-[12px]"><span>Redo</span><span class="font-mono text-[10px] text-white/40">Ctrl+Y</span></a>
+              </div>
+            </div>
+            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[12px]">Image</button>
+            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[12px]">Layer</button>
+            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[12px]">Select</button>
+            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[12px]">View</button>
+            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[12px]">Window</button>
+            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[12px]">Help</button>
+          </nav>
+        </div>
+
+        <!-- Central Windows-style Title Design -->
+        <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 pointer-events-none">
+          <span class="font-mono text-[11px] text-white/50 tracking-tight">banner-client-v4.qanvas</span>
+          <span class="w-1.5 h-1.5 rounded-full bg-white/20"></span>
+          <span class="text-[11px] text-white/40 font-normal">Photrez Core v1.0</span>
+        </div>
+
+        <!-- Windows Native Title Bar Controls -->
+        <div class="flex items-center h-full">
+          <button class="h-full w-[46px] flex items-center justify-center hover:bg-white/5 text-white/70 hover:text-white transition-colors" title="Minimize">
+            <svg width="10" height="1" viewBox="0 0 10 1"><rect width="10" height="1" fill="currentColor"></rect></svg>
+          </button>
+          <button class="h-full w-[46px] flex items-center justify-center hover:bg-white/5 text-white/70 hover:text-white transition-colors" title="Maximize">
+            <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1"></rect></svg>
+          </button>
+          <button class="h-full w-[46px] flex items-center justify-center hover:bg-[#e81123] text-white/70 hover:text-white transition-colors" title="Close">
+            <svg width="10" height="10" viewBox="0 0 10 10"><path d="M1,1 L9,9 M9,1 L1,9" stroke="currentColor" stroke-width="1" stroke-linecap="round"></path></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- 2. CONTEXTUAL TOOL OPTIONS BAR (High Density Controls) -->
+      <section class="toolbar flex items-center justify-between px-3 bg-[#0d0e12] border-b border-white/5 h-[38px] text-[12px] text-white/70" aria-label="Tool options bar">
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2 border-r border-white/5 pr-4 h-full py-1">
+            <i data-lucide="pen-tool" class="w-3.5 h-3.5 text-[#2f8ff5]"></i>
+            <span class="font-medium text-[#e7ebf0] text-[12px]">Pen Tool</span>
+          </div>
+          
+          <!-- Tool parameter 1: Fill -->
+          <div class="flex items-center gap-2">
+            <span class="text-white/50 text-[11px]">Fill</span>
+            <button class="flex items-center gap-1.5 px-2 py-0.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-[6px] text-[11px]">
+              <span class="w-3 h-3 rounded-full bg-gradient-to-tr from-[#2f8ff5] to-[#7fb8ff] border border-white/20"></span>
+              <span class="text-[11px] font-normal text-[#e7ebf0]">Sapphire Gradient</span>
+              <i data-lucide="chevron-down" class="w-3 h-3 text-white/40"></i>
+            </button>
+          </div>
+
+          <!-- Tool parameter 2: Stroke Weight -->
+          <div class="flex items-center gap-2">
+            <span class="text-white/50 text-[11px]">Stroke</span>
+            <input type="text" class="w-12 h-[22px] fluent-input font-mono text-[11px] font-normal text-center text-[#e7ebf0] rounded-[6px]" value="2.5 px" />
+            <div class="flex items-center gap-1">
+              <span class="w-3 h-3 rounded-sm bg-white border border-white/20 inline-block"></span>
+              <i data-lucide="chevron-down" class="w-3 h-3 text-white/40 cursor-pointer"></i>
+            </div>
+          </div>
+
+          <!-- Tool parameter 3: Caps/Corners -->
+          <div class="flex items-center gap-2">
+            <span class="text-white/50 text-[11px]">Corners</span>
+            <select class="h-[22px] bg-white/5 border border-white/10 text-[11px] text-[#e7ebf0] rounded-[6px] outline-none px-1.5 focus:border-[#2f8ff5] font-normal">
+              <option>Round</option>
+              <option>Miter</option>
+              <option>Bevel</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Global Action Panel triggers -->
+        <div class="flex items-center gap-2">
+          <button class="flex items-center gap-1.5 px-2.5 h-[22px] bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white rounded-[8px] transition-all duration-100" id="openPalette">
+            <i data-lucide="terminal" class="w-3.5 h-3.5 text-[#2f8ff5]"></i>
+            <span class="text-[11px] font-normal">Command Palette</span>
+            <kbd class="font-mono text-[9px] bg-black/40 border border-white/10 px-1 rounded-[4px] text-white/40">Ctrl K</kbd>
+          </button>
+          
+          <span class="w-[1px] h-4 bg-white/10 mx-1"></span>
+          <button class="px-2.5 h-[22px] bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white rounded-[8px] text-[11px] font-normal" id="toggleInspector">Inspector</button>
+          <button class="flex items-center gap-1 px-3 h-[22px] fluent-btn-primary text-black font-normal text-[11px] rounded-[3px] transition-colors duration-100" id="openExport">
+            <i data-lucide="share" class="w-3 h-3"></i>
+            <span>Export</span>
+          </button>
+      </section>
+
+      <!-- 3. WORKSPACE (Left tools + viewport + right panel) -->
+      <div class="workspace grid grid-cols-[48px_1fr_320px] min-h-0 h-full overflow-hidden" id="workspaceContainer">
+        
+        <!-- 3.1 LEFT DENSE TOOL RAIL -->
+        <aside class="tool-rail bg-[#0d0e12] border-r border-white/5 py-3 flex flex-col items-center gap-1.5 z-10 relative select-none" aria-label="Tools drawer">
+          <div class="flex flex-col gap-1 w-full items-center">
+            <button class="w-8 h-8 rounded-[6px] flex items-center justify-center text-white/50 hover:bg-white/5 hover:text-white transition-all duration-100" title="Move Tool (V)"><i data-lucide="move" class="w-4 h-4"></i></button>
+            <button class="w-8 h-8 rounded-[6px] flex items-center justify-center text-white/50 hover:bg-white/5 hover:text-white transition-all duration-100" title="Rect Select (M)"><i data-lucide="mouse-pointer-square-dashed" class="w-4 h-4"></i></button>
+            
+            <div class="relative w-8 h-8 flex items-center justify-center">
+              <!-- Active Tool Side Pill -->
+              <span class="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-[#2f8ff5] rounded-full"></span>
+              <button class="w-8 h-8 rounded-[6px] flex items-center justify-center text-[#2f8ff5] bg-white/5 border border-white/10" title="Pen Tool (P)"><i data-lucide="pen-tool" class="w-4 h-4"></i></button>
+            </div>
+            
+            <button class="w-8 h-8 rounded-[6px] flex items-center justify-center text-white/50 hover:bg-white/5 hover:text-white transition-all duration-100" title="Crop Tool (C)"><i data-lucide="crop" class="w-4 h-4"></i></button>
+          </div>
+          
+          <div class="w-[20px] h-[1px] bg-white/10 my-1"></div>
+          
+          <div class="flex flex-col gap-1 w-full items-center">
+            <button class="w-8 h-8 rounded-[6px] flex items-center justify-center text-white/50 hover:bg-white/5 hover:text-white transition-all duration-100" title="Brush Tool (B)"><i data-lucide="brush" class="w-4 h-4"></i></button>
+            <button class="w-8 h-8 rounded-[6px] flex items-center justify-center text-white/50 hover:bg-white/5 hover:text-white transition-all duration-100" title="Eraser Tool (E)"><i data-lucide="eraser" class="w-4 h-4"></i></button>
+          </div>
+          
+          <div class="w-[20px] h-[1px] bg-white/10 my-1"></div>
+          
+          <div class="flex flex-col gap-1 w-full items-center">
+            <button class="w-8 h-8 rounded-[6px] flex items-center justify-center text-white/50 hover:bg-white/5 hover:text-white transition-all duration-100" title="Text Tool (T)"><i data-lucide="type" class="w-4 h-4"></i></button>
+            <button class="w-8 h-8 rounded-[6px] flex items-center justify-center text-white/50 hover:bg-white/5 hover:text-white transition-all duration-100" title="Shape Tool (U)"><i data-lucide="square" class="w-4 h-4"></i></button>
+          </div>
+          
+          <div class="mt-auto flex flex-col gap-1 w-full items-center">
+            <button class="w-8 h-8 rounded-[6px] flex items-center justify-center text-white/50 hover:bg-white/5 hover:text-white transition-all duration-100 cursor-pointer" id="btnZoomIn" title="Zoom In"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
+            <button class="w-8 h-8 rounded-[6px] flex items-center justify-center text-white/50 hover:bg-white/5 hover:text-white transition-all duration-100 cursor-pointer" id="btnZoomOut" title="Zoom Out"><i data-lucide="zoom-out" class="w-4 h-4"></i></button>
+          </div>
+        </aside>
+
+        <!-- 3.2 HIGH-FIDELITY CANVAS VIEWPORT -->
+        <main class="canvas-wrap relative bg-[#0b0c0e] overflow-hidden flex flex-col h-full select-none" aria-label="Canvas Workspace">
+          <!-- Fine-line Rulers with custom tech styling -->
+          <div class="h-[18px] bg-[#0d0e12] border-b border-white/5 relative select-none ruler-x-ticks">
+            <div class="absolute inset-0 font-mono text-[8px] text-white/35 leading-none pt-0.5 pointer-events-none">
+              <span class="absolute -translate-x-1/2" style="left: 0px;">0</span>
+              <span class="absolute -translate-x-1/2" style="left: 100px;">100</span>
+              <span class="absolute -translate-x-1/2" style="left: 200px;">200</span>
+              <span class="absolute -translate-x-1/2" style="left: 300px;">300</span>
+              <span class="absolute -translate-x-1/2" style="left: 400px;">400</span>
+              <span class="absolute -translate-x-1/2" style="left: 500px;">500</span>
+              <span class="absolute -translate-x-1/2" style="left: 600px;">600</span>
+              <span class="absolute -translate-x-1/2" style="left: 700px;">700</span>
+              <span class="absolute -translate-x-1/2" style="left: 800px;">800</span>
+              <span class="absolute -translate-x-1/2" style="left: 900px;">900</span>
+              <span class="absolute -translate-x-1/2" style="left: 1000px;">1000</span>
+              <span class="absolute -translate-x-1/2" style="left: 1100px;">1100</span>
+              <span class="absolute -translate-x-1/2" style="left: 1200px;">1200</span>
+            </div>
+          </div>
+          
+          <div class="flex flex-row h-full min-h-0 w-full">
+            <div class="w-[18px] bg-[#0d0e12] border-r border-white/5 relative select-none ruler-y-ticks">
+              <div class="absolute inset-0 font-mono text-[8px] text-white/35 leading-none pointer-events-none">
+                <span class="absolute left-0.5 -translate-y-1/2" style="top: 0px;">0</span>
+                <span class="absolute left-0.5 -translate-y-1/2" style="top: 100px;">100</span>
+                <span class="absolute left-0.5 -translate-y-1/2" style="top: 200px;">200</span>
+                <span class="absolute left-0.5 -translate-y-1/2" style="top: 300px;">300</span>
+                <span class="absolute left-0.5 -translate-y-1/2" style="top: 400px;">400</span>
+                <span class="absolute left-0.5 -translate-y-1/2" style="top: 500px;">500</span>
+                <span class="absolute left-0.5 -translate-y-1/2" style="top: 600px;">600</span>
+                <span class="absolute left-0.5 -translate-y-1/2" style="top: 700px;">700</span>
+                <span class="absolute left-0.5 -translate-y-1/2" style="top: 800px;">800</span>
+              </div>
+            </div>
+            
+            <!-- Canvas viewport workspace -->
+            <div class="flex-1 h-full flex items-center justify-center relative">
+              
+              <!-- THE ARTBOARD: Simulating real working creative vector design instead of boring empty layers -->
+              <div class="artboard w-[680px] aspect-[16/10] canvas-checkerboard border border-white/10 shadow-2xl relative rounded-[4px] overflow-hidden transition-all duration-150 ease-out origin-center" id="canvasArtboard">
+                
+                <!-- Active Canvas Design Element: Real layout illustration -->
+                <div class="absolute inset-0 bg-[#0e1012] flex flex-col justify-between p-8">
+                  <!-- Vector Abstract Composition -->
+                  <div class="relative w-full h-[180px] rounded-lg overflow-hidden border border-white/5 bg-gradient-to-br from-[#12141a] to-[#07080b] flex items-center justify-center">
+                    
+                    <!-- Simulating complex grid pattern -->
+                    <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                    
+                    <!-- Glowing abstract shapes (Actual graphic mock!) -->
+                    <div class="absolute w-[200px] h-[200px] rounded-full bg-gradient-to-tr from-[#2f8ff5]/30 to-purple-500/20 blur-[50px]"></div>
+                    
+                    <!-- SVG Path being dynamically edited (Pen Tool vector nodes + control handles!) -->
+                    <svg class="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                      <!-- Active vector line (animated selection line) -->
+                      <path d="M 50,140 C 150,20 250,200 380,90 C 480,5 550,120 630,70" fill="none" stroke="#2f8ff5" stroke-width="2.5" class="active-vector-path" />
+                      
+                      <!-- Vector Anchor Points (The hallmark of vector editing apps like Illustrator/Figma) -->
+                      <!-- Point 1 -->
+                      <circle cx="50" cy="140" r="4.5" fill="#0d0e12" stroke="#2f8ff5" stroke-width="2" class="cursor-pointer" />
+                      <!-- Point 2 & Handles -->
+                      <line x1="150" y1="20" x2="110" y2="40" stroke="#7fb8ff" stroke-width="1" />
+                      <circle cx="110" cy="40" r="3" fill="#7fb8ff" />
+                      <circle cx="150" cy="20" r="4.5" fill="#2f8ff5" stroke="#ffffff" stroke-width="1.5" />
+                      <!-- Point 3 -->
+                      <circle cx="250" cy="200" r="4.5" fill="#0d0e12" stroke="#2f8ff5" stroke-width="2" />
+                      <!-- Point 4 -->
+                      <circle cx="380" cy="90" r="4.5" fill="#0d0e12" stroke="#2f8ff5" stroke-width="2" />
+                    </svg>
+
+                    <div class="z-10 text-center">
+                      <h2 class="text-[11px] font-mono text-[#2f8ff5] font-medium">Vector Composition</h2>
+                      <p class="text-[10px] text-white/40 mt-0.5 font-mono">active_node_path_v4.vector</p>
+                    </div>
+                  </div>
+
+                  <!-- Bottom Half Typography design layout (Real components, not placeholders) -->
+                  <div class="flex items-end justify-between mt-4">
+                    <div class="flex flex-col">
+                      <span class="text-[11px] text-white/40 font-normal">Campaign banner</span>
+                      <h3 class="text-base font-bold text-white mt-0.5 leading-none">Explore Unknown</h3>
+                    </div>
+                    <div class="px-3 py-1.5 rounded-[3px] bg-[#2f8ff5] text-black font-medium text-[11px] cursor-pointer">
+                      Join Expedition
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- Bounding Box Transformation Grid (Simulating native tool selection state) -->
+                <div class="absolute inset-x-6 inset-y-6 border border-[#2f8ff5]/50 pointer-events-none">
+                  <!-- Sizing Nodes on Corners & Edges -->
+                  <div class="absolute -top-1.5 -left-1.5 w-3 h-3 bg-[#0d0e12] border-2 border-[#2f8ff5] pointer-events-auto cursor-nwse-resize"></div>
+                  <div class="absolute -top-1.5 -right-1.5 w-3 h-3 bg-[#0d0e12] border-2 border-[#2f8ff5] pointer-events-auto cursor-nesw-resize"></div>
+                  <div class="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-[#0d0e12] border-2 border-[#2f8ff5] pointer-events-auto cursor-nesw-resize"></div>
+                  <div class="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-[#0d0e12] border-2 border-[#2f8ff5] pointer-events-auto cursor-nwse-resize"></div>
+                  
+                  <div class="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 bg-[#0d0e12] border-2 border-[#2f8ff5] pointer-events-auto cursor-ew-resize"></div>
+                  <div class="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-[#0d0e12] border-2 border-[#2f8ff5] pointer-events-auto cursor-ew-resize"></div>
+                  <div class="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#0d0e12] border-2 border-[#2f8ff5] pointer-events-auto cursor-ns-resize"></div>
+                  <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#0d0e12] border-2 border-[#2f8ff5] pointer-events-auto cursor-ns-resize"></div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        </main>
+
+        <!-- 3.3 RIGHT INSPECTOR (Dense, Split-Inspector Sidebar Grid) -->
+        <aside class="inspector bg-[#0d0e12] border-l border-white/5 flex flex-col min-h-0 overflow-hidden select-none" id="inspectorPanel">
+          
+          <!-- PART 1: DYNAMIC ACTIVE PROPERTIES (Top Section) -->
+          <div class="border-b border-white/5 flex flex-col min-h-0 bg-white/[0.01]" id="activePropertiesSection">
+            <header class="h-9 border-b border-white/5 px-3.5 flex items-center justify-between bg-white/[0.01]">
+              <!-- Context Indicator -->
+              <div class="flex items-center gap-1.5 text-[11px] font-medium text-white/70">
+                <i data-lucide="sliders" class="w-3.5 h-3.5 text-[#2f8ff5]"></i>
+                <span id="propertiesContextTitle">Vector properties</span>
+              </div>
+              <!-- Mockup Interactive Selector -->
+              <div class="relative flex items-center">
+                <select class="appearance-none bg-[#1d1f24] hover:bg-white/5 border border-white/10 text-[10px] text-white/70 rounded-[4px] pl-2 pr-5 py-0.5 outline-none focus:border-[#2f8ff5] cursor-pointer font-normal" id="propertiesContextSelect">
+                  <option value="element" class="bg-[#16181d] text-white">Vector element</option>
+                  <option value="document" class="bg-[#16181d] text-white">Document canvas</option>
+                </select>
+                <i data-lucide="chevron-down" class="w-2.5 h-2.5 text-white/40 absolute right-1.5 pointer-events-none"></i>
+              </div>
+            </header>
+
+            <!-- State A: Active Vector Properties -->
+            <div class="p-3.5 flex flex-col gap-3.5" id="propertiesStateElement">
+              <!-- Grid Dimensions -->
+              <div class="grid grid-cols-4 gap-2">
+                <div class="flex flex-col gap-0.5">
+                  <label class="text-[10px] text-white/40 font-normal">X</label>
+                  <input class="font-mono text-[11px] font-normal text-[#e7ebf0] h-[22px] px-1 rounded-[4px] fluent-input text-center" value="128.5 px" />
+                </div>
+                <div class="flex flex-col gap-0.5">
+                  <label class="text-[10px] text-white/40 font-normal">Y</label>
+                  <input class="font-mono text-[11px] font-normal text-[#e7ebf0] h-[22px] px-1 rounded-[4px] fluent-input text-center" value="64.0 px" />
+                </div>
+                <div class="flex flex-col gap-0.5">
+                  <label class="text-[10px] text-white/40 font-normal">W</label>
+                  <input class="font-mono text-[11px] font-normal text-[#e7ebf0] h-[22px] px-1 rounded-[4px] fluent-input text-center" value="680.0 px" />
+                </div>
+                <div class="flex flex-col gap-0.5">
+                  <label class="text-[10px] text-white/40 font-normal">H</label>
+                  <input class="font-mono text-[11px] font-normal text-[#e7ebf0] h-[22px] px-1 rounded-[4px] fluent-input text-center" value="425.0 px" />
+                </div>
+              </div>
+
+              <!-- Vector Precision Checks -->
+              <div class="grid grid-cols-2 gap-3 pt-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] text-white/50">Anti-aliasing</span>
+                  <label class="relative flex items-center cursor-pointer select-none">
+                    <input type="checkbox" checked class="sr-only peer" />
+                    <div class="w-3.5 h-3.5 rounded-[3px] border border-white/20 bg-white/5 transition-all duration-100 peer-checked:bg-[#2f8ff5] peer-checked:border-[#2f8ff5] flex items-center justify-center">
+                      <svg class="w-2.5 h-2.5 text-black opacity-0 peer-checked:opacity-100 transition-opacity" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 8 9 4"></polyline>
+                      </svg>
+                    </div>
+                  </label>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] text-white/50">Grid snapping</span>
+                  <label class="relative flex items-center cursor-pointer select-none">
+                    <input type="checkbox" checked class="sr-only peer" />
+                    <div class="w-3.5 h-3.5 rounded-[3px] border border-white/20 bg-white/5 transition-all duration-100 peer-checked:bg-[#2f8ff5] peer-checked:border-[#2f8ff5] flex items-center justify-center">
+                      <svg class="w-2.5 h-2.5 text-black opacity-0 peer-checked:opacity-100 transition-opacity" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 8 9 4"></polyline>
+                      </svg>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- State B: Document Canvas Properties (Hidden by default) -->
+            <div class="p-3.5 flex flex-col gap-3 hidden" id="propertiesStateDocument">
+              <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-[10px] text-white/40 font-normal">Canvas size</span>
+                  <span class="text-[12px] font-normal text-[#e7ebf0]">680 x 425 px</span>
+                </div>
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-[10px] text-white/40 font-normal">Color Space</span>
+                  <span class="text-[12px] font-normal text-[#e7ebf0]">sRGB Color Profile</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between border-t border-white/5 pt-2">
+                <span class="text-[11px] text-white/50">Pixel grid overlay</span>
+                <label class="relative flex items-center cursor-pointer select-none">
+                  <input type="checkbox" checked class="sr-only peer" />
+                  <div class="w-3.5 h-3.5 rounded-[3px] border border-white/20 bg-white/5 transition-all duration-100 peer-checked:bg-[#2f8ff5] peer-checked:border-[#2f8ff5] flex items-center justify-center">
+                    <svg class="w-2.5 h-2.5 text-black opacity-0 peer-checked:opacity-100 transition-opacity" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="3 6 5 8 9 4"></polyline>
+                    </svg>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- PART 2: STRUCTURAL STACK (Bottom Section) -->
+          <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <!-- Segmented Tab Control (WinUI 3 Seamless Pivot Pattern for Layers & History) -->
+            <div class="border-b border-white/5 bg-white/[0.01]">
+              <nav class="flex text-[12px] font-normal px-2" aria-label="Inspector tabs">
+                <button class="relative py-2.5 px-3 text-center text-[#2f8ff5] font-medium transition-all duration-150 cursor-pointer" id="tabBtnLayers" data-tab="layers">
+                  <span>Layers</span>
+                  <!-- Active Indicator Aksen Bawah khas Windows -->
+                  <span class="absolute bottom-0 inset-x-3 h-[2px] bg-[#2f8ff5] rounded-full" id="indicatorLayers"></span>
+                </button>
+                <button class="relative py-2.5 px-3 text-center text-white/50 hover:text-white transition-all duration-150 cursor-pointer" id="tabBtnHistory" data-tab="history">
+                  <span>History</span>
+                  <span class="absolute bottom-0 inset-x-3 h-[2px] bg-[#2f8ff5] rounded-full hidden" id="indicatorHistory"></span>
+                </button>
+              </nav>
+            </div>
+
+            <!-- Tab Content 1: High-Density Layer Stack -->
+            <div class="flex-1 overflow-y-auto min-h-0 flex flex-col" id="tabContentLayers">
+              <section class="flex flex-col flex-1">
+                <header class="h-9 border-b border-white/5 px-3.5 flex items-center justify-between bg-white/[0.02]">
+                  <span class="text-[11px] font-medium text-white/50">Layers stack</span>
+                  <!-- Layer controls (opacity and blend type) -->
+                  <div class="flex items-center gap-1 text-[11px] text-white/40">
+                    <span>Pass Through</span>
+                    <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                  </div>
+                </header>
+                
+                <div class="flex flex-col">
+                  <!-- Layer Item: Active Vector Node Shape -->
+                  <div class="layer-item h-[36px] border-b border-white/5 flex items-center justify-between px-2.5 bg-[#2f8ff5]/10 border-l-[3px] border-l-[#2f8ff5] text-[#e7ebf0] cursor-pointer" data-name="Vector Line Shape" data-x="128.5 px" data-y="64.0 px" data-w="680.0 px" data-h="425.0 px">
+                    <div class="flex items-center gap-2.5">
+                      <button class="text-[#2f8ff5]"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
+                      <!-- Visual Type Icon: Vector Path icon -->
+                      <div class="w-5 h-5 rounded bg-gradient-to-tr from-[#2f8ff5]/20 to-[#7fb8ff]/30 border border-[#2f8ff5]/30 flex items-center justify-center">
+                        <i data-lucide="pen-tool" class="w-3 h-3 text-[#2f8ff5]"></i>
+                      </div>
+                      <span class="text-[12px] font-medium truncate w-[120px]">Vector Line Shape</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-[11px] text-[#2f8ff5]/90 font-normal">100%</span>
+                      <button class="text-white/40 hover:text-white"><i data-lucide="unlock" class="w-3 h-3"></i></button>
+                    </div>
+                  </div>
+                  
+                  <!-- Layer Item: Action Badge (Group container) -->
+                  <div class="layer-item h-[36px] border-b border-white/5 flex items-center justify-between px-2.5 text-white/70 hover:bg-white/5 transition-colors duration-100 cursor-pointer" data-name="Button Container" data-x="540.0 px" data-y="340.0 px" data-w="120.0 px" data-h="36.0 px">
+                    <div class="flex items-center gap-2.5">
+                      <button class="text-white/40 hover:text-white"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
+                      <div class="w-5 h-5 rounded bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                        <i data-lucide="square" class="w-3 h-3 text-amber-500"></i>
+                      </div>
+                      <span class="text-[12px] font-normal truncate w-[120px]">Button Container</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-[11px] text-white/40 font-normal">100%</span>
+                      <button class="text-white/40 hover:text-white"><i data-lucide="lock" class="w-3 h-3"></i></button>
+                    </div>
+                  </div>
+                  
+                  <!-- Layer Item: Text Layer (Bold typo) -->
+                  <div class="layer-item h-[36px] border-b border-white/5 flex items-center justify-between px-2.5 text-white/70 hover:bg-white/5 transition-colors duration-100 cursor-pointer" data-name="Campaign Headline" data-x="32.0 px" data-y="320.0 px" data-w="320.0 px" data-h="28.0 px">
+                    <div class="flex items-center gap-2.5">
+                      <button class="text-white/40 hover:text-white"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
+                      <div class="w-5 h-5 rounded bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                        <span class="text-[9px] font-bold text-purple-500">T</span>
+                      </div>
+                      <span class="text-[12px] font-normal truncate w-[120px]">Campaign Headline</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-[11px] text-white/40 font-normal">85%</span>
+                      <button class="text-white/40 hover:text-white"><i data-lucide="unlock" class="w-3 h-3"></i></button>
+                    </div>
+                  </div>
+
+                  <!-- Layer Item: Ambient Glow (Image Mask effects) -->
+                  <div class="layer-item h-[36px] border-b border-white/5 flex items-center justify-between px-2.5 text-white/70 hover:bg-white/5 transition-colors duration-100 cursor-pointer" data-name="Gradient Glow FX" data-x="24.0 px" data-y="24.0 px" data-w="632.0 px" data-h="377.0 px">
+                    <div class="flex items-center gap-2.5">
+                      <button class="text-white/40 hover:text-white"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
+                      <div class="w-5 h-5 rounded bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                        <i data-lucide="image" class="w-3 h-3 text-blue-500"></i>
+                      </div>
+                      <span class="text-[12px] font-medium truncate w-[120px]">Gradient Glow FX</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-[11px] text-white/40 font-normal">30%</span>
+                      <button class="text-white/40 hover:text-white"><i data-lucide="unlock" class="w-3 h-3"></i></button>
+                    </div>
+                  </div>
+
+                  <!-- Layer Item: Document Background -->
+                  <div class="layer-item h-[36px] flex items-center justify-between px-2.5 text-white/70 hover:bg-white/5 transition-colors duration-100 cursor-pointer" data-name="Solid Background" data-x="0.0 px" data-y="0.0 px" data-w="680.0 px" data-h="425.0 px">
+                    <div class="flex items-center gap-2.5">
+                      <button class="text-white/40 hover:text-white"><i data-lucide="eye-off" class="w-3.5 h-3.5 text-white/20"></i></button>
+                      <div class="w-5 h-5 rounded bg-white/5 border border-white/10 flex items-center justify-center">
+                        <i data-lucide="layer-dash" class="w-3 h-3 text-white/40"></i>
+                      </div>
+                      <span class="text-[12px] font-medium truncate w-[120px] text-white/40">Solid Background</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-[11px] text-white/30 font-normal">100%</span>
+                      <button class="text-white/40 hover:text-white"><i data-lucide="lock" class="w-3 h-3 text-white/40"></i></button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              
+              <div class="grid grid-cols-2 gap-2 p-3 mt-auto border-t border-white/5 bg-white/[0.01]">
+                <button class="group flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-normal rounded-[6px] bg-transparent hover:bg-white/5 text-white/70 hover:text-[#e7ebf0] transition-all duration-100 cursor-pointer">
+                  <i data-lucide="copy" class="w-3.5 h-3.5 text-white/40 group-hover:text-[#2f8ff5] transition-colors duration-100"></i>
+                  <span>Duplicate Layer</span>
+                </button>
+                <button class="group flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-normal rounded-[6px] bg-transparent hover:bg-white/5 text-white/70 hover:text-[#e7ebf0] transition-all duration-100 cursor-pointer">
+                  <i data-lucide="folder-plus" class="w-3.5 h-3.5 text-white/40 group-hover:text-[#2f8ff5] transition-colors duration-100"></i>
+                  <span>Group Layers</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Tab Content 2: History Stack -->
+            <div class="flex-1 overflow-y-auto min-h-0 hidden flex flex-col" id="tabContentHistory">
+            <!-- Transform Dimensions Section -->
+            <section class="p-3.5 border-b border-white/5 flex flex-col gap-3">
+              <header class="h-6 text-[11px] font-medium text-white/50 border-b border-white/5 pb-1 flex justify-between items-center">
+                <span>Transform dimensions</span>
+                <i data-lucide="maximize" class="w-3.5 h-3.5 text-[#2f8ff5]"></i>
+              </header>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1">
+                  <label class="text-[11px] text-white/50 font-normal">X Position</label>
+                  <input class="font-mono text-[11px] font-normal text-[#e7ebf0] h-[26px] px-2.5 rounded-[6px] fluent-input" value="128.5 px" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="text-[11px] text-white/50 font-normal">Y Position</label>
+                  <input class="font-mono text-[11px] font-normal text-[#e7ebf0] h-[26px] px-2.5 rounded-[6px] fluent-input" value="64.0 px" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="text-[11px] text-white/50 font-normal">Width</label>
+                  <input class="font-mono text-[11px] font-normal text-[#e7ebf0] h-[26px] px-2.5 rounded-[6px] fluent-input" value="680.0 px" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="text-[11px] text-white/50 font-normal">Height</label>
+                  <input class="font-mono text-[11px] font-normal text-[#e7ebf0] h-[26px] px-2.5 rounded-[6px] fluent-input" value="425.0 px" />
+                </div>
+              </div>
+            </section>
+
+            <!-- Vector Style Customizer Section -->
+            <section class="p-3.5 flex flex-col gap-3">
+              <header class="h-6 text-[11px] font-medium text-white/50 border-b border-white/5 pb-1 flex justify-between items-center">
+                <span>Vector settings</span>
+                <i data-lucide="sliders" class="w-3.5 h-3.5 text-[#2f8ff5]"></i>
+              </header>
+              <div class="flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] text-white/70">Anti-aliasing</span>
+                  <label class="relative flex items-center cursor-pointer select-none">
+                    <input type="checkbox" checked class="sr-only peer" />
+                    <div class="w-3.5 h-3.5 rounded-[3px] border border-white/20 bg-white/5 transition-all duration-100 peer-checked:bg-[#2f8ff5] peer-checked:border-[#2f8ff5] flex items-center justify-center">
+                      <svg class="w-2.5 h-2.5 text-black opacity-0 peer-checked:opacity-100 transition-opacity" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 8 9 4"></polyline>
+                      </svg>
+                    </div>
+                  </label>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] text-white/70">Pixel Grid Alignment</span>
+                  <label class="relative flex items-center cursor-pointer select-none">
+                    <input type="checkbox" checked class="sr-only peer" />
+                    <div class="w-3.5 h-3.5 rounded-[3px] border border-white/20 bg-white/5 transition-all duration-100 peer-checked:bg-[#2f8ff5] peer-checked:border-[#2f8ff5] flex items-center justify-center">
+                      <svg class="w-2.5 h-2.5 text-black opacity-0 peer-checked:opacity-100 transition-opacity" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 8 9 4"></polyline>
+                      </svg>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- Tab Content 3: History Stack -->
+          <div class="flex-1 overflow-y-auto min-h-0 hidden flex flex-col" id="tabContentHistory">
+            <section class="flex flex-col flex-1">
+              <header class="h-9 border-b border-white/5 px-3.5 flex items-center justify-between bg-white/[0.02]">
+                <span class="text-[11px] font-medium text-white/50">Action history</span>
+                <span class="font-mono text-[9px] text-white/30">max 50</span>
+              </header>
+              <div class="flex flex-col">
+                <div class="h-7 border-b border-white/5 flex items-center justify-between px-3.5 bg-white/5 text-[#e7ebf0]">
+                  <span class="text-[11px] font-medium">Draw Vector Path</span>
+                  <span class="font-mono text-[9px] text-[#2f8ff5] font-semibold">now</span>
+                </div>
+                <div class="h-7 border-b border-white/5 flex items-center justify-between px-3.5 text-white/50">
+                  <span class="text-[11px]">Set Brush Stroke Weight</span>
+                  <span class="font-mono text-[9px] text-white/30">1m</span>
+                </div>
+                <div class="h-7 border-b border-white/5 flex items-center justify-between px-3.5 text-white/50">
+                  <span class="text-[11px]">Create Shape Group</span>
+                  <span class="font-mono text-[9px] text-white/30">3m</span>
+                </div>
+                <div class="h-7 flex items-center justify-between px-3.5 text-white/50">
+                  <span class="text-[11px]">Import Vector Graphic</span>
+                  <span class="font-mono text-[9px] text-white/30">6m</span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </aside>
+      </div>
+
+      <!-- 4. BOTTOM STATUS BAR -->
+      <footer class="statusbar flex items-center justify-between px-3 bg-[#0d0e12] border-t border-white/5 h-[26px] text-[11px] text-white/40 select-none">
+        <div class="flex items-center gap-3">
+          <span class="text-[#e7ebf0] font-normal">680 x 425 px</span>
+          <span class="opacity-30">•</span>
+          <span>Zoom: <span class="text-[#2f8ff5] font-normal" id="zoomPercentText">100%</span></span>
+          <span class="opacity-30">•</span>
+          <span>Render Layer: CPU wgpu Buffer</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span>Search Shortcuts</span>
+          <div class="flex gap-0.5">
+            <kbd class="px-1 py-0.2 bg-white/5 border border-white/10 rounded font-normal text-[#e7ebf0] text-[9px] font-mono">Ctrl</kbd>
+            <kbd class="px-1 py-0.2 bg-white/5 border border-white/10 rounded font-normal text-[#e7ebf0] text-[9px] font-mono">K</kbd>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <!-- 5.1 COMMAND PALETTE MODAL -->
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center pt-24 hidden" id="paletteModal">
+      <div class="w-[500px] bg-[#16181d]/95 backdrop-blur-xl border border-white/10 rounded-lg shadow-2xl overflow-hidden flex flex-col">
+        <div class="flex items-center px-3 border-b border-white/5">
+          <i data-lucide="search" class="w-4 h-4 text-[#2f8ff5]"></i>
+          <input type="text" placeholder="Search commands..." class="w-full bg-transparent border-0 outline-none px-2.5 h-10 text-[13px] text-[#e7ebf0]" id="paletteInput" />
+        </div>
+        <ul class="flex flex-col p-1.5 max-h-[240px] overflow-y-auto" id="paletteList">
+          <li class="flex items-center justify-between h-[30px] px-2.5 rounded bg-white/5 text-[#e7ebf0] cursor-pointer">
+            <span class="text-[12px] font-medium">Export Graphic File as PNG</span>
+            <kbd class="font-mono text-[10px] bg-black/40 border border-white/10 px-1 rounded text-white/30">Enter</kbd>
+          </li>
+          <li class="flex items-center justify-between h-[30px] px-2.5 rounded text-white/70 hover:bg-white/5 hover:text-white cursor-pointer">
+            <span class="text-[12px]">Resize Creative Canvas</span>
+            <kbd class="font-mono text-[10px] bg-black/40 border border-white/10 px-1 rounded text-white/30">R</kbd>
+          </li>
+          <li class="flex items-center justify-between h-[30px] px-2.5 rounded text-white/70 hover:bg-white/5 hover:text-white cursor-pointer">
+            <span class="text-[12px]">Find Active Document Layer</span>
+            <kbd class="font-mono text-[10px] bg-black/40 border border-white/10 px-1 rounded text-white/30">F</kbd>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 5.2 EXPORT DRAWER -->
+    <aside class="fixed right-0 top-0 bottom-0 w-[320px] bg-[#0d0e12]/95 backdrop-blur-xl border-l border-white/5 shadow-2xl flex flex-col z-40 transform translate-x-full transition-transform duration-200 select-none" id="exportDrawer">
+      <div class="h-10 bg-white/5 border-b border-white/5 px-4 flex items-center justify-between">
+        <strong class="text-[12px] font-semibold text-white/80">Export settings</strong>
+        <button class="text-white/40 hover:text-white" id="closeExport"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[11px] text-white/50 font-normal">Format</label>
+          <select class="w-full text-[12px] font-normal bg-[#16181d] border border-white/10 text-[#e7ebf0] h-8 px-2 rounded focus:ring-1 focus:ring-[#2f8ff5] outline-none">
+            <option>PNG (Lossless Vector)</option>
+            <option>JPG (High Quality)</option>
+            <option>WebP (Compressed)</option>
+          </select>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[11px] text-white/50 font-normal">Quality</label>
+          <input class="font-mono text-[12px] font-normal text-[#e7ebf0] h-8 px-2 rounded fluent-input" value="95" />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[11px] text-white/50 font-normal">Scale</label>
+          <select class="w-full text-[12px] font-normal bg-[#16181d] border border-white/10 text-[#e7ebf0] h-8 px-2 rounded focus:ring-1 focus:ring-[#2f8ff5] outline-none">
+            <option>1x (Original Size)</option>
+            <option>2x (Ultra Sharp)</option>
+            <option>3x (Extreme Density)</option>
+          </select>
+        </div>
+      </div>
+      <div class="h-12 bg-black/40 border-t border-white/5 px-4 flex items-center justify-end gap-2">
+        <button class="px-3 h-8 text-[12px] font-normal border border-white/10 rounded bg-white/5 hover:bg-white/10 text-[#e7ebf0] transition-colors duration-100" id="btnCancelExport">Cancel</button>
+        <button class="px-4.5 h-8 text-[12px] font-medium rounded fluent-btn-primary text-black transition-colors duration-100" id="btnDoExport">Confirm export</button>
+      </div>
+    </aside>
+
+    <!-- 5.3 TOAST NOTIFICATION -->
+    <div class="fixed bottom-8 right-8 px-4 py-3 rounded border border-white/10 bg-[#0d0e12]/95 backdrop-blur-md border-l-4 border-l-[#2f8ff5] shadow-2xl flex items-center gap-2.5 text-[12px] text-[#e7ebf0] z-50 transform translate-y-20 opacity-0 transition-all duration-300" id="autosaveToast">
+      <i data-lucide="check-circle-2" class="w-4 h-4 text-[#2f8ff5]"></i>
+      <span>Autosave completed successfully.</span>
+    </div>
+
+    <!-- Script Interactions -->
+    <script>
+      // Initialize Lucide Icons
+      lucide.createIcons();
+
+      // Interactive Properties Context Switcher
+      const propertiesContextSelect = document.getElementById("propertiesContextSelect");
+      const propertiesContextTitle = document.getElementById("propertiesContextTitle");
+      const propertiesStateElement = document.getElementById("propertiesStateElement");
+      const propertiesStateDocument = document.getElementById("propertiesStateDocument");
+
+      propertiesContextSelect.addEventListener("change", (e) => {
+        const value = e.target.value;
+        if (value === "element") {
+          propertiesContextTitle.textContent = "Vector properties";
+          propertiesStateElement.classList.remove("hidden");
+          propertiesStateDocument.classList.add("hidden");
+        } else if (value === "document") {
+          propertiesContextTitle.textContent = "Document properties";
+          propertiesStateElement.classList.add("hidden");
+          propertiesStateDocument.classList.remove("hidden");
+        }
+      });
+
+      // Tab Panel Switcher
+      const tabBtns = {
+        layers: document.getElementById("tabBtnLayers"),
+        history: document.getElementById("tabBtnHistory")
+      };
+      const tabContents = {
+        layers: document.getElementById("tabContentLayers"),
+        history: document.getElementById("tabContentHistory")
+      };
+
+      function switchTab(activeKey) {
+        Object.keys(tabBtns).forEach(key => {
+          const btn = tabBtns[key];
+          const content = tabContents[key];
+          if (key === activeKey) {
+            btn.className = "flex-1 py-1 text-center bg-[#2f8ff5] text-black rounded-[2px] shadow-sm transition-all duration-100 cursor-default";
+            content.classList.remove("hidden");
+          } else {
+            btn.className = "flex-1 py-1 text-center text-white/60 hover:text-white hover:bg-white/5 rounded-[2px] transition-all duration-100 cursor-pointer";
+            content.classList.add("hidden");
+          }
+        });
+      }
+
+      Object.keys(tabBtns).forEach(key => {
+        tabBtns[key].addEventListener("click", () => switchTab(key));
+      });
+
+      // Toggle Inspector Panel Visibility
+      const inspectorPanel = document.getElementById("inspectorPanel");
+      const toggleInspectorBtn = document.getElementById("toggleInspector");
+      const workspaceContainer = document.getElementById("workspaceContainer");
+      let inspectorVisible = true;
+
+      toggleInspectorBtn.addEventListener("click", () => {
+        inspectorVisible = !inspectorVisible;
+        if (inspectorVisible) {
+          inspectorPanel.classList.remove("hidden");
+          workspaceContainer.style.gridTemplateColumns = "48px 1fr 320px";
+          toggleInspectorBtn.classList.add("bg-white/5", "text-[#e7ebf0]");
+          toggleInspectorBtn.classList.remove("text-white/70");
+        } else {
+          inspectorPanel.classList.add("hidden");
+          workspaceContainer.style.gridTemplateColumns = "48px 1fr";
+          toggleInspectorBtn.classList.remove("bg-white/5", "text-[#e7ebf0]");
+          toggleInspectorBtn.classList.add("text-white/70");
+        }
+      });
+
+      // Native Menubar Dropdowns System
+      let menubarActive = false;
+      const menuContainers = document.querySelectorAll(".menu-container");
+
+      function closeAllDropdowns() {
+        menuContainers.forEach(container => {
+          const dropdown = container.querySelector(".menu-dropdown");
+          const button = container.querySelector("button");
+          if (dropdown) dropdown.classList.add("hidden");
+          if (button) button.classList.remove("bg-white/5", "text-[#2f8ff5]");
+        });
+        menubarActive = false;
+      }
+
+      menuContainers.forEach(container => {
+        const button = container.querySelector("button");
+        const dropdown = container.querySelector(".menu-dropdown");
+
+        if (!button || !dropdown) return;
+
+        button.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const isClosed = dropdown.classList.contains("hidden");
+          closeAllDropdowns();
+          if (isClosed) {
+            dropdown.classList.remove("hidden");
+            button.classList.add("bg-white/5", "text-[#2f8ff5]");
+            menubarActive = true;
+          }
+        });
+
+        button.addEventListener("mouseenter", () => {
+          if (menubarActive) {
+            closeAllDropdowns();
+            dropdown.classList.remove("hidden");
+            button.classList.add("bg-white/5", "text-[#2f8ff5]");
+            menubarActive = true;
+          }
+        });
+      });
+
+      window.addEventListener("click", () => {
+        closeAllDropdowns();
+      });
+
+      // Command Palette Toggle & Fuzzy Search
+      const paletteModal = document.getElementById("paletteModal");
+      const paletteInput = document.getElementById("paletteInput");
+      const openPaletteBtn = document.getElementById("openPalette");
+      const paletteList = document.getElementById("paletteList");
+
+      const commands = [
+        { name: "Export Graphic File as PNG", shortcut: "Enter" },
+        { name: "Resize Creative Canvas", shortcut: "R" },
+        { name: "Find Active Document Layer", shortcut: "F" },
+        { name: "Duplicate Active Layer", shortcut: "Ctrl+D" },
+        { name: "Group Selected Layers", shortcut: "Ctrl+G" },
+        { name: "Toggle Inspector Sidebar", shortcut: "I" },
+        { name: "Reset Zoom to 100%", shortcut: "Ctrl+0" }
+      ];
+
+      function renderCommands(filter = "") {
+        paletteList.innerHTML = "";
+        const filtered = commands.filter(cmd => cmd.name.toLowerCase().includes(filter.toLowerCase()));
+        if (filtered.length === 0) {
+          paletteList.innerHTML = `<li class="px-2.5 py-2 text-[12px] text-white/30 text-center">No commands found</li>`;
+          return;
+        }
+        filtered.forEach((cmd, idx) => {
+          const li = document.createElement("li");
+          li.className = `flex items-center justify-between h-[30px] px-2.5 rounded cursor-pointer transition-colors duration-100 ${idx === 0 ? "bg-white/5 text-[#e7ebf0]" : "text-white/70 hover:bg-white/5 hover:text-white"}`;
+          li.innerHTML = `<span class="text-[12px] ${idx === 0 ? "font-medium" : ""}">${cmd.name}</span><kbd class="font-mono text-[10px] bg-black/40 border border-white/10 px-1 rounded text-white/30">${cmd.shortcut}</kbd>`;
+          li.addEventListener("click", () => {
+            if (cmd.name.includes("Export")) openExport();
+            if (cmd.name.includes("Inspector")) toggleInspectorBtn.click();
+            if (cmd.name.includes("Zoom")) resetZoom();
+            paletteModal.classList.add("hidden");
+          });
+          paletteList.appendChild(li);
+        });
+      }
+
+      function togglePalette() {
+        const isOpen = !paletteModal.classList.contains("hidden");
+        if (isOpen) {
+          paletteModal.classList.add("hidden");
+        } else {
+          paletteModal.classList.remove("hidden");
+          paletteInput.value = "";
+          renderCommands("");
+          paletteInput.focus();
+        }
+      }
+
+      openPaletteBtn.addEventListener("click", togglePalette);
+      paletteInput.addEventListener("input", (e) => renderCommands(e.target.value));
+
+      // Export Drawer Toggle
+      const exportDrawer = document.getElementById("exportDrawer");
+      const openExportBtn = document.getElementById("openExport");
+      const closeExportBtn = document.getElementById("closeExport");
+      const btnCancelExport = document.getElementById("btnCancelExport");
+      const btnDoExport = document.getElementById("btnDoExport");
+      const menuOpenExport = document.getElementById("menuOpenExport");
+
+      function openExport() {
+        exportDrawer.classList.remove("translate-x-full");
+      }
+
+      function closeExport() {
+        exportDrawer.classList.add("translate-x-full");
+      }
+
+      openExportBtn.addEventListener("click", openExport);
+      menuOpenExport.addEventListener("click", (e) => { e.preventDefault(); openExport(); });
+      closeExportBtn.addEventListener("click", closeExport);
+      btnCancelExport.addEventListener("click", closeExport);
+
+      // Toast autosave animation
+      const autosaveToast = document.getElementById("autosaveToast");
+      btnDoExport.addEventListener("click", () => {
+        closeExport();
+        autosaveToast.classList.remove("translate-y-20", "opacity-0");
+        setTimeout(() => {
+          autosaveToast.classList.add("translate-y-20", "opacity-0");
+        }, 3000);
+      });
+
+      // Canvas Smooth Zooming System
+      const canvasArtboard = document.getElementById("canvasArtboard");
+      const zoomPercentText = document.getElementById("zoomPercentText");
+      const btnZoomIn = document.getElementById("btnZoomIn");
+      const btnZoomOut = document.getElementById("btnZoomOut");
+      let zoomLevel = 1.0;
+
+      function updateZoom() {
+        canvasArtboard.style.transform = `scale(${zoomLevel})`;
+        zoomPercentText.textContent = `${Math.round(zoomLevel * 100)}%`;
+      }
+
+      function zoomIn() {
+        if (zoomLevel < 3.0) {
+          zoomLevel += 0.1;
+          updateZoom();
+        }
+      }
+
+      function zoomOut() {
+        if (zoomLevel > 0.3) {
+          zoomLevel -= 0.1;
+          updateZoom();
+        }
+      }
+
+      function resetZoom() {
+        zoomLevel = 1.0;
+        updateZoom();
+      }
+
+      btnZoomIn.addEventListener("click", zoomIn);
+      btnZoomOut.addEventListener("click", zoomOut);
+
+      // Interactive Layer Stack Selection & Coordinates Syncing
+      const layerItems = document.querySelectorAll(".layer-item");
+      const inputs = {
+        x: document.querySelector('#propertiesStateElement input:nth-child(1)') || document.querySelectorAll('#propertiesStateElement input')[0],
+        y: document.querySelectorAll('#propertiesStateElement input')[1],
+        w: document.querySelectorAll('#propertiesStateElement input')[2],
+        h: document.querySelectorAll('#propertiesStateElement input')[3]
+      };
+
+      layerItems.forEach(item => {
+        item.addEventListener("click", (e) => {
+          // Prevent click on lock/eye buttons from selecting layer
+          if (e.target.closest("button")) return;
+
+          layerItems.forEach(li => {
+            li.className = "layer-item h-[36px] border-b border-white/5 flex items-center justify-between px-2.5 text-white/70 hover:bg-white/5 transition-colors duration-100 cursor-pointer";
+            const eyeIcon = li.querySelector("button i");
+            if (eyeIcon && eyeIcon.getAttribute("data-lucide") === "eye") {
+              eyeIcon.parentElement.className = "text-white/40 hover:text-white";
+            }
+          });
+
+          // Set active styling
+          item.className = "layer-item h-[36px] border-b border-white/5 flex items-center justify-between px-2.5 bg-[#2f8ff5]/10 border-l-[3px] border-l-[#2f8ff5] text-[#e7ebf0] cursor-pointer";
+          const activeEye = item.querySelector("button i");
+          if (activeEye && activeEye.getAttribute("data-lucide") === "eye") {
+            activeEye.parentElement.className = "text-[#2f8ff5]";
+          }
+
+          // Sync coordinates in properties panel
+          const x = item.getAttribute("data-x");
+          const y = item.getAttribute("data-y");
+          const w = item.getAttribute("data-w");
+          const h = item.getAttribute("data-h");
+          const name = item.getAttribute("data-name");
+
+          if (inputs.x) inputs.x.value = x;
+          if (inputs.y) inputs.y.value = y;
+          if (inputs.w) inputs.w.value = w;
+          if (inputs.h) inputs.h.value = h;
+
+          // Toggle Element/Document property views
+          if (name === "Solid Background") {
+            propertiesContextSelect.value = "document";
+            propertiesContextSelect.dispatchEvent(new Event("change"));
+          } else {
+            propertiesContextSelect.value = "element";
+            propertiesContextSelect.dispatchEvent(new Event("change"));
+            propertiesContextTitle.textContent = name ? `${name} properties` : "Vector properties";
+          }
+        });
+      });
+
+      // Global Key Listeners
+      window.addEventListener("keydown", (e) => {
+        if (e.ctrlKey && e.key.toLowerCase() === "k") {
+          e.preventDefault();
+          togglePalette();
+        }
+        if (e.ctrlKey && e.key === "=") {
+          e.preventDefault();
+          zoomIn();
+        }
+        if (e.ctrlKey && e.key === "-") {
+          e.preventDefault();
+          zoomOut();
+        }
+        if (e.ctrlKey && e.key === "0") {
+          e.preventDefault();
+          resetZoom();
+        }
+        if (e.key === "Escape") {
+          paletteModal.classList.add("hidden");
+          closeExport();
+        }
+      });
+    </script>
+  </body>
+</html>
+) {
+          e.preventDefault();
+          zoomIn();
+        }
+        if (e.ctrlKey && e.key === "-") {
+          e.preventDefault();
+          zoomOut();
+        }
+        if (e.ctrlKey && e.key === "0") {
+          e.preventDefault();
+          resetZoom();
+        }
+        if (e.key === "Escape") {
+          paletteModal.classList.add("hidden");
+          closeExport();
+        }
+      });
+    </script>
+  </body>
+</html>
+     }
+        if (e.key === "Escape") {
+          paletteModal.classList.add("hidden");
+          closeExport();
+        }
+      });
+    </script>
+  </body>
+</html>
+        closeExport();
+        }
+      });
+    </script>
+  </body>
+</html>
