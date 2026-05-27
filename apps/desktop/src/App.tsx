@@ -1,4 +1,5 @@
 import { createSignal, onMount } from "solid-js";
+import { invoke } from "@tauri-apps/api/core";
 
 // Declare lucide globally since it's loaded from CDN in index.html
 declare const lucide: any;
@@ -15,6 +16,15 @@ export default function App() {
     if (typeof lucide !== "undefined") {
       lucide.createIcons();
     }
+
+    // Call stable Tauri bridge ping command
+    invoke("ping")
+      .then((res: any) => {
+        console.log("Tauri Bridge Ping Res:", res);
+      })
+      .catch((err) => {
+        console.error("Tauri Bridge Ping Err:", err);
+      });
   });
 
   const handleToolChange = (tool: string) => {
