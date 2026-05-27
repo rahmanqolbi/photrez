@@ -1,0 +1,32 @@
+{
+  "productName": "Photrez",
+  "version": "0.1.0",
+  "identifier": "com.photrez.app",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Photrez",
+        "width": 1280,
+        "height": 832,
+        "resizable": true,
+        "decorations": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png"
+    ]
+  }
+}

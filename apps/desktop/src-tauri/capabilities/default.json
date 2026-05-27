@@ -1,0 +1,10 @@
+{
+  "identifier": "default",
+  "description": "Default permissions for Photrez application",
+  "windows": [
+    "*"
+  ],
+  "permissions": [
+    "core:default"
+  ]
+}
