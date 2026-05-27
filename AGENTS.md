@@ -8,12 +8,24 @@ Build Photrez according to the locked MVP scope and architecture documents.
 
 ## Required Read Order (Before Any Task)
 
-1. `docs/00-vision-and-strategy.md`
-2. `docs/00-product-scope.md`
-3. `docs/01-prd.md`
-4. `docs/02-architecture.md`
-5. `docs/03-trd.md`
-6. `docs/01-id-decision-log.md`
+1. `docs/AI_CONTEXT.md` — **START HERE** (master AI rules + cross-reference map)
+2. `docs/AI_CURRENT_TASK.md` — Active task status
+3. `docs/FEATURES.md` — Feature implementation status
+4. `docs/ARCHITECTURE.md` — Runtime architecture reference
+5. `docs/AI_HISTORY.md` — Change history log
+6. `docs/00-vision-and-strategy.md`
+7. `docs/00-product-scope.md`
+8. `docs/01-prd.md`
+9. `docs/02-architecture.md`
+10. `docs/03-trd.md`
+11. `docs/01-id-decision-log.md`
+
+## AI Documentation Protocol
+
+- When **any** AI doc is mentioned (`AI_CONTEXT`, `AI_CURRENT_TASK`, `AI_HISTORY`, `FEATURES`, `ARCHITECTURE`), read **ALL 5** automatically.
+- Before modifying code: update `AI_CURRENT_TASK.md` with what you're doing.
+- After completing work: update `AI_HISTORY.md` and `FEATURES.md` with results.
+- Never truncate or overwrite history in these files — only append.
 
 ## Scope Guard
 
