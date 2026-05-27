@@ -1,0 +1,8 @@
+[package]
+name = "photrez-render"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# wgpu placeholder
+wgpu = "22.0.0"

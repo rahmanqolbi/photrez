@@ -1,0 +1,12 @@
+{
+  "name": "photrez-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter photrez-desktop dev",
+    "build": "pnpm --filter photrez-desktop build",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}
