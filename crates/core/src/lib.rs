@@ -1,3 +1,10 @@
+pub mod document;
+pub mod layers;
+pub mod selection;
+pub mod transform;
+pub mod brush;
+pub mod export;
+
 pub fn init_core() -> &'static str {
     "Photrez Core Initialized"
 }
