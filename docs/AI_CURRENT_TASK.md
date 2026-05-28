@@ -1,15 +1,12 @@
-# Current Task: Tasks 9-11: Flip Shortcuts, ESC Cancel, Rotation Snapping [COMPLETE]
+# Current Task: M3 Completion — Transform Handles & Controls [COMPLETE]
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
 ## Deskripsi
 
-Implementasi Tasks 9-11 dari transform polish:
-- **Task 9**: Keyboard shortcuts Ctrl+G (flip horizontal), Ctrl+Shift+G (flip vertical)
-- **Task 10**: ESC key to cancel transform (deselect layer + reset drag state)
-- **Task 11**: Rotation angle snapping to 15-degree increments when Shift is held
+Implementasi completion Milestone 3: Transform Handles UI, Editable W/H inputs, Flip controls, Rotation handle, dan keyboard shortcuts.
 
-**Tugas Aktif Saat Ini:** Tasks 9-11 completed successfully. Ready for next tasks!
+**Tugas Aktif Saat Ini:** M3 Completion successfully implemented. Ready for M6 (Perf Gate + Packaging)!
 
 
 ## Status Implementasi

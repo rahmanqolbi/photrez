@@ -6,6 +6,19 @@
 
 ---
 
+## [2026-05-28] FEATURE — M3 Completion: Transform Handles & Controls
+
+### Kategori: FEATURE / UI / FRONTEND
+
+**Deskripsi:** Mengimplementasikan seluruh kebutuhan M3 completion termasuk transform handles UI (bounding box + 8 resize handles + rotation handle), editable W/H inputs di properties panel, flip horizontal/vertical buttons + keyboard shortcuts (Ctrl+G, Ctrl+Shift+G), rotation input, commit/cancel transform (ESC), dan rotation angle snapping (15-degree with Shift).
+
+**Perubahan:**
+1. **`apps/desktop/src/App.tsx`** — Menambahkan transform state signals (transformDragging, transformDragType, transformDragStart, transformDragOriginal), bounding box overlay dengan 8 resize handles + rotation handle, mouse interaction handlers untuk resize dan rotation drag, editable W/H inputs di properties panel, rotation input, flip buttons di options bar, keyboard shortcuts Ctrl+G/Ctrl+Shift+G/ESC, rotation angle snapping, dan helper functions (handleTransformChange, handleFlip, handleTransformHandleMouseDown, getLayerCurrentTransform).
+2. **`apps/desktop/src/index.css`** — Menambahkan cursor utility classes untuk resize handles (nwse, nesw, ew, ns) dan rotation cursor.
+3. **`docs/32-keyboard-shortcut-map.md`** — Menambahkan Ctrl+G/Shift+G shortcuts dan Shift rotation snap behavior.
+
+**Validasi:** ✅ Seluruh unit test Rust workspace lolos. SolidJS Vite frontend build sukses 100% tanpa error (`pnpm run build`).
+
 ## [2026-05-28] FEATURE — Tasks 9-11: Flip Shortcuts, ESC Cancel, Rotation Snapping
 
 ### Kategori: FEATURE / UI / FRONTEND
