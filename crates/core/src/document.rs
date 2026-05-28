@@ -167,6 +167,81 @@ impl Document {
         Ok(())
     }
 
+    pub fn load_image_from_bytes(&mut self, bytes: Vec<u8>, name: String) -> Result<(), String> {
+        let img = image::load_from_memory(&bytes)
+            .map_err(|e| format!("Failed to decode image: {}", e))?;
+
+        let rgba = img.to_rgba8();
+        let (width, height) = rgba.dimensions();
+        let pixel_data = rgba.into_raw();
+
+        let bitmap = crate::layers::BitmapData {
+            width,
+            height,
+            format: crate::layers::PixelFormat::RGBA8,
+            pixel_data,
+        };
+
+        let mut layer = Layer::new(
+            format!("layer-{}", uuid::Uuid::new_v4()),
+            name,
+            width,
+            height,
+        );
+        layer.bitmap_ref = bitmap;
+
+        self.width = width;
+        self.height = height;
+        self.add_layer(layer);
+        Ok(())
+    }
+
+    pub fn get_flattened_pixels(&self) -> (u32, u32, Vec<u8>) {
+        let mut pixels = vec![0u8; (self.width * self.height * 4) as usize];
+
+        for layer in self.layers.iter().rev() {
+            if !layer.visible || layer.opacity <= 0.0 {
+                continue;
+            }
+
+            let lx = layer.x as i32;
+            let ly = layer.y as i32;
+
+            for y in 0..self.height {
+                for x in 0..self.width {
+                    let screen_idx = ((y * self.width + x) * 4) as usize;
+                    let layer_x = x as i32 - lx;
+                    let layer_y = y as i32 - ly;
+
+                    if layer_x >= 0 && layer_x < layer.width as i32
+                        && layer_y >= 0 && layer_y < layer.height as i32 {
+                        let layer_idx = ((layer_y as u32 * layer.width + layer_x as u32) * 4) as usize;
+
+                        if layer_idx + 3 < layer.bitmap_ref.pixel_data.len() {
+                            let sr = layer.bitmap_ref.pixel_data[layer_idx] as f32 / 255.0;
+                            let sg = layer.bitmap_ref.pixel_data[layer_idx + 1] as f32 / 255.0;
+                            let sb = layer.bitmap_ref.pixel_data[layer_idx + 2] as f32 / 255.0;
+                            let sa = layer.bitmap_ref.pixel_data[layer_idx + 3] as f32 / 255.0;
+
+                            let da = pixels[screen_idx + 3] as f32 / 255.0;
+                            let alpha = sa * layer.opacity;
+
+                            let out_a = alpha + da * (1.0 - alpha);
+                            if out_a > 0.0 {
+                                pixels[screen_idx] = ((sr * alpha + pixels[screen_idx] as f32 * da * (1.0 - alpha)) / out_a * 255.0) as u8;
+                                pixels[screen_idx + 1] = ((sg * alpha + pixels[screen_idx + 1] as f32 * da * (1.0 - alpha)) / out_a * 255.0) as u8;
+                                pixels[screen_idx + 2] = ((sb * alpha + pixels[screen_idx + 2] as f32 * da * (1.0 - alpha)) / out_a * 255.0) as u8;
+                                pixels[screen_idx + 3] = (out_a * 255.0) as u8;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        (self.width, self.height, pixels)
+    }
+
     pub fn sample_pixel(&self, x: f32, y: f32) -> [u8; 4] {
         let ix = x.floor() as i32;
         let iy = y.floor() as i32;

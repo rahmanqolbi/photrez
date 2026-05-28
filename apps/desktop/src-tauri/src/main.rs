@@ -419,6 +419,49 @@ fn redo(state: tauri::State<'_, EditorState>) -> Result<Value, Value> {
     }
 }
 
+#[tauri::command]
+fn get_framebuffer(
+    state: tauri::State<'_, EditorState>,
+) -> Result<Value, Value> {
+    let doc = state.document.lock().unwrap();
+    let (width, height, pixels) = doc.get_flattened_pixels();
+
+    use base64::Engine;
+    let encoded = base64::engine::general_purpose::STANDARD.encode(&pixels);
+
+    ok_response(serde_json::json!({
+        "width": width,
+        "height": height,
+        "pixels": encoded
+    }))
+}
+
+#[tauri::command]
+fn open_image(
+    path: String,
+    state: tauri::State<'_, EditorState>,
+) -> Result<Value, Value> {
+    let bytes = match std::fs::read(&path) {
+        Ok(b) => b,
+        Err(e) => return err_response("E_IO", &format!("Failed to read file: {}", e)),
+    };
+
+    let name = std::path::Path::new(&path)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("Image")
+        .to_string();
+
+    let mut doc = state.document.lock().unwrap();
+    let mut history = state.history.lock().unwrap();
+    history.commit((*doc).clone());
+
+    match doc.load_image_from_bytes(bytes, name) {
+        Ok(_) => ok_response(&*doc),
+        Err(e) => err_response("E_DECODE", &e),
+    }
+}
+
 fn main() {
     println!("{}", photrez_core::init_core());
     println!("{}", photrez_render::init_render());
@@ -444,7 +487,9 @@ fn main() {
             resize_canvas,
             draw_brush_stroke,
             export_document,
-            sample_pixel
+            sample_pixel,
+            get_framebuffer,
+            open_image
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
