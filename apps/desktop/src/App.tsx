@@ -82,23 +82,6 @@ export default function App() {
     return { x: (clientX - rect.left) / z, y: (clientY - rect.top) / z };
   };
 
-  const getSelectedLayerTransform = () => {
-    if (!selectedLayerId()) return null;
-    const layer = layers().find(l => l.id === selectedLayerId());
-    if (!layer) return null;
-    return {
-      x: layer.x,
-      y: layer.y,
-      width: layer.width,
-      height: layer.height,
-      scaleX: layer.transform?.scale_x ?? 1,
-      scaleY: layer.transform?.scale_y ?? 1,
-      rotation: layer.transform?.rotation ?? 0,
-      flipH: layer.transform?.flip_h ?? false,
-      flipV: layer.transform?.flip_v ?? false
-    };
-  };
-
   const handleSampleColor = (cx: number, cy: number) => {
     invoke("sample_pixel", { x: cx, y: cy })
       .then((res: any) => {
