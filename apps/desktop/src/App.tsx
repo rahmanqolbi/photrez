@@ -178,6 +178,81 @@ export default function App() {
         drawStrokeSegment(coords.x, coords.y);
       }
     }
+
+    // Transform handle drag
+    if (transformDragging() && transformDragType() && selectedLayerId()) {
+      const current = getArtboardCoords(e.clientX, e.clientY);
+      const start = transformDragStart();
+      const orig = transformDragOriginal();
+      const dx = current.x - start.x;
+      const dy = current.y - start.y;
+      const handle = transformDragType();
+      
+      if (handle === "rotate") {
+        const centerX = orig.x + orig.width / 2;
+        const centerY = orig.y + orig.height / 2;
+        const angle = Math.atan2(current.y - centerY, current.x - centerX) * (180 / Math.PI);
+        const newRotation = (angle + 90) % 360;
+        
+        invoke("transform_layer", {
+          id: selectedLayerId(),
+          scaleX: orig.scaleX,
+          scaleY: orig.scaleY,
+          rotation: newRotation,
+          flipH: orig.flipH,
+          flipV: orig.flipV
+        }).then((res: any) => {
+          if (res?.ok) syncDocumentState();
+        }).catch(console.error);
+      } else {
+        let newX = orig.x;
+        let newY = orig.y;
+        let newW = orig.width;
+        let newH = orig.height;
+        
+        if (handle === "se") {
+          newW = Math.max(10, orig.width + dx);
+          newH = Math.max(10, orig.height + dy);
+        } else if (handle === "sw") {
+          newW = Math.max(10, orig.width - dx);
+          newH = Math.max(10, orig.height + dy);
+          newX = orig.x + (orig.width - newW);
+        } else if (handle === "ne") {
+          newW = Math.max(10, orig.width + dx);
+          newH = Math.max(10, orig.height - dy);
+          newY = orig.y + (orig.height - newH);
+        } else if (handle === "nw") {
+          newW = Math.max(10, orig.width - dx);
+          newH = Math.max(10, orig.height - dy);
+          newX = orig.x + (orig.width - newW);
+          newY = orig.y + (orig.height - newH);
+        } else if (handle === "n") {
+          newH = Math.max(10, orig.height - dy);
+          newY = orig.y + (orig.height - newH);
+        } else if (handle === "s") {
+          newH = Math.max(10, orig.height + dy);
+        } else if (handle === "e") {
+          newW = Math.max(10, orig.width + dx);
+        } else if (handle === "w") {
+          newW = Math.max(10, orig.width - dx);
+          newX = orig.x + (orig.width - newW);
+        }
+        
+        const scaleX = newW / orig.width;
+        const scaleY = newH / orig.height;
+        
+        invoke("transform_layer", {
+          id: selectedLayerId(),
+          scaleX,
+          scaleY,
+          rotation: orig.rotation,
+          flipH: orig.flipH,
+          flipV: orig.flipV
+        }).then((res: any) => {
+          if (res?.ok) syncDocumentState();
+        }).catch(console.error);
+      }
+    }
   };
 
   const handleArtboardMouseUp = (_e: MouseEvent) => {
@@ -222,6 +297,13 @@ export default function App() {
         });
       }
     }
+
+    // End transform handle drag
+    if (transformDragging()) {
+      setTransformDragging(false);
+      setTransformDragType(null);
+    }
+
     setIsDraggingLayer(false);
   };
 
@@ -233,6 +315,31 @@ export default function App() {
     invoke("move_layer", { id: selectedLayerId(), x: layer.x + dx, y: layer.y + dy })
       .then((res: any) => { if (res?.ok) syncDocumentState(); })
       .catch(console.error);
+  };
+
+  const handleTransformHandleMouseDown = (e: MouseEvent, handleName: string) => {
+    e.stopPropagation();
+    if (!selectedLayerId()) return;
+    
+    const layer = layers().find(l => l.id === selectedLayerId());
+    if (!layer) return;
+    
+    const coords = getArtboardCoords(e.clientX, e.clientY);
+    
+    setTransformDragging(true);
+    setTransformDragType(handleName);
+    setTransformDragStart(coords);
+    setTransformDragOriginal({
+      x: layer.x,
+      y: layer.y,
+      width: layer.width,
+      height: layer.height,
+      scaleX: layer.transform?.scale_x ?? 1,
+      scaleY: layer.transform?.scale_y ?? 1,
+      rotation: layer.transform?.rotation ?? 0,
+      flipH: layer.transform?.flip_h ?? false,
+      flipV: layer.transform?.flip_v ?? false
+    });
   };
 
   const [strokeWidth, setStrokeWidth] = createSignal(2.5);
@@ -1197,6 +1304,7 @@ export default function App() {
                               z-index: 9999;
                             `}
                             data-handle={name}
+                            onMouseDown={(e) => handleTransformHandleMouseDown(e, name)}
                           />
                         )}
                       </For>
@@ -1212,6 +1320,7 @@ export default function App() {
                           z-index: 9999;
                         `}
                         data-handle="rotate"
+                        onMouseDown={(e) => handleTransformHandleMouseDown(e, "rotate")}
                       >
                         <div class="absolute left-1/2 -translate-x-1/2 top-[10px] w-[1px] h-[14px] bg-accent/70" />
                         <div class="w-3 h-3 rounded-full bg-white border border-accent" />
