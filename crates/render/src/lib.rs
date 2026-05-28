@@ -221,97 +221,6 @@ impl WgpuRenderer {
         self.queue.write_buffer(&self.viewport_buffer, 0, bytemuck::cast_slice(&[uniform]));
     }
 
-    pub fn render_frame(&self, pixels: &[u8], width: u32, height: u32) {
-        let surface = match &self.surface {
-            Some(s) => s,
-            None => return,
-        };
-        let output = match surface.get_current_texture() {
-            Ok(t) => t,
-            Err(_) => return,
-        };
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-        let texture_size = wgpu::Extent3d { width, height, depth_or_array_layers: 1 };
-        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("Frame Texture"),
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
-
-        self.queue.write_texture(
-            wgpu::ImageCopyTexture {
-                texture: &texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            pixels,
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * width),
-                rows_per_image: Some(height),
-            },
-            texture_size,
-        );
-
-        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Nearest,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
-
-        let texture_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &self.texture_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(&texture_view) },
-                wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::Sampler(&sampler) },
-            ],
-            label: Some("texture_bind_group"),
-        });
-
-        let viewport_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &self.viewport_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry { binding: 0, resource: self.viewport_buffer.as_entire_binding() }],
-            label: Some("viewport_bind_group"),
-        });
-
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("Render Encoder") });
-        {
-            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-            rpass.set_pipeline(&self.render_pipeline);
-            rpass.set_bind_group(0, &texture_bind_group, &[]);
-            rpass.set_bind_group(1, &viewport_bind_group, &[]);
-            rpass.draw(0..6, 0..1);
-        }
-
-        self.queue.submit(std::iter::once(encoder.finish()));
-        output.present();
-    }
-
     pub fn upload_layer_texture(&mut self, layer_id: &str, pixels: &[u8], width: u32, height: u32, opacity: f32, visible: bool, x: f32, y: f32) {
         let texture_size = wgpu::Extent3d { width, height, depth_or_array_layers: 1 };
         let texture = self.device.create_texture(&wgpu::TextureDescriptor {
@@ -374,7 +283,7 @@ impl WgpuRenderer {
         });
     }
 
-    pub fn render_layers(&mut self, layers: &[(String, Vec<u8>, u32, u32, f32, bool, f32, f32)]) {
+    pub fn render_layers(&mut self, layers: &[(&str, &[u8], u32, u32, f32, bool, f32, f32)]) {
         let surface = match &self.surface {
             Some(s) => s,
             None => return,
@@ -432,7 +341,7 @@ impl WgpuRenderer {
             if !layer_entry.5 {
                 continue;
             }
-            let layer_id = &layer_entry.0;
+            let layer_id = layer_entry.0;
             let layer_tex = match self.layer_textures.get(layer_id) {
                 Some(t) => t,
                 None => continue,

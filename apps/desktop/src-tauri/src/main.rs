@@ -425,23 +425,6 @@ fn redo(state: tauri::State<'_, EditorState>) -> Result<Value, Value> {
 }
 
 #[tauri::command]
-fn get_framebuffer(
-    state: tauri::State<'_, EditorState>,
-) -> Result<Value, Value> {
-    let doc = state.document.lock().unwrap();
-    let (width, height, pixels) = doc.get_flattened_pixels();
-
-    use base64::Engine;
-    let encoded = base64::engine::general_purpose::STANDARD.encode(&pixels);
-
-    ok_response(serde_json::json!({
-        "width": width,
-        "height": height,
-        "pixels": encoded
-    }))
-}
-
-#[tauri::command]
 fn open_image(
     path: String,
     state: tauri::State<'_, EditorState>,
@@ -516,7 +499,6 @@ fn main() {
             draw_brush_stroke,
             export_document,
             sample_pixel,
-            get_framebuffer,
             open_image,
             trigger_render
         ])
@@ -541,26 +523,27 @@ fn main() {
                 let mut doc = doc_state.document.lock().unwrap();
                 
                 if doc.has_dirty_layers() {
-                    let mut layer_data = Vec::new();
-                    for layer in &doc.layers {
-                        if !layer.visible {
-                            continue;
-                        }
-                        layer_data.push((
-                            layer.id.clone(),
-                            layer.bitmap_ref.pixel_data.clone(),
-                            layer.width,
-                            layer.height,
-                            layer.opacity,
-                            layer.visible,
-                            layer.x,
-                            layer.y,
-                        ));
-                    }
+                    let layer_data: Vec<(&str, &[u8], u32, u32, f32, bool, f32, f32)> = doc.layers.iter()
+                        .filter(|l| l.visible)
+                        .map(|l| {
+                            (
+                                l.id.as_str(),
+                                l.bitmap_ref.pixel_data.as_slice(),
+                                l.width,
+                                l.height,
+                                l.opacity,
+                                l.visible,
+                                l.x,
+                                l.y,
+                            )
+                        })
+                        .collect();
                     
-                    let state = app_handle.state::<WgpuState>();
-                    let mut renderer = state.renderer.lock().unwrap();
-                    renderer.render_layers(&layer_data, doc.width, doc.height);
+                    {
+                        let state = app_handle.state::<WgpuState>();
+                        let mut renderer = state.renderer.lock().unwrap();
+                        renderer.render_layers(&layer_data);
+                    }
                     
                     doc.clear_dirty();
                 }
