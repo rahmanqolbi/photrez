@@ -1,11 +1,14 @@
-# Current Task: M1 — Desktop Shell Foundation [IN PROGRESS]
+# Current Task: M4 — Brush & Eraser Engine [IN PROGRESS]
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
 ## Deskripsi
 
-Implementasi Milestone 1: Foundation & Command Contract Baseline.
-Fokus pada membangun shell desktop yang fungsional dengan layer management, undo/redo, dan UI editor yang lengkap.
+Implementasi Milestone 4: Brush & Eraser Engine.
+Fokus pada merancang dan mengimplementasikan interpolasi sub-piksel brush, eraser alpha-blending, Tauri IPC bridge untuk stroke painting, Options Bar signals, dan zero-latency `<canvas>` overlay rendering.
+
+**Tugas Aktif Saat Ini:** M4 Task 35: Implementasi Brush Stroke Drawing & Blending di Rust Core [IN PROGRESS]
+
 
 ## Status Implementasi
 
@@ -17,11 +20,11 @@ Fokus pada membangun shell desktop yang fungsional dengan layer management, undo
 - [x] Command: `add_layer`, `delete_layer`, `reorder_layer`
 - [x] Command: `update_layer` (opacity, visible, locked, name, blend_mode)
 - [x] Command: `undo`, `redo`
-- [ ] Command: `crop_canvas`, `resize_canvas`
-- [ ] Command: `create_selection`, `move_selection`, `clear_selection`
+- [x] Command: `crop_canvas`, `resize_canvas`
+- [x] Command: `create_selection`, `move_selection`, `clear_selection`
 - [ ] Command: `brush_stroke`, `eraser_stroke`
 - [ ] Command: `export_image` (JPG/PNG/WebP)
-- [ ] Command: `move_layer`, `scale_layer`, `rotate_layer`, `flip_layer`
+- [x] Command: `move_layer`, `scale_layer`, `rotate_layer`, `flip_layer`
 
 ### Core Crate (`photrez-core`)
 - [x] Document model (id, width, height, layers, background_color)
@@ -29,9 +32,9 @@ Fokus pada membangun shell desktop yang fungsional dengan layer management, undo
 - [x] HistoryStore (commit, undo, redo, max 50 snapshots)
 - [x] Module stubs: selection, transform, brush, export
 - [ ] Bitmap data integration (pixel buffer per layer)
-- [ ] Selection engine (rectangular selection)
-- [ ] Transform engine (scale, rotate, flip)
-- [ ] Crop/Resize engine
+- [x] Selection engine (rectangular selection)
+- [x] Transform engine (scale, rotate, flip)
+- [x] Crop/Resize engine
 - [ ] Brush/Eraser engine (stroke handling)
 - [ ] Export pipeline (JPG/PNG/WebP encoding)
 
@@ -51,8 +54,9 @@ Fokus pada membangun shell desktop yang fungsional dengan layer management, undo
 - [x] Window controls (minimize/maximize/close)
 - [x] Keyboard shortcuts (Ctrl+Z/Y)
 - [x] Photon Amber design system
+- [x] Tailwind CDN conflict fix & design tokens migration (CSS v4 + lucide-solid)
 - [ ] Canvas viewport (actual pixel rendering via wgpu)
-- [ ] Tool interaction handlers (brush, selection, crop, move)
+- [x] Tool interaction handlers (selection, crop, move)
 - [ ] Export dialog
 - [ ] Color picker
 
@@ -74,6 +78,41 @@ Fokus pada membangun shell desktop yang fungsional dengan layer management, undo
 # Task Log (Completed)
 
 > Entri lama tetap di bawah untuk referensi. Tugas terbaru selalu di atas.
+
+## Proportional Fix — Rail 48×36 / Top Bar 44px [COMPLETE]
+
+- [x] Tool rail `w-[60px]`→`w-[48px]`, grid column `52px`→`48px` (sinkron)
+- [x] Button `w-10 h-10`→`w-9 h-9` (36px sesuai design spec)
+- [x] Icon `size={20}`→`size={18}` di semua tool buttons
+- [x] Rail gap `gap-1.5`→`gap-1`
+- [x] Top bar `36px`→`44px` (sesuai wireframe spec)
+- [x] Update `26-wireframe-layout-spec.md` dimensi
+- [x] Build verification: ✅ `tsc` + `vite build` sukses
+
+## Remove Command Palette UI Button [COMPLETE]
+
+- [x] Hapus button + separator dari toolbar, hapus import Terminal
+- [x] Update docs/32-keyboard-shortcut-map.md dengan catatan
+- [x] Build verification: ✅ `tsc` + `vite build` sukses
+
+## Inspector Panel Polish [COMPLETE]
+
+- [x] Collapsible Transform section dengan chevron rotate
+- [x] Collapsible Opacity section dengan range slider + number input
+- [x] Tab redesign dengan icon (Layers, Clock) + bottom border accent
+- [x] Layer items: title tooltips, translate + opacity hover animation
+- [x] History empty state dengan Clock icon
+- [x] Build verification: ✅ `tsc` + `vite build` sukses
+
+## Bug Fix — Tailwind CDN Conflict & Design Tokens Migration [COMPLETE]
+
+- [x] Hapus CDN Tailwind + Lucide dari index.html
+- [x] Install lucide-solid npm package, migrasi dari `<i data-lucide>` ke komponen SolidJS
+- [x] Lengkapi design tokens di @theme (text colors, motion, shadow, animate)
+- [x] Ganti hardcoded `text-[#...]` dengan token `text-text-primary/secondary/muted`
+- [x] Ruler ticks pake `<For>` loop, SVG animation pake `animate-dash` class
+- [x] Hapus file .jsx duplikat (App.jsx, index.jsx, ui-sanity.test.js)
+- [x] Build verification: ✅ `tsc` + `vite build` sukses
 
 ## Initial Setup — Project Scaffolding [COMPLETE]
 
