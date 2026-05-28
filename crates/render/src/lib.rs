@@ -1,4 +1,5 @@
 use bytemuck::{Pod, Zeroable};
+use tauri::WebviewWindow;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
@@ -7,6 +8,7 @@ struct ViewportUniform {
 }
 
 pub struct WgpuRenderer {
+    pub instance: wgpu::Instance,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub adapter: wgpu::Adapter,
@@ -128,6 +130,7 @@ impl WgpuRenderer {
         });
 
         Self {
+            instance,
             device,
             queue,
             adapter,
@@ -140,20 +143,27 @@ impl WgpuRenderer {
         }
     }
 
-    pub fn set_surface(&mut self, surface: wgpu::Surface<'static>, width: u32, height: u32) {
+    pub fn set_surface_from_window(&mut self, window: WebviewWindow) {
+        let size = window.inner_size().expect("Failed to get window size");
+        
+        let surface = self.instance.create_surface(window)
+            .expect("Failed to create surface from window");
+        
         let caps = surface.get_capabilities(&self.adapter);
         let format = caps.formats[0];
+        
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
-            width,
-            height,
+            width: size.width.max(1),
+            height: size.height.max(1),
             present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
         surface.configure(&self.device, &config);
+        
         self.surface = Some(surface);
         self.surface_config = Some(config);
     }

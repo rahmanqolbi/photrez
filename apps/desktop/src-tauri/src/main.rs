@@ -7,6 +7,7 @@ use photrez_core::document::Document;
 use photrez_core::layers::Layer;
 use photrez_core::history::HistoryStore;
 use photrez_core::transform::Transform;
+use tauri::Manager;
 
 // Canonical Response Envelope definitions matching docs/15-command-contract-spec.md
 #[derive(Serialize)]
@@ -33,6 +34,10 @@ struct ApiErrorResponse {
 struct EditorState {
     document: Mutex<Document>,
     history: Mutex<HistoryStore>,
+}
+
+struct WgpuState {
+    renderer: Mutex<photrez_render::WgpuRenderer>,
 }
 
 impl EditorState {
@@ -466,8 +471,21 @@ fn main() {
     println!("{}", photrez_core::init_core());
     println!("{}", photrez_render::init_render());
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .manage(EditorState::new())
+        .setup(|app| {
+            let window = app.get_webview_window("main")
+                .expect("Failed to get main window");
+            
+            let mut renderer = pollster::block_on(photrez_render::WgpuRenderer::new());
+            renderer.set_surface_from_window(window);
+            
+            app.manage(WgpuState {
+                renderer: Mutex::new(renderer),
+            });
+            
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             ping,
             get_contract_info,
@@ -491,6 +509,33 @@ fn main() {
             get_framebuffer,
             open_image
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|app_handle, event| {
+        match event {
+            tauri::RunEvent::WindowEvent {
+                label,
+                event: tauri::WindowEvent::Resized(size),
+                ..
+            } => {
+                if label == "main" {
+                    let state = app_handle.state::<WgpuState>();
+                    let mut renderer = state.renderer.lock().unwrap();
+                    renderer.resize(size.width.max(1), size.height.max(1));
+                }
+            }
+            tauri::RunEvent::MainEventsCleared => {
+                let state = app_handle.state::<WgpuState>();
+                let renderer = state.renderer.lock().unwrap();
+                
+                let doc_state = app_handle.state::<EditorState>();
+                let doc = doc_state.document.lock().unwrap();
+                let (width, height, pixels) = doc.get_flattened_pixels();
+                
+                renderer.render_frame(&pixels, width, height);
+            }
+            _ => (),
+        }
+    });
 }

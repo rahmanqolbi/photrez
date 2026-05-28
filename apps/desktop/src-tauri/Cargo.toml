@@ -12,6 +12,7 @@ photrez-core = { path = "../../../crates/core" }
 photrez-render = { path = "../../../crates/render" }
 rfd = "0.15"
 base64 = "0.22"
+pollster = "0.3.0"
 
 [build-dependencies]
 tauri-build = { version = "2.0.0", features = [] }
