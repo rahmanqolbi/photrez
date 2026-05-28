@@ -1,9 +1,17 @@
+/// <reference types="vitest" />
 import { defineConfig } from "vite";
 import solidPlugin from "vite-plugin-solid";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [solidPlugin(), tailwindcss()],
+
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: [],
+    css: true,
+  },
 
   // Prevent vite from obscuring rust errors
   clearScreen: false,
