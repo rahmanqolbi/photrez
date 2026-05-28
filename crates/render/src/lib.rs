@@ -27,6 +27,7 @@ pub struct WgpuRenderer {
     pub adapter: wgpu::Adapter,
     pub surface: Option<wgpu::Surface<'static>>,
     pub surface_config: Option<wgpu::SurfaceConfiguration>,
+    pub surface_format: Option<wgpu::TextureFormat>,
     pub render_pipeline: wgpu::RenderPipeline,
     pub texture_bind_group_layout: wgpu::BindGroupLayout,
     pub viewport_buffer: wgpu::Buffer,
@@ -110,40 +111,42 @@ impl WgpuRenderer {
             label: Some("viewport_bind_group_layout"),
         });
 
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
-            push_constant_ranges: &[],
-            bind_group_layouts: &[&texture_bind_group_layout, &viewport_bind_group_layout],
-        });
+        let render_pipeline = {
+            let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: None,
+                push_constant_ranges: &[],
+                bind_group_layouts: &[&texture_bind_group_layout, &viewport_bind_group_layout],
+            });
 
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Render Pipeline"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                buffers: &[],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                    blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                ..Default::default()
-            },
-            multisample: wgpu::MultisampleState::default(),
-            depth_stencil: None,
-            multiview: None,
-            cache: None,
-        });
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("Render Pipeline"),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: "vs_main",
+                    buffers: &[],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: "fs_main",
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: wgpu::TextureFormat::Bgra8UnormSrgb,
+                        blend: Some(wgpu::BlendState::REPLACE),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    ..Default::default()
+                },
+                multisample: wgpu::MultisampleState::default(),
+                depth_stencil: None,
+                multiview: None,
+                cache: None,
+            })
+        };
 
         Self {
             instance,
@@ -152,6 +155,7 @@ impl WgpuRenderer {
             adapter,
             surface: None,
             surface_config: None,
+            surface_format: None,
             render_pipeline,
             texture_bind_group_layout,
             viewport_buffer,
@@ -171,6 +175,9 @@ impl WgpuRenderer {
         let caps = surface.get_capabilities(&self.adapter);
         let format = caps.formats[0];
         
+        self.surface_format = Some(format);
+        self.create_pipeline(format);
+        
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
@@ -185,6 +192,48 @@ impl WgpuRenderer {
         
         self.surface = Some(surface);
         self.surface_config = Some(config);
+    }
+
+    fn create_pipeline(&mut self, format: wgpu::TextureFormat) {
+        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+        });
+
+        let pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: None,
+            push_constant_ranges: &[],
+            bind_group_layouts: &[&self.texture_bind_group_layout, &self.viewport_bind_group_layout],
+        });
+
+        self.render_pipeline = self.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline"),
+            layout: Some(&pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: "vs_main",
+                buffers: &[],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: "fs_main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                ..Default::default()
+            },
+            multisample: wgpu::MultisampleState::default(),
+            depth_stencil: None,
+            multiview: None,
+            cache: None,
+        });
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -298,13 +347,14 @@ impl WgpuRenderer {
 
         // Create composited intermediate texture if needed
         if self.composited_texture.is_none() || self.composited_texture.as_ref().map(|t| t.size().width) != Some(canvas_w) || self.composited_texture.as_ref().map(|t| t.size().height) != Some(canvas_h) {
+            let format = self.surface_format.unwrap_or(wgpu::TextureFormat::Rgba8UnormSrgb);
             let tex = self.device.create_texture(&wgpu::TextureDescriptor {
                 label: Some("Composited Texture"),
                 size: wgpu::Extent3d { width: canvas_w, height: canvas_h, depth_or_array_layers: 1 },
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                format,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
             });
@@ -418,5 +468,34 @@ mod tests {
     fn test_renderer_initialization() {
         let renderer = pollster::block_on(WgpuRenderer::new());
         assert!(renderer.device.features().is_empty() || true);
+        assert!(renderer.layer_textures.is_empty());
+        assert!(renderer.composited_texture.is_none());
+        assert!(renderer.surface_format.is_none());
+        assert!(renderer.surface.is_none());
+        assert!(renderer.surface_config.is_none());
+    }
+
+    #[test]
+    fn test_viewport_uniform_creation() {
+        let _uniform = ViewportUniform {
+            view_proj: [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+        };
+        assert_eq!(std::mem::size_of::<ViewportUniform>(), 64);
+    }
+
+    #[test]
+    fn test_layer_texture_struct() {
+        assert!(std::mem::size_of::<LayerTexture>() > 0);
+    }
+
+    #[test]
+    fn test_init_render() {
+        let result = init_render();
+        assert_eq!(result, "Photrez Renderer Initialized");
     }
 }
