@@ -474,4 +474,240 @@ mod tests {
         let result = doc.resize_canvas(0, 0);
         assert!(result.is_err());
     }
+
+    // === CONTRACT TESTS: Verify command behavior matches expected data shapes ===
+
+    #[test]
+    fn test_contract_add_layer_returns_document_with_new_layer() {
+        let mut doc = Document::new("doc-1".to_string(), 800, 600);
+        let initial_count = doc.layers.len();
+        let layer = Layer::new("layer-new".to_string(), "New Layer".to_string(), 800, 600);
+        doc.add_layer(layer);
+        assert_eq!(doc.layers.len(), initial_count + 1);
+        assert_eq!(doc.layers[0].name, "New Layer");
+    }
+
+    #[test]
+    fn test_contract_delete_layer_removes_from_document() {
+        let mut doc = Document::new("doc-1".to_string(), 800, 600);
+        let bg = Layer::new("bg".to_string(), "Background".to_string(), 800, 600);
+        doc.add_layer(bg);
+        let layer = Layer::new("layer-del".to_string(), "ToDelete".to_string(), 800, 600);
+        doc.add_layer(layer);
+        assert_eq!(doc.layers.len(), 2);
+        let result = doc.delete_layer("layer-del");
+        assert!(result.is_ok());
+        assert_eq!(doc.layers.len(), 1);
+    }
+
+    #[test]
+    fn test_contract_delete_nonexistent_layer_fails() {
+        let mut doc = Document::new("doc-1".to_string(), 800, 600);
+        let layer = Layer::new("layer-1".to_string(), "Only".to_string(), 800, 600);
+        doc.add_layer(layer);
+        let result = doc.delete_layer("does-not-exist");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_contract_reorder_layer_changes_order() {
+        let mut doc = Document::new("doc-1".to_string(), 800, 600);
+        let l1 = Layer::new("l1".to_string(), "Layer 1".to_string(), 800, 600);
+        let l2 = Layer::new("l2".to_string(), "Layer 2".to_string(), 800, 600);
+        doc.add_layer(l1);
+        doc.add_layer(l2);
+        let result = doc.reorder_layer(0, 1);
+        assert!(result.is_ok());
+        assert_eq!(doc.layers[0].id, "l1");
+        assert_eq!(doc.layers[1].id, "l2");
+    }
+
+    #[test]
+    fn test_contract_update_layer_modifies_properties() {
+        let mut doc = Document::new("doc-1".to_string(), 800, 600);
+        let layer = Layer::new("layer-1".to_string(), "Test".to_string(), 800, 600);
+        doc.add_layer(layer);
+        let result = doc.update_layer_properties("layer-1", Some(0.5), Some(false), Some(true), Some("Renamed".to_string()), None);
+        assert!(result.is_ok());
+        let updated = doc.layers.iter().find(|l| l.id == "layer-1").unwrap();
+        assert_eq!(updated.opacity, 0.5);
+        assert!(!updated.visible);
+        assert!(updated.locked);
+        assert_eq!(updated.name, "Renamed");
+    }
+
+    #[test]
+    fn test_contract_move_layer_updates_position() {
+        let mut doc = Document::new("doc-1".to_string(), 800, 600);
+        let layer = Layer::new("layer-1".to_string(), "Test".to_string(), 800, 600);
+        doc.add_layer(layer);
+        let result = doc.move_layer("layer-1", 100.0, 200.0);
+        assert!(result.is_ok());
+        let moved = doc.layers.iter().find(|l| l.id == "layer-1").unwrap();
+        assert_eq!(moved.x, 100.0);
+        assert_eq!(moved.y, 200.0);
+    }
+
+    #[test]
+    fn test_contract_transform_layer_applies_transform() {
+        let mut doc = Document::new("doc-1".to_string(), 800, 600);
+        let layer = Layer::new("layer-1".to_string(), "Test".to_string(), 800, 600);
+        doc.add_layer(layer);
+        let transform = Transform {
+            scale_x: 1.5,
+            scale_y: 1.5,
+            rotation: 90.0,
+            flip_h: true,
+            flip_v: false,
+        };
+        let result = doc.apply_transform("layer-1", transform);
+        assert!(result.is_ok());
+        let t = doc.get_layer_transform("layer-1").unwrap();
+        assert_eq!(t.scale_x, 1.5);
+        assert_eq!(t.rotation, 90.0);
+        assert!(t.flip_h);
+    }
+
+    #[test]
+    fn test_contract_create_selection_stores_selection() {
+        let mut doc = Document::new("doc-1".to_string(), 800, 600);
+        assert!(doc.selection.is_none());
+        doc.create_selection(10.0, 20.0, 100.0, 50.0);
+        assert!(doc.selection.is_some());
+        let sel = doc.selection.as_ref().unwrap();
+        assert_eq!(sel.x, 10.0);
+        assert_eq!(sel.y, 20.0);
+        assert_eq!(sel.width, 100.0);
+        assert_eq!(sel.height, 50.0);
+    }
+
+    #[test]
+    fn test_contract_clear_selection_removes_selection() {
+        let mut doc = Document::new("doc-1".to_string(), 800, 600);
+        doc.create_selection(10.0, 20.0, 100.0, 50.0);
+        assert!(doc.selection.is_some());
+        doc.clear_selection();
+        assert!(doc.selection.is_none());
+    }
+
+    #[test]
+    fn test_contract_select_all_covers_canvas() {
+        let mut doc = Document::new("doc-1".to_string(), 800, 600);
+        doc.select_all();
+        let sel = doc.selection.as_ref().unwrap();
+        assert_eq!(sel.x, 0.0);
+        assert_eq!(sel.y, 0.0);
+        assert_eq!(sel.width, 800.0);
+        assert_eq!(sel.height, 600.0);
+    }
+
+    #[test]
+    fn test_contract_crop_canvas_updates_dimensions() {
+        let mut doc = Document::new("doc-1".to_string(), 800, 600);
+        let layer = Layer::new("layer-1".to_string(), "Test".to_string(), 800, 600);
+        doc.add_layer(layer);
+        let result = doc.crop_canvas(10.0, 10.0, 400, 300);
+        assert!(result.is_ok());
+        assert_eq!(doc.width, 400);
+        assert_eq!(doc.height, 300);
+    }
+
+    #[test]
+    fn test_contract_resize_canvas_updates_dimensions() {
+        let mut doc = Document::new("doc-1".to_string(), 800, 600);
+        let result = doc.resize_canvas(1920, 1080);
+        assert!(result.is_ok());
+        assert_eq!(doc.width, 1920);
+        assert_eq!(doc.height, 1080);
+    }
+
+    #[test]
+    fn test_contract_sample_pixel_returns_color() {
+        let mut doc = Document::new("doc-1".to_string(), 10, 10);
+        let mut layer = Layer::new("layer-1".to_string(), "Test".to_string(), 10, 10);
+        layer.bitmap_ref.pixel_data = vec![0u8; 10 * 10 * 4];
+        let idx = (5 * 10 + 5) * 4;
+        layer.bitmap_ref.pixel_data[idx] = 255;
+        layer.bitmap_ref.pixel_data[idx + 1] = 0;
+        layer.bitmap_ref.pixel_data[idx + 2] = 0;
+        layer.bitmap_ref.pixel_data[idx + 3] = 255;
+        doc.add_layer(layer);
+
+        let color = doc.sample_pixel(5.0, 5.0);
+        assert_eq!(color[0], 255);
+        assert_eq!(color[1], 0);
+        assert_eq!(color[2], 0);
+        assert_eq!(color[3], 255);
+    }
+
+    // === FAILURE-PATH TESTS: Error conditions and invalid inputs ===
+
+    #[test]
+    fn test_failure_transform_zero_scale_x() {
+        let mut doc = Document::new("doc-1".to_string(), 100, 100);
+        let layer = Layer::new("layer-1".to_string(), "Test".to_string(), 100, 100);
+        doc.add_layer(layer);
+        let transform = Transform {
+            scale_x: 0.0,
+            scale_y: 1.0,
+            rotation: 0.0,
+            flip_h: false,
+            flip_v: false,
+        };
+        let result = doc.apply_transform("layer-1", transform);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_failure_update_layer_nonexistent_id() {
+        let mut doc = Document::new("doc-1".to_string(), 100, 100);
+        let result = doc.update_layer_properties("does-not-exist", Some(0.5), None, None, None, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not found"));
+    }
+
+    #[test]
+    fn test_failure_delete_layer_nonexistent_id() {
+        let mut doc = Document::new("doc-1".to_string(), 100, 100);
+        let layer = Layer::new("layer-1".to_string(), "Test".to_string(), 100, 100);
+        doc.add_layer(layer);
+        let result = doc.delete_layer("does-not-exist");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_failure_reorder_layer_invalid_from_index() {
+        let mut doc = Document::new("doc-1".to_string(), 100, 100);
+        let layer = Layer::new("layer-1".to_string(), "Test".to_string(), 100, 100);
+        doc.add_layer(layer);
+        let result = doc.reorder_layer(999, 0);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Index out of bounds"));
+    }
+
+    #[test]
+    fn test_failure_reorder_layer_invalid_to_index() {
+        let mut doc = Document::new("doc-1".to_string(), 100, 100);
+        let layer = Layer::new("layer-1".to_string(), "Test".to_string(), 100, 100);
+        doc.add_layer(layer);
+        let result = doc.reorder_layer(0, 999);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_failure_move_layer_nonexistent_id() {
+        let mut doc = Document::new("doc-1".to_string(), 100, 100);
+        let result = doc.move_layer("does-not-exist", 50.0, 50.0);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not found"));
+    }
+
+    #[test]
+    fn test_failure_transform_nonexistent_layer() {
+        let mut doc = Document::new("doc-1".to_string(), 100, 100);
+        let transform = Transform::new();
+        let result = doc.apply_transform("does-not-exist", transform);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not found"));
+    }
 }
