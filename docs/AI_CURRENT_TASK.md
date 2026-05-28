@@ -1,4 +1,4 @@
-# Current Task: M5 — Export Pipeline & Color Sampling [IN PROGRESS]
+# Current Task: M5 — Export Pipeline & Color Sampling [COMPLETE]
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
@@ -7,7 +7,7 @@
 Implementasi Milestone 5: Export Pipeline + Eyedropper & Color Picker.
 Fokus pada merancang dan mengimplementasikan layered Porter-Duff alpha compositing flattening, image encoding (JPEG, PNG, WebP), rfd native file dialogs, canvas pixel-level color sampling, dan overlapping swatch color pickers.
 
-**Tugas Aktif Saat Ini:** M5 Task 40: [photrez-core] Add image dependency & Implement flattening compositor [IN PROGRESS]
+**Tugas Aktif Saat Ini:** M5 Completed successfully and verified. Ready for the next milestone!
 
 
 ## Status Implementasi

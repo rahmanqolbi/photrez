@@ -66,11 +66,11 @@
 
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
-| ⬜ TODO      | Export JPG (quality setting)               |
-| ⬜ TODO      | Export PNG                                 |
-| ⬜ TODO      | Export WebP (quality setting)              |
-| ⬜ TODO      | Export dialog UI                           |
-| ⬜ TODO      | File save dialog (Tauri)                   |
+| ✅ DONE      | Export JPG (quality setting)               |
+| ✅ DONE      | Export PNG                                 |
+| ✅ DONE      | Export WebP (quality setting)              |
+| ✅ DONE      | Export dialog UI                           |
+| ✅ DONE      | File save dialog (Tauri)                   |
 
 ---
 
@@ -104,8 +104,8 @@
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Foreground & background color swatches UI  |
-| ⬜ TODO      | Color picker dialog                        |
-| ⬜ TODO      | Eyedropper tool                            |
+| ✅ DONE      | Color picker dialog                        |
+| ✅ DONE      | Eyedropper tool                            |
 | ✅ DONE      | Swap fg/bg color (interaktif, hotkey X/D)  |
 
 ---

@@ -6,6 +6,25 @@
 
 ---
 
+## [2026-05-28] FEATURE — Milestone 5: Export Pipeline & Color Selection
+
+### Kategori: FEATURE / CORE / SHELL / UI / FRONTEND
+
+**Deskripsi:** Mengimplementasikan seluruh kebutuhan Milestone 5 termasuk Porter-Duff alpha blending compositor dan format encoding (PNG, JPEG, WebP) di Rust Core, native OS Save File dialog via `rfd` crate, pixel-level color sampling (Eyedropper tool, hotkey `I`), dan overlapping Swatches color pickers dengan native color inputs dan Options Bar dropdown modal:
+1. **Rust Core Compositing & Encoding**: Mengimplementasikan layered Porter-Duff alpha-compositing flattening bottom-to-top di `crates/core/src/export.rs` dan file format encoding (PNG, JPEG, WebP) menggunakan `image` crate. JPEG dikomposit di atas solid white background untuk sRGB.
+2. **Native File Save Dialog**: Mengintegrasikan `rfd` (Rust File Dialogs) di desktop-shell Tauri backend untuk membuka save dialog OS secara native tanpa capability configuration overhead, menulis bytes ke path yang dipilih.
+3. **Pixel-Level Color Sampling**: Mengimplementasikan algorithm `sample_pixel` di `crates/core/src/document.rs` untuk blend warna layered pada posisi (x,y), mendaftarkan command di Tauri backend, dan menghubungkan Left Rail Eyedropper button (hotkey `I`) untuk sampling warna secara dinamis pada drag pointer / click.
+4. **Overlapping Swatches Native Pickers & Dropdown Modal**: Mengintegrasikan input native `<input type="color" class="opacity-0 absolute">` di Foreground & Background swatches untuk snappy custom color picking. Membuat dropdown modal premium di Options Bar untuk format selection (PNG/JPEG/WEBP) dan quality range slider.
+
+**Perubahan:**
+1. **`crates/core/src/export.rs`** — Mengimplementasikan `flatten_document`, `export_document` dengan borrow lifetime fix, serta menulis unit test `test_document_flattening` dan `test_image_export_encoding`.
+2. **`crates/core/src/document.rs`** — Mengimplementasikan method `sample_pixel` dan unit test `test_sample_pixel`.
+3. **`apps/desktop/src-tauri/Cargo.toml`** — Menambahkan dependency `rfd = "0.15"`.
+4. **`apps/desktop/src-tauri/src/main.rs`** — Mendaftarkan command handler `export_document` dan `sample_pixel`, serta meregister handler dan command contract info.
+5. **`apps/desktop/src/App.tsx`** — Menambahkan signals untuk export settings, Eyedropper Left Rail button, keyboard hotkey `I`, pointer handlers untuk dynamic color sampling, native color picker inputs overlaying swatches, dan Options Bar contextual export dropdown modal.
+
+**Validasi:** ✅ Seluruh unit test Rust workspace lolos sempurna tanpa error (`cargo test --workspace` dengan isolated target dir). SolidJS Vite frontend build sukses 100% bebas dari warnings/errors (`pnpm run build` selesai sukses).
+
 ## [2026-05-28] FEATURE — Milestone 4: Brush & Eraser Engine
 
 ### Kategori: FEATURE / CORE / SHELL / UI / FRONTEND
