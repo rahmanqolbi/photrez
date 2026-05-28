@@ -30,11 +30,12 @@
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Rectangular selection (marquee)            |
 | ✅ DONE      | Move selection/layer                       |
-| ⬜ TODO      | Scale transform                            |
-| ⬜ TODO      | Rotate transform                           |
-| ⬜ TODO      | Flip (horizontal/vertical)                 |
-| ⬜ TODO      | Transform handles UI                       |
-| ⬜ TODO      | Commit/cancel transform                    |
+| ✅ DONE      | Scale transform (bounding box resize handles) |
+| ✅ DONE      | Rotate transform (rotation handle drag)    |
+| ✅ DONE      | Flip horizontal/vertical (buttons + Ctrl+G / Ctrl+Shift+G) |
+| ✅ DONE      | Transform handles UI (8 resize + 1 rotation) |
+| ✅ DONE      | Commit/cancel transform (ESC key deselect) |
+| ✅ DONE      | Rotation angle snapping (15-degree with Shift) |
 
 ---
 

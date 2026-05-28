@@ -6,6 +6,20 @@
 
 ---
 
+## [2026-05-28] FEATURE — Tasks 9-11: Flip Shortcuts, ESC Cancel, Rotation Snapping
+
+### Kategori: FEATURE / UI / FRONTEND
+
+**Deskripsi:** Menambahkan fitur interaksi keyboard dan transform polish untuk alur kerja editing yang lebih cepat:
+1. **Flip Shortcuts (Ctrl+G / Ctrl+Shift+G)**: Menambahkan shortcut keyboard Ctrl+G untuk flip horizontal dan Ctrl+Shift+G untuk flip vertical pada layer yang dipilih.
+2. **ESC to Cancel Transform**: Menambahkan handler ESC untuk membatalkan transform aktif — memdeselect layer, menghentikan transform drag, dan mereset state drag.
+3. **Rotation Angle Snapping**: Menambahkan snapping rotasi ke kelipatan 15 derajat saat tombol Shift ditahan selama drag rotasi, memungkinkan kontrol presisi tinggi.
+
+**Perubahan:**
+1. **`apps/desktop/src/App.tsx`** — Menambahkan shortcut Ctrl+G dan Ctrl+Shift+G di `handleKeyDown`, handler ESC untuk deselect layer, dan logic snapping 15 derajat di case rotasi `handleArtboardMouseMove`.
+
+**Validasi:** ✅ SolidJS Vite frontend build sukses tanpa error (`pnpm run build` selesai sukses).
+
 ## [2026-05-28] FEATURE — Milestone 5: Export Pipeline & Color Selection
 
 ### Kategori: FEATURE / CORE / SHELL / UI / FRONTEND

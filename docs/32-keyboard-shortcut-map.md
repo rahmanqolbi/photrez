@@ -35,6 +35,8 @@ Reference: Existing implementation in `aplikasi-cetak-massal` studio.
 | `Space` (hold) | Temporary hand/pan mode | Release returns to previous tool |
 | `Alt` (hold) | Eyedropper sample mode (while brush/eraser) | Context-dependent |
 | `Shift` (hold) | Constrain movement/selection to axis | 45° snap for lines |
+| `Shift` (hold during rotation) | Snap rotation to 15° increments | Quantizes rotation angle |
+| `Escape` | Deselect layer / cancel transform | Clears selection and transform drag state |
 
 ## 3) Command Shortcuts
 
@@ -77,6 +79,8 @@ Reference: Existing implementation in `aplikasi-cetak-massal` studio.
 | `Ctrl+J` | Duplicate Layer / Layer via Copy | If selection exists: Layer via Copy |
 | `Ctrl+]` | Move Layer Up | In layer stack |
 | `Ctrl+[` | Move Layer Down | In layer stack |
+| `Ctrl+G` | Flip Horizontal | Flips selected layer horizontally |
+| `Ctrl+Shift+G` | Flip Vertical | Flips selected layer vertically |
 | `0-9` (no modifier) | Set Layer Opacity | `0` = 100%, `1` = 10%, ..., `9` = 90% |
 
 ### View Operations
