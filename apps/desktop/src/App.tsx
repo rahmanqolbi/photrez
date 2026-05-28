@@ -1,23 +1,168 @@
-import { createSignal, onMount } from "solid-js";
+import { createSignal, onMount, For, Show, Switch, Match } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
-
-// Declare lucide globally since it's loaded from CDN in index.html
-declare const lucide: any;
+import {
+  PenTool, Move, Brush, Eraser, Type, Crop,
+  ZoomIn, ZoomOut, Settings,
+  ChevronDown, ChevronRight, ChevronUp, Share, Plus,
+  Eye, EyeOff, Lock, LockOpen, Trash2,
+  SlidersHorizontal, Layers, Clock, SquareMousePointer,
+} from "lucide-solid";
 
 export default function App() {
+  // Safe Tauri Window access
+  let appWindow: any;
+  onMount(async () => {
+    try {
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      appWindow = getCurrentWindow();
+    } catch (e) {
+      console.warn("Running outside of Tauri context");
+    }
+  });
   const [activeTool, setActiveTool] = createSignal("pen");
   const [activeTab, setActiveTab] = createSignal("layers");
   const [zoom, setZoom] = createSignal(100);
   const [fileMenuOpen, setFileMenuOpen] = createSignal(false);
   const [ramUsage, setRamUsage] = createSignal(112);
+  const [mousePos, setMousePos] = createSignal({ x: 0, y: 0 });
+  const [fgColor, setFgColor] = createSignal("#E15A17"); // Photon Amber
+  const [bgColor, setBgColor] = createSignal("#FFFFFF"); // Default White
+
+  const [layers, setLayers] = createSignal<any[]>([]);
+  const [docWidth, setDocWidth] = createSignal(800);
+  const [docHeight, setDocHeight] = createSignal(600);
+  const [selection, setSelection] = createSignal<any>(null);
+  const [selectedLayerId, setSelectedLayerId] = createSignal<string | null>(null);
+  const [transformOpen, setTransformOpen] = createSignal(true);
+  const [opacityOpen, setOpacityOpen] = createSignal(true);
+  
+  // ── Selection & Canvas Interaction State ──
+  const [isSelecting, setIsSelecting] = createSignal(false);
+  const [selStart, setSelStart] = createSignal({ x: 0, y: 0 });
+  const [selEnd, setSelEnd] = createSignal({ x: 0, y: 0 });
+  const selectionOverlay = () => {
+    if (!isSelecting()) return null;
+    const s = selStart(), e = selEnd();
+    const w = Math.abs(e.x - s.x), h = Math.abs(e.y - s.y);
+    if (w < 2 && h < 2) return null;
+    return { x: Math.min(s.x, e.x), y: Math.min(s.y, e.y), w, h };
+  };
+  const [isDraggingCrop, setIsDraggingCrop] = createSignal(false);
+  const [cropStart, setCropStart] = createSignal({ x: 0, y: 0 });
+  const [cropEnd, setCropEnd] = createSignal({ x: 0, y: 0 });
+  const cropOverlay = () => {
+    if (!isDraggingCrop() && cropStart().x === cropEnd().x) return null;
+    const s = cropStart(), e = cropEnd();
+    const w = Math.abs(e.x - s.x), h = Math.abs(e.y - s.y);
+    if (w < 5 && h < 5) return null;
+    return { x: Math.min(s.x, e.x), y: Math.min(s.y, e.y), w, h };
+  };
+  const [isDraggingLayer, setIsDraggingLayer] = createSignal(false);
+  const [layerDragOffset, setLayerDragOffset] = createSignal({ x: 0, y: 0 });
+  let artboardRef: HTMLDivElement | undefined;
+
+  const getArtboardCoords = (clientX: number, clientY: number) => {
+    const el = artboardRef;
+    if (!el) return { x: 0, y: 0 };
+    const rect = el.getBoundingClientRect();
+    const z = zoom() / 100;
+    return { x: (clientX - rect.left) / z, y: (clientY - rect.top) / z };
+  };
+
+  const handleArtboardMouseDown = (e: MouseEvent) => {
+    if (e.button !== 0) return;
+    const coords = getArtboardCoords(e.clientX, e.clientY);
+
+    if (activeTool() === "move" && selectedLayerId()) {
+      const layer = layers().find(l => l.id === selectedLayerId());
+      if (layer) {
+        setIsDraggingLayer(true);
+        setLayerDragOffset({ x: coords.x - layer.x, y: coords.y - layer.y });
+      }
+    } else if (activeTool() === "selection") {
+      setIsSelecting(true);
+      setSelStart({ x: coords.x, y: coords.y });
+      setSelEnd({ x: coords.x, y: coords.y });
+    } else if (activeTool() === "crop") {
+      setIsDraggingCrop(true);
+      setCropStart({ x: coords.x, y: coords.y });
+      setCropEnd({ x: coords.x, y: coords.y });
+    }
+  };
+
+  const handleArtboardMouseMove = (e: MouseEvent) => {
+    const coords = getArtboardCoords(e.clientX, e.clientY);
+
+    if (isDraggingLayer() && selectedLayerId()) {
+      const layer = layers().find(l => l.id === selectedLayerId());
+      if (layer) {
+        const newX = coords.x - layerDragOffset().x;
+        const newY = coords.y - layerDragOffset().y;
+        invoke("move_layer", { id: selectedLayerId(), x: newX, y: newY })
+          .then((res: any) => { if (res?.ok) syncDocumentState(); })
+          .catch(console.error);
+      }
+    } else if (isSelecting()) {
+      setSelEnd({ x: coords.x, y: coords.y });
+    } else if (isDraggingCrop()) {
+      setCropEnd({ x: coords.x, y: coords.y });
+    }
+  };
+
+  const handleArtboardMouseUp = (_e: MouseEvent) => {
+    if (isSelecting()) {
+      const overlay = selectionOverlay();
+      if (overlay && overlay.w > 5 && overlay.h > 5) {
+        invoke("create_selection", { x: overlay.x, y: overlay.y, width: overlay.w, height: overlay.h })
+          .then((res: any) => { if (res?.ok) syncDocumentState(); })
+          .catch(console.error);
+      } else {
+        invoke("clear_selection").catch(console.error);
+      }
+      setIsSelecting(false);
+    } else if (isDraggingCrop()) {
+      setIsDraggingCrop(false);
+    }
+    setIsDraggingLayer(false);
+  };
+
+  const handleNudgeLayer = (dx: number, dy: number) => {
+    if (!selectedLayerId()) return;
+    const layer = layers().find(l => l.id === selectedLayerId());
+    if (!layer) return;
+    invoke("move_layer", { id: selectedLayerId(), x: layer.x + dx, y: layer.y + dy })
+      .then((res: any) => { if (res?.ok) syncDocumentState(); })
+      .catch(console.error);
+  };
+
+  const [strokeWidth, setStrokeWidth] = createSignal(2.5);
+  const [strokeStyle, setStrokeStyle] = createSignal("solid");
+  const [brushHardness, setBrushHardness] = createSignal(0.8);
+  const [brushOpacity, setBrushOpacity] = createSignal(1.0);
+  const [inspectorOpen, setInspectorOpen] = createSignal(true);
+
+  const syncDocumentState = () => {
+    invoke("get_document_state")
+      .then((res: any) => {
+        if (res && res.ok) {
+          const doc = res.data;
+          setLayers(doc.layers || []);
+          setDocWidth(doc.width || 800);
+          setDocHeight(doc.height || 600);
+          setSelection(doc.selection || null);
+          if (doc.layers && doc.layers.length > 0 && !selectedLayerId()) {
+            setSelectedLayerId(doc.layers[0].id);
+          }
+        }
+      })
+      .catch((err) => console.error("Sync state err:", err));
+  };
 
   onMount(() => {
-    // Initialize Lucide icons on mount
-    if (typeof lucide !== "undefined") {
-      lucide.createIcons();
-    }
+    // Load initial document state
+    syncDocumentState();
 
-    // Call stable Tauri bridge ping command
+    // Call stable Tauri bridge ping command for confirmation
     invoke("ping")
       .then((res: any) => {
         console.log("Tauri Bridge Ping Res:", res);
@@ -25,322 +170,1038 @@ export default function App() {
       .catch((err) => {
         console.error("Tauri Bridge Ping Err:", err);
       });
+
+    // Custom keyboard shortcuts: Ctrl+Z and Ctrl+Y
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore shortcuts if focusing an input or textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+        return;
+      }
+
+      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+      const isCmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+      
+      if (isCmdOrCtrl && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        handleUndo();
+      } else if (isCmdOrCtrl && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        handleRedo();
+      } else if (e.key.toLowerCase() === "x") {
+        e.preventDefault();
+        const temp = fgColor();
+        setFgColor(bgColor());
+        setBgColor(temp);
+      } else if (e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        setFgColor("#E15A17");
+        setBgColor("#FFFFFF");
+      } else if (e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        setActiveTool("move");
+      } else if (e.key.toLowerCase() === "m") {
+        e.preventDefault();
+        setActiveTool("selection");
+      } else if (e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        setActiveTool("crop");
+      } else if (e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setActiveTool("brush");
+      } else if (e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        setActiveTool("eraser");
+      } else if (isCmdOrCtrl && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        invoke("select_all")
+          .then((res: any) => { if (res?.ok) syncDocumentState(); })
+          .catch(console.error);
+      } else if (!isCmdOrCtrl && e.key.toLowerCase() === "escape") {
+        e.preventDefault();
+        invoke("clear_selection")
+          .then((res: any) => { if (res?.ok) syncDocumentState(); })
+          .catch(console.error);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        handleNudgeLayer(0, -(e.shiftKey ? 10 : 1));
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        handleNudgeLayer(0, e.shiftKey ? 10 : 1);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        handleNudgeLayer(-(e.shiftKey ? 10 : 1), 0);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        handleNudgeLayer(e.shiftKey ? 10 : 1, 0);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   });
 
   const handleToolChange = (tool: string) => {
     setActiveTool(tool);
   };
 
+  const handleAddLayer = () => {
+    invoke("add_layer", { name: `Vector Layer ${layers().length + 1}` })
+      .then((res: any) => {
+        if (res && res.ok) {
+          const doc = res.data;
+          setLayers(doc.layers || []);
+          if (doc.layers && doc.layers.length > 0) {
+            setSelectedLayerId(doc.layers[0].id);
+          }
+          syncDocumentState();
+        }
+      })
+      .catch((err) => console.error("Add layer err:", err));
+  };
+
+  const handleDeleteLayer = (id: string, e: Event) => {
+    e.stopPropagation();
+    invoke("delete_layer", { id })
+      .then((res: any) => {
+        if (res && res.ok) {
+          const doc = res.data;
+          setLayers(doc.layers || []);
+          if (selectedLayerId() === id) {
+            setSelectedLayerId(doc.layers && doc.layers.length > 0 ? doc.layers[0].id : null);
+          }
+          syncDocumentState();
+        }
+      })
+      .catch((err) => console.error("Delete layer err:", err));
+  };
+
+  const handleToggleVisibility = (id: string, visible: boolean, e: Event) => {
+    e.stopPropagation();
+    invoke("update_layer", { id, visible: !visible })
+      .then((res: any) => {
+        if (res && res.ok) {
+          syncDocumentState();
+        }
+      })
+      .catch((err) => console.error("Visibility toggle err:", err));
+  };
+
+  const handleToggleLock = (id: string, locked: boolean, e: Event) => {
+    e.stopPropagation();
+    invoke("update_layer", { id, locked: !locked })
+      .then((res: any) => {
+        if (res && res.ok) {
+          syncDocumentState();
+        }
+      })
+      .catch((err) => console.error("Lock toggle err:", err));
+  };
+
+  const handleOpacityChange = (id: string, opacity: number) => {
+    invoke("update_layer", { id, opacity })
+      .then((res: any) => {
+        if (res && res.ok) {
+          syncDocumentState();
+        }
+      })
+      .catch((err) => console.error("Opacity change err:", err));
+  };
+
+  const handleMoveLayer = (fromIdx: number, toIdx: number, e: Event) => {
+    e.stopPropagation();
+    invoke("reorder_layer", { fromIdx, toIdx })
+      .then((res: any) => {
+        if (res && res.ok) {
+          syncDocumentState();
+        }
+      })
+      .catch((err) => console.error("Reorder layer err:", err));
+  };
+
+  const handleUndo = () => {
+    invoke("undo")
+      .then((res: any) => {
+        if (res && res.ok) {
+          syncDocumentState();
+        }
+      })
+      .catch((err) => console.error("Undo err:", err));
+  };
+
+  const handleRedo = () => {
+    invoke("redo")
+      .then((res: any) => {
+        if (res && res.ok) {
+          syncDocumentState();
+        }
+      })
+      .catch((err) => console.error("Redo err:", err));
+  };
+
+  const handleMinimize = () => {
+    if (appWindow) appWindow.minimize().catch((err: any) => console.error("Minimize err:", err));
+  };
+
+  const handleMaximize = () => {
+    if (appWindow) appWindow.toggleMaximize().catch((err: any) => console.error("Maximize err:", err));
+  };
+
+  const handleClose = () => {
+    if (appWindow) appWindow.close().catch((err: any) => console.error("Close err:", err));
+  };
+
   return (
-    <div class="app grid grid-rows-[32px_38px_1fr_26px] h-screen overflow-hidden text-[13px] font-medium bg-[#1A1A1C] text-[#D4D4D8]">
+    <div class="app grid grid-rows-[44px_40px_1fr_28px] h-screen overflow-hidden text-[13px] font-medium bg-studio-bg text-text-primary">
       
       {/* 1. TOP WINDOW HEADER & MENUBAR */}
-      <header data-tauri-drag-region class="menubar flex items-center justify-between pl-3 pr-0 bg-[#1A1A1C] border-b border-[#343438] h-[32px] relative select-none">
+      <header data-tauri-drag-region class="menubar flex items-center justify-between pl-3 pr-0 bg-studio-bg h-[44px] relative select-none">
         <div data-tauri-drag-region class="flex items-center h-full">
           {/* Logo */}
-          <div class="flex items-center gap-1.5 mr-4 text-[11px] text-[#D4D4D8]">
-            <div class="w-4 h-4 bg-gradient-to-tr from-[#5C6AEA] to-[#7380F3] rounded-[2px] flex items-center justify-center text-[10px] font-black text-[#1A1A1C]">
+          <div class="flex items-center gap-2 mr-4 text-[13px] text-text-primary">
+            <div class="w-5 h-5 bg-gradient-to-tr from-accent to-accent-hover rounded-md flex items-center justify-center text-[12px] font-black text-white">
               P
             </div>
-            <span class="font-semibold tracking-wide">Photrez</span>
+            <span class="font-bold tracking-wide">Photrez</span>
           </div>
-
+ 
           {/* Windows Style Flat Menu Bar */}
-          <nav class="flex items-center h-full text-[#D4D4D8]" aria-label="Main menu">
+          <nav class="flex items-center h-full text-text-primary" aria-label="Main menu">
             <div class="relative h-full flex items-center">
               <button 
                 onClick={() => setFileMenuOpen(!fileMenuOpen())}
-                class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[11px] cursor-default"
+                class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[13px] cursor-default"
               >
                 File
               </button>
               {fileMenuOpen() && (
-                <div class="absolute left-0 top-[32px] bg-[#29292B] border border-[#343438] rounded-[2px] shadow-lg py-1 w-56 z-50">
-                  <a href="#" class="flex items-center justify-between px-3.5 py-1 hover:bg-[#5C6AEA] hover:text-white text-[#D4D4D8] text-[11px] no-underline">
+                <div class="absolute left-0 top-[36px] bg-studio-elevated border border-studio-border rounded-md shadow-lg py-1.5 w-60 z-50">
+                  <a href="#" class="flex items-center justify-between px-4 py-1.5 hover:bg-accent hover:text-white text-text-primary text-[13px] no-underline">
                     <span>New Document...</span>
-                    <span class="font-mono text-[10px] opacity-70">Ctrl+N</span>
+                    <span class="font-mono text-[11px] opacity-70">Ctrl+N</span>
                   </a>
-                  <a href="#" class="flex items-center justify-between px-3.5 py-1 hover:bg-[#5C6AEA] hover:text-white text-[#D4D4D8] text-[11px] no-underline">
+                  <a href="#" class="flex items-center justify-between px-4 py-1.5 hover:bg-accent hover:text-white text-text-primary text-[13px] no-underline">
                     <span>Open Image...</span>
-                    <span class="font-mono text-[10px] opacity-70">Ctrl+O</span>
+                    <span class="font-mono text-[11px] opacity-70">Ctrl+O</span>
                   </a>
-                  <div class="h-[1px] bg-[#343438] my-1 mx-2"></div>
-                  <a href="#" class="flex items-center justify-between px-3.5 py-1 hover:bg-[#5C6AEA] hover:text-white text-[#D4D4D8] text-[11px] no-underline">
+                  <div class="h-[1px] bg-studio-border my-1 mx-2.5"></div>
+                  <a href="#" class="flex items-center justify-between px-4 py-1.5 hover:bg-accent hover:text-white text-text-primary text-[13px] no-underline">
                     <span>Export Graphic...</span>
-                    <span class="font-mono text-[10px] opacity-70">Ctrl+E</span>
+                    <span class="font-mono text-[11px] opacity-70">Ctrl+E</span>
                   </a>
                 </div>
               )}
             </div>
-            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[11px] cursor-default">Edit</button>
-            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[11px] cursor-default">View</button>
-            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[11px] cursor-default">Window</button>
-            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[11px] cursor-default">Help</button>
+            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[13px] cursor-default">Edit</button>
+            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[13px] cursor-default">View</button>
+            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[13px] cursor-default">Window</button>
+            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[13px] cursor-default">Help</button>
           </nav>
         </div>
-
+ 
         {/* Dynamic App Title */}
         <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 pointer-events-none">
-          <span class="font-mono text-[10px] text-[#A1A1AA] tracking-tight">banner-client-v4.qanvas</span>
-          <span class="w-1 h-1 rounded-full bg-[#A1A1AA]"></span>
-          <span class="text-[10px] text-[#71717A] font-normal">Photrez Core v1.0</span>
+          <span class="font-mono text-[11px] text-text-secondary tracking-tight">banner-client-v4.qanvas</span>
+          <span class="w-1 h-1 rounded-full bg-text-secondary"></span>
+          <span class="text-[11px] text-text-muted font-normal">Photrez Core v1.0</span>
         </div>
-
-        {/* Windows Native Title Bar Controls (Simulated) */}
-        <div class="flex items-center h-full text-[#A1A1AA]">
-          <button class="h-full w-[46px] flex items-center justify-center hover:bg-white/5 hover:text-white transition-colors" title="Minimize">
+ 
+        {/* Windows Native Title Bar Controls */}
+        <div class="flex items-center h-full text-text-secondary">
+          <button 
+            onClick={handleMinimize} 
+            class="h-full w-[46px] flex items-center justify-center hover:bg-white/5 hover:text-white transition-colors" 
+            title="Minimize"
+          >
             <svg width="10" height="1" viewBox="0 0 10 1"><rect width="10" height="1" fill="currentColor"></rect></svg>
           </button>
-          <button class="h-full w-[46px] flex items-center justify-center hover:bg-white/5 hover:text-white transition-colors" title="Maximize">
+          <button 
+            onClick={handleMaximize} 
+            class="h-full w-[46px] flex items-center justify-center hover:bg-white/5 hover:text-white transition-colors" 
+            title="Maximize"
+          >
             <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1"></rect></svg>
           </button>
-          <button class="h-full w-[46px] flex items-center justify-center hover:bg-[#e81123] hover:text-white transition-colors" title="Close">
+          <button 
+            onClick={handleClose} 
+            class="h-full w-[46px] flex items-center justify-center hover:bg-close hover:text-white transition-colors" 
+            title="Close"
+          >
             <svg width="10" height="10" viewBox="0 0 10 10"><path d="M1,1 L9,9 M9,1 L1,9" stroke="currentColor" stroke-width="1" stroke-linecap="round"></path></svg>
           </button>
         </div>
       </header>
-
+ 
       {/* 2. CONTEXTUAL TOOL OPTIONS BAR */}
-      <section class="toolbar flex items-center justify-between px-3 bg-[#1A1A1C] border-b border-[#343438] h-[38px] text-[11px] text-[#A1A1AA]" aria-label="Tool options bar">
+      <section class="toolbar flex items-center justify-between px-4 bg-studio-bg border-b border-studio-border h-10 text-[13px] text-text-secondary select-none" aria-label="Tool options bar">
         <div class="flex items-center gap-4">
-          <div class="flex items-center gap-2 border-r border-[#343438] pr-4 h-full py-1">
-            <i data-lucide="pen-tool" class={`w-3.5 h-3.5 ${activeTool() === "pen" ? "text-[#5C6AEA]" : ""}`}></i>
-            <span class="font-medium text-[#D4D4D8] text-[11px] capitalize">{activeTool()} Tool</span>
+          {/* Active Tool Group */}
+          <div class="flex items-center gap-2 pr-4 h-[26px]">
+            <Show when={activeTool() === "crop"} fallback={
+              <Switch>
+                <Match when={activeTool() === "brush"}><Brush size={15} class="text-accent" /></Match>
+                <Match when={activeTool() === "eraser"}><Eraser size={15} class="text-accent" /></Match>
+                <Match when={activeTool() === "text"}><Type size={15} class="text-accent" /></Match>
+                <Match when={activeTool() === "move"}><Move size={15} class="text-accent" /></Match>
+                <Match when={activeTool() === "pen"}><PenTool size={15} class="text-accent" /></Match>
+              </Switch>
+            }>
+              <Crop size={15} class="text-accent animate-pulse" />
+            </Show>
+            <span class="font-bold text-text-primary text-[11px] uppercase tracking-wider select-none">{activeTool()} tool</span>
           </div>
           
-          <div class="flex items-center gap-2">
-            <span class="text-[#A1A1AA] text-[10px]">Fill</span>
-            <button class="flex items-center gap-1.5 px-2 py-0.5 bg-[#202022] hover:bg-[#29292B] border border-[#343438] rounded-[2px] text-[11px]">
-              <span class="w-3 h-3 rounded-[1px] bg-gradient-to-tr from-[#5C6AEA] to-[#7380F3] border border-white/20"></span>
-              <span class="text-[11px] font-normal text-[#D4D4D8]">Studio Indigo</span>
-              <i data-lucide="chevron-down" class="w-3 h-3 text-[#71717A]"></i>
-            </button>
-          </div>
+          <Show when={activeTool() === "crop"} fallback={
+            <Show when={activeTool() === "brush" || activeTool() === "eraser"} fallback={
+              <>
+                {/* Divider */}
+                <div class="h-4 border-r border-studio-border self-center"></div>
 
-          <div class="flex items-center gap-2">
-            <span class="text-[#A1A1AA] text-[10px]">Stroke</span>
-            <input type="text" class="w-14 h-[22px] bg-white/5 border border-white/10 border-b-white/40 focus:border-b-[#5C6AEA] font-sans text-[12px] font-normal text-center text-[#D4D4D8] rounded-[2px] outline-none transition-all duration-100" value="2.5 px" readonly />
-          </div>
+                {/* Fill Color Option */}
+                <div class="flex items-center gap-2">
+                  <span class="text-text-muted text-[10px] font-bold uppercase select-none">Fill</span>
+                  <button class="h-[26px] bg-studio-input border border-studio-border hover:bg-studio-elevated rounded-md px-2.5 flex items-center gap-1.5 cursor-default transition-colors duration-75">
+                    <span class="w-2.5 h-2.5 rounded-[1px] bg-gradient-to-tr from-accent to-accent-hover border border-white/20 flex-shrink-0"></span>
+                    <span class="text-[12px] font-semibold text-text-primary">Photon Amber</span>
+                    <ChevronDown size={12} class="text-text-muted" />
+                  </button>
+                </div>
+
+                {/* Divider */}
+                <div class="h-4 border-r border-studio-border self-center"></div>
+
+                {/* Stroke Option with Spinners */}
+                <div class="flex items-center gap-2">
+                  <div class="flex items-center bg-studio-input border border-studio-border rounded-md overflow-hidden h-[26px] focus-within:border-accent transition-colors duration-100">
+                    <span class="text-[10px] font-bold text-text-muted px-2.5 select-none border-r border-studio-border/50 h-full flex items-center bg-white/[1%]">STROKE</span>
+                    <input 
+                      type="text" 
+                      class="w-10 text-center text-[12px] font-semibold text-text-primary bg-transparent border-none outline-none tabular-nums px-1" 
+                      value={strokeWidth().toFixed(1)} 
+                      onInput={(e: any) => {
+                        const val = parseFloat(e.currentTarget.value);
+                        if (!isNaN(val)) setStrokeWidth(Math.max(0, val));
+                      }}
+                    />
+                    <span class="text-[10px] font-bold text-text-muted select-none pr-1.5 pointer-events-none">px</span>
+                    
+                    {/* Micro-Spinner step triggers */}
+                    <div class="w-4 h-full flex flex-col divide-y divide-studio-border border-l border-studio-border">
+                      <button 
+                        onClick={() => setStrokeWidth(w => w + 0.5)}
+                        class="flex-1 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors cursor-default text-[7px]"
+                        title="Increase Stroke"
+                      >
+                        ▲
+                      </button>
+                      <button 
+                        onClick={() => setStrokeWidth(w => Math.max(0, w - 0.5))}
+                        class="flex-1 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors cursor-default text-[7px]"
+                        title="Decrease Stroke"
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div class="h-4 border-r border-studio-border self-center"></div>
+
+                {/* Stroke Style Option */}
+                <div class="flex items-center gap-2">
+                  <span class="text-text-muted text-[10px] font-bold uppercase select-none">Style</span>
+                  <div class="bg-studio-input border border-studio-border rounded-md p-0.5 h-[26px] flex items-center gap-0.5 select-none">
+                    <button 
+                      onClick={() => setStrokeStyle("solid")}
+                      class={`px-2 h-full flex items-center justify-center rounded cursor-default transition-all duration-75 ${
+                        strokeStyle() === "solid"
+                          ? "bg-studio-elevated text-accent border border-studio-border-strong shadow-sm"
+                          : "text-text-muted hover:text-text-primary"
+                      }`}
+                      title="Solid Stroke"
+                    >
+                      <div class="w-4 h-[2px] bg-current"></div>
+                    </button>
+                    <button 
+                      onClick={() => setStrokeStyle("dashed")}
+                      class={`px-2 h-full flex items-center justify-center rounded cursor-default transition-all duration-75 ${
+                        strokeStyle() === "dashed"
+                          ? "bg-studio-elevated text-accent border border-studio-border-strong shadow-sm"
+                          : "text-text-muted hover:text-text-primary"
+                      }`}
+                      title="Dashed Stroke"
+                    >
+                      <div class="w-4 h-[2px] border-b-2 border-dashed border-current"></div>
+                    </button>
+                    <button 
+                      onClick={() => setStrokeStyle("dotted")}
+                      class={`px-2 h-full flex items-center justify-center rounded cursor-default transition-all duration-75 ${
+                        strokeStyle() === "dotted"
+                          ? "bg-studio-elevated text-accent border border-studio-border-strong shadow-sm"
+                          : "text-text-muted hover:text-text-primary"
+                      }`}
+                      title="Dotted Stroke"
+                    >
+                      <div class="w-4 h-[2px] border-b-2 border-dotted border-current"></div>
+                    </button>
+                  </div>
+                </div>
+              </>
+            }>
+              <>
+                {/* Brush size option */}
+                <div class="h-4 border-r border-studio-border self-center"></div>
+                <div class="flex items-center gap-2">
+                  <div class="flex items-center bg-studio-input border border-studio-border rounded-md overflow-hidden h-[26px] focus-within:border-accent">
+                    <span class="text-[10px] font-bold text-text-muted px-2.5 select-none border-r border-studio-border/50 h-full flex items-center bg-white/[1%]">SIZE</span>
+                    <input 
+                      type="number"
+                      class="w-10 text-center text-[12px] font-semibold text-text-primary bg-transparent border-none outline-none px-1"
+                      value={strokeWidth()}
+                      onInput={(e: any) => {
+                        const val = parseFloat(e.currentTarget.value);
+                        if (!isNaN(val)) setStrokeWidth(Math.max(1, val));
+                      }}
+                    />
+                    <span class="text-[10px] font-bold text-text-muted select-none pr-1.5 pointer-events-none">px</span>
+                  </div>
+                </div>
+
+                {/* Brush Hardness option */}
+                <div class="h-4 border-r border-studio-border self-center"></div>
+                <div class="flex items-center gap-2">
+                  <div class="flex items-center bg-studio-input border border-studio-border rounded-md overflow-hidden h-[26px] focus-within:border-accent">
+                    <span class="text-[10px] font-bold text-text-muted px-2.5 select-none border-r border-studio-border/50 h-full flex items-center bg-white/[1%]">HARDNESS</span>
+                    <input 
+                      type="number"
+                      step="0.1" min="0" max="1"
+                      class="w-10 text-center text-[12px] font-semibold text-text-primary bg-transparent border-none outline-none px-1"
+                      value={brushHardness()}
+                      onInput={(e: any) => setBrushHardness(Math.max(0.0, Math.min(1.0, parseFloat(e.currentTarget.value) || 0.8)))}
+                    />
+                  </div>
+                </div>
+
+                {/* Brush Opacity option */}
+                <div class="h-4 border-r border-studio-border self-center"></div>
+                <div class="flex items-center gap-2">
+                  <div class="flex items-center bg-studio-input border border-studio-border rounded-md overflow-hidden h-[26px] focus-within:border-accent">
+                    <span class="text-[10px] font-bold text-text-muted px-2.5 select-none border-r border-studio-border/50 h-full flex items-center bg-white/[1%]">OPACITY</span>
+                    <input 
+                      type="number"
+                      step="0.1" min="0" max="1"
+                      class="w-10 text-center text-[12px] font-semibold text-text-primary bg-transparent border-none outline-none px-1"
+                      value={brushOpacity()}
+                      onInput={(e: any) => setBrushOpacity(Math.max(0.0, Math.min(1.0, parseFloat(e.currentTarget.value) || 1.0)))}
+                    />
+                  </div>
+                </div>
+              </>
+            </Show>
+          }>
+            {/* Crop tool dynamic options */}
+            <>
+              <div class="h-4 border-r border-studio-border self-center"></div>
+              
+              <button 
+                onClick={() => {
+                  const crop = cropOverlay();
+                  if (crop) {
+                    invoke("crop_canvas", { x: crop.x, y: crop.y, width: Math.round(crop.w), height: Math.round(crop.h) })
+                      .then((res: any) => {
+                        if (res?.ok) {
+                          setCropStart({ x: 0, y: 0 });
+                          setCropEnd({ x: 0, y: 0 });
+                          syncDocumentState();
+                          setActiveTool("move");
+                        }
+                      })
+                      .catch(console.error);
+                  }
+                }}
+                disabled={!cropOverlay()}
+                class={`h-[26px] px-3 bg-yellow-600 hover:bg-yellow-500 active:bg-yellow-700 text-white font-bold rounded-md flex items-center gap-1.5 transition-colors cursor-default ${!cropOverlay() ? "opacity-40 cursor-not-allowed" : ""}`}
+              >
+                <span>APPLY CROP</span>
+              </button>
+
+              <button 
+                onClick={() => {
+                  setCropStart({ x: 0, y: 0 });
+                  setCropEnd({ x: 0, y: 0 });
+                  setActiveTool("move");
+                }}
+                class="h-[26px] px-3 bg-studio-input border border-studio-border hover:bg-studio-elevated text-text-secondary font-bold rounded-md flex items-center gap-1.5 transition-colors cursor-default"
+              >
+                <span>CANCEL</span>
+              </button>
+
+              <div class="h-4 border-r border-studio-border self-center"></div>
+
+              {/* Quick Resize controls inside Crop view */}
+              <div class="flex items-center gap-2">
+                <span class="text-text-muted text-[10px] font-bold uppercase select-none">Canvas size</span>
+                <div class="flex items-center bg-studio-input border border-studio-border rounded-md overflow-hidden h-[26px] focus-within:border-accent">
+                  <span class="text-[10px] font-bold text-text-muted px-2 select-none border-r border-studio-border/50 h-full flex items-center bg-white/[1%]">W</span>
+                  <input 
+                    type="number"
+                    class="w-14 text-center text-[12px] font-semibold text-text-primary bg-transparent border-none outline-none px-1"
+                    value={docWidth()}
+                    onChange={(e: any) => {
+                      const val = parseInt(e.currentTarget.value);
+                      if (!isNaN(val) && val > 0) {
+                        invoke("resize_canvas", { width: val, height: docHeight() })
+                          .then((res: any) => { if (res?.ok) syncDocumentState(); })
+                          .catch(console.error);
+                      }
+                    }}
+                  />
+                  <span class="text-[10px] font-bold text-text-muted select-none border-l border-r border-studio-border/50 h-full flex items-center bg-white/[1%] px-2 ml-1">H</span>
+                  <input 
+                    type="number"
+                    class="w-14 text-center text-[12px] font-semibold text-text-primary bg-transparent border-none outline-none px-1"
+                    value={docHeight()}
+                    onChange={(e: any) => {
+                      const val = parseInt(e.currentTarget.value);
+                      if (!isNaN(val) && val > 0) {
+                        invoke("resize_canvas", { width: docWidth(), height: val })
+                          .then((res: any) => { if (res?.ok) syncDocumentState(); })
+                          .catch(console.error);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </>
+          </Show>
         </div>
-
-        <div class="flex items-center gap-2">
-          <button class="flex items-center gap-1.5 px-2.5 h-[22px] bg-[#202022] border border-[#343438] text-[#A1A1AA] hover:bg-[#29292B] hover:text-white rounded-[2px] transition-all duration-100 cursor-default">
-            <i data-lucide="terminal" class="w-3 h-3 text-[#5C6AEA]"></i>
-            <span class="text-[10px] font-normal">Command Palette</span>
-            <kbd class="font-mono text-[9px] bg-[#161618] border border-[#343438] px-1 rounded-[1px] text-[#71717A]">Ctrl K</kbd>
+ 
+        {/* Right Action buttons */}
+        <div class="flex items-center gap-3">
+          {/* Inspector toggle with state representation */}
+          <button 
+            onClick={() => setInspectorOpen(!inspectorOpen())}
+            class={`h-[26px] px-2.5 flex items-center gap-1.5 border rounded-md text-[11px] font-bold tracking-wider cursor-default transition-all duration-75 select-none ${
+              inspectorOpen()
+                ? "bg-studio-bg border-accent/40 text-accent shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.5)]"
+                : "bg-studio-input border-studio-border text-text-secondary hover:text-white hover:bg-studio-elevated"
+            }`}
+            title="Toggle Inspector Panel"
+          >
+            <SlidersHorizontal size={13} />
+            <span>INSPECTOR</span>
           </button>
-          
-          <span class="w-[1px] h-4 bg-[#343438] mx-1"></span>
-          <button class="px-2.5 h-[22px] bg-[#202022] border border-[#343438] text-[#A1A1AA] hover:bg-[#29292B] hover:text-white rounded-[2px] text-[10px] font-normal cursor-default">Inspector</button>
-          <button class="flex items-center gap-1 px-3 h-[22px] bg-gradient-to-b from-[#7380F3] to-[#5C6AEA] hover:from-[#8793FA] hover:to-[#7380F3] active:bg-[#4754D1] text-white font-normal text-[11px] rounded-[2px] shadow-sm border border-white/10 border-t-white/30 transition-colors duration-100 cursor-default">
-            <i data-lucide="share" class="w-3 h-3"></i>
-            <span>Export</span>
+ 
+          {/* Export Action */}
+          <button class="h-[26px] px-3 flex items-center gap-1.5 bg-accent hover:bg-accent-hover active:bg-accent-active text-white text-[11px] font-bold tracking-wider rounded-md shadow-sm cursor-default transition-colors">
+            <Share size={13} />
+            <span>EXPORT</span>
           </button>
         </div>
       </section>
 
       {/* 3. WORKSPACE */}
-      <div class="workspace grid grid-cols-[48px_1fr_320px] min-h-0 h-full overflow-hidden">
+      <div class={`workspace grid ${inspectorOpen() ? "grid-cols-[48px_1fr_320px]" : "grid-cols-[48px_1fr]"} min-h-0 h-full overflow-hidden bg-studio-bg p-1.5 gap-1.5`}>
         
-        {/* 3.1 LEFT TOOL RAIL */}
-        <aside class="tool-rail bg-[#1A1A1C] border-r border-[#343438] py-3 flex flex-col items-center gap-1.5 z-10 relative">
-          <div class="flex flex-col gap-1 w-full items-center">
-            {/* Move Tool */}
-            <div class="relative w-8 h-8 flex items-center justify-center">
-              {activeTool() === "move" && <span class="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-[#5C6AEA]"></span>}
-              <button 
-                onClick={() => handleToolChange("move")}
-                class={`w-8 h-8 rounded-[2px] flex items-center justify-center text-[#A1A1AA] hover:bg-[#29292B] hover:text-white transition-all duration-100 cursor-default ${activeTool() === "move" ? "text-white bg-[#29292B] shadow-inner" : ""}`} 
-                title="Move Tool (V)"
-              >
-                <i data-lucide="move" class="w-4 h-4"></i>
-              </button>
-            </div>
-
-            {/* Pen Tool */}
-            <div class="relative w-8 h-8 flex items-center justify-center">
-              {activeTool() === "pen" && <span class="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-[#5C6AEA]"></span>}
-              <button 
-                onClick={() => handleToolChange("pen")}
-                class={`w-8 h-8 rounded-[2px] flex items-center justify-center text-[#A1A1AA] hover:bg-[#29292B] hover:text-white transition-all duration-100 cursor-default ${activeTool() === "pen" ? "text-white bg-[#29292B] shadow-inner" : ""}`} 
-                title="Pen Tool (P)"
-              >
-                <i data-lucide="pen-tool" class="w-4 h-4"></i>
-              </button>
-            </div>
-
-            {/* Text Tool */}
-            <div class="relative w-8 h-8 flex items-center justify-center">
-              {activeTool() === "text" && <span class="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-[#5C6AEA]"></span>}
-              <button 
-                onClick={() => handleToolChange("text")}
-                class={`w-8 h-8 rounded-[2px] flex items-center justify-center text-[#A1A1AA] hover:bg-[#29292B] hover:text-white transition-all duration-100 cursor-default ${activeTool() === "text" ? "text-white bg-[#29292B] shadow-inner" : ""}`} 
-                title="Text Tool (T)"
-              >
-                <i data-lucide="type" class="w-4 h-4"></i>
-              </button>
-            </div>
-          </div>
-          <div class="mt-auto flex flex-col gap-1 w-full items-center">
+        {/* 3.1 LEFT TOOL RAIL (RAW PRO) */}
+        <aside class="tool-rail bg-studio-panel border border-studio-border rounded-[8px] flex flex-col items-center justify-between z-10 relative h-full shadow-pro w-[48px] overflow-hidden">
+          <div class="tool-rail-raw w-full">
+            {/* Nav Group */}
             <button 
-              onClick={() => setZoom(z => Math.min(200, z + 10))}
-              class="w-8 h-8 rounded-[2px] flex items-center justify-center text-[#A1A1AA] hover:bg-[#29292B] hover:text-white transition-all duration-100 cursor-default" 
-              title="Zoom In"
+              onClick={() => handleToolChange("move")}
+              class={`tool-btn-raw ${activeTool() === "move" ? "active" : ""}`} 
+              title="Move Tool (V)"
             >
-              <i data-lucide="zoom-in" class="w-4 h-4"></i>
+              <Move size={18} />
             </button>
+
+            <div class="tool-divider"></div>
+
             <button 
-              onClick={() => setZoom(z => Math.max(10, z - 10))}
-              class="w-8 h-8 rounded-[2px] flex items-center justify-center text-[#A1A1AA] hover:bg-[#29292B] hover:text-white transition-all duration-100 cursor-default" 
-              title="Zoom Out"
+              onClick={() => handleToolChange("pen")}
+              class={`tool-btn-raw sub-hint ${activeTool() === "pen" ? "active" : ""}`} 
+              title="Pen Tool (P)"
             >
-              <i data-lucide="zoom-out" class="w-4 h-4"></i>
+              <PenTool size={18} />
+            </button>
+
+            <button 
+              onClick={() => handleToolChange("brush")}
+              class={`tool-btn-raw sub-hint ${activeTool() === "brush" ? "active" : ""}`} 
+              title="Brush Tool (B)"
+            >
+              <Brush size={18} />
+            </button>
+
+            <button 
+              onClick={() => handleToolChange("eraser")}
+              class={`tool-btn-raw ${activeTool() === "eraser" ? "active" : ""}`} 
+              title="Eraser Tool (E)"
+            >
+              <Eraser size={18} />
+            </button>
+
+            <div class="tool-divider"></div>
+
+            <button 
+              onClick={() => handleToolChange("text")}
+              class={`tool-btn-raw sub-hint ${activeTool() === "text" ? "active" : ""}`} 
+              title="Text Tool (T)"
+            >
+              <Type size={18} />
+            </button>
+
+            <button 
+              onClick={() => handleToolChange("crop")}
+              class={`tool-btn-raw ${activeTool() === "crop" ? "active" : ""}`} 
+              title="Crop Tool (C)"
+            >
+              <Crop size={18} />
+            </button>
+          </div>
+
+          <div class="flex flex-col gap-3 w-full items-center pb-4">
+            {/* Professional Color Swatches (Photoshop Style Overlapping Swatches) */}
+            <div class="relative w-11 h-11 select-none cursor-default" title="Color Swatches (Primary / Secondary)">
+              {/* Background Color Swatch */}
+              <div 
+                class="absolute right-1 bottom-1 w-6 h-6 rounded-sm border border-studio-border-strong z-0 shadow-[0_1px_4px_rgba(0,0,0,0.5)] transition-all duration-75"
+                style={`background-color: ${bgColor()};`}
+                title="Secondary Color (Background)"
+              ></div>
+              {/* Foreground Color Swatch */}
+              <div 
+                class="absolute left-1 top-1 w-6 h-6 rounded-sm border border-white/10 z-10 shadow-md transition-all duration-75"
+                style={`background-color: ${fgColor()};`}
+                title="Primary Color (Foreground)"
+              ></div>
+              {/* Swap Colors Action */}
+              <button
+                onClick={() => {
+                  const temp = fgColor();
+                  setFgColor(bgColor());
+                  setBgColor(temp);
+                }}
+                class="absolute top-0 right-0 w-3.5 h-3.5 flex items-center justify-center text-text-muted hover:text-white transition-colors duration-75 cursor-default z-20"
+                title="Swap Colors (X)"
+              >
+                <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 4v4H8M4 12v-4h4" />
+                  <path d="M4 8a8 8 0 0 1 8-8M12 8a8 8 0 0 1-8 8" />
+                </svg>
+              </button>
+              {/* Default Colors Action */}
+              <button
+                onClick={() => {
+                  setFgColor("#E15A17");
+                  setBgColor("#FFFFFF");
+                }}
+                class="absolute bottom-0 left-0 w-3 h-3 flex items-center justify-center text-text-muted hover:text-white transition-colors duration-75 cursor-default z-20"
+                title="Default Colors (D)"
+              >
+                <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="6" y="1" width="9" height="9" fill="#FFFFFF" stroke="currentColor" stroke-width="1" />
+                  <rect x="1" y="6" width="9" height="9" fill="#E15A17" stroke="currentColor" stroke-width="1" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="tool-divider"></div>
+
+            {/* Zoom Controls */}
+            <div class="flex flex-col gap-1 items-center">
+              <button 
+                onClick={() => setZoom(z => Math.min(200, z + 10))}
+                class="tool-btn-raw" 
+                title="Zoom In"
+              >
+                <ZoomIn size={18} />
+              </button>
+              <button 
+                onClick={() => setZoom(z => Math.max(10, z - 10))}
+                class="tool-btn-raw" 
+                title="Zoom Out"
+              >
+                <ZoomOut size={18} />
+              </button>
+            </div>
+            
+            <button class="tool-btn-raw mt-1" title="Settings">
+              <Settings size={18} />
             </button>
           </div>
         </aside>
-
+ 
         {/* 3.2 CANVAS VIEWPORT */}
-        <main class="canvas-wrap relative bg-[#161618] overflow-hidden flex flex-col h-full">
-          <div class="h-[18px] bg-[#1A1A1C] border-b border-[#343438] relative">
-            <div class="absolute inset-0 font-mono text-[10px] text-[#71717A] leading-none pt-0.5 pointer-events-none">
-              <span class="absolute -translate-x-1/2" style="left: 18px;">0</span>
-              <span class="absolute -translate-x-1/2" style="left: 118px;">100</span>
-              <span class="absolute -translate-x-1/2" style="left: 218px;">200</span>
-              <span class="absolute -translate-x-1/2" style="left: 318px;">300</span>
-              <span class="absolute -translate-x-1/2" style="left: 418px;">400</span>
-              <span class="absolute -translate-x-1/2" style="left: 518px;">500</span>
+        <main 
+          class="canvas-wrap relative bg-studio-canvas border border-studio-border rounded-[8px] shadow-pro overflow-hidden flex flex-col h-full"
+          onMouseMove={(e) => setMousePos({ x: e.offsetX, y: e.offsetY })}
+        >
+          <div class="h-[22px] bg-studio-bg border-b border-studio-border relative">
+            <div class="absolute inset-0 font-mono text-[11px] text-text-muted leading-none pt-1 pointer-events-none">
+              <For each={[0, 100, 200, 300, 400, 500]}>
+                {(val) => (
+                  <span class="absolute -translate-x-1/2" style={`left: ${val + 18}px;`}>{val}</span>
+                )}
+              </For>
             </div>
           </div>
           
           <div class="flex flex-row h-full min-h-0 w-full">
-            <div class="w-[18px] bg-[#1A1A1C] border-r border-[#343438] relative"></div>
-            <div class="flex-1 h-full flex items-center justify-center relative bg-[#161618]">
-              {/* Artboard styled with zero-tint gray grid */}
+            <div class="w-[22px] bg-studio-bg border-r border-studio-border relative"></div>
+            <div class="flex-1 h-full flex items-center justify-center relative bg-studio-canvas overflow-auto">
               <div 
-                class="artboard w-[680px] aspect-[16/10] border border-[#343438] shadow-[0_8px_16px_rgba(0,0,0,0.6)] relative rounded-[1px] overflow-hidden bg-[#202022]"
-                style={`transform: scale(${zoom() / 100}); transition: transform var(--motion-normal);`}
+                class="artboard border border-studio-border shadow-pro relative overflow-hidden bg-studio-canvas"
+                style={`width: ${docWidth()}px; height: ${docHeight()}px; transform: scale(${zoom() / 100});`}
+                ref={artboardRef}
+                onMouseDown={handleArtboardMouseDown}
               >
-                <div class="absolute inset-0 bg-[#202022] flex flex-col justify-between p-8">
-                  <div class="relative w-full h-[180px] rounded-[2px] border border-[#343438] bg-[#1A1A1C] flex items-center justify-center">
-                    <svg class="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
-                      <path 
-                        d="M 50,140 C 150,20 250,200 380,90" 
-                        fill="none" 
-                        stroke="#5C6AEA" 
-                        stroke-width="2.5" 
-                        stroke-dasharray="5" 
-                        style="animation: dash 1s linear infinite;"
-                      />
-                      <circle cx="50" cy="140" r="4.5" fill="#1A1A1C" stroke="#5C6AEA" stroke-width="2" />
-                      <circle cx="380" cy="90" r="4.5" fill="#1A1A1C" stroke="#5C6AEA" stroke-width="2" />
-                    </svg>
-                  </div>
-                  <div class="flex items-end justify-between mt-4">
-                    <div class="flex flex-col">
-                      <span class="text-[10px] text-[#A1A1AA] font-normal uppercase tracking-wider">Campaign banner</span>
-                      <h3 class="text-base font-bold text-white mt-1 leading-none">Explore Unknown</h3>
-                    </div>
-                    {/* Precise UCRT Primary Solid Button */}
-                    <div class="px-4 py-1.5 rounded-[2px] bg-[#D4D4D8] text-[#161618] font-bold text-[11px] cursor-default">
-                      Join Expedition
-                    </div>
-                  </div>
-                </div>
-                <div class="absolute inset-x-6 inset-y-6 border border-[#5C6AEA]/50 pointer-events-none">
-                  <div class="absolute -top-1.5 -left-1.5 w-3 h-3 bg-[#1A1A1C] border-2 border-[#5C6AEA] pointer-events-auto cursor-nwse-resize"></div>
-                  <div class="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-[#1A1A1C] border-2 border-[#5C6AEA] pointer-events-auto cursor-nwse-resize"></div>
-                </div>
+                {/* ── Background Grid representation ── */}
+                <div class="absolute inset-0 bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+
+                {/* ── Render Layers stack in document order ── */}
+                <For each={layers()}>
+                  {(layer, index) => (
+                    <Show when={layer.visible}>
+                      <div 
+                        class={`absolute transition-shadow duration-75 select-none ${selectedLayerId() === layer.id ? "ring-1 ring-accent shadow-md" : ""}`}
+                        style={`
+                          left: ${layer.x}px;
+                          top: ${layer.y}px;
+                          width: ${layer.width}px;
+                          height: ${layer.height}px;
+                          opacity: ${layer.opacity};
+                          z-index: ${layers().length - index()};
+                          background-color: ${layer.id.includes("bg") ? "#232324" : "rgba(225,90,23,0.12)"};
+                          border: ${layer.id.includes("bg") ? "none" : "1px dashed rgba(225,90,23,0.3)"};
+                        `}
+                      >
+                        {/* Layer label inside canvas */}
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                          <span class="text-[9px] text-text-muted font-mono opacity-50 uppercase tracking-widest">{layer.name}</span>
+                        </div>
+                      </div>
+                    </Show>
+                  )}
+                </For>
+
+                {/* ── Active Selection Marquee Overlay ── */}
+                {(() => {
+                  const sel = selection();
+                  return sel ? (
+                    <div 
+                      class="absolute border-2 border-dashed border-accent pointer-events-none z-[9999]"
+                      style={`
+                        left: ${sel.x}px;
+                        top: ${sel.y}px;
+                        width: ${sel.width}px;
+                        height: ${sel.height}px;
+                        animation: dash 1s linear infinite;
+                      `}
+                    />
+                  ) : null;
+                })()}
+
+                {/* ── Active Mouse Drag Selection Preview Overlay ── */}
+                {(() => {
+                  const overlay = selectionOverlay();
+                  return overlay ? (
+                    <div 
+                      class="absolute border border-accent bg-accent/10 pointer-events-none z-[10000]"
+                      style={`
+                        left: ${overlay.x}px;
+                        top: ${overlay.y}px;
+                        width: ${overlay.w}px;
+                        height: ${overlay.h}px;
+                      `}
+                    />
+                  ) : null;
+                })()}
+
+                {/* ── Crop Boundaries dragging overlay ── */}
+                {(() => {
+                  const crop = cropOverlay();
+                  return crop ? (
+                    <div 
+                      class="absolute border-2 border-dashed border-yellow-500 bg-black/30 pointer-events-none z-[10001] shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"
+                      style={`
+                        left: ${crop.x}px;
+                        top: ${crop.y}px;
+                        width: ${crop.w}px;
+                        height: ${crop.h}px;
+                      `}
+                    />
+                  ) : null;
+                })()}
               </div>
             </div>
           </div>
         </main>
-
+ 
         {/* 3.3 RIGHT INSPECTOR PANEL */}
-        <aside class="inspector bg-[#202022] border-l border-[#343438] flex flex-col min-h-0 overflow-hidden">
-          <div class="border-b border-[#343438] flex flex-col min-h-0 bg-[#202022]">
-            <header class="h-8 border-b border-[#343438] px-3.5 flex items-center justify-between">
-              <div class="flex items-center gap-1.5 text-[11px] font-medium text-[#D4D4D8]">
-                <i data-lucide="sliders" class="w-3.5 h-3.5 text-[#5C6AEA]"></i>
-                <span>Vector properties</span>
+        <Show when={inspectorOpen()}>
+          <aside class="inspector bg-studio-panel border border-studio-border rounded-[8px] shadow-pro flex flex-col min-h-0 overflow-hidden h-full">
+
+          {/* ── COLLAPSIBLE: PROPERTIES ── */}
+          <div class="border-b border-studio-border pb-1">
+            <button
+              onClick={() => setTransformOpen(!transformOpen())}
+              class="flex items-center h-8 px-3 gap-2 w-full cursor-default hover:bg-white/5 transition-colors duration-75"
+            >
+              <ChevronRight size={14} class={`text-text-muted transition-transform duration-100 ${transformOpen() ? "rotate-90" : ""}`} />
+              <span class="text-[11px] font-semibold text-text-secondary">Properties</span>
+            </button>
+            <Show when={transformOpen()}>
+              <div class="py-3 px-3 flex flex-col gap-3.5">
+                {/* 2x2 Segmented Matrix Grid */}
+                {(() => {
+                  const selectedLayer = selectedLayerId() ? layers().find(l => l.id === selectedLayerId()) : null;
+                  return (
+                    <div class="border border-studio-border rounded-md overflow-hidden bg-studio-input grid grid-cols-2 grid-rows-2 divide-x divide-y divide-studio-border select-none focus-within:border-accent transition-colors duration-100">
+                      {/* X Cell */}
+                      <div class="flex items-center px-2.5 h-[28px] focus-within:bg-white/[2%] transition-colors duration-75">
+                        <span class="text-[10px] font-bold text-text-muted select-none w-3.5 flex-shrink-0">X</span>
+                        <input 
+                          type="number"
+                          class="w-full bg-transparent border-none outline-none text-white text-[12px] font-semibold text-left tabular-nums px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                          value={selectedLayer ? Math.round(selectedLayer.x) : 0} 
+                          disabled={!selectedLayer || selectedLayer.locked}
+                          onChange={(e: any) => {
+                            if (selectedLayer) {
+                              const val = parseFloat(e.currentTarget.value);
+                              if (!isNaN(val)) {
+                                invoke("move_layer", { id: selectedLayer.id, x: val, y: selectedLayer.y })
+                                  .then((res: any) => { if (res?.ok) syncDocumentState(); })
+                                  .catch(console.error);
+                              }
+                            }
+                          }}
+                        />
+                      </div>
+                      {/* Y Cell */}
+                      <div class="flex items-center px-2.5 h-[28px] focus-within:bg-white/[2%] transition-colors duration-75">
+                        <span class="text-[10px] font-bold text-text-muted select-none w-3.5 flex-shrink-0">Y</span>
+                        <input 
+                          type="number"
+                          class="w-full bg-transparent border-none outline-none text-white text-[12px] font-semibold text-left tabular-nums px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                          value={selectedLayer ? Math.round(selectedLayer.y) : 0} 
+                          disabled={!selectedLayer || selectedLayer.locked}
+                          onChange={(e: any) => {
+                            if (selectedLayer) {
+                              const val = parseFloat(e.currentTarget.value);
+                              if (!isNaN(val)) {
+                                invoke("move_layer", { id: selectedLayer.id, x: selectedLayer.x, y: val })
+                                  .then((res: any) => { if (res?.ok) syncDocumentState(); })
+                                  .catch(console.error);
+                              }
+                            }
+                          }}
+                        />
+                      </div>
+                      {/* W Cell */}
+                      <div class="flex items-center px-2.5 h-[28px] opacity-60">
+                        <span class="text-[10px] font-bold text-text-muted select-none w-3.5 flex-shrink-0">W</span>
+                        <input 
+                          type="number"
+                          class="w-full bg-transparent border-none outline-none text-white text-[12px] font-semibold text-left tabular-nums px-1" 
+                          value={selectedLayer ? selectedLayer.width : 0} 
+                          disabled
+                          readonly
+                        />
+                      </div>
+                      {/* H Cell */}
+                      <div class="flex items-center px-2.5 h-[28px] opacity-60">
+                        <span class="text-[10px] font-bold text-text-muted select-none w-3.5 flex-shrink-0">H</span>
+                        <input 
+                          type="number"
+                          class="w-full bg-transparent border-none outline-none text-white text-[12px] font-semibold text-left tabular-nums px-1" 
+                          value={selectedLayer ? selectedLayer.height : 0} 
+                          disabled
+                          readonly
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* In-Line Opacity Row (if layer selected) */}
+                {selectedLayerId() && (() => {
+                  const selectedLayer = layers().find(l => l.id === selectedLayerId());
+                  return selectedLayer ? (
+                    <div class="flex items-center gap-3 px-1">
+                      <span class="text-[10px] font-bold text-text-muted select-none w-14 flex-shrink-0">OPACITY</span>
+                      <input
+                        type="range"
+                        min="0" max="1" step="0.01"
+                        value={selectedLayer.opacity}
+                        onInput={(e: any) => handleOpacityChange(selectedLayer.id, parseFloat(e.currentTarget.value))}
+                        class="flex-1 outline-none block"
+                      />
+                      <span class="text-[12px] font-semibold text-text-primary tabular-nums w-8 text-right select-none">{Math.round(selectedLayer.opacity * 100)}%</span>
+                    </div>
+                  ) : null;
+                })()}
               </div>
-            </header>
-            <div class="p-3.5 flex flex-col gap-3.5">
-              <div class="grid grid-cols-4 gap-2">
-                <div class="flex flex-col gap-0.5">
-                  <label class="text-[10px] uppercase tracking-wider text-[#A1A1AA]">X</label>
-                  <input class="text-[12px] h-[22px] px-1 rounded-[2px] bg-white/5 border border-white/10 border-b-white/40 focus:border-b-[#5C6AEA] text-center text-[#D4D4D8] outline-none transition-all duration-100 tabular-nums" value="128.5 px" readonly />
-                </div>
-                <div class="flex flex-col gap-0.5">
-                  <label class="text-[10px] uppercase tracking-wider text-[#A1A1AA]">Y</label>
-                  <input class="text-[12px] h-[22px] px-1 rounded-[2px] bg-white/5 border border-white/10 border-b-white/40 focus:border-b-[#5C6AEA] text-center text-[#D4D4D8] outline-none transition-all duration-100 tabular-nums" value="64.0 px" readonly />
-                </div>
-                <div class="flex flex-col gap-0.5">
-                  <label class="text-[10px] uppercase tracking-wider text-[#A1A1AA]">W</label>
-                  <input class="text-[12px] h-[22px] px-1 rounded-[2px] bg-white/5 border border-white/10 border-b-white/40 focus:border-b-[#5C6AEA] text-center text-[#D4D4D8] outline-none transition-all duration-100 tabular-nums" value="680.0 px" readonly />
-                </div>
-                <div class="flex flex-col gap-0.5">
-                  <label class="text-[10px] uppercase tracking-wider text-[#A1A1AA]">H</label>
-                  <input class="text-[12px] h-[22px] px-1 rounded-[2px] bg-white/5 border border-white/10 border-b-white/40 focus:border-b-[#5C6AEA] text-center text-[#D4D4D8] outline-none transition-all duration-100 tabular-nums" value="425.0 px" readonly />
+            </Show>
+          </div>
+
+          {/* ── TABS: LAYERS / HISTORY (macOS Segmented Pill Style) ── */}
+          <div class="p-1 bg-studio-canvas flex rounded-lg mx-3 my-2 gap-1 select-none">
+            <button
+              onClick={() => setActiveTab("layers")}
+              class={`flex-1 flex items-center justify-center gap-1.5 h-[26px] text-[11px] font-bold tracking-wider cursor-default transition-all duration-100 rounded-md ${
+                activeTab() === "layers"
+                  ? "bg-studio-elevated text-white shadow-sm"
+                  : "text-text-muted hover:text-text-primary"
+              }`}
+            >
+              <Layers size={13} />
+              <span>LAYERS</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("history")}
+              class={`flex-1 flex items-center justify-center gap-1.5 h-[26px] text-[11px] font-bold tracking-wider cursor-default transition-all duration-100 rounded-md ${
+                activeTab() === "history"
+                  ? "bg-studio-elevated text-white shadow-sm"
+                  : "text-text-muted hover:text-text-primary"
+              }`}
+            >
+              <Clock size={13} />
+              <span>HISTORY</span>
+            </button>
+          </div>
+
+          {/* ── LAYERS TAB CONTENT ── */}
+          <div class={`flex-1 min-h-0 flex flex-col ${activeTab() === "layers" ? "" : "hidden"}`}>
+            <div class="mx-3 mb-3 bg-studio-canvas border border-studio-border rounded-lg flex-1 flex flex-col overflow-hidden shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)]">
+              <header class="panel-header bg-transparent border-b border-studio-border flex-shrink-0 select-none">
+                <span>Layers stack</span>
+                <button onClick={handleAddLayer} class="text-text-secondary hover:text-white transition-colors flex items-center gap-1 cursor-default text-[11px]" title="Add Layer">
+                  <Plus size={16} class="text-accent" />
+                </button>
+              </header>
+              <div class="flex-grow overflow-y-auto select-none">
+                <div class="flex flex-col">
+                  <For each={layers()}>
+                    {(layer, index) => (
+                      <div
+                        onClick={() => setSelectedLayerId(layer.id)}
+                        class={`h-8 flex items-center justify-between px-3 cursor-default transition-colors duration-75 group ${
+                          selectedLayerId() === layer.id
+                            ? "bg-accent/10 border-l-[2.5px] border-l-accent text-white"
+                            : "hover:bg-white/5 border-l-[2.5px] border-l-transparent text-text-secondary"
+                        }`}
+                      >
+                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                          <button
+                            onClick={(e) => handleToggleVisibility(layer.id, layer.visible, e)}
+                            class="text-text-primary hover:text-white flex items-center justify-center transition-colors"
+                            title={layer.visible ? "Hide layer" : "Show layer"}
+                          >
+                            <Show when={layer.visible} fallback={<EyeOff size={16} class="text-text-muted" />}>
+                              <Eye size={16} />
+                            </Show>
+                          </button>
+
+                          <div class="w-[20px] h-[20px] rounded-[1px] border border-accent/30 flex items-center justify-center bg-accent/20 flex-shrink-0">
+                            <PenTool size={12} class="text-accent" />
+                          </div>
+
+                          <span class="text-[13px] font-semibold truncate flex-1">{layer.name}</span>
+                        </div>
+
+                        <div class="flex items-center gap-1">
+                          {/* Move Up Trigger */}
+                          <button
+                            onClick={(e) => handleMoveLayer(index(), index() - 1, e)}
+                            class={`transition-all duration-100 flex items-center justify-center ${
+                              index() === 0
+                                ? "text-text-muted opacity-0 translate-x-1 group-hover:opacity-15 group-hover:translate-x-0 cursor-not-allowed"
+                                : "text-text-muted hover:text-white opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0"
+                            }`}
+                            disabled={index() === 0}
+                            title="Move Layer Up"
+                          >
+                            <ChevronUp size={14} />
+                          </button>
+
+                          {/* Move Down Trigger */}
+                          <button
+                            onClick={(e) => handleMoveLayer(index(), index() + 1, e)}
+                            class={`transition-all duration-100 flex items-center justify-center ${
+                              index() === layers().length - 1
+                                ? "text-text-muted opacity-0 translate-x-1 group-hover:opacity-15 group-hover:translate-x-0 cursor-not-allowed"
+                                : "text-text-muted hover:text-white opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0"
+                            }`}
+                            disabled={index() === layers().length - 1}
+                            title="Move Layer Down"
+                          >
+                            <ChevronDown size={14} />
+                          </button>
+
+                          <button
+                            onClick={(e) => handleToggleLock(layer.id, layer.locked, e)}
+                            class={`transition-all duration-100 flex items-center justify-center ${
+                              layer.locked
+                                ? "text-accent"
+                                : "text-text-muted opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0"
+                            }`}
+                            title={layer.locked ? "Unlock layer" : "Lock layer"}
+                          >
+                            <Show when={layer.locked} fallback={<LockOpen size={14} />}>
+                              <Lock size={14} />
+                            </Show>
+                          </button>
+
+                          <button
+                            onClick={(e) => handleDeleteLayer(layer.id, e)}
+                            class="text-text-muted hover:text-red-500 opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-100 flex items-center justify-center"
+                            disabled={layers().length <= 1}
+                            title="Delete layer"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </For>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {/* Attached Tabs - Standard Precise Design */}
-            <div class="flex bg-[#161618] h-[32px] select-none">
-              <button 
-                onClick={() => setActiveTab("layers")}
-                class={`px-5 flex items-center justify-center text-[10px] font-bold border-r border-r-[#343438] cursor-default ${activeTab() === "layers" ? "bg-[#202022] text-[#D4D4D8] border-t-[2px] border-t-[#5C6AEA] relative z-10" : "bg-transparent text-[#71717A] hover:text-[#D4D4D8] hover:bg-[#1A1A1C] border-t-[2px] border-t-transparent border-b border-b-[#343438]"}`}
-              >
-                LAYERS
-              </button>
-              <button 
-                onClick={() => setActiveTab("history")}
-                class={`px-5 flex items-center justify-center text-[10px] font-bold border-r border-r-[#343438] cursor-default ${activeTab() === "history" ? "bg-[#202022] text-[#D4D4D8] border-t-[2px] border-t-[#5C6AEA] relative z-10" : "bg-transparent text-[#71717A] hover:text-[#D4D4D8] hover:bg-[#1A1A1C] border-t-[2px] border-t-transparent border-b border-b-[#343438]"}`}
-              >
-                HISTORY
-              </button>
-              <div class="flex-1 border-b border-[#343438]"></div>
-            </div>
-
-            <div class={`flex-1 overflow-y-auto min-h-0 flex flex-col ${activeTab() === "layers" ? "" : "hidden"}`}>
-              <section class="flex flex-col flex-1">
-                <header class="h-7 border-b border-[#343438] px-3.5 flex items-center justify-between bg-[#1A1A1C]">
-                  <span class="text-[10px] font-medium text-[#A1A1AA]">Layers stack</span>
-                </header>
-                <div class="flex flex-col">
-                  {/* Active Vector Layer Row */}
-                  <div class="h-[28px] border-b border-[#343438] flex items-center justify-between px-2 bg-[#5C6AEA]/10 border-l-[2px] border-l-[#5C6AEA] text-white cursor-default">
-                    <div class="flex items-center gap-2">
-                      <button class="text-[#D4D4D8] hover:text-white"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
-                      <div class="w-4 h-4 rounded-[1px] border border-[#5C6AEA]/30 flex items-center justify-center bg-[#5C6AEA]/20">
-                        <i data-lucide="pen-tool" class="w-2.5 h-2.5 text-[#5C6AEA]"></i>
-                      </div>
-                      <span class="text-[11px] font-medium text-[#D4D4D8]">Vector Line Shape</span>
-                    </div>
-                  </div>
+          {/* ── HISTORY TAB CONTENT ── */}
+          <div class={`flex-1 min-h-0 flex flex-col ${activeTab() === "history" ? "" : "hidden"}`}>
+            <div class="mx-3 mb-3 bg-studio-canvas border border-studio-border rounded-lg flex-1 flex flex-col items-center justify-center overflow-hidden shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)]">
+              <div class="flex flex-col items-center gap-3 px-6 select-none">
+                <Clock size={32} class="text-text-muted opacity-20" />
+                <div class="flex flex-col items-center gap-1">
+                  <span class="text-[13px] font-semibold text-text-primary">No history yet</span>
+                  <span class="text-[12px] text-text-muted text-center">Start editing to track your changes.</span>
                 </div>
-              </section>
-            </div>
-
-            <div class={`flex-1 overflow-y-auto min-h-0 flex flex-col ${activeTab() === "history" ? "" : "hidden"}`}>
-              <section class="p-3.5 flex flex-col gap-3">
-                <span class="text-[10px] text-[#A1A1AA]">History logs will appear here.</span>
-              </section>
+              </div>
             </div>
           </div>
         </aside>
+        </Show>
       </div>
-
+ 
       {/* 4. BOTTOM STATUS BAR */}
-      <footer class="statusbar flex items-center justify-between px-3 bg-[#1A1A1C] border-t border-[#343438] h-[24px] text-[10px] text-[#71717A] select-none">
+      <footer class="statusbar flex items-center justify-between px-4 bg-studio-bg border-t border-studio-border h-[28px] text-[12px] text-text-muted select-none">
         <div class="flex items-center gap-3">
-          <span class="text-[#D4D4D8]">680 x 425 px</span>
+          <span class="text-text-primary">680 x 425 px</span>
           <span class="opacity-30">•</span>
-          <span>Zoom: <span class="text-[#5C6AEA] font-medium tabular-nums">{zoom()}%</span></span>
+          <div class="flex items-center gap-2 font-mono tabular-nums">
+            <span class="opacity-50">X:</span> <span class="text-text-primary w-10">{mousePos().x}</span>
+            <span class="opacity-50">Y:</span> <span class="text-text-primary w-10">{mousePos().y}</span>
+          </div>
           <span class="opacity-30">•</span>
-          <span>RAM: <span class="text-[#10B981] font-mono tabular-nums">{ramUsage()} MB</span></span>
+          <span>Zoom: <span class="text-accent font-semibold tabular-nums">{zoom()}%</span></span>
+          <span class="opacity-30">•</span>
+          <span>RAM: <span class="text-success font-mono tabular-nums">{ramUsage()} MB</span></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] uppercase font-bold tracking-widest text-accent">SolidJS Renderer Active</span>
         </div>
       </footer>
     </div>
