@@ -87,11 +87,28 @@ export default function App() {
       setIsDraggingCrop(true);
       setCropStart({ x: coords.x, y: coords.y });
       setCropEnd({ x: coords.x, y: coords.y });
+    } else if ((activeTool() === "brush" || activeTool() === "eraser") && selectedLayerId()) {
+      const layer = layers().find(l => l.id === selectedLayerId());
+      if (layer && !layer.locked && layer.visible) {
+        setIsDrawingStroke(true);
+        const lx = coords.x - layer.x;
+        const ly = coords.y - layer.y;
+        setStrokePoints([{ x: lx, y: ly }]);
+
+        const canvas = strokeCanvasRef;
+        if (canvas) {
+          const ctx = canvas.getContext("2d");
+          ctx?.clearRect(0, 0, canvas.width, canvas.height);
+          ctx?.beginPath();
+          ctx?.moveTo(coords.x, coords.y);
+        }
+      }
     }
   };
 
   const handleArtboardMouseMove = (e: MouseEvent) => {
     const coords = getArtboardCoords(e.clientX, e.clientY);
+    setCanvasHoverPos({ x: coords.x, y: coords.y });
 
     if (isDraggingLayer() && selectedLayerId()) {
       const layer = layers().find(l => l.id === selectedLayerId());
@@ -106,6 +123,14 @@ export default function App() {
       setSelEnd({ x: coords.x, y: coords.y });
     } else if (isDraggingCrop()) {
       setCropEnd({ x: coords.x, y: coords.y });
+    } else if (isDrawingStroke() && selectedLayerId()) {
+      const layer = layers().find(l => l.id === selectedLayerId());
+      if (layer) {
+        const lx = coords.x - layer.x;
+        const ly = coords.y - layer.y;
+        setStrokePoints(pts => [...pts, { x: lx, y: ly }]);
+        drawStrokeSegment(coords.x, coords.y);
+      }
     }
   };
 
@@ -122,9 +147,38 @@ export default function App() {
       setIsSelecting(false);
     } else if (isDraggingCrop()) {
       setIsDraggingCrop(false);
+    } else if (isDrawingStroke() && selectedLayerId()) {
+      setIsDrawingStroke(false);
+      
+      const pts = strokePoints();
+      if (pts.length > 0) {
+        const hex = fgColor();
+        const r = parseInt(hex.slice(1, 3), 16) / 255.0;
+        const g = parseInt(hex.slice(3, 5), 16) / 255.0;
+        const b = parseInt(hex.slice(5, 7), 16) / 255.0;
+        
+        const path_args = pts.map(p => [p.x, p.y]);
+        
+        invoke("draw_brush_stroke", {
+          layerId: selectedLayerId(),
+          path: path_args,
+          size: strokeWidth(),
+          hardness: brushHardness(),
+          color: [r, g, b, brushOpacity()],
+          isEraser: activeTool() === "eraser",
+        })
+        .then((res: any) => { if (res?.ok) syncDocumentState(); })
+        .catch(console.error)
+        .finally(() => {
+          const canvas = strokeCanvasRef;
+          const ctx = canvas?.getContext("2d");
+          ctx?.clearRect(0, 0, canvas?.width || 0, canvas?.height || 0);
+        });
+      }
     }
     setIsDraggingLayer(false);
   };
+
 
   const handleNudgeLayer = (dx: number, dy: number) => {
     if (!selectedLayerId()) return;
@@ -140,6 +194,27 @@ export default function App() {
   const [brushHardness, setBrushHardness] = createSignal(0.8);
   const [brushOpacity, setBrushOpacity] = createSignal(1.0);
   const [inspectorOpen, setInspectorOpen] = createSignal(true);
+
+  const [strokePoints, setStrokePoints] = createSignal<{x: number, y: number}[]>([]);
+  const [isDrawingStroke, setIsDrawingStroke] = createSignal(false);
+  const [canvasHoverPos, setCanvasHoverPos] = createSignal({ x: -999, y: -999 });
+  let strokeCanvasRef: HTMLCanvasElement | undefined;
+
+  const drawStrokeSegment = (x: number, y: number) => {
+    const canvas = strokeCanvasRef;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.strokeStyle = activeTool() === "eraser" ? "rgba(22,22,24,0.7)" : fgColor();
+    ctx.lineWidth = strokeWidth();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
 
   const syncDocumentState = () => {
     invoke("get_document_state")
@@ -855,6 +930,7 @@ export default function App() {
                 style={`width: ${docWidth()}px; height: ${docHeight()}px; transform: scale(${zoom() / 100});`}
                 ref={artboardRef}
                 onMouseDown={handleArtboardMouseDown}
+                onMouseLeave={() => setCanvasHoverPos({ x: -999, y: -999 })}
               >
                 {/* ── Background Grid representation ── */}
                 <div class="absolute inset-0 bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
@@ -933,6 +1009,27 @@ export default function App() {
                     />
                   ) : null;
                 })()}
+
+                {/* ── Zero-Latency Overlay Canvas for Brush Strokes dragging preview ── */}
+                <canvas 
+                  ref={strokeCanvasRef}
+                  width={docWidth()}
+                  height={docHeight()}
+                  class="absolute inset-0 pointer-events-none z-[10002]"
+                />
+
+                {/* ── Brush / Eraser Circular Preview Cursor ── */}
+                <Show when={(activeTool() === "brush" || activeTool() === "eraser") && canvasHoverPos().x >= 0 && canvasHoverPos().x <= docWidth() && canvasHoverPos().y >= 0 && canvasHoverPos().y <= docHeight()}>
+                  <div 
+                    class="absolute bg-transparent border border-accent/80 rounded-full pointer-events-none z-[10003] -translate-x-1/2 -translate-y-1/2"
+                    style={`
+                      left: ${canvasHoverPos().x}px;
+                      top: ${canvasHoverPos().y}px;
+                      width: ${strokeWidth()}px;
+                      height: ${strokeWidth()}px;
+                    `}
+                  />
+                </Show>
               </div>
             </div>
           </div>

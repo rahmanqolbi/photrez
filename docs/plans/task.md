@@ -39,6 +39,6 @@
 | Task 35 | [photrez-core] Implement Brush Stroke Drawing and Blending | [x] Completed |
 | Task 36 | [desktop-shell] Register draw_brush_stroke Command in main.rs | [x] Completed |
 | Task 37 | [frontend] Enable Left Rail buttons, Shortcut mapping, and Options Bar parameters | [x] Completed |
-| Task 38 | [frontend] Implement zero-latency <canvas> stroke drawing overlay and cursor preview | [ ] Pending |
+| Task 38 | [frontend] Implement zero-latency <canvas> stroke drawing overlay and cursor preview | [x] Completed |
 | Task 39 | Verify and Compile Production bundle | [ ] Pending |
 
