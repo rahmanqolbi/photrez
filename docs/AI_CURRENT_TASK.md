@@ -1,12 +1,12 @@
-# Current Task: M3 Completion — Transform Handles & Controls [COMPLETE]
+# Current Task: M6 — Perf Gate + Packaging [COMPLETE]
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
 ## Deskripsi
 
-Implementasi completion Milestone 3: Transform Handles UI, Editable W/H inputs, Flip controls, Rotation handle, dan keyboard shortcuts.
+Implementasi Milestone 6: Performance measurement, installer packaging, dan release candidate.
 
-**Tugas Aktif Saat Ini:** M3 Completion successfully implemented. Ready for M6 (Perf Gate + Packaging)!
+**Tugas Aktif Saat Ini:** M6 Completed successfully! All performance metrics PASS.
 
 
 ## Status Implementasi

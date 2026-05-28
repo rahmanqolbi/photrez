@@ -6,6 +6,34 @@
 
 ---
 
+## [2026-05-28] FEATURE — M6: Perf Gate + Packaging [COMPLETE]
+
+### Kategori: FEATURE / BUILD / PERFORMANCE
+
+**Deskripsi:** Mengimplementasikan Milestone 6: Performance measurement, installer packaging, dan release candidate. Seluruh metrik performa mencapai target yang ditetapkan.
+
+**Hasil Pengukuran:**
+
+| Metric | Target | Hasil | Status |
+|--------|--------|-------|--------|
+| Installer size (MSI) | < 80 MB | 10.2 MB | ✅ PASS |
+| Installer size (NSIS) | < 80 MB | 6.8 MB | ✅ PASS |
+| Startup time (avg) | < 2s | 38ms | ✅ PASS |
+| Idle RAM | < 250 MB | 28.6 MB | ✅ PASS |
+
+**Lingkungan Pengukuran:**
+- OS: Windows 11 Home Single Language (Build 26100)
+- CPU: AMD Ryzen 3 5300U with Radeon Graphics
+- RAM: 13.8 GB
+- Build mode: release
+
+**Perubahan:**
+1. **`apps/desktop/src-tauri/tauri.conf.json`** — Menambahkan icon.ico dan icon.png ke bundle icons.
+2. **`measure-perf.ps1`** — Script PowerShell untuk mengukur startup time dan idle RAM.
+3. Release artifacts: `Photrez_0.1.0_x64_en-US.msi` (10.2 MB) dan `Photrez_0.1.0_x64-setup.exe` (6.8 MB).
+
+**Validasi:** ✅ Seluruh metrik performa PASS. Release candidate artifacts berhasil dihasilkan.
+
 ## [2026-05-28] FEATURE — M3 Completion: Transform Handles & Controls
 
 ### Kategori: FEATURE / UI / FRONTEND

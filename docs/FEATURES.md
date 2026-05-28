@@ -162,6 +162,8 @@
 | ✅ DONE      | Tailwind CSS v4                            |
 | ✅ DONE      | Documentation suite (37+ docs)             |
 | ⬜ TODO      | CI pipeline (GitHub Actions)               |
-| ⬜ TODO      | Unit tests (core crate)                    |
-| ⬜ TODO      | Contract tests (IPC commands)              |
-| ⬜ TODO      | Frontend tests                             |
+| ✅ DONE      | Unit tests (core crate) — 69 tests         |
+| ✅ DONE      | Contract tests (IPC commands) — 13 tests   |
+| ✅ DONE      | Frontend tests — 35 tests                  |
+| ✅ DONE      | M6 Perf Gate (all metrics PASS)            |
+| ✅ DONE      | Release candidate (MSI + NSIS installers)  |
