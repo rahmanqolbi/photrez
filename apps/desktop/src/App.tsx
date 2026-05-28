@@ -27,6 +27,10 @@ export default function App() {
   const [mousePos, setMousePos] = createSignal({ x: 0, y: 0 });
   const [fgColor, setFgColor] = createSignal("#E15A17"); // Photon Amber
   const [bgColor, setBgColor] = createSignal("#FFFFFF"); // Default White
+  const [showExportModal, setShowExportModal] = createSignal(false);
+  const [exportFormat, setExportFormat] = createSignal("PNG");
+  const [exportQuality, setExportQuality] = createSignal(85);
+  const [exportStatusText, setExportStatusText] = createSignal("");
 
   const [layers, setLayers] = createSignal<any[]>([]);
   const [docWidth, setDocWidth] = createSignal(800);
@@ -69,11 +73,42 @@ export default function App() {
     return { x: (clientX - rect.left) / z, y: (clientY - rect.top) / z };
   };
 
+  const handleSampleColor = (cx: number, cy: number) => {
+    invoke("sample_pixel", { x: cx, y: cy })
+      .then((res: any) => {
+        if (res && res.ok) {
+          const [r, g, b, _a] = res.data;
+          const hex = "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("").toUpperCase();
+          setFgColor(hex);
+        }
+      })
+      .catch(console.error);
+  };
+
+  const handleExport = () => {
+    setExportStatusText("Preparing export...");
+    invoke("export_document", {
+      format: exportFormat(),
+      quality: exportQuality(),
+    })
+    .then((res: any) => {
+      if (res?.ok) {
+        setExportStatusText(`Exported successfully to: ${res.data.path}`);
+        setTimeout(() => { setShowExportModal(false); setExportStatusText(""); }, 3000);
+      }
+    })
+    .catch((err: any) => {
+      setExportStatusText(err?.error?.message || "Export failed");
+    });
+  };
+
   const handleArtboardMouseDown = (e: MouseEvent) => {
     if (e.button !== 0) return;
     const coords = getArtboardCoords(e.clientX, e.clientY);
 
-    if (activeTool() === "move" && selectedLayerId()) {
+    if (activeTool() === "eyedropper") {
+      handleSampleColor(coords.x, coords.y);
+    } else if (activeTool() === "move" && selectedLayerId()) {
       const layer = layers().find(l => l.id === selectedLayerId());
       if (layer) {
         setIsDraggingLayer(true);
@@ -110,7 +145,9 @@ export default function App() {
     const coords = getArtboardCoords(e.clientX, e.clientY);
     setCanvasHoverPos({ x: coords.x, y: coords.y });
 
-    if (isDraggingLayer() && selectedLayerId()) {
+    if (activeTool() === "eyedropper" && e.buttons === 1) {
+      handleSampleColor(coords.x, coords.y);
+    } else if (isDraggingLayer() && selectedLayerId()) {
       const layer = layers().find(l => l.id === selectedLayerId());
       if (layer) {
         const newX = coords.x - layerDragOffset().x;
@@ -287,6 +324,9 @@ export default function App() {
       } else if (e.key.toLowerCase() === "e") {
         e.preventDefault();
         setActiveTool("eraser");
+      } else if (e.key.toLowerCase() === "i") {
+        e.preventDefault();
+        setActiveTool("eyedropper");
       } else if (isCmdOrCtrl && e.key.toLowerCase() === "a") {
         e.preventDefault();
         invoke("select_all")
@@ -518,6 +558,12 @@ export default function App() {
                 <Match when={activeTool() === "text"}><Type size={15} class="text-accent" /></Match>
                 <Match when={activeTool() === "move"}><Move size={15} class="text-accent" /></Match>
                 <Match when={activeTool() === "pen"}><PenTool size={15} class="text-accent" /></Match>
+                <Match when={activeTool() === "eyedropper"}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-accent">
+                    <path d="m2 22 1-1c1.5-1.5 1.5-4 .5-5.5L14 5l4 4-10.5 10.5c-1.5-1-4-1-5.5.5Z" />
+                    <path d="M14 5 19 2l3 3-3 5-5-5Z" />
+                  </svg>
+                </Match>
               </Switch>
             }>
               <Crop size={15} class="text-accent animate-pulse" />
@@ -768,10 +814,74 @@ export default function App() {
           </button>
  
           {/* Export Action */}
-          <button class="h-[26px] px-3 flex items-center gap-1.5 bg-accent hover:bg-accent-hover active:bg-accent-active text-white text-[11px] font-bold tracking-wider rounded-md shadow-sm cursor-default transition-colors">
-            <Share size={13} />
-            <span>EXPORT</span>
-          </button>
+          <div class="relative">
+            <button 
+              onClick={() => setShowExportModal(!showExportModal())}
+              class={`h-[26px] px-3 flex items-center gap-1.5 text-[11px] font-bold tracking-wider rounded-md shadow-sm cursor-default transition-all duration-75 ${
+                showExportModal() 
+                  ? "bg-accent-active text-white border border-accent/40 shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.5)]" 
+                  : "bg-accent hover:bg-accent-hover active:bg-accent-active text-white"
+              }`}
+            >
+              <Share size={13} />
+              <span>EXPORT</span>
+            </button>
+
+            <Show when={showExportModal()}>
+              <div class="absolute right-0 top-[30px] bg-studio-panel border border-studio-border rounded-lg shadow-lg p-4 w-72 z-[10005] flex flex-col gap-3">
+                <span class="text-[11px] font-bold text-text-muted uppercase tracking-wider">Export Settings</span>
+                
+                {/* Format selectors */}
+                <div class="flex items-center gap-2">
+                  <span class="text-text-secondary text-[11px] w-14 font-semibold">Format</span>
+                  <div class="bg-studio-input border border-studio-border rounded-md p-0.5 h-[26px] flex-1 flex gap-0.5">
+                    <For each={["PNG", "JPEG", "WEBP"]}>
+                      {(fmt) => (
+                        <button
+                          onClick={() => setExportFormat(fmt)}
+                          class={`flex-1 text-center text-[10px] font-bold rounded cursor-default transition-all duration-75 ${
+                            exportFormat() === fmt
+                              ? "bg-studio-elevated text-accent border border-studio-border-strong shadow-sm"
+                              : "text-text-muted hover:text-text-primary"
+                          }`}
+                        >
+                          {fmt}
+                        </button>
+                      )}
+                    </For>
+                  </div>
+                </div>
+
+                {/* Quality selector (Only shown for JPEG/WEBP) */}
+                <Show when={exportFormat() !== "PNG"}>
+                  <div class="flex items-center gap-2">
+                    <span class="text-text-secondary text-[11px] w-14 font-semibold">Quality</span>
+                    <input 
+                      type="range" 
+                      min="1" max="100" 
+                      class="flex-grow accent-accent"
+                      value={exportQuality()}
+                      onInput={(e: any) => setExportQuality(parseInt(e.currentTarget.value))}
+                    />
+                    <span class="text-[11px] font-mono w-8 text-right font-semibold text-white">{exportQuality()}%</span>
+                  </div>
+                </Show>
+
+                <button 
+                  onClick={handleExport}
+                  class="bg-accent hover:bg-accent-hover text-white text-[11px] font-bold tracking-wider py-1.5 rounded-md mt-1 transition-colors cursor-default text-center"
+                >
+                  CONFIRM & EXPORT
+                </button>
+
+                <Show when={exportStatusText() !== ""}>
+                  <div class="text-[10px] text-accent font-semibold text-center select-none truncate">
+                    {exportStatusText()}
+                  </div>
+                </Show>
+              </div>
+            </Show>
+          </div>
         </div>
       </section>
 
@@ -816,6 +926,17 @@ export default function App() {
               <Eraser size={18} />
             </button>
 
+            <button 
+              onClick={() => handleToolChange("eyedropper")}
+              class={`tool-btn-raw ${activeTool() === "eyedropper" ? "active" : ""}`} 
+              title="Eyedropper Tool (I)"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m2 22 1-1c1.5-1.5 1.5-4 .5-5.5L14 5l4 4-10.5 10.5c-1.5-1-4-1-5.5.5Z" />
+                <path d="M14 5 19 2l3 3-3 5-5-5Z" />
+              </svg>
+            </button>
+
             <div class="tool-divider"></div>
 
             <button 
@@ -840,16 +961,30 @@ export default function App() {
             <div class="relative w-11 h-11 select-none cursor-default" title="Color Swatches (Primary / Secondary)">
               {/* Background Color Swatch */}
               <div 
-                class="absolute right-1 bottom-1 w-6 h-6 rounded-sm border border-studio-border-strong z-0 shadow-[0_1px_4px_rgba(0,0,0,0.5)] transition-all duration-75"
+                class="absolute right-1 bottom-1 w-6 h-6 rounded-sm border border-studio-border-strong z-0 shadow-[0_1px_4px_rgba(0,0,0,0.5)] transition-all duration-75 relative overflow-hidden"
                 style={`background-color: ${bgColor()};`}
-                title="Secondary Color (Background)"
-              ></div>
+                title="Secondary Color (Background) - Click to change"
+              >
+                <input 
+                  type="color"
+                  class="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                  value={bgColor()}
+                  onInput={(e: any) => setBgColor(e.currentTarget.value)}
+                />
+              </div>
               {/* Foreground Color Swatch */}
               <div 
-                class="absolute left-1 top-1 w-6 h-6 rounded-sm border border-white/10 z-10 shadow-md transition-all duration-75"
+                class="absolute left-1 top-1 w-6 h-6 rounded-sm border border-white/10 z-10 shadow-md transition-all duration-75 relative overflow-hidden"
                 style={`background-color: ${fgColor()};`}
-                title="Primary Color (Foreground)"
-              ></div>
+                title="Primary Color (Foreground) - Click to change"
+              >
+                <input 
+                  type="color"
+                  class="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                  value={fgColor()}
+                  onInput={(e: any) => setFgColor(e.currentTarget.value)}
+                />
+              </div>
               {/* Swap Colors Action */}
               <button
                 onClick={() => {
