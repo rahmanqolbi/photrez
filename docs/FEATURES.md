@@ -18,8 +18,9 @@
 | ✅ DONE      | Layer opacity (0.0–1.0)                    |
 | ✅ DONE      | Layer rename                               |
 | ✅ DONE      | Blend mode property (stored, Normal only MVP) |
-| ⬜ TODO      | Bitmap data per layer (pixel buffer)       |
-| ⬜ TODO      | Layer drag-drop reorder di UI              |
+| ✅ DONE      | Bitmap data per layer (pixel buffer)       |
+| ✅ DONE      | MAX_PIXEL_BUDGET (256MB) memory limits    |
+| ✅ DONE      | Layer reordering controls in UI (ChevronUp/Down) |
 
 ---
 
@@ -27,8 +28,8 @@
 
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
-| ⬜ TODO      | Rectangular selection (marquee)            |
-| ⬜ TODO      | Move selection/layer                       |
+| ✅ DONE      | Rectangular selection (marquee)            |
+| ✅ DONE      | Move selection/layer                       |
 | ⬜ TODO      | Scale transform                            |
 | ⬜ TODO      | Rotate transform                           |
 | ⬜ TODO      | Flip (horizontal/vertical)                 |
@@ -41,10 +42,10 @@
 
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
-| ⬜ TODO      | Crop image (with bounds validation)        |
-| ⬜ TODO      | Resize image/canvas                        |
+| ✅ DONE      | Crop image (with bounds validation)        |
+| ✅ DONE      | Resize image/canvas                        |
 | ⬜ TODO      | Aspect ratio lock toggle                   |
-| ⬜ TODO      | Crop overlay/guide UI                      |
+| ✅ DONE      | Crop overlay/guide UI                      |
 
 ---
 
@@ -52,12 +53,12 @@
 
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
-| ⬜ TODO      | Brush stroke drawing                       |
-| ⬜ TODO      | Eraser stroke                              |
-| ⬜ TODO      | Size control                               |
-| ⬜ TODO      | Opacity control                            |
-| ⬜ TODO      | Hardness control                           |
-| ⬜ TODO      | Cursor size preview                        |
+| ✅ DONE      | Brush stroke drawing                       |
+| ✅ DONE      | Eraser stroke                              |
+| ✅ DONE      | Size control                               |
+| ✅ DONE      | Opacity control                            |
+| ✅ DONE      | Hardness control                           |
+| ✅ DONE      | Cursor size preview                        |
 
 ---
 
@@ -105,7 +106,7 @@
 | ✅ DONE      | Foreground & background color swatches UI  |
 | ⬜ TODO      | Color picker dialog                        |
 | ⬜ TODO      | Eyedropper tool                            |
-| ⬜ TODO      | Swap fg/bg color                           |
+| ✅ DONE      | Swap fg/bg color (interaktif, hotkey X/D)  |
 
 ---
 
@@ -137,7 +138,12 @@
 | ✅ DONE      | Studio input styling (inset depth)         |
 | ✅ DONE      | Range slider (Photon Amber thumb)          |
 | ✅ DONE      | Panel headers                              |
-| ✅ DONE      | Docked panel layout (no floating shadows)  |
+| ✅ DONE      | Modular Hardware Chassis layout (rounded + gap-1.5) |
+| ✅ DONE      | Visual De-cluttering & Airy/Lightweight UI Polishing |
+| ✅ DONE      | Flush-Left Anchor active tool indicator (Option A) |
+| ✅ DONE      | Segmented Transform matrix coordinate grid (Figma-style) |
+| ✅ DONE      | macOS-style Segmented Tab Bar (Pill tabs) & Unified Properties |
+| ✅ DONE      | Right Inspector Recessed Compartments (Idea A sunken well) |
 | ⬜ TODO      | Context menu                               |
 | ⬜ TODO      | Tooltip system                             |
 | ⬜ TODO      | Dialog system (modal)                      |

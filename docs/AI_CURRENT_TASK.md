@@ -1,4 +1,4 @@
-# Current Task: M4 — Brush & Eraser Engine [IN PROGRESS]
+# Current Task: M4 — Brush & Eraser Engine [COMPLETE]
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
@@ -7,7 +7,7 @@
 Implementasi Milestone 4: Brush & Eraser Engine.
 Fokus pada merancang dan mengimplementasikan interpolasi sub-piksel brush, eraser alpha-blending, Tauri IPC bridge untuk stroke painting, Options Bar signals, dan zero-latency `<canvas>` overlay rendering.
 
-**Tugas Aktif Saat Ini:** M4 Task 39: Verify and Compile Production bundle [IN PROGRESS]
+**Tugas Aktif Saat Ini:** M4 Selesai: Seluruh implementasi raster brush dan eraser engine terintegrasi penuh [COMPLETE]
 
 
 ## Status Implementasi
