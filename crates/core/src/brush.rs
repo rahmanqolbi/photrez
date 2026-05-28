@@ -64,4 +64,34 @@ mod tests {
         assert_eq!(settings.size, 10.0);
         assert_eq!(settings.hardness, 0.5);
     }
+
+    #[test]
+    fn test_paint_pixel_center() {
+        let settings = BrushSettings::new(20.0, 1.0, [1.0, 0.0, 0.0, 1.0]);
+        let mut pixel = [0u8; 4]; // transparent black
+        settings.paint_pixel(&mut pixel, 0.0); // distance 0 = center
+        // At center with hardness 1.0, full color should be applied
+        assert!(pixel[0] > 0, "Red channel should be > 0");
+        assert!(pixel[3] > 0, "Alpha channel should be > 0");
+    }
+
+    #[test]
+    fn test_paint_pixel_outside_radius() {
+        let settings = BrushSettings::new(10.0, 1.0, [1.0, 0.0, 0.0, 1.0]);
+        let mut pixel = [0u8; 4];
+        settings.paint_pixel(&mut pixel, 100.0); // far outside radius
+        // Should remain unchanged (transparent black)
+        assert_eq!(pixel, [0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_paint_pixel_soft_hardness() {
+        let settings = BrushSettings::new(20.0, 0.0, [1.0, 0.0, 0.0, 1.0]);
+        let mut pixel_center = [0u8; 4];
+        let mut pixel_edge = [0u8; 4];
+        settings.paint_pixel(&mut pixel_center, 0.0);
+        settings.paint_pixel(&mut pixel_edge, 9.0); // near edge
+        // Soft hardness should produce lower alpha at edge than center
+        assert!(pixel_center[3] >= pixel_edge[3]);
+    }
 }

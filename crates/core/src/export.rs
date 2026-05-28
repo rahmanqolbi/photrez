@@ -208,4 +208,26 @@ mod tests {
         let jpeg_bytes = export_document(&doc, &settings_jpeg).unwrap();
         assert_eq!(&jpeg_bytes[0..2], &[0xFF, 0xD8]);
     }
+
+    #[test]
+    fn test_image_export_webp() {
+        let mut doc = Document::new("doc-1".to_string(), 10, 10);
+        let mut layer = Layer::new("layer-1".to_string(), "Test".to_string(), 10, 10);
+        // Fill with opaque white pixels
+        for i in (0..layer.bitmap_ref.pixel_data.len()).step_by(4) {
+            layer.bitmap_ref.pixel_data[i] = 255;
+            layer.bitmap_ref.pixel_data[i + 1] = 255;
+            layer.bitmap_ref.pixel_data[i + 2] = 255;
+            layer.bitmap_ref.pixel_data[i + 3] = 255;
+        }
+        doc.add_layer(layer);
+
+        let settings = ExportSettings::new(ExportFormat::WebP, 80);
+        let result = export_document(&doc, &settings);
+        assert!(result.is_ok());
+        let bytes = result.unwrap();
+        assert!(bytes.len() > 0);
+        // WebP magic bytes: "RIFF" at offset 0
+        assert_eq!(&bytes[0..4], b"RIFF");
+    }
 }

@@ -132,4 +132,24 @@ mod tests {
         assert!((result.width - 200.0).abs() < 0.001);
         assert!((result.height - 50.0).abs() < 0.001);
     }
+
+    #[test]
+    fn test_apply_to_rect_rotated() {
+        let mut t = Transform::new();
+        t.set_rotation(90.0);
+        let rect = SelectionRect { x: 0.0, y: 0.0, width: 100.0, height: 50.0 };
+        let result = t.apply_to_rect(&rect);
+        // After 90° rotation, width and height should swap
+        assert!((result.width - 50.0).abs() < 0.001);
+        assert!((result.height - 100.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_set_rotation() {
+        let mut t = Transform::new();
+        t.set_rotation(45.0);
+        assert_eq!(t.rotation, 45.0);
+        t.set_rotation(400.0); // should wrap to 40.0
+        assert_eq!(t.rotation, 40.0);
+    }
 }

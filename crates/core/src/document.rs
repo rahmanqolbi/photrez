@@ -386,4 +386,92 @@ mod tests {
         let color = doc.sample_pixel(1.0, 1.0);
         assert_eq!(color, [255, 0, 0, 255]); // Sampled Red Background color
     }
+
+    #[test]
+    fn test_apply_transform() {
+        let mut doc = Document::new("doc-1".to_string(), 100, 100);
+        let layer = Layer::new("layer-1".to_string(), "Test".to_string(), 100, 100);
+        doc.add_layer(layer);
+
+        let transform = Transform {
+            scale_x: 2.0,
+            scale_y: 2.0,
+            rotation: 45.0,
+            flip_h: true,
+            flip_v: false,
+        };
+
+        let result = doc.apply_transform("layer-1", transform);
+        assert!(result.is_ok());
+
+        let t = doc.get_layer_transform("layer-1").unwrap();
+        assert_eq!(t.scale_x, 2.0);
+        assert_eq!(t.scale_y, 2.0);
+        assert_eq!(t.rotation, 45.0);
+        assert!(t.flip_h);
+        assert!(!t.flip_v);
+    }
+
+    #[test]
+    fn test_apply_transform_nonexistent_layer() {
+        let mut doc = Document::new("doc-1".to_string(), 100, 100);
+        let transform = Transform::new();
+        let result = doc.apply_transform("nonexistent", transform);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_get_layer_transform_nonexistent() {
+        let doc = Document::new("doc-1".to_string(), 100, 100);
+        let result = doc.get_layer_transform("nonexistent");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_delete_layer_nonexistent() {
+        let mut doc = Document::new("doc-1".to_string(), 100, 100);
+        let layer = Layer::new("layer-1".to_string(), "Test".to_string(), 100, 100);
+        doc.add_layer(layer);
+        let result = doc.delete_layer("nonexistent");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_reorder_layer_out_of_bounds() {
+        let mut doc = Document::new("doc-1".to_string(), 100, 100);
+        let layer = Layer::new("layer-1".to_string(), "Test".to_string(), 100, 100);
+        doc.add_layer(layer);
+        let result = doc.reorder_layer(0, 999);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_update_layer_nonexistent() {
+        let mut doc = Document::new("doc-1".to_string(), 100, 100);
+        let result = doc.update_layer_properties("nonexistent", Some(0.5), None, None, None, None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_move_layer_nonexistent() {
+        let mut doc = Document::new("doc-1".to_string(), 100, 100);
+        let result = doc.move_layer("nonexistent", 50.0, 50.0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_crop_canvas_zero_dimensions() {
+        let mut doc = Document::new("doc-1".to_string(), 100, 100);
+        let layer = Layer::new("layer-1".to_string(), "Test".to_string(), 100, 100);
+        doc.add_layer(layer);
+        let result = doc.crop_canvas(0.0, 0.0, 0, 0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_resize_canvas_zero_dimensions() {
+        let mut doc = Document::new("doc-1".to_string(), 100, 100);
+        let result = doc.resize_canvas(0, 0);
+        assert!(result.is_err());
+    }
 }
