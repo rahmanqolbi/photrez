@@ -556,19 +556,20 @@ export default function App() {
       .catch((err) => console.error("Reorder layer err:", err));
   };
 
+  const getLayerCurrentTransform = (layer: any) => ({
+    scaleX: layer.transform?.scale_x ?? 1,
+    scaleY: layer.transform?.scale_y ?? 1,
+    rotation: layer.transform?.rotation ?? 0,
+    flipH: layer.transform?.flip_h ?? false,
+    flipV: layer.transform?.flip_v ?? false
+  });
+
   const handleTransformChange = (field: string, value: number) => {
     if (!selectedLayerId()) return;
     const layer = layers().find(l => l.id === selectedLayerId());
     if (!layer) return;
     
-    const currentTransform = {
-      scaleX: layer.transform?.scale_x ?? 1,
-      scaleY: layer.transform?.scale_y ?? 1,
-      rotation: layer.transform?.rotation ?? 0,
-      flipH: layer.transform?.flip_h ?? false,
-      flipV: layer.transform?.flip_v ?? false
-    };
-    
+    const currentTransform = getLayerCurrentTransform(layer);
     let newTransform = { ...currentTransform };
     
     if (field === "width") {
@@ -596,14 +597,7 @@ export default function App() {
     const layer = layers().find(l => l.id === selectedLayerId());
     if (!layer) return;
     
-    const currentTransform = {
-      scaleX: layer.transform?.scale_x ?? 1,
-      scaleY: layer.transform?.scale_y ?? 1,
-      rotation: layer.transform?.rotation ?? 0,
-      flipH: layer.transform?.flip_h ?? false,
-      flipV: layer.transform?.flip_v ?? false
-    };
-    
+    const currentTransform = getLayerCurrentTransform(layer);
     const newTransform = { ...currentTransform };
     if (axis === "h") {
       newTransform.flipH = !newTransform.flipH;
@@ -994,14 +988,14 @@ export default function App() {
             <div class="flex items-center gap-1 ml-auto">
               <button
                 class="tool-btn-raw px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary hover:bg-white/5 rounded"
-                title="Flip Horizontal (Ctrl+G)"
+                title="Flip Horizontal"
                 onClick={() => handleFlip("h")}
               >
                 <FlipHorizontal size={14} />
               </button>
               <button
                 class="tool-btn-raw px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary hover:bg-white/5 rounded"
-                title="Flip Vertical (Ctrl+Shift+G)"
+                title="Flip Vertical"
                 onClick={() => handleFlip("v")}
               >
                 <FlipVertical size={14} />
