@@ -193,7 +193,12 @@ export default function App() {
         const centerX = orig.x + orig.width / 2;
         const centerY = orig.y + orig.height / 2;
         const angle = Math.atan2(current.y - centerY, current.x - centerX) * (180 / Math.PI);
-        const newRotation = (angle + 90) % 360;
+        let newRotation = (angle + 90) % 360;
+        
+        // Snap to 15-degree increments if Shift held
+        if (e.shiftKey) {
+          newRotation = Math.round(newRotation / 15) * 15;
+        }
         
         invoke("transform_layer", {
           id: selectedLayerId(),
@@ -466,6 +471,17 @@ export default function App() {
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
         handleNudgeLayer(e.shiftKey ? 10 : 1, 0);
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "g" && !e.shiftKey) {
+        e.preventDefault();
+        handleFlip("h");
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "g" && e.shiftKey) {
+        e.preventDefault();
+        handleFlip("v");
+      } else if (e.key === "Escape" && selectedLayerId()) {
+        e.preventDefault();
+        setSelectedLayerId(null);
+        setTransformDragging(false);
+        setTransformDragType(null);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
