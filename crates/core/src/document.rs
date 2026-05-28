@@ -166,6 +166,70 @@ impl Document {
         self.height = height;
         Ok(())
     }
+
+    pub fn sample_pixel(&self, x: f32, y: f32) -> [u8; 4] {
+        let ix = x.floor() as i32;
+        let iy = y.floor() as i32;
+        
+        if ix < 0 || ix >= self.width as i32 || iy < 0 || iy >= self.height as i32 {
+            return [0, 0, 0, 0]; // Transparent black out of bounds
+        }
+        
+        let mut blended = [0f32; 4];
+        
+        // Reverse order: blend bottom (N-1) to top (0)
+        for layer in self.layers.iter().rev() {
+            if !layer.visible {
+                continue;
+            }
+            
+            let lx = ix - layer.x as i32;
+            let ly = iy - layer.y as i32;
+            
+            if lx >= 0 && lx < layer.width as i32 && ly >= 0 && ly < layer.height as i32 {
+                let idx = ((ly * layer.width as i32 + lx) * 4) as usize;
+                let src_r = layer.bitmap_ref.pixel_data[idx] as f32 / 255.0;
+                let src_g = layer.bitmap_ref.pixel_data[idx + 1] as f32 / 255.0;
+                let src_b = layer.bitmap_ref.pixel_data[idx + 2] as f32 / 255.0;
+                let src_a = layer.bitmap_ref.pixel_data[idx + 3] as f32 / 255.0 * layer.opacity;
+                
+                if src_a <= 0.0 {
+                    continue;
+                }
+                
+                let dest_r = blended[0];
+                let dest_g = blended[1];
+                let dest_b = blended[2];
+                let dest_a = blended[3];
+                
+                let out_a = src_a + dest_a * (1.0 - src_a);
+                let out_r = if out_a > 0.0 {
+                    (src_r * src_a + dest_r * dest_a * (1.0 - src_a)) / out_a
+                } else {
+                    0.0
+                };
+                let out_g = if out_a > 0.0 {
+                    (src_g * src_a + dest_g * dest_a * (1.0 - src_a)) / out_a
+                } else {
+                    0.0
+                };
+                let out_b = if out_a > 0.0 {
+                    (src_b * src_a + dest_b * dest_a * (1.0 - src_a)) / out_a
+                } else {
+                    0.0
+                };
+                
+                blended = [out_r, out_g, out_b, out_a];
+            }
+        }
+        
+        [
+            (blended[0] * 255.0).round().min(255.0) as u8,
+            (blended[1] * 255.0).round().min(255.0) as u8,
+            (blended[2] * 255.0).round().min(255.0) as u8,
+            (blended[3] * 255.0).round().min(255.0) as u8,
+        ]
+    }
 }
 
 #[cfg(test)]
@@ -306,5 +370,20 @@ mod tests {
         assert!(res.is_ok());
         assert_eq!(doc.width, 1024);
         assert_eq!(doc.height, 768);
+    }
+
+    #[test]
+    fn test_sample_pixel() {
+        let mut doc = Document::new("doc-1".to_string(), 2, 2);
+        
+        let mut l1 = Layer::new("l-1".to_string(), "Layer 1".to_string(), 2, 2);
+        l1.bitmap_ref.pixel_data = vec![
+            255, 0, 0, 255,   255, 0, 0, 255,
+            255, 0, 0, 255,   255, 0, 0, 255,
+        ];
+        doc.add_layer(l1);
+        
+        let color = doc.sample_pixel(1.0, 1.0);
+        assert_eq!(color, [255, 0, 0, 255]); // Sampled Red Background color
     }
 }
