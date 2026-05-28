@@ -121,19 +121,10 @@ export default function App() {
 
   const handleOpenFile = async () => {
     try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const selected = await open({
-        multiple: false,
-        filters: [{
-          name: "Images",
-          extensions: ["png", "jpg", "jpeg", "webp", "bmp", "gif"]
-        }]
-      });
-
-      if (selected) {
-        const path = typeof selected === "string" ? selected : selected;
-        const result = await invoke("open_image", { path }) as any;
-        if (result?.ok) {
+      const result = await invoke("show_open_dialog") as any;
+      if (result?.ok && result?.data?.path) {
+        const openResult = await invoke("open_image", { path: result.data.path }) as any;
+        if (openResult?.ok) {
           syncDocumentState();
         }
       }

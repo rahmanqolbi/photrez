@@ -425,6 +425,21 @@ fn redo(state: tauri::State<'_, EditorState>) -> Result<Value, Value> {
 }
 
 #[tauri::command]
+fn show_open_dialog() -> Result<Value, Value> {
+    let dialog = rfd::FileDialog::new()
+        .add_filter("Images", &["png", "jpg", "jpeg", "webp", "bmp", "gif"])
+        .pick_file();
+    
+    if let Some(path) = dialog {
+        ok_response(serde_json::json!({
+            "path": path.to_string_lossy()
+        }))
+    } else {
+        err_response("E_CANCEL", "No file selected")
+    }
+}
+
+#[tauri::command]
 fn open_image(
     path: String,
     state: tauri::State<'_, EditorState>,
@@ -500,6 +515,7 @@ fn main() {
             export_document,
             sample_pixel,
             open_image,
+            show_open_dialog,
             trigger_render
         ])
         .build(tauri::generate_context!())
