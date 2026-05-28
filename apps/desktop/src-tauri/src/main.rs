@@ -467,6 +467,16 @@ fn open_image(
     }
 }
 
+#[tauri::command]
+fn trigger_render(state: tauri::State<'_, EditorState>) -> Result<Value, Value> {
+    let mut doc = state.document.lock().unwrap();
+    let ids: Vec<String> = doc.layers.iter().map(|l| l.id.clone()).collect();
+    for id in &ids {
+        doc.mark_dirty(id);
+    }
+    ok_response(serde_json::json!({ "triggered": true }))
+}
+
 fn main() {
     println!("{}", photrez_core::init_core());
     println!("{}", photrez_render::init_render());
@@ -507,7 +517,8 @@ fn main() {
             export_document,
             sample_pixel,
             get_framebuffer,
-            open_image
+            open_image,
+            trigger_render
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
@@ -526,14 +537,33 @@ fn main() {
                 }
             }
             tauri::RunEvent::MainEventsCleared => {
-                let state = app_handle.state::<WgpuState>();
-                let renderer = state.renderer.lock().unwrap();
-                
                 let doc_state = app_handle.state::<EditorState>();
-                let doc = doc_state.document.lock().unwrap();
-                let (width, height, pixels) = doc.get_flattened_pixels();
+                let mut doc = doc_state.document.lock().unwrap();
                 
-                renderer.render_frame(&pixels, width, height);
+                if doc.has_dirty_layers() {
+                    let mut layer_data = Vec::new();
+                    for layer in &doc.layers {
+                        if !layer.visible {
+                            continue;
+                        }
+                        layer_data.push((
+                            layer.id.clone(),
+                            layer.bitmap_ref.pixel_data.clone(),
+                            layer.width,
+                            layer.height,
+                            layer.opacity,
+                            layer.visible,
+                            layer.x,
+                            layer.y,
+                        ));
+                    }
+                    
+                    let state = app_handle.state::<WgpuState>();
+                    let mut renderer = state.renderer.lock().unwrap();
+                    renderer.render_layers(&layer_data, doc.width, doc.height);
+                    
+                    doc.clear_dirty();
+                }
             }
             _ => (),
         }

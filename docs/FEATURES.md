@@ -97,6 +97,7 @@
 | ✅ DONE      | Pan canvas (Space+drag)                    |
 | ✅ DONE      | Fit to screen (Ctrl+0)                     |
 | ✅ DONE      | Pixel-level canvas rendering (wgpu canvas) |
+| ✅ DONE      | On-demand rendering (dirty flag system)    |
 
 ---
 

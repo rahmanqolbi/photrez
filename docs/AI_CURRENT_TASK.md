@@ -1,4 +1,4 @@
-# Current Task: Task 5 — Remove Canvas 2D Fallback from Frontend [COMPLETE]
+# Current Task: Tasks 4-5 — On-Demand Rendering & Frontend Render Trigger [COMPLETE]
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
@@ -6,7 +6,7 @@
 
 Remove Canvas 2D fallback rendering code from `App.tsx`. The wgpu rendering is now done server-side in the Tauri setup hook (Task 4). The frontend no longer needs to render pixels — it just provides the viewport transform (zoom/pan) via CSS. The wgpu surface renders directly to the native window, and the transparent webview CSS allows it to show through.
 
-**Tugas Aktif Saat Ini:** All tasks completed. Build passes.
+**Tugas Aktif Saat Ini:** Tasks 4-5 complete. On-demand rendering implemented.
 
 
 ## Status Implementasi
@@ -41,7 +41,7 @@ Remove Canvas 2D fallback rendering code from `App.tsx`. The wgpu rendering is n
 - [x] Module stub dengan `init_render()`
 - [ ] wgpu Device/Queue/Surface initialization
 - [ ] Texture upload pipeline
-- [ ] Layer compositing renderer
+- [x] Layer compositing renderer
 - [ ] Viewport transform (zoom/pan)
 - [ ] Brush stroke real-time preview
 

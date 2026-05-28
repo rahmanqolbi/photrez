@@ -6,6 +6,29 @@
 
 ---
 
+## [2026-05-28] FEATURE — Tasks 4-5: On-Demand Rendering & Frontend Render Trigger [COMPLETE]
+
+### Kategori: FEATURE / RENDERER / FRONTEND
+
+**Deskripsi:** Mengubah render loop dari continuous (setiap frame) menjadi on-demand (hanya saat layer dirty). Frontend sekarang memicu render dengan memanggil `trigger_render` command saat document state berubah.
+
+**Perubahan:**
+1. **`apps/desktop/src-tauri/src/main.rs`** —
+   - Menambahkan command `trigger_render` yang menandai semua layer sebagai dirty.
+   - Mengganti `MainEventsCleared` handler: hanya render jika `doc.has_dirty_layers()`.
+   - Render menggunakan `render_layers` dengan data per-layer (pixel data, posisi, opacity, visibility).
+   - Mendaftarkan `trigger_render` di `generate_handler!`.
+
+2. **`apps/desktop/src/App.tsx`** —
+   - Menambahkan `createEffect` yang memantau perubahan `layers()`, `selectedLayerId()`, `zoom()`, `pan()`.
+   - Effect memanggil `invoke("trigger_render")` saat dependency berubah.
+
+**Rationale:** Continuous rendering membuang CPU/GPU cycles saat tidak ada perubahan. On-demand rendering hanya render saat state berubah, menghemat resources.
+
+**Validasi:** ✅ Frontend build (`pnpm run build` tsc + vite build) sukses. Rust compilation terhambat oleh `windres` toolchain issue (unrelated).
+
+---
+
 ## [2026-05-28] FEATURE — Task 5: Remove Canvas 2D Fallback from Frontend [COMPLETE]
 
 ### Kategori: FEATURE / UI / FRONTEND

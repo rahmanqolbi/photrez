@@ -635,6 +635,14 @@ export default function App() {
     window.removeEventListener("mouseup", handleArtboardMouseUp);
   });
 
+  createEffect(() => {
+    layers();
+    selectedLayerId();
+    zoom();
+    pan();
+    invoke("trigger_render").catch(console.error);
+  });
+
 
 
   const handleToolChange = (tool: string) => {
