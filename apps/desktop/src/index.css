@@ -148,3 +148,12 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .cursor-ns-resize { cursor: ns-resize; }
 .cursor-rotate { cursor: grab; }
 .cursor-rotate:active { cursor: grabbing; }
+
+/* wgpu rendering - transparent background */
+html, body {
+  background-color: transparent !important;
+}
+
+#root {
+  background-color: transparent !important;
+}
