@@ -1,12 +1,12 @@
-# Current Task: Tasks 5-10 — Frontend Viewport Integration [COMPLETE]
+# Current Task: Task 5 — Remove Canvas 2D Fallback from Frontend [COMPLETE]
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
 ## Deskripsi
 
-Implementasi Tasks 5-10: Viewport state, zoom, pan, fit-to-screen, file open dialog, dan canvas integration.
+Remove Canvas 2D fallback rendering code from `App.tsx`. The wgpu rendering is now done server-side in the Tauri setup hook (Task 4). The frontend no longer needs to render pixels — it just provides the viewport transform (zoom/pan) via CSS. The wgpu surface renders directly to the native window, and the transparent webview CSS allows it to show through.
 
-**Tugas Aktif Saat Ini:** All 6 tasks completed successfully. Build passes.
+**Tugas Aktif Saat Ini:** All tasks completed. Build passes.
 
 
 ## Status Implementasi

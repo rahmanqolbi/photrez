@@ -6,6 +6,23 @@
 
 ---
 
+## [2026-05-28] FEATURE — Task 5: Remove Canvas 2D Fallback from Frontend [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND
+
+**Deskripsi:** Menghapus kode rendering Canvas 2D fallback dari `App.tsx`. Rendering wgpu sekarang dilakukan server-side di Tauri setup hook (Task 4). Frontend tidak lagi perlu merender piksel — hanya menyediakan viewport transform (zoom/pan) via CSS. Wgpu surface merender langsung ke native window, dan CSS webview transparan memungkinkannya terlihat.
+
+**Perubahan:**
+1. **`apps/desktop/src/App.tsx`** —
+   - Menghapus signal `framebuffer` dan `setFramebuffer`.
+   - Menghapus variabel `wgpuCanvasRef`.
+   - Menghapus dua `createEffect` yang memanggil `invoke("get_framebuffer")` dan `ctx.putImageData()`.
+   - Menghapus elemen `<canvas>` dari artboard (background grid representation tetap dipertahankan).
+
+**Validasi:** ✅ Build verification (`pnpm run build` tsc + vite build) sukses tanpa error dalam 5.51s.
+
+---
+
 ## [2026-05-28] FEATURE — Tasks 5-10: Frontend Viewport Integration [COMPLETE]
 
 ### Kategori: FEATURE / UI

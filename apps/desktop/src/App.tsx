@@ -46,7 +46,6 @@ export default function App() {
   const [panStart, setPanStart] = createSignal({ x: 0, y: 0 });
   const [panStartOffset, setPanStartOffset] = createSignal({ x: 0, y: 0 });
   const [isSpaceDown, setIsSpaceDown] = createSignal(false);
-  const [framebuffer, setFramebuffer] = createSignal<{ width: number; height: number; pixels: string } | null>(null);
 
   // ── Transform Drag State ──
   const [transformDragging, setTransformDragging] = createSignal(false);
@@ -82,7 +81,6 @@ export default function App() {
   const [isDraggingLayer, setIsDraggingLayer] = createSignal(false);
   const [layerDragOffset, setLayerDragOffset] = createSignal({ x: 0, y: 0 });
   let artboardRef: HTMLDivElement | undefined;
-  let wgpuCanvasRef: HTMLCanvasElement | undefined;
 
   const getArtboardCoords = (clientX: number, clientY: number) => {
     const el = artboardRef;
@@ -637,38 +635,7 @@ export default function App() {
     window.removeEventListener("mouseup", handleArtboardMouseUp);
   });
 
-  createEffect(() => {
-    layers();
-    selectedLayerId();
 
-    invoke("get_framebuffer").then((res: any) => {
-      if (res?.ok) {
-        setFramebuffer(res.data);
-      }
-    });
-  });
-
-  createEffect(() => {
-    const fb = framebuffer();
-    const canvas = wgpuCanvasRef;
-    if (!fb || !canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const binaryString = atob(fb.pixels);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    const imageData = new ImageData(
-      new Uint8ClampedArray(bytes),
-      fb.width,
-      fb.height
-    );
-    ctx.putImageData(imageData, 0, 0);
-  });
 
   const handleToolChange = (tool: string) => {
     setActiveTool(tool);
@@ -1473,14 +1440,6 @@ export default function App() {
               >
                 {/* ── Background Grid representation ── */}
                 <div class="absolute inset-0 bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
-
-                {/* ── wgpu Canvas for pixel rendering ── */}
-                <canvas 
-                  ref={wgpuCanvasRef}
-                  width={docWidth()}
-                  height={docHeight()}
-                  class="absolute inset-0"
-                />
 
                 {/* ── Render Layers stack in document order ── */}
                 <For each={layers()}>
