@@ -102,7 +102,9 @@ fn get_contract_info() -> Result<Value, Value> {
             "transform_layer",
             "crop_canvas",
             "resize_canvas",
-            "draw_brush_stroke"
+            "draw_brush_stroke",
+            "export_document",
+            "sample_pixel"
         ]
     }))
 }
@@ -352,6 +354,59 @@ fn draw_brush_stroke(
 }
 
 #[tauri::command]
+fn export_document(
+    format: String,
+    quality: u8,
+    state: tauri::State<'_, EditorState>,
+) -> Result<Value, Value> {
+    let doc = state.document.lock().unwrap();
+
+    let core_format = match format.to_uppercase().as_str() {
+        "PNG" => photrez_core::export::ExportFormat::PNG,
+        "JPEG" | "JPG" => photrez_core::export::ExportFormat::JPEG,
+        "WEBP" => photrez_core::export::ExportFormat::WebP,
+        _ => return err_response("E_VALIDATION", "Unsupported export format"),
+    };
+
+    let settings = photrez_core::export::ExportSettings::new(core_format, quality);
+    let encoded_bytes = match photrez_core::export::export_document(&*doc, &settings) {
+        Ok(bytes) => bytes,
+        Err(e) => return err_response("E_ENCODING", &e),
+    };
+
+    // Invoke RFD native save file dialog in a worker thread
+    let default_name = format!("untitled.{}", format.to_lowercase());
+    let dialog = rfd::FileDialog::new()
+        .set_file_name(&default_name)
+        .add_filter(&format, &[&format.to_lowercase()])
+        .save_file();
+
+    if let Some(path) = dialog {
+        if let Err(e) = std::fs::write(&path, encoded_bytes) {
+            err_response("E_IO", &format!("Failed to write file to disk: {}", e))
+        } else {
+            ok_response(serde_json::json!({
+                "status": "success",
+                "path": path.to_string_lossy()
+            }))
+        }
+    } else {
+        err_response("E_CANCEL", "Export cancelled by user")
+    }
+}
+
+#[tauri::command]
+fn sample_pixel(
+    x: f32,
+    y: f32,
+    state: tauri::State<'_, EditorState>,
+) -> Result<Value, Value> {
+    let doc = state.document.lock().unwrap();
+    let color = doc.sample_pixel(x, y);
+    ok_response(color)
+}
+
+#[tauri::command]
 fn redo(state: tauri::State<'_, EditorState>) -> Result<Value, Value> {
     let mut doc = state.document.lock().unwrap();
     let mut history = state.history.lock().unwrap();
@@ -387,7 +442,9 @@ fn main() {
             transform_layer,
             crop_canvas,
             resize_canvas,
-            draw_brush_stroke
+            draw_brush_stroke,
+            export_document,
+            sample_pixel
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
