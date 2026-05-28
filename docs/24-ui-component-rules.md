@@ -25,9 +25,9 @@ Komponen prioritas MVP:
 
 ## 3) Button Rules
 
-- Height default: `32px`.
-- Padding horizontal default: `12px`.
-- Radius: `--radius-md`.
+- Height default: `32px` (Standard), `24px` (Dense/Toolbar).
+- Padding horizontal default: `12px` (Standard), `8px` (Dense).
+- **Radius**: Dilarang keras menggunakan bentuk "Pill" (`rounded-full`). Gunakan sudut tajam atau radius sangat minim `--radius-sm` (sekitar 2px - 4px) untuk memancarkan presisi alat profesional.
 - Primary action pakai `--color-accent`.
 - Destructive action pakai `--color-danger`.
 
@@ -39,21 +39,36 @@ Komponen prioritas MVP:
 
 ## 5) Input Rules
 
-- Height default: `32px`.
-- Background: `--color-bg-elevated`.
-- Border default: `--border-thin solid --color-border-subtle`.
-- Focus gunakan ring dari `--color-focus-ring`.
+- Height default: `32px` (Standard), `26px` (Dense/Inspector).
+- Style: **Defined Box (Recessed)**. 
+- Background: `--color-bg-input` (#121214).
+- Border: `1px solid var(--color-border-subtle)`.
+- **Inset Effect**: Berikan `border-top-color: #101012` (lebih gelap dari border lainnya) untuk memberikan efek visual "masuk" ke dalam panel.
+- Focus: Border color berubah menjadi `--color-accent` (#E15A17).
+- **Typography Input**: Dilarang keras menggunakan font monospace (`font-mono`) atau `font-bold` di dalam input angka (seperti koordinat). Gunakan font UI utama biasa. Keutuhan lebar angka akan dijaga otomatis oleh CSS `tabular-nums` yang di-set di root.
 
 ## 6) Panel Rules
 
-- Panel header harus konsisten:
-1. title kiri,
-2. quick action kanan (opsional),
-3. divider bawah.
-- Panel body pakai padding token `--space-3`.
-- Panel tidak boleh menyisipkan logic bisnis; hanya presentasi data.
+- **Docked Precision Logic**: Panel utama (Sidebar/Inspector) wajib menempel (*anchored/docked*) ke tepi window samping, atas, dan bawah.
+- **Visual Separation**: Pemisahan area tidak lagi menggunakan margin luar (`m-2`), melainkan border tipis `1px solid var(--color-studio-border)` di sisi yang berbatasan dengan Canvas.
+- **Rounding Strategy**: 
+  - Hanya sudut yang menghadap ke arah Canvas (inner corners) yang diberikan `--radius-lg` (8px). 
+  - Sudut yang menempel ke window (outer corners) wajib tajam (`0px`).
+- **Panel Header**:
+  - Background: `--color-studio-elevated` (#29292B).
+  - Height: `32px`.
+  - Typography: `11px`, `font-bold`, `uppercase`, `tracking-wider`.
+- **Shadow**: Gunakan *subtle shadow* di sisi dalam panel yang berbatasan dengan Canvas untuk memberikan efek kedalaman (*workspace well*).
 
-## 7) Layer List Item Rules
+## 7) Global Radius Discipline (Soft & Snappy)
+
+- **Outer Containers (Inner Corners Only)**: `8px` (`--radius-lg`).
+- **Buttons / Tabs / Group Containers**: `6px` (`--radius-md`).
+- **Inputs / Small Interactive Elements**: `4px` (`--radius-sm`).
+- **Tool Indicators / Swatches**: `1px - 2px` (Hampir kotak untuk presisi).
+- Dilarang menggunakan radius di luar variabel token tersebut kecuali untuk Artboard (minimal 1px).
+
+## 8) Layer List Item Rules
 
 - Height item default: `30px`.
 - State aktif wajib jelas kontras.
@@ -95,5 +110,8 @@ Komponen prioritas MVP:
 - [ ] Komponen pakai design token.
 - [ ] Semua state interaktif lengkap.
 - [ ] Akses keyboard dasar berfungsi.
+- [ ] Tidak ada hardcoded color/spacing global.
+- [ ] Nama komponen konsisten.
+] Akses keyboard dasar berfungsi.
 - [ ] Tidak ada hardcoded color/spacing global.
 - [ ] Nama komponen konsisten.

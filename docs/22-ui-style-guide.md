@@ -2,12 +2,15 @@
 
 Dokumen ini mengunci arah visual UI Photrez agar hasil kerja AI agent konsisten.
 
-## 1) Principles
+## 1) Core Philosophy & Principles (Soft & Snappy)
 
-1. Functional first: UI harus fokus pada kejelasan workflow editing.
-2. Compact desktop density: efisien untuk panel tool, bukan layout web long-scroll.
-3. Consistency over novelty: komponen baru harus mengikuti token dan pattern yang sama.
-4. Predictable interaction: state dan feedback harus seragam di seluruh area.
+Mengapa UI Photrez dirancang dengan estetika "Soft & Snappy"? Jawabannya adalah untuk mencapai keseimbangan antara **Profesionalitas** dan **Modernitas**. Berikut adalah pilar filosofis desain kita:
+
+1. **Familiarity & Muscle Memory**: Jangan mereinventasi tata letak antarmuka. Pengguna harus langsung tahu cara menggunakan aplikasi di detik pertama berkat tata letak standar industri (Toolbar atas, Inspector kanan, Tool rail kiri).
+2. **Invisible UI (Zero-Tint Neutrality)**: Antarmuka adalah alat, bukan pameran. Warna latar wajib menggunakan abu-abu netral sejati (True Neutral Gray tanpa rona biru/kuning) agar UI tidak mendistorsi atau meracuni persepsi warna mata pengguna terhadap gambar yang sedang diedit. 
+3. **Soft & Snappy Aesthetic**: Menghindari "Mechanical Rigidity" yang terlalu kaku (2px) maupun "AI Slop" yang terlalu lembut (wide blurs). Penggunaan radius global **8px** memberikan kesan modern dan ramah, namun elemen internal tetap memiliki densitas tinggi untuk efisiensi kerja.
+4. **Docked Precision**: Segala hal harus terstruktur dan geometris. Panel utama menempel (*docked*) ke tepi window untuk memaksimalkan ruang kerja, namun memiliki **inner rounding** pada sudut yang menghadap canvas untuk menjaga kelembutan visual.
+5. **Distinct Identity**: Identitas Photrez ditanamkan pada warna aksen tunggal **Photon Amber (`#E15A17`)** yang hangat dan bertenaga, memberikan kontras tinggi pada UI yang netral.
 
 ## 2) Layout System (Editor Shell)
 
@@ -34,10 +37,12 @@ Aturan:
 ## 4) Typography Rules
 
 - UI Font Family: `Inter, Segoe UI, sans-serif`.
-- Base font size: `13px`.
-- Heading panel: `14px` semibold.
-- Secondary/meta text: `12px`.
-- Minimum readable text: `12px` (hindari lebih kecil untuk UI utama).
+- **Tabular Nums**: Wajib menggunakan `font-variant-numeric: tabular-nums;` secara global agar angka tidak bergeser saat nilainya berubah (sangat krusial untuk inspektur properties).
+- Base font size: `13px` (Standar OS Desktop Native yang nyaman dibaca).
+- Heading panel / Toolbar: `12px` atau `13px` font-medium.
+- Secondary / Meta text: `12px`.
+- Micro labels (koordinat, label input): `11px` atau `12px` uppercase.
+- Jangan gunakan teks lebih kecil dari `11px`.
 
 ## 5) Color and Surface Rules
 

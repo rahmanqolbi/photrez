@@ -42,6 +42,10 @@ Dokumen ini dipakai untuk melacak keputusan inti proyek secara ringkas.
 | i18n strategy | MVP English-only; arsitektur harus mengikuti guardrails di `docs/37-i18n-strategy-note.md` | Locked |
 | Ctrl+S behavior | Ctrl+S selalu memicu Export Dialog (bukan quick export langsung) untuk mencegah overwrite tanpa sengaja | Locked |
 | UI direction lock (A/A/A/B/A/A) | Persona `Native desktop classic`, density `Compact`, menu `Full menu bar`, panel `Multi-tab`, icon `Outline monoline`, warna `Neutral blue-gray` | Locked |
+| Accent color identity | **Photon Amber** (`#E15A17` / `#F97316` / `#C2410C`) — migrasi dari Studio Indigo (`#5C6AEA`). Alasan: identitas visual hangat yang berbeda dari Photoshop/Figma, cocok untuk hardware-tooling feel | Locked |
+| Ergonomic layout scaling | Menubar `36px` (dari 32), Toolbar `42px` (dari 38), Status `28px` (dari 26), Tool Rail `56px` (dari 48), Tool buttons `36×36` (dari 32×32), Lucide icons `20×20` (dari 18×18). Alasan: click target terlalu kecil di 1080p, accessibility | Locked |
+| Scrollbar style | Ultra-slim `4px` WebKit scrollbar dengan `var(--color-text-muted)` thumb. Alasan: mengurangi noise visual, feel lebih native | Locked |
+| Range slider style | Custom WebKit slider dengan Photon Amber thumb `14px`, glow shadow `rgba(225,90,23,0.45)`, hover scale `1.15x` | Locked |
 
 ## Keputusan yang Masih Pending
 

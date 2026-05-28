@@ -1,5 +1,7 @@
 # Carbon Studio UI Mockup Redesign Implementation Plan
 
+> **WARNING (2026-05-27)**: The typography styling (like `font-mono` inputs and `11px`/`13px` base sizing) referenced in this legacy plan is DEPRECATED. Please refer to `docs/22-ui-style-guide.md` and `docs/10-b-desktop-behavior-spec.md` for the current **Modern Strict Desktop UI** standards (using `12px/13px` base and `tabular-nums` without monospace inputs).
+
 > **For Antigravity:** REQUIRED WORKFLOW: Use `.agent/workflows/execute-plan.md` to execute this plan in single-flow mode.
 
 **Goal:** Redesign the Photrez classic mockup (`docs/30-ui-full-editor-mockup.html`) into a highly polished, modern, native-feeling dark desktop UI using TailwindCSS v4 and Lucide icons.

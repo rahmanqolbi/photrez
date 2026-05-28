@@ -1,98 +1,143 @@
 @import "tailwindcss";
 
-/* Professional Studio Gray (True Neutral Design System) */
-:root {
-  /* Surface colors - Zero-tint true neutrals */
-  --color-bg-app: #1A1A1C;
-  --color-bg-panel: #202022;
-  --color-bg-elevated: #29292B;
-  --color-bg-canvas-wrap: #161618;
+@theme {
+  --color-studio-bg: #1A1A1C;
+  --color-studio-panel: #202022;
+  --color-studio-elevated: #29292B;
+  --color-studio-input: #28282B;
+  --color-studio-canvas: #161618;
+  --color-studio-border: #343438;
+  --color-studio-border-strong: #424246;
 
-  --color-border-subtle: #343438;
-  --color-border-strong: #424246;
+  --color-accent: #E15A17;
+  --color-accent-hover: #F97316;
+  --color-accent-active: #C2410C;
 
-  /* Typography */
   --color-text-primary: #D4D4D8;
   --color-text-secondary: #A1A1AA;
   --color-text-muted: #71717A;
 
-  /* Studio Indigo Accent */
-  --color-accent: #5C6AEA;
-  --color-accent-hover: #7380F3;
-  --color-accent-active: #4754D1;
-
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
-  --color-info: #5C6AEA;
+  --color-close: #e81123;
 
-  --color-focus-ring: #5C6AEA;
-
-  /* Layout and shapes */
   --radius-sm: 2px;
   --radius-md: 4px;
   --radius-lg: 6px;
 
-  --border-thin: 1px;
-  --border-strong: 2px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.6);
+  --shadow-pro: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.6);
 
-  --motion-fast: 80ms;
-  --motion-normal: 100ms;
-  --motion-slow: 150ms;
-}
 
-/* ANTI-WEBAPP RESET RULES */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  user-select: none;
-  -webkit-user-select: none;
-  outline: none;
 }
 
-input, textarea {
-  user-select: text;
-  -webkit-user-select: text;
+/* Global Reset & Base Styles */
+@layer base {
+  * {
+    @apply box-border m-0 p-0 select-none outline-none border-studio-border;
+  }
+  
+  input, textarea {
+    @apply select-text;
+  }
+
+  html, body, #root {
+    @apply w-full h-full overflow-hidden text-text-primary bg-studio-bg;
+    font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.2;
+  }
 }
 
-img, svg, a {
-  -webkit-user-drag: none;
-  user-drag: none;
+/* Photrez Component Utilities */
+@layer components {
+  .studio-input {
+    @apply bg-studio-input border border-studio-border rounded-md text-white px-2 h-[28px] outline-none transition-colors duration-100;
+  }
+  .studio-input:focus {
+    @apply border-accent;
+  }
+
+  /* RAW PRO TOOL RAIL - Option B (Professional Lift) 100% Fidelity */
+  .tool-rail-raw {
+    @apply flex flex-col items-center py-2.5 gap-1 w-full;
+  }
+
+  .tool-btn-raw {
+    @apply w-9 h-9 rounded-sm flex items-center justify-center text-text-muted transition-all duration-75 relative;
+    transition-timing-function: linear;
+  }
+  
+  .tool-btn-raw:hover {
+    @apply bg-white/5 text-white;
+  }
+  
+  .tool-btn-raw.active {
+    @apply bg-studio-bg text-white border border-studio-border-strong shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.5)];
+  }
+
+  .tool-btn-raw.active svg {
+    color: var(--color-accent);
+  }
+  
+  .tool-btn-raw.active::before {
+    content: "";
+    @apply absolute top-2 bottom-2 bg-accent;
+    left: -6px;
+    width: 2px;
+  }
+
+  /* Mechanical Divider - Solid & Precise */
+  .tool-divider {
+    @apply w-5 h-px bg-studio-border my-1.5 opacity-100;
+  }
+
+  /* Sub-tool Micro Indicator - Minimalist triangle */
+  .sub-hint::after {
+    content: "";
+    @apply absolute bottom-[3px] right-[3px] w-0 h-0 border-solid;
+    border-width: 0 0 3px 3px;
+    border-color: transparent transparent #444 transparent;
+  }
+  .tool-btn-raw:hover.sub-hint::after {
+    border-color: transparent transparent var(--color-accent) transparent;
+  }
+
+  .panel-header {
+    @apply bg-studio-elevated px-3 h-8 flex items-center justify-between text-[11px] font-bold text-text-secondary uppercase tracking-wider;
+  }
 }
 
-html, body, #root {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background-color: var(--color-bg-app);
-  color: var(--color-text-primary);
-  font-family: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
-  font-weight: 500; /* Sharp rendering */
-  font-size: 13px;
-  line-height: 1.2;
-  overscroll-behavior: none;
-  -webkit-font-smoothing: antialiased;
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { 
+  @apply bg-[#52525B] rounded-sm transition-colors; 
+}
+::-webkit-scrollbar-thumb:hover { @apply bg-[#71717A]; }
+
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* Range Slider Reset */
+input[type="range"] {
+  @apply appearance-none bg-transparent cursor-pointer w-full;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  @apply bg-studio-canvas border border-studio-border h-1.5 rounded-full;
+}
+input[type="range"]::-webkit-slider-thumb {
+  @apply appearance-none -mt-1 bg-accent h-3.5 w-3.5 rounded-full shadow-lg transition-transform;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  @apply scale-110 bg-accent-hover;
 }
 
-/* Custom overlay scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background-color: var(--color-text-muted);
-  border-radius: var(--radius-sm);
-  transition: background-color var(--motion-fast);
-}
-::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-text-secondary);
-}
-
-/* Tabular numbers for static alignment */
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
+@keyframes dash {
+  to {
+    stroke-dashoffset: -10;
+    border-style: dashed;
+  }
 }

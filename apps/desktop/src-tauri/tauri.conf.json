@@ -11,11 +11,12 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Photrez",
         "width": 1280,
         "height": 832,
         "resizable": true,
-        "decorations": true
+        "decorations": false
       }
     ],
     "security": {

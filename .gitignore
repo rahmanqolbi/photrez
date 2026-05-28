@@ -48,6 +48,11 @@ yarn-error.log*
 .gemini_security/
 .agents/tmp/
 .codex/tmp/
+docs/AI_CONTEXT.md
+docs/AI_CURRENT_TASK.md
+docs/AI_HISTORY.md
+docs/FEATURES.md
+docs/ARCHITECTURE.md
 
 # Tauri specific (optional, usually handled by src-tauri/.gitignore if exists, but safe to add globally)
 src-tauri/gen/

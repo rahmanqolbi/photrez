@@ -118,7 +118,7 @@ Reference: Existing implementation in `aplikasi-cetak-massal` studio.
 
 ## 5) Reserved Shortcuts (Post-MVP)
 
-These shortcuts are reserved for future features and must not be reassigned in MVP:
+These shortcuts are reserved for future features and must not be reassigned in MVP (UI button for Command Palette removed from toolbar — will be re-added when Layer B is implemented):
 
 | Shortcut | Reserved For |
 | --- | --- |

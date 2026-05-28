@@ -1,13 +1,13 @@
-# Current Task: M4 — Brush & Eraser Engine [COMPLETE]
+# Current Task: M5 — Export Pipeline & Color Sampling [IN PROGRESS]
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
 ## Deskripsi
 
-Implementasi Milestone 4: Brush & Eraser Engine.
-Fokus pada merancang dan mengimplementasikan interpolasi sub-piksel brush, eraser alpha-blending, Tauri IPC bridge untuk stroke painting, Options Bar signals, dan zero-latency `<canvas>` overlay rendering.
+Implementasi Milestone 5: Export Pipeline + Eyedropper & Color Picker.
+Fokus pada merancang dan mengimplementasikan layered Porter-Duff alpha compositing flattening, image encoding (JPEG, PNG, WebP), rfd native file dialogs, canvas pixel-level color sampling, dan overlapping swatch color pickers.
 
-**Tugas Aktif Saat Ini:** M4 Selesai: Seluruh implementasi raster brush dan eraser engine terintegrasi penuh [COMPLETE]
+**Tugas Aktif Saat Ini:** M5 Task 40: [photrez-core] Add image dependency & Implement flattening compositor [IN PROGRESS]
 
 
 ## Status Implementasi

@@ -1,5 +1,7 @@
 # Rencana Desain UI/UX Photrez: Carbon Studio (2026-05-27)
 
+> **WARNING (2026-05-27)**: Arah warna dan tipografi di dokumen perencanaan ini sudah USANG (DEPRECATED). Kita telah beralih ke skema warna **Professional Studio Gray** (True Neutral) dan ukuran font desktop native (`12px-13px` base) dengan `tabular-nums`. Segala referensi `font-mono` untuk input dan warna biru gelap SaaS di sini sudah tidak berlaku. Rujuk ke `docs/22-ui-style-guide.md` dan `docs/23-design-tokens.md` terbaru.
+
 Dokumen ini mendokumentasikan keputusan desain visual dan interaksi untuk antarmuka pengguna (UI/UX) **Photrez**. Arah desain ini dipilih untuk memberikan estetika yang modern, sangat premium, fungsional, adaptif secara global, dan sepenuhnya terbebas dari kesan "AI Slop" (desain generik kaku cetakan AI).
 
 ---

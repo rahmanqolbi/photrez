@@ -41,7 +41,7 @@
 | Task 37 | [frontend] Enable Left Rail buttons, Shortcut mapping, and Options Bar parameters | [x] Completed |
 | Task 38 | [frontend] Implement zero-latency <canvas> stroke drawing overlay and cursor preview | [x] Completed |
 | Task 39 | Verify and Compile Production bundle | [x] Completed |
-| Task 40 | [photrez-core] Add image dependency & Implement flattening compositor | [ ] Pending |
+| Task 40 | [photrez-core] Add image dependency & Implement flattening compositor | [x] Completed |
 | Task 41 | [desktop-shell] Add rfd & Register export_document Command | [ ] Pending |
 | Task 42 | [photrez-core] Implement sample_pixel composite color sampling | [ ] Pending |
 | Task 43 | [desktop-shell] Register sample_pixel Command in main.rs | [ ] Pending |

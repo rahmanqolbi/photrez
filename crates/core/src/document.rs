@@ -1,13 +1,18 @@
 use serde::{Deserialize, Serialize};
 use crate::layers::Layer;
+use crate::selection::SelectionRect;
+use crate::transform::Transform;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Document {
     pub id: String,
     pub width: u32,
     pub height: u32,
     pub layers: Vec<Layer>,
+    pub selection: Option<SelectionRect>,
 }
+
+pub const MAX_PIXEL_BUDGET: usize = 268_435_456; // 256 MB in bytes
 
 impl Document {
     pub fn new(id: String, width: u32, height: u32) -> Self {
@@ -16,11 +21,150 @@ impl Document {
             width,
             height,
             layers: Vec::new(),
+            selection: None,
         }
     }
 
+    pub fn calculate_memory_usage(&self) -> usize {
+        self.layers.iter().map(|l| (l.width * l.height * 4) as usize).sum()
+    }
+
+    pub fn add_layer_safe(&mut self, layer: Layer) -> Result<(), String> {
+        let additional_bytes = (layer.width * layer.height * 4) as usize;
+        let current_bytes = self.calculate_memory_usage();
+        if current_bytes + additional_bytes > MAX_PIXEL_BUDGET {
+            return Err("E_RESOURCE_LIMIT: Document memory exceeds max pixel budget of 256MB".to_string());
+        }
+        // Insert at index 0 (top of the layer stack) to match high-fidelity design standards
+        self.layers.insert(0, layer);
+        Ok(())
+    }
+
     pub fn add_layer(&mut self, layer: Layer) {
-        self.layers.push(layer);
+        let _ = self.add_layer_safe(layer);
+    }
+
+    pub fn delete_layer(&mut self, id: &str) -> Result<Layer, String> {
+        let index = self.layers.iter().position(|l| l.id == id)
+            .ok_or_else(|| format!("Layer with id '{}' not found", id))?;
+        Ok(self.layers.remove(index))
+    }
+
+    pub fn reorder_layer(&mut self, from_idx: usize, to_idx: usize) -> Result<(), String> {
+        if from_idx >= self.layers.len() || to_idx >= self.layers.len() {
+            return Err("Index out of bounds".to_string());
+        }
+        let layer = self.layers.remove(from_idx);
+        self.layers.insert(to_idx, layer);
+        Ok(())
+    }
+
+    pub fn update_layer_properties(
+        &mut self,
+        id: &str,
+        opacity: Option<f32>,
+        visible: Option<bool>,
+        locked: Option<bool>,
+        name: Option<String>,
+        blend_mode: Option<String>,
+    ) -> Result<(), String> {
+        let layer = self.layers.iter_mut().find(|l| l.id == id)
+            .ok_or_else(|| format!("Layer with id '{}' not found", id))?;
+
+        if let Some(o) = opacity {
+            layer.opacity = o.clamp(0.0, 1.0);
+        }
+        if let Some(v) = visible {
+            layer.visible = v;
+        }
+        if let Some(l) = locked {
+            layer.locked = l;
+        }
+        if let Some(n) = name {
+            layer.name = n;
+        }
+        if let Some(bm) = blend_mode {
+            layer.blend_mode = bm;
+        }
+        Ok(())
+    }
+
+    // ── Selection Operations ──
+
+    pub fn create_selection(&mut self, x: f32, y: f32, width: f32, height: f32) {
+        let rect = SelectionRect { x, y, width, height }.normalize();
+        let clamped = rect.clamp_to_canvas(self.width, self.height);
+        self.selection = Some(clamped);
+    }
+
+    pub fn clear_selection(&mut self) {
+        self.selection = None;
+    }
+
+    pub fn select_all(&mut self) {
+        let rect = SelectionRect {
+            x: 0.0,
+            y: 0.0,
+            width: self.width as f32,
+            height: self.height as f32,
+        };
+        self.selection = Some(rect);
+    }
+
+    pub fn move_selection(&mut self, dx: f32, dy: f32) -> Option<SelectionRect> {
+        let rect = self.selection.as_ref()?;
+        let moved = rect.translate(dx, dy);
+        let clamped = moved.clamp_to_canvas(self.width, self.height);
+        self.selection = Some(clamped);
+        self.selection
+    }
+
+    // ── Layer Transform Operations ──
+
+    pub fn move_layer(&mut self, id: &str, x: f32, y: f32) -> Result<(), String> {
+        let layer = self.layers.iter_mut().find(|l| l.id == id)
+            .ok_or_else(|| format!("Layer with id '{}' not found", id))?;
+        layer.x = x;
+        layer.y = y;
+        Ok(())
+    }
+
+    pub fn apply_transform(&mut self, id: &str, transform: Transform) -> Result<(), String> {
+        let layer = self.layers.iter_mut().find(|l| l.id == id)
+            .ok_or_else(|| format!("Layer with id '{}' not found", id))?;
+        layer.transform = transform;
+        Ok(())
+    }
+
+    pub fn get_layer_transform(&self, id: &str) -> Option<Transform> {
+        self.layers.iter().find(|l| l.id == id).map(|l| l.transform)
+    }
+
+    pub fn get_layer_by_id(&self, id: &str) -> Option<&Layer> {
+        self.layers.iter().find(|l| l.id == id)
+    }
+
+    pub fn crop_canvas(&mut self, x: f32, y: f32, width: u32, height: u32) -> Result<(), String> {
+        if width == 0 || height == 0 {
+            return Err("Crop dimensions must be greater than zero".to_string());
+        }
+        self.width = width;
+        self.height = height;
+        for layer in self.layers.iter_mut() {
+            layer.x -= x;
+            layer.y -= y;
+        }
+        self.selection = None; // Clear selection after crop
+        Ok(())
+    }
+
+    pub fn resize_canvas(&mut self, width: u32, height: u32) -> Result<(), String> {
+        if width == 0 || height == 0 {
+            return Err("Canvas dimensions must be greater than zero".to_string());
+        }
+        self.width = width;
+        self.height = height;
+        Ok(())
     }
 }
 
@@ -35,5 +179,132 @@ mod tests {
         assert_eq!(doc.width, 1920);
         assert_eq!(doc.height, 1080);
         assert_eq!(doc.layers.len(), 0);
+    }
+
+    #[test]
+    fn test_layer_operations() {
+        let mut doc = Document::new("doc-1".to_string(), 1000, 1000);
+        let l1 = Layer::new("l-1".to_string(), "Layer 1".to_string(), 500, 500);
+        let l2 = Layer::new("l-2".to_string(), "Layer 2".to_string(), 500, 500);
+
+        doc.add_layer(l1);
+        doc.add_layer(l2);
+
+        // Since we insert at 0, "l-2" should be first (top of stack)
+        assert_eq!(doc.layers[0].id, "l-2");
+        assert_eq!(doc.layers[1].id, "l-1");
+
+        // Test update properties
+        let update_res = doc.update_layer_properties(
+            "l-2",
+            Some(0.5),
+            Some(false),
+            Some(true),
+            Some("New Layer 2 Name".to_string()),
+            Some("multiply".to_string()),
+        );
+        assert!(update_res.is_ok());
+        assert_eq!(doc.layers[0].opacity, 0.5);
+        assert!(!doc.layers[0].visible);
+        assert!(doc.layers[0].locked);
+        assert_eq!(doc.layers[0].name, "New Layer 2 Name");
+        assert_eq!(doc.layers[0].blend_mode, "multiply");
+
+        // Test reorder layers
+        let reorder_res = doc.reorder_layer(0, 1);
+        assert!(reorder_res.is_ok());
+        assert_eq!(doc.layers[0].id, "l-1");
+        assert_eq!(doc.layers[1].id, "l-2");
+
+        // Test delete layer
+        let delete_res = doc.delete_layer("l-1");
+        assert!(delete_res.is_ok());
+        assert_eq!(doc.layers.len(), 1);
+        assert_eq!(doc.layers[0].id, "l-2");
+    }
+
+    #[test]
+    fn test_memory_budget_under_limit() {
+        let mut doc = Document::new("doc-budget-ok".to_string(), 1920, 1080);
+        let l1 = Layer::new("layer-ok-1".to_string(), "Layer 1".to_string(), 800, 600);
+        let l2 = Layer::new("layer-ok-2".to_string(), "Layer 2".to_string(), 800, 600);
+
+        let r1 = doc.add_layer_safe(l1);
+        let r2 = doc.add_layer_safe(l2);
+
+        assert!(r1.is_ok());
+        assert!(r2.is_ok());
+        assert_eq!(doc.calculate_memory_usage(), (800 * 600 * 4 * 2) as usize);
+    }
+
+    #[test]
+    fn test_memory_budget_over_limit() {
+        let mut doc = Document::new("doc-budget-fail".to_string(), 1000, 1000);
+        let huge_layer = Layer::new("layer-huge".to_string(), "Huge".to_string(), 10000, 8000);
+
+        let res = doc.add_layer_safe(huge_layer);
+        assert!(res.is_err());
+        assert!(res.unwrap_err().contains("E_RESOURCE_LIMIT"));
+    }
+
+    #[test]
+    fn test_selection_operations() {
+        let mut doc = Document::new("doc-sel".to_string(), 800, 600);
+        assert!(doc.selection.is_none());
+
+        doc.create_selection(100.0, 50.0, 300.0, 200.0);
+        assert!(doc.selection.is_some());
+        let sel = doc.selection.unwrap();
+        assert_eq!(sel.x, 100.0);
+        assert_eq!(sel.y, 50.0);
+
+        doc.clear_selection();
+        assert!(doc.selection.is_none());
+    }
+
+    #[test]
+    fn test_select_all() {
+        let mut doc = Document::new("doc-all".to_string(), 800, 600);
+        doc.select_all();
+        let sel = doc.selection.unwrap();
+        assert_eq!(sel.width, 800.0);
+        assert_eq!(sel.height, 600.0);
+    }
+
+    #[test]
+    fn test_move_layer() {
+        let mut doc = Document::new("doc-move".to_string(), 1000, 1000);
+        let l1 = Layer::new("l-1".to_string(), "Layer 1".to_string(), 500, 500);
+        doc.add_layer(l1);
+
+        let res = doc.move_layer("l-1", 100.0, 200.0);
+        assert!(res.is_ok());
+        assert_eq!(doc.layers[0].x, 100.0);
+        assert_eq!(doc.layers[0].y, 200.0);
+    }
+
+    #[test]
+    fn test_crop_canvas() {
+        let mut doc = Document::new("doc-crop".to_string(), 800, 600);
+        let l1 = Layer::new("l-1".to_string(), "Layer 1".to_string(), 100, 100);
+        doc.add_layer(l1);
+        doc.layers[0].x = 50.0;
+        doc.layers[0].y = 50.0;
+
+        let res = doc.crop_canvas(10.0, 10.0, 500, 400);
+        assert!(res.is_ok());
+        assert_eq!(doc.width, 500);
+        assert_eq!(doc.height, 400);
+        assert_eq!(doc.layers[0].x, 40.0);
+        assert_eq!(doc.layers[0].y, 40.0);
+    }
+
+    #[test]
+    fn test_resize_canvas() {
+        let mut doc = Document::new("doc-resize".to_string(), 800, 600);
+        let res = doc.resize_canvas(1024, 768);
+        assert!(res.is_ok());
+        assert_eq!(doc.width, 1024);
+        assert_eq!(doc.height, 768);
     }
 }

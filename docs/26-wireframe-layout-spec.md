@@ -7,15 +7,17 @@ Dokumen ini mendefinisikan blueprint layout UI utama untuk Photrez MVP.
 - Primary target: desktop `1366x768` dan `1920x1080`.
 - Minimum supported: `1280x720` (dengan panel collapse).
 
-## 2) Shell Regions
+## 2) Shell Regions (Docked Precision)
 
-1. Top Bar
-2. Left Tool Rail
-3. Center Canvas Viewport
-4. Right Inspector
-5. Bottom Status Bar
+Photrez menggunakan sistem tata letak **Docked Precision** di mana fungsionalitas UI berlabuh pada tepi window untuk stabilitas dan efisiensi ruang:
 
-Urutan region ini dianggap locked untuk MVP.
+1. **Top Bar**: Fixed top, anchored.
+2. **Left Tool Rail**: Docked to left/top/bottom edges. Rounding: `8px` hanya pada sisi kanan.
+3. **Center Canvas Viewport**: Area kerja utama (The "Well").
+4. **Right Inspector**: Docked to right/top/bottom edges. Rounding: `8px` hanya pada sisi kiri.
+5. **Bottom Status Bar**: Fixed bottom, anchored.
+
+Urutan dan sifat docking region ini dianggap locked untuk MVP.
 
 ## 3) Region Dimensions (Baseline)
 
@@ -26,8 +28,8 @@ Urutan region ini dianggap locked untuk MVP.
 
 ### Left Tool Rail
 
-- Width: `52px`
-- Item size default: `28px` hit area minimum.
+- Width: `48px`
+- Item size: `36×36px` hit area.
 - Scroll allowed jika tools bertambah.
 
 ### Right Inspector
