@@ -7,7 +7,7 @@
 Implementasi Milestone 4: Brush & Eraser Engine.
 Fokus pada merancang dan mengimplementasikan interpolasi sub-piksel brush, eraser alpha-blending, Tauri IPC bridge untuk stroke painting, Options Bar signals, dan zero-latency `<canvas>` overlay rendering.
 
-**Tugas Aktif Saat Ini:** M4 Task 38: Implementasi zero-latency <canvas> stroke drawing overlay and cursor preview [IN PROGRESS]
+**Tugas Aktif Saat Ini:** M4 Task 39: Verify and Compile Production bundle [IN PROGRESS]
 
 
 ## Status Implementasi
