@@ -93,10 +93,10 @@
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Zoom in/out (UI buttons)                   |
 | ✅ DONE      | Zoom level display (status bar)            |
-| ⬜ TODO      | Zoom via scroll wheel                      |
-| ⬜ TODO      | Pan canvas (hand tool / space+drag)        |
-| ⬜ TODO      | Fit to screen                              |
-| ⬜ TODO      | Pixel-level canvas rendering (wgpu)        |
+| ✅ DONE      | Zoom via scroll wheel (Ctrl+scroll)        |
+| ✅ DONE      | Pan canvas (Space+drag)                    |
+| ✅ DONE      | Fit to screen (Ctrl+0)                     |
+| ✅ DONE      | Pixel-level canvas rendering (wgpu canvas) |
 
 ---
 
@@ -122,7 +122,7 @@
 | ✅ DONE      | Status bar (dimensions, cursor pos, zoom, RAM) |
 | ✅ DONE      | Tauri bridge IPC (`invoke` → `#[tauri::command]`) |
 | ✅ DONE      | Response envelope contract (v1.0.0)        |
-| ⬜ TODO      | File open dialog                           |
+| ✅ DONE      | File open dialog (Ctrl+O)                  |
 | ⬜ TODO      | Native menu integration                    |
 | ⬜ TODO      | Window state persistence (size/position)   |
 

@@ -1,12 +1,12 @@
-# Current Task: M6 — Perf Gate + Packaging [COMPLETE]
+# Current Task: Tasks 5-10 — Frontend Viewport Integration [COMPLETE]
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
 ## Deskripsi
 
-Implementasi Milestone 6: Performance measurement, installer packaging, dan release candidate.
+Implementasi Tasks 5-10: Viewport state, zoom, pan, fit-to-screen, file open dialog, dan canvas integration.
 
-**Tugas Aktif Saat Ini:** M6 Completed successfully! All performance metrics PASS.
+**Tugas Aktif Saat Ini:** All 6 tasks completed successfully. Build passes.
 
 
 ## Status Implementasi

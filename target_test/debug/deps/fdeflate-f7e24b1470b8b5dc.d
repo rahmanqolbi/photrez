@@ -1,0 +1,11 @@
+D:\Project\image-studio\target_test\debug\deps\fdeflate-f7e24b1470b8b5dc.d: C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\lib.rs C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\compress.rs C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\decompress.rs C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\huffman.rs C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\tables.rs
+
+D:\Project\image-studio\target_test\debug\deps\libfdeflate-f7e24b1470b8b5dc.rlib: C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\lib.rs C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\compress.rs C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\decompress.rs C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\huffman.rs C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\tables.rs
+
+D:\Project\image-studio\target_test\debug\deps\libfdeflate-f7e24b1470b8b5dc.rmeta: C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\lib.rs C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\compress.rs C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\decompress.rs C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\huffman.rs C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\tables.rs
+
+C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\lib.rs:
+C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\compress.rs:
+C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\decompress.rs:
+C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\huffman.rs:
+C:\Users\Qolbi\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\fdeflate-0.3.7\src\tables.rs:

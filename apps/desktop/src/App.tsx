@@ -1,4 +1,4 @@
-import { createSignal, onMount, onCleanup, For, Show, Switch, Match } from "solid-js";
+import { createSignal, createEffect, onMount, onCleanup, For, Show, Switch, Match } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import {
   PenTool, Move, Brush, Eraser, Type, Crop,
@@ -40,6 +40,14 @@ export default function App() {
   const [selectedLayerId, setSelectedLayerId] = createSignal<string | null>(null);
   const [transformOpen, setTransformOpen] = createSignal(true);
 
+  // ── Viewport State ──
+  const [pan, setPan] = createSignal({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = createSignal(false);
+  const [panStart, setPanStart] = createSignal({ x: 0, y: 0 });
+  const [panStartOffset, setPanStartOffset] = createSignal({ x: 0, y: 0 });
+  const [isSpaceDown, setIsSpaceDown] = createSignal(false);
+  const [framebuffer, setFramebuffer] = createSignal<{ width: number; height: number; pixels: string } | null>(null);
+
   // ── Transform Drag State ──
   const [transformDragging, setTransformDragging] = createSignal(false);
   const [transformDragType, setTransformDragType] = createSignal<string | null>(null);
@@ -74,6 +82,7 @@ export default function App() {
   const [isDraggingLayer, setIsDraggingLayer] = createSignal(false);
   const [layerDragOffset, setLayerDragOffset] = createSignal({ x: 0, y: 0 });
   let artboardRef: HTMLDivElement | undefined;
+  let wgpuCanvasRef: HTMLCanvasElement | undefined;
 
   const getArtboardCoords = (clientX: number, clientY: number) => {
     const el = artboardRef;
@@ -112,8 +121,39 @@ export default function App() {
     });
   };
 
+  const handleOpenFile = async () => {
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const selected = await open({
+        multiple: false,
+        filters: [{
+          name: "Images",
+          extensions: ["png", "jpg", "jpeg", "webp", "bmp", "gif"]
+        }]
+      });
+
+      if (selected) {
+        const path = typeof selected === "string" ? selected : selected;
+        const result = await invoke("open_image", { path }) as any;
+        if (result?.ok) {
+          syncDocumentState();
+        }
+      }
+    } catch (err) {
+      console.error("Failed to open file:", err);
+    }
+  };
+
   const handleArtboardMouseDown = (e: MouseEvent) => {
     if (e.button !== 0) return;
+
+    if (isSpaceDown()) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX, y: e.clientY });
+      setPanStartOffset({ x: pan().x, y: pan().y });
+      return;
+    }
+
     const coords = getArtboardCoords(e.clientX, e.clientY);
 
     if (activeTool() === "eyedropper") {
@@ -152,6 +192,16 @@ export default function App() {
   };
 
   const handleArtboardMouseMove = (e: MouseEvent) => {
+    if (isPanning()) {
+      const dx = e.clientX - panStart().x;
+      const dy = e.clientY - panStart().y;
+      setPan({
+        x: panStartOffset().x + dx,
+        y: panStartOffset().y + dy
+      });
+      return;
+    }
+
     const coords = getArtboardCoords(e.clientX, e.clientY);
     setCanvasHoverPos({ x: coords.x, y: coords.y });
 
@@ -262,6 +312,11 @@ export default function App() {
   };
 
   const handleArtboardMouseUp = (_e: MouseEvent) => {
+    if (isPanning()) {
+      setIsPanning(false);
+      return;
+    }
+
     if (isSelecting()) {
       const overlay = selectionOverlay();
       if (overlay && overlay.w > 5 && overlay.h > 5) {
@@ -392,6 +447,58 @@ export default function App() {
       .catch((err) => console.error("Sync state err:", err));
   };
 
+  const handleWheel = (e: WheelEvent) => {
+    e.preventDefault();
+    const el = artboardRef;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    if (e.ctrlKey || e.metaKey) {
+      const factor = e.deltaY < 0 ? 1.1 : 0.9;
+      const oldZoom = zoom() / 100;
+      const newZoom = Math.min(5, Math.max(0.1, oldZoom * factor));
+      const zoomRatio = newZoom / oldZoom;
+
+      setPan({
+        x: mouseX - (mouseX - pan().x) * zoomRatio,
+        y: mouseY - (mouseY - pan().y) * zoomRatio
+      });
+      setZoom(Math.round(newZoom * 100));
+    } else {
+      setPan({
+        x: pan().x - e.deltaX,
+        y: pan().y - e.deltaY
+      });
+    }
+  };
+
+  const fitToScreen = () => {
+    const container = artboardRef?.parentElement?.parentElement;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const padding = 80;
+    const docW = docWidth();
+    const docH = docHeight();
+
+    if (docW === 0 || docH === 0) return;
+
+    const fitZoom = Math.min(
+      (rect.width - padding) / docW,
+      (rect.height - padding) / docH,
+      1
+    );
+
+    setZoom(Math.round(fitZoom * 100));
+    setPan({
+      x: (rect.width - docW * fitZoom) / 2,
+      y: (rect.height - docH * fitZoom) / 2
+    });
+  };
+
   onMount(() => {
     // Load initial document state
     syncDocumentState();
@@ -404,6 +511,27 @@ export default function App() {
       .catch((err) => {
         console.error("Tauri Bridge Ping Err:", err);
       });
+
+    // Register wheel event for zoom/pan
+    const artboardEl = artboardRef;
+    if (artboardEl) {
+      artboardEl.addEventListener("wheel", handleWheel, { passive: false });
+    }
+
+    // Space key handlers for pan mode
+    const handleKeyDownGlobal = (e: KeyboardEvent) => {
+      if (e.code === "Space" && !e.repeat) {
+        setIsSpaceDown(true);
+      }
+    };
+    const handleKeyUpGlobal = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        setIsSpaceDown(false);
+        setIsPanning(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDownGlobal);
+    window.addEventListener("keyup", handleKeyUpGlobal);
 
     // Custom keyboard shortcuts: Ctrl+Z and Ctrl+Y
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -454,6 +582,12 @@ export default function App() {
         invoke("select_all")
           .then((res: any) => { if (res?.ok) syncDocumentState(); })
           .catch(console.error);
+      } else if (isCmdOrCtrl && e.key === "0") {
+        e.preventDefault();
+        fitToScreen();
+      } else if (isCmdOrCtrl && e.key.toLowerCase() === "o") {
+        e.preventDefault();
+        handleOpenFile();
       } else if (!isCmdOrCtrl && e.key.toLowerCase() === "escape") {
         e.preventDefault();
         invoke("clear_selection")
@@ -487,11 +621,53 @@ export default function App() {
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("mousemove", handleArtboardMouseMove);
     window.addEventListener("mouseup", handleArtboardMouseUp);
+
+    // Initial fit to screen
+    requestAnimationFrame(() => {
+      fitToScreen();
+    });
   });
 
   onCleanup(() => {
+    const artboardEl = artboardRef;
+    if (artboardEl) {
+      artboardEl.removeEventListener("wheel", handleWheel);
+    }
     window.removeEventListener("mousemove", handleArtboardMouseMove);
     window.removeEventListener("mouseup", handleArtboardMouseUp);
+  });
+
+  createEffect(() => {
+    layers();
+    selectedLayerId();
+
+    invoke("get_framebuffer").then((res: any) => {
+      if (res?.ok) {
+        setFramebuffer(res.data);
+      }
+    });
+  });
+
+  createEffect(() => {
+    const fb = framebuffer();
+    const canvas = wgpuCanvasRef;
+    if (!fb || !canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const binaryString = atob(fb.pixels);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    const imageData = new ImageData(
+      new Uint8ClampedArray(bytes),
+      fb.width,
+      fb.height
+    );
+    ctx.putImageData(imageData, 0, 0);
   });
 
   const handleToolChange = (tool: string) => {
@@ -694,7 +870,7 @@ export default function App() {
                     <span>New Document...</span>
                     <span class="font-mono text-[11px] opacity-70">Ctrl+N</span>
                   </a>
-                  <a href="#" class="flex items-center justify-between px-4 py-1.5 hover:bg-accent hover:text-white text-text-primary text-[13px] no-underline">
+                  <a href="#" onClick={(e) => { e.preventDefault(); handleOpenFile(); setFileMenuOpen(false); }} class="flex items-center justify-between px-4 py-1.5 hover:bg-accent hover:text-white text-text-primary text-[13px] no-underline">
                     <span>Open Image...</span>
                     <span class="font-mono text-[11px] opacity-70">Ctrl+O</span>
                   </a>
@@ -1290,13 +1466,21 @@ export default function App() {
             <div class="flex-1 h-full flex items-center justify-center relative bg-studio-canvas overflow-auto">
               <div 
                 class="artboard border border-studio-border shadow-pro relative overflow-hidden bg-studio-canvas"
-                style={`width: ${docWidth()}px; height: ${docHeight()}px; transform: scale(${zoom() / 100});`}
+                style={`width: ${docWidth()}px; height: ${docHeight()}px; transform: translate(${pan().x}px, ${pan().y}px) scale(${zoom() / 100}); transform-origin: 0 0;`}
                 ref={artboardRef}
                 onMouseDown={handleArtboardMouseDown}
                 onMouseLeave={() => setCanvasHoverPos({ x: -999, y: -999 })}
               >
                 {/* ── Background Grid representation ── */}
                 <div class="absolute inset-0 bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+
+                {/* ── wgpu Canvas for pixel rendering ── */}
+                <canvas 
+                  ref={wgpuCanvasRef}
+                  width={docWidth()}
+                  height={docHeight()}
+                  class="absolute inset-0"
+                />
 
                 {/* ── Render Layers stack in document order ── */}
                 <For each={layers()}>

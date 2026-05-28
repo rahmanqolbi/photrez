@@ -6,6 +6,26 @@
 
 ---
 
+## [2026-05-28] FEATURE — Tasks 5-10: Frontend Viewport Integration [COMPLETE]
+
+### Kategori: FEATURE / UI
+
+**Deskripsi:** Implementasi viewport state management, zoom via scroll wheel, pan via Space+drag, fit-to-screen, file open dialog, dan canvas rendering integration.
+
+**Perubahan:**
+- Task 5: Viewport state signals (pan, isPanning, framebuffer)
+- Task 6: Zoom via Ctrl+scroll wheel with center-point zoom
+- Task 7: Pan via Space+drag with keyboard state tracking
+- Task 8: Fit to screen (Ctrl+0) with auto-centering
+- Task 9: File open dialog (Ctrl+O) with @tauri-apps/plugin-dialog
+- Task 10: Canvas integration (wgpu canvas element + framebuffer rendering effect)
+
+**File:** `apps/desktop/src/App.tsx`
+
+**Build:** ✅ `tsc && vite build` passed
+
+---
+
 ## [2026-05-28] FEATURE — M6: Perf Gate + Packaging [COMPLETE]
 
 ### Kategori: FEATURE / BUILD / PERFORMANCE
