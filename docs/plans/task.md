@@ -42,10 +42,10 @@
 | Task 38 | [frontend] Implement zero-latency <canvas> stroke drawing overlay and cursor preview | [x] Completed |
 | Task 39 | Verify and Compile Production bundle | [x] Completed |
 | Task 40 | [photrez-core] Add image dependency & Implement flattening compositor | [x] Completed |
-| Task 41 | [desktop-shell] Add rfd & Register export_document Command | [ ] Pending |
-| Task 42 | [photrez-core] Implement sample_pixel composite color sampling | [ ] Pending |
-| Task 43 | [desktop-shell] Register sample_pixel Command in main.rs | [ ] Pending |
-| Task 44 | [frontend] Enable Left Rail Eyedropper & Artboard pointer sampling | [ ] Pending |
-| Task 45 | [frontend] Overlay native color picker inputs & Options Bar export modal | [ ] Pending |
-| Task 46 | Verify and Compile Production bundle | [ ] Pending |
+| Task 41 | [desktop-shell] Add rfd & Register export_document Command | [x] Completed |
+| Task 42 | [photrez-core] Implement sample_pixel composite color sampling | [x] Completed |
+| Task 43 | [desktop-shell] Register sample_pixel Command in main.rs | [x] Completed |
+| Task 44 | [frontend] Enable Left Rail Eyedropper & Artboard pointer sampling | [x] Completed |
+| Task 45 | [frontend] Overlay native color picker inputs & Options Bar export modal | [x] Completed |
+| Task 46 | Verify and Compile Production bundle | [x] Completed |
 
