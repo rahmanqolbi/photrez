@@ -1,3 +1,14 @@
+// Multi-layer compositing shader
+// Each layer is a texture with its own transform and opacity
+
+struct LayerData {
+    transform: mat4x4<f32>,
+    opacity: f32,
+    visible: u32,
+    pad1: u32,
+    pad2: u32,
+};
+
 @group(0) @binding(0) var texture: texture_2d<f32>;
 @group(0) @binding(1) var tex_sampler: sampler;
 
@@ -25,6 +36,19 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
     }
     out.position = viewport.view_proj * out.position;
     return out;
+}
+
+fn alpha_blend(src: vec4<f32>, dst: vec4<f32>) -> vec4<f32> {
+    let out_a = src.a + dst.a * (1.0 - src.a);
+    if (out_a <= 0.0) {
+        return vec4<f32>(0.0, 0.0, 0.0, 0.0);
+    }
+    return vec4<f32>(
+        (src.r * src.a + dst.r * dst.a * (1.0 - src.a)) / out_a,
+        (src.g * src.a + dst.g * dst.a * (1.0 - src.a)) / out_a,
+        (src.b * src.a + dst.b * dst.a * (1.0 - src.a)) / out_a,
+        out_a
+    );
 }
 
 @fragment

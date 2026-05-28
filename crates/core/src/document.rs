@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 use crate::layers::Layer;
 use crate::selection::SelectionRect;
@@ -10,6 +11,7 @@ pub struct Document {
     pub height: u32,
     pub layers: Vec<Layer>,
     pub selection: Option<SelectionRect>,
+    pub dirty_layers: HashSet<String>,
 }
 
 pub const MAX_PIXEL_BUDGET: usize = 268_435_456; // 256 MB in bytes
@@ -22,6 +24,7 @@ impl Document {
             height,
             layers: Vec::new(),
             selection: None,
+            dirty_layers: HashSet::new(),
         }
     }
 
@@ -36,7 +39,9 @@ impl Document {
             return Err("E_RESOURCE_LIMIT: Document memory exceeds max pixel budget of 256MB".to_string());
         }
         // Insert at index 0 (top of the layer stack) to match high-fidelity design standards
+        let layer_id = layer.id.clone();
         self.layers.insert(0, layer);
+        self.dirty_layers.insert(layer_id);
         Ok(())
     }
 
@@ -47,7 +52,9 @@ impl Document {
     pub fn delete_layer(&mut self, id: &str) -> Result<Layer, String> {
         let index = self.layers.iter().position(|l| l.id == id)
             .ok_or_else(|| format!("Layer with id '{}' not found", id))?;
-        Ok(self.layers.remove(index))
+        let removed = self.layers.remove(index);
+        self.dirty_layers.insert(id.to_string());
+        Ok(removed)
     }
 
     pub fn reorder_layer(&mut self, from_idx: usize, to_idx: usize) -> Result<(), String> {
@@ -86,6 +93,7 @@ impl Document {
         if let Some(bm) = blend_mode {
             layer.blend_mode = bm;
         }
+        self.dirty_layers.insert(id.to_string());
         Ok(())
     }
 
@@ -126,6 +134,7 @@ impl Document {
             .ok_or_else(|| format!("Layer with id '{}' not found", id))?;
         layer.x = x;
         layer.y = y;
+        self.dirty_layers.insert(id.to_string());
         Ok(())
     }
 
@@ -133,7 +142,20 @@ impl Document {
         let layer = self.layers.iter_mut().find(|l| l.id == id)
             .ok_or_else(|| format!("Layer with id '{}' not found", id))?;
         layer.transform = transform;
+        self.dirty_layers.insert(id.to_string());
         Ok(())
+    }
+
+    pub fn mark_dirty(&mut self, layer_id: &str) {
+        self.dirty_layers.insert(layer_id.to_string());
+    }
+
+    pub fn clear_dirty(&mut self) {
+        self.dirty_layers.clear();
+    }
+
+    pub fn has_dirty_layers(&self) -> bool {
+        !self.dirty_layers.is_empty()
     }
 
     pub fn get_layer_transform(&self, id: &str) -> Option<Transform> {
