@@ -1,4 +1,4 @@
-import { createSignal, onMount, For, Show, Switch, Match } from "solid-js";
+import { createSignal, onMount, onCleanup, For, Show, Switch, Match } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import {
   PenTool, Move, Brush, Eraser, Type, Crop,
@@ -468,7 +468,13 @@ export default function App() {
       }
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("mousemove", handleArtboardMouseMove);
+    window.addEventListener("mouseup", handleArtboardMouseUp);
+  });
+
+  onCleanup(() => {
+    window.removeEventListener("mousemove", handleArtboardMouseMove);
+    window.removeEventListener("mouseup", handleArtboardMouseUp);
   });
 
   const handleToolChange = (tool: string) => {
