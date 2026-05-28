@@ -38,6 +38,15 @@ export default function App() {
   const [selection, setSelection] = createSignal<any>(null);
   const [selectedLayerId, setSelectedLayerId] = createSignal<string | null>(null);
   const [transformOpen, setTransformOpen] = createSignal(true);
+
+  // ── Transform Drag State ──
+  const [transformDragging, setTransformDragging] = createSignal(false);
+  const [transformDragType, setTransformDragType] = createSignal<string | null>(null);
+  const [transformDragStart, setTransformDragStart] = createSignal({ x: 0, y: 0 });
+  const [transformDragOriginal, setTransformDragOriginal] = createSignal({
+    x: 0, y: 0, width: 0, height: 0,
+    scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false
+  });
   const [opacityOpen, setOpacityOpen] = createSignal(true);
   
   // ── Selection & Canvas Interaction State ──
@@ -71,6 +80,23 @@ export default function App() {
     const rect = el.getBoundingClientRect();
     const z = zoom() / 100;
     return { x: (clientX - rect.left) / z, y: (clientY - rect.top) / z };
+  };
+
+  const getSelectedLayerTransform = () => {
+    if (!selectedLayerId()) return null;
+    const layer = layers().find(l => l.id === selectedLayerId());
+    if (!layer) return null;
+    return {
+      x: layer.x,
+      y: layer.y,
+      width: layer.width,
+      height: layer.height,
+      scaleX: layer.transform?.scale_x ?? 1,
+      scaleY: layer.transform?.scale_y ?? 1,
+      rotation: layer.transform?.rotation ?? 0,
+      flipH: layer.transform?.flip_h ?? false,
+      flipV: layer.transform?.flip_v ?? false
+    };
   };
 
   const handleSampleColor = (cx: number, cy: number) => {
@@ -1075,7 +1101,7 @@ export default function App() {
                   {(layer, index) => (
                     <Show when={layer.visible}>
                       <div 
-                        class={`absolute transition-shadow duration-75 select-none ${selectedLayerId() === layer.id ? "ring-1 ring-accent shadow-md" : ""}`}
+                        class={`absolute transition-shadow duration-75 select-none`}
                         style={`
                           left: ${layer.x}px;
                           top: ${layer.y}px;
@@ -1143,6 +1169,72 @@ export default function App() {
                       `}
                     />
                   ) : null;
+                })()}
+
+                {/* ── Bounding box + handles for selected layer ── */}
+                {selectedLayerId() && (() => {
+                  const layer = layers().find(l => l.id === selectedLayerId());
+                  if (!layer || layer.locked) return null;
+
+                  const handleSize = 8;
+                  const half = handleSize / 2;
+
+                  const handles: [string, string, string, string][] = [
+                    ["nw", "0%", "0%", "cursor-nwse-resize"],
+                    ["n", "50%", "0%", "cursor-ns-resize"],
+                    ["ne", "100%", "0%", "cursor-nesw-resize"],
+                    ["e", "100%", "50%", "cursor-ew-resize"],
+                    ["se", "100%", "100%", "cursor-nwse-resize"],
+                    ["s", "50%", "100%", "cursor-ns-resize"],
+                    ["sw", "0%", "100%", "cursor-nesw-resize"],
+                    ["w", "0%", "50%", "cursor-ew-resize"],
+                  ];
+
+                  return (
+                    <div
+                      class="absolute pointer-events-none z-[9998]"
+                      style={`
+                        left: ${layer.x - 1}px;
+                        top: ${layer.y - 1}px;
+                        width: ${layer.width + 2}px;
+                        height: ${layer.height + 2}px;
+                      `}
+                    >
+                      <div class="absolute inset-0 border border-accent/70 pointer-events-none" />
+
+                      <For each={handles}>
+                        {([name, left, top, cursor]) => (
+                          <div
+                            class={`absolute bg-white border border-accent pointer-events-auto ${cursor}`}
+                            style={`
+                              width: ${handleSize}px;
+                              height: ${handleSize}px;
+                              left: calc(${left} - ${half}px);
+                              top: calc(${top} - ${half}px);
+                              z-index: 9999;
+                            `}
+                            data-handle={name}
+                          />
+                        )}
+                      </For>
+
+                      {/* Rotation handle */}
+                      <div
+                        class="absolute pointer-events-auto cursor-rotate"
+                        style={`
+                          left: calc(50% - 6px);
+                          top: -24px;
+                          width: 12px;
+                          height: 12px;
+                          z-index: 9999;
+                        `}
+                        data-handle="rotate"
+                      >
+                        <div class="absolute left-1/2 -translate-x-1/2 top-[10px] w-[1px] h-[14px] bg-accent/70" />
+                        <div class="w-3 h-3 rounded-full bg-white border border-accent" />
+                      </div>
+                    </div>
+                  );
                 })()}
 
                 {/* ── Zero-Latency Overlay Canvas for Brush Strokes dragging preview ── */}
