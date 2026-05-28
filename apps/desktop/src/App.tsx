@@ -459,6 +459,11 @@ export default function App() {
         invoke("clear_selection")
           .then((res: any) => { if (res?.ok) syncDocumentState(); })
           .catch(console.error);
+        if (selectedLayerId()) {
+          setSelectedLayerId(null);
+          setTransformDragging(false);
+          setTransformDragType(null);
+        }
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         handleNudgeLayer(0, -(e.shiftKey ? 10 : 1));
@@ -477,11 +482,6 @@ export default function App() {
       } else if ((e.ctrlKey || e.metaKey) && e.key === "g" && e.shiftKey) {
         e.preventDefault();
         handleFlip("v");
-      } else if (e.key === "Escape" && selectedLayerId()) {
-        e.preventDefault();
-        setSelectedLayerId(null);
-        setTransformDragging(false);
-        setTransformDragType(null);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
