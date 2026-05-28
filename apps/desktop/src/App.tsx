@@ -1120,6 +1120,14 @@ export default function App() {
               <Move size={18} />
             </button>
 
+            <button 
+              onClick={() => handleToolChange("selection")}
+              class={`tool-btn-raw ${activeTool() === "selection" ? "active" : ""}`} 
+              title="Selection Tool (M)"
+            >
+              <SquareMousePointer size={18} />
+            </button>
+
             <div class="tool-divider"></div>
 
             <button 
