@@ -362,6 +362,7 @@ fn draw_brush_stroke(
 fn export_document(
     format: String,
     quality: u8,
+    path: String,
     state: tauri::State<'_, EditorState>,
 ) -> Result<Value, Value> {
     let doc = state.document.lock().unwrap();
@@ -379,24 +380,13 @@ fn export_document(
         Err(e) => return err_response("E_ENCODING", &e),
     };
 
-    // Invoke RFD native save file dialog in a worker thread
-    let default_name = format!("untitled.{}", format.to_lowercase());
-    let dialog = rfd::FileDialog::new()
-        .set_file_name(&default_name)
-        .add_filter(&format, &[&format.to_lowercase()])
-        .save_file();
-
-    if let Some(path) = dialog {
-        if let Err(e) = std::fs::write(&path, encoded_bytes) {
-            err_response("E_IO", &format!("Failed to write file to disk: {}", e))
-        } else {
-            ok_response(serde_json::json!({
-                "status": "success",
-                "path": path.to_string_lossy()
-            }))
-        }
+    if let Err(e) = std::fs::write(&path, encoded_bytes) {
+        err_response("E_IO", &format!("Failed to write file to disk: {}", e))
     } else {
-        err_response("E_CANCEL", "Export cancelled by user")
+        ok_response(serde_json::json!({
+            "status": "success",
+            "path": path
+        }))
     }
 }
 
@@ -421,21 +411,6 @@ fn redo(state: tauri::State<'_, EditorState>) -> Result<Value, Value> {
         ok_response(&*doc)
     } else {
         err_response("NO_REDO_HISTORY", "No history available to redo")
-    }
-}
-
-#[tauri::command]
-fn show_open_dialog() -> Result<Value, Value> {
-    let dialog = rfd::FileDialog::new()
-        .add_filter("Images", &["png", "jpg", "jpeg", "webp", "bmp", "gif"])
-        .pick_file();
-    
-    if let Some(path) = dialog {
-        ok_response(serde_json::json!({
-            "path": path.to_string_lossy()
-        }))
-    } else {
-        err_response("E_CANCEL", "No file selected")
     }
 }
 
@@ -480,6 +455,7 @@ fn main() {
     println!("{}", photrez_render::init_render());
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(EditorState::new())
         .setup(|app| {
             let window = app.get_webview_window("main")
@@ -515,7 +491,6 @@ fn main() {
             export_document,
             sample_pixel,
             open_image,
-            show_open_dialog,
             trigger_render
         ])
         .build(tauri::generate_context!())

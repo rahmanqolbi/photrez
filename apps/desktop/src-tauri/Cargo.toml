@@ -10,7 +10,7 @@ serde_json = "1.0"
 uuid = { version = "1.7", features = ["v4"] }
 photrez-core = { path = "../../../crates/core" }
 photrez-render = { path = "../../../crates/render" }
-rfd = "0.15"
+tauri-plugin-dialog = "2"
 base64 = "0.22"
 pollster = "0.3.0"
 

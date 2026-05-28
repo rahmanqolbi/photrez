@@ -102,29 +102,52 @@ export default function App() {
       .catch(console.error);
   };
 
-  const handleExport = () => {
-    setExportStatusText("Preparing export...");
-    invoke("export_document", {
-      format: exportFormat(),
-      quality: exportQuality(),
-    })
-    .then((res: any) => {
-      if (res?.ok) {
-        setExportStatusText(`Exported successfully to: ${res.data.path}`);
-        setTimeout(() => { setShowExportModal(false); setExportStatusText(""); }, 3000);
+  const handleExport = async () => {
+    try {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const defaultName = `untitled.${exportFormat().toLowerCase()}`;
+      
+      const path = await save({
+        defaultPath: defaultName,
+        filters: [{
+          name: exportFormat(),
+          extensions: [exportFormat().toLowerCase()]
+        }]
+      });
+      
+      if (path) {
+        setExportStatusText("Preparing export...");
+        const result = await invoke("export_document", { 
+          format: exportFormat(),
+          quality: exportQuality(),
+          path: path
+        }) as any;
+        
+        if (result?.ok) {
+          setExportStatusText(`Exported successfully to: ${result.data.path}`);
+          setTimeout(() => { setShowExportModal(false); setExportStatusText(""); }, 3000);
+        }
       }
-    })
-    .catch((err: any) => {
+    } catch (err: any) {
       setExportStatusText(err?.error?.message || "Export failed");
-    });
+    }
   };
 
   const handleOpenFile = async () => {
     try {
-      const result = await invoke("show_open_dialog") as any;
-      if (result?.ok && result?.data?.path) {
-        const openResult = await invoke("open_image", { path: result.data.path }) as any;
-        if (openResult?.ok) {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const selected = await open({
+        multiple: false,
+        filters: [{
+          name: "Images",
+          extensions: ["png", "jpg", "jpeg", "webp", "bmp", "gif"]
+        }]
+      });
+      
+      if (selected) {
+        const path = typeof selected === "string" ? selected : selected;
+        const result = await invoke("open_image", { path }) as any;
+        if (result?.ok) {
           syncDocumentState();
         }
       }
