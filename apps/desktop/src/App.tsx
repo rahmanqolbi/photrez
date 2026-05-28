@@ -6,6 +6,7 @@ import {
   ChevronDown, ChevronRight, ChevronUp, Share, Plus,
   Eye, EyeOff, Lock, LockOpen, Trash2,
   SlidersHorizontal, Layers, Clock, SquareMousePointer,
+  FlipHorizontal, FlipVertical,
 } from "lucide-solid";
 
 export default function App() {
@@ -555,6 +556,73 @@ export default function App() {
       .catch((err) => console.error("Reorder layer err:", err));
   };
 
+  const handleTransformChange = (field: string, value: number) => {
+    if (!selectedLayerId()) return;
+    const layer = layers().find(l => l.id === selectedLayerId());
+    if (!layer) return;
+    
+    const currentTransform = {
+      scaleX: layer.transform?.scale_x ?? 1,
+      scaleY: layer.transform?.scale_y ?? 1,
+      rotation: layer.transform?.rotation ?? 0,
+      flipH: layer.transform?.flip_h ?? false,
+      flipV: layer.transform?.flip_v ?? false
+    };
+    
+    let newTransform = { ...currentTransform };
+    
+    if (field === "width") {
+      newTransform.scaleX = value / layer.width;
+    } else if (field === "height") {
+      newTransform.scaleY = value / layer.height;
+    } else if (field === "rotation") {
+      newTransform.rotation = value;
+    }
+    
+    invoke("transform_layer", {
+      id: selectedLayerId(),
+      scaleX: newTransform.scaleX,
+      scaleY: newTransform.scaleY,
+      rotation: newTransform.rotation,
+      flipH: newTransform.flipH,
+      flipV: newTransform.flipV
+    }).then((res: any) => {
+      if (res?.ok) syncDocumentState();
+    }).catch(console.error);
+  };
+
+  const handleFlip = (axis: "h" | "v") => {
+    if (!selectedLayerId()) return;
+    const layer = layers().find(l => l.id === selectedLayerId());
+    if (!layer) return;
+    
+    const currentTransform = {
+      scaleX: layer.transform?.scale_x ?? 1,
+      scaleY: layer.transform?.scale_y ?? 1,
+      rotation: layer.transform?.rotation ?? 0,
+      flipH: layer.transform?.flip_h ?? false,
+      flipV: layer.transform?.flip_v ?? false
+    };
+    
+    const newTransform = { ...currentTransform };
+    if (axis === "h") {
+      newTransform.flipH = !newTransform.flipH;
+    } else {
+      newTransform.flipV = !newTransform.flipV;
+    }
+    
+    invoke("transform_layer", {
+      id: selectedLayerId(),
+      scaleX: newTransform.scaleX,
+      scaleY: newTransform.scaleY,
+      rotation: newTransform.rotation,
+      flipH: newTransform.flipH,
+      flipV: newTransform.flipV
+    }).then((res: any) => {
+      if (res?.ok) syncDocumentState();
+    }).catch(console.error);
+  };
+
   const handleUndo = () => {
     invoke("undo")
       .then((res: any) => {
@@ -921,6 +989,26 @@ export default function App() {
  
         {/* Right Action buttons */}
         <div class="flex items-center gap-3">
+          {/* Transform Controls */}
+          <Show when={(activeTool() === "move" || activeTool() === "selection") && selectedLayerId()}>
+            <div class="flex items-center gap-1 ml-auto">
+              <button
+                class="tool-btn-raw px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary hover:bg-white/5 rounded"
+                title="Flip Horizontal (Ctrl+G)"
+                onClick={() => handleFlip("h")}
+              >
+                <FlipHorizontal size={14} />
+              </button>
+              <button
+                class="tool-btn-raw px-2 py-1 text-[10px] text-text-secondary hover:text-text-primary hover:bg-white/5 rounded"
+                title="Flip Vertical (Ctrl+Shift+G)"
+                onClick={() => handleFlip("v")}
+              >
+                <FlipVertical size={14} />
+              </button>
+            </div>
+          </Show>
+
           {/* Inspector toggle with state representation */}
           <button 
             onClick={() => setInspectorOpen(!inspectorOpen())}
@@ -1420,26 +1508,36 @@ export default function App() {
                           }}
                         />
                       </div>
-                      {/* W Cell */}
-                      <div class="flex items-center px-2.5 h-[28px] opacity-60">
+                      {/* W Cell - EDITABLE */}
+                      <div class="flex items-center px-2.5 h-[28px] focus-within:bg-white/[2%] transition-colors duration-75">
                         <span class="text-[10px] font-bold text-text-muted select-none w-3.5 flex-shrink-0">W</span>
                         <input 
                           type="number"
-                          class="w-full bg-transparent border-none outline-none text-white text-[12px] font-semibold text-left tabular-nums px-1" 
-                          value={selectedLayer ? selectedLayer.width : 0} 
-                          disabled
-                          readonly
+                          class="w-full bg-transparent border-none outline-none text-white text-[12px] font-semibold text-left tabular-nums px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                          value={selectedLayer ? Math.round(selectedLayer.width) : 0} 
+                          disabled={!selectedLayer || selectedLayer.locked}
+                          onChange={(e: any) => {
+                            if (selectedLayer) {
+                              const val = parseInt(e.currentTarget.value);
+                              if (!isNaN(val) && val > 0) handleTransformChange("width", val);
+                            }
+                          }}
                         />
                       </div>
-                      {/* H Cell */}
-                      <div class="flex items-center px-2.5 h-[28px] opacity-60">
+                      {/* H Cell - EDITABLE */}
+                      <div class="flex items-center px-2.5 h-[28px] focus-within:bg-white/[2%] transition-colors duration-75">
                         <span class="text-[10px] font-bold text-text-muted select-none w-3.5 flex-shrink-0">H</span>
                         <input 
                           type="number"
-                          class="w-full bg-transparent border-none outline-none text-white text-[12px] font-semibold text-left tabular-nums px-1" 
-                          value={selectedLayer ? selectedLayer.height : 0} 
-                          disabled
-                          readonly
+                          class="w-full bg-transparent border-none outline-none text-white text-[12px] font-semibold text-left tabular-nums px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                          value={selectedLayer ? Math.round(selectedLayer.height) : 0} 
+                          disabled={!selectedLayer || selectedLayer.locked}
+                          onChange={(e: any) => {
+                            if (selectedLayer) {
+                              const val = parseInt(e.currentTarget.value);
+                              if (!isNaN(val) && val > 0) handleTransformChange("height", val);
+                            }
+                          }}
                         />
                       </div>
                     </div>
@@ -1460,6 +1558,26 @@ export default function App() {
                         class="flex-1 outline-none block"
                       />
                       <span class="text-[12px] font-semibold text-text-primary tabular-nums w-8 text-right select-none">{Math.round(selectedLayer.opacity * 100)}%</span>
+                    </div>
+                  ) : null;
+                })()}
+
+                {/* Rotation Input */}
+                {selectedLayerId() && (() => {
+                  const selectedLayer = layers().find(l => l.id === selectedLayerId());
+                  return selectedLayer ? (
+                    <div class="flex items-center gap-3 px-1">
+                      <span class="text-[10px] font-bold text-text-muted w-[50px] uppercase">Rotate</span>
+                      <input type="number"
+                        class="studio-input w-[60px] text-[11px]"
+                        value={Math.round(selectedLayer.transform?.rotation ?? 0)}
+                        disabled={selectedLayer.locked}
+                        onChange={(e: any) => {
+                          const val = parseFloat(e.currentTarget.value);
+                          if (!isNaN(val)) handleTransformChange("rotation", val);
+                        }}
+                      />
+                      <span class="text-[10px] text-text-muted">deg</span>
                     </div>
                   ) : null;
                 })()}
