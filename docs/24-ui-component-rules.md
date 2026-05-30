@@ -24,6 +24,10 @@ Komponen prioritas desktop editor:
 - **Radius**: Dilarang keras menggunakan bentuk "Pill" (`rounded-full`). Gunakan radius `--radius-md` (calc(var(--radius) - 2px) = 4px) untuk memancarkan presisi alat profesional.
 - Primary action/state pakai background aksen `--editor-accent` atau text aksen.
 
+### Tab Sizing Rules
+
+- Seluruh tab kontrol (seperti DocumentTabsBar dan tab panel RightDock/Layers) **wajib menggunakan ukuran huruf `text-[12px] font-medium`** secara konsisten. Ini dilakukan untuk menghindari ilusi optik di mana tombol interaktif reaktif tampak lebih besar daripada teks properti biasa berukuran 13px.
+
 ### Input / Select Field Rules
 
 - Height default: `26px` (`h-[26px]`).
@@ -50,9 +54,19 @@ Komponen prioritas desktop editor:
   - Hanya sudut yang menghadap ke arah Canvas (inner corners) yang diberikan `--radius-lg` atau `--radius-md`. 
   - Sudut yang menempel ke window (outer corners) wajib tajam (`0px`).
 - **Panel Header**:
-  - Background: Default panel background `bg-editor-panel` atau `bg-editor-topbar`.
+  - Background: Default panel background `bg-editor-panel` or `bg-editor-topbar`.
   - Height: `46px`.
   - Typography: `14px`, `font-semibold`.
+
+### LeftToolRail & Color Swatches Rules
+
+- **MVP Tools Restriction**: LeftToolRail hanya memuat **6 Alat MVP Utama** (Move, Rectangle Select, Crop, Eyedropper, Brush, Eraser) dalam satu kolom stack vertikal tanpa dividers.
+- **mt-auto Spawner**: Modul warna dan tombol ellipsis didorong secara fisik menggunakan pembatas mekanis `mt-auto` di bagian paling bawah.
+- **Diagonal Swatches bertumpuk**:
+  - Ukuran kontainer luar: `size-[36px]` (mempet penuh Photoshop-style).
+  - Terdiri atas dua elemen lingkaran absolut berukuran `size-[35px]` tumpang tindih secara diagonal.
+  - Memakai properti `clip-path` diagonal: Foreground `polygon(0 0, 100% 0, 0 100%)` (top-left) dan Background `polygon(100% 100%, 100% 0, 0 100%)` (bottom-right).
+  - Jarak diagonal transparan `1.4px` dihasilkan secara presisi melalui offset posisi `top-0 left-0` vs `bottom-0 right-0`.
 
 ### Layer List Item Rules
 

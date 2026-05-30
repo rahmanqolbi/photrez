@@ -17,9 +17,9 @@ Mengapa UI Photrez dirancang dengan estetika "Soft & Snappy"? Jawabannya adalah 
 Struktur shell utama:
 
 1. **AppTitleBar**: macOS/Figma style, height `46px`. Menampilkan menu compact, title file aktif terpusat di tengah ("File Name — photrez"), dan window controls native (Minimize, Maximize, Close). Logo brand "pz" berupa box mini 30px di kiri.
-2. **DocumentTabsBar**: Height `44px`. Tab dokumen yang aktif memiliki indikator garis aksen Photon Amber setinggi 2px di bawahnya.
+2. **DocumentTabsBar**: Height `44px`. Tab dokumen yang aktif memiliki indikator garis aksen Photon Amber setinggi 2px di bawahnya. Teks tab menggunakan ukuran `text-[12px] font-medium` secara seragam untuk menghindari ilusi optis kebesaran elemen interaktif.
 3. **OptionBar (Tool Options)**: Height `44px`. Menampung opsi parameter tool aktif (seperti brush size, opacity, blending mode) di dalam border-field penampung yang elegan.
-4. **LeftToolRail**: Width `52px`. Menampung tombol tool vertikal setara `36px` (`size-9`) dengan icon berukuran `18px`. Di bawah terdapat pembatas mekanis setebal `1px` dan tombol swatch warna primer.
+4. **LeftToolRail**: Width `52px`. Menampung tombol tool vertikal setara `36px` (`size-9`) dengan icon berukuran `18px`. List tool dibatasi hanya pada **6 Alat MVP Utama** (Move, Rectangle Select, Crop, Eyedropper, Brush, Eraser) dalam satu kolom stack vertikal tanpa dividers. Di bagian paling bawah (didorong dengan `mt-auto` di atas divider mekanis setebal `1px`) terdapat modul **Premium Diagonal Color Swatch** bertumpuk berukuran penuh `36px` (mempet) dan tombol ellipsis ("More tools").
 5. **RightDock**: Double-column docked layout dengan total lebar `560px` (atau `634px` pada resolusi 2XL). Terdiri atas dua sub-panel side-by-side:
    - **PropertiesPanel** (`300px` / `336px` 2XL): Transform coordinates, anchor grid, basic slider controls (Temp, Tint horizontal slider).
    - **LayersPanel** (`260px` / `298px` 2XL): Layers list, adjustment layer toggles, layer blending modes, and a dedicated thumbnail Navigator at the bottom.
@@ -38,6 +38,7 @@ Struktur shell utama:
 - **Tabular Nums**: Wajib menggunakan `font-variant-numeric: tabular-nums;` secara global agar angka tidak bergeser saat nilainya berubah (sangat krusial untuk koordinat Transform dan persentase slider).
 - Base font size: `13px` (Standar OS Desktop Native yang nyaman dibaca).
 - Panel Headers: `14px` font-semibold.
+- **Penyelarasan Optikal Tab**: Seluruh tab (DocumentTabsBar, pill tabs RightDock/Layers) diselaraskan pada ukuran `text-[12px] font-medium` guna mengeliminasi ilusi optis di mana tombol interaktif reaktif tampak lebih besar daripada teks properti statis.
 - Sub-labels / Input labels: `11px` atau `12px` font-medium.
 - Secondary / Meta text: `12.5px` atau `12px`.
 - Jangan gunakan teks lebih kecil dari `11px`.
