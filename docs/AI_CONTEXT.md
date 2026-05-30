@@ -63,6 +63,7 @@ Sebelum memodifikasi file apapun, AI WAJIB melakukan:
    - **WAJIB UTF-8**: Semua file dokumentasi (`*.md`) harus disimpan sebagai **UTF-8** (disarankan tanpa BOM). DILARANG menulis dokumen dengan UTF-16/`Unicode` karena akan menyebabkan mojibake/karakter rusak.
    - **LARANGAN POWERSHELL ENCODING BERISIKO**: DILARANG menggunakan `Set-Content -Encoding Unicode` untuk file markdown. Jika perlu write via script, gunakan UTF-8 eksplisit (mis. `[System.IO.File]::WriteAllText(path, text, [System.Text.UTF8Encoding]::new($false))`).
    - **WAJIB VERIFIKASI PASCA-EDIT DOKUMEN**: Setelah mengubah file docs, cek `git diff -- docs/*.md`. Jika muncul `Binary files differ`, STOP dan perbaiki encoding sebelum lanjut.
+7. **LARANGAN PENGHAPUSAN BERKAS FISIK SECARA DESTRUKTIF TANPA DISKUSI**: DILARANG keras menghapus file, folder, atau aset fisik apa pun dari workspace secara permanen (melalui `Remove-Item`, `rm`, atau utilitas penghapusan lainnya) sebelum mendiskusikannya secara terbuka dan mendapatkan persetujuan/konfirmasi eksplisit dari USER. Diskusi wajib dilakukan untuk menghindari hilangnya file referensi atau backup yang masih dibutuhkan oleh USER.
 
 ---
 
