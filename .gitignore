@@ -48,6 +48,7 @@ yarn-error.log*
 .gemini_security/
 .agents/tmp/
 .codex/tmp/
+.superpowers/
 docs/AI_CONTEXT.md
 docs/AI_CURRENT_TASK.md
 docs/AI_HISTORY.md
@@ -57,3 +58,17 @@ docs/ARCHITECTURE.md
 # Tauri specific (optional, usually handled by src-tauri/.gitignore if exists, but safe to add globally)
 src-tauri/gen/
 src-tauri/wix/
+
+# Workspace Cleanliness: Scratch Scripts, Reference Files & Archives
+Detail-Design-Spec.zip
+RapidRAW-main/
+photrez-solid-tailwind/
+*.png
+*.jpg
+*.jpeg
+!apps/desktop/src/assets/**/*
+!apps/desktop/src/norway_fjord_preview.png
+*.py
+.codegraph/
+.omo/
+.playwright-mcp/

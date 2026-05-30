@@ -146,6 +146,12 @@
 | ✅ DONE      | Segmented Transform matrix coordinate grid (Figma-style) |
 | ✅ DONE      | macOS-style Segmented Tab Bar (Pill tabs) & Unified Properties |
 | ✅ DONE      | Right Inspector Recessed Compartments (Idea A sunken well) |
+| ✅ DONE      | Mockup UI Slicing (Compact, Flat Docked 5x3 Grid, Photon Amber) |
+| ✅ DONE      | Titlebar Reference Matching (hamburger, photrez brand spacing, right action separator) |
+| ✅ DONE      | LeftToolRail Reference Matching (continuous stack, monochrome active, ellipsis button) |
+| ✅ DONE      | photrez High-Fidelity Reference Slice (static SolidJS shell, exact 5x3 grid, fjord image viewport) |
+| ✅ DONE      | Style Guide & Design Tokens Synchronization (Tailwind v4, OKLCH, double-dock layout, custom sliders) |
+| ✅ DONE      | UI/UX Polish: Diagonal Swatches, Tab Typography & LeftToolRail layout |
 | ⬜ TODO      | Context menu                               |
 | ⬜ TODO      | Tooltip system                             |
 | ⬜ TODO      | Dialog system (modal)                      |

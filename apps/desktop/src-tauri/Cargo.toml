@@ -14,5 +14,11 @@ tauri-plugin-dialog = "2"
 base64 = "0.22"
 pollster = "0.3.0"
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
 [build-dependencies]
 tauri-build = { version = "2.0.0", features = [] }

@@ -72,3 +72,34 @@ Do not accept changes that knowingly violate these targets without explicit appr
 - Changes match locked scope.
 - Relevant docs are updated.
 - Risks and blockers are clearly reported.
+
+## Verification Pipeline (MANDATORY)
+
+**WAJIB jalankan SEMUA tahap berikut SEBELUM mark task sebagai COMPLETE.**
+
+### Rust Changes
+
+```
+cargo test -p photrez-core              # Core unit tests
+cargo test --workspace                  # All Rust workspace tests
+```
+
+### Frontend Changes
+
+```
+pnpm.cmd run build                      # TypeScript + Vite build
+pnpm.cmd --filter photrez-desktop test  # Frontend unit tests
+```
+
+### Binary / App-Level Changes (main.rs, Tauri commands)
+
+```
+pnpm.cmd tauri dev                      # Verify app compiles AND launches
+```
+
+**JANGAN skip tahap manapun.** Jika salah satu gagal, FIX dulu sebelum claim DONE.
+
+Catatan:
+- `cargo check -p photrez-desktop` akan gagal karena pre-existing `windres` toolchain issue.
+- Gunakan `pnpm.cmd tauri dev` (atau `cargo run`) untuk verify binary compile — ini melewati windres.
+- `cargo test -p photrez-core` hanya verify core crate — TIDAK verify binary crate.

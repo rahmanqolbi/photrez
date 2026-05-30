@@ -48,4 +48,28 @@
 | Task 44 | [frontend] Enable Left Rail Eyedropper & Artboard pointer sampling | [x] Completed |
 | Task 45 | [frontend] Overlay native color picker inputs & Options Bar export modal | [x] Completed |
 | Task 46 | Verify and Compile Production bundle | [x] Completed |
+| Task 47 | [style] Configure Tailwind v4 Theme Tokens in index.css | [x] Completed |
+| Task 48 | [frontend] Refactor AppShell main grid layout in App.tsx | [x] Completed |
+| Task 49 | [frontend] Slice TopMenuBar in App.tsx | [x] Completed |
+| Task 50 | [frontend] Slice DocumentTabsBar in App.tsx | [x] Completed |
+| Task 51 | [frontend] Slice OptionBar in App.tsx | [x] Completed |
+| Task 52 | [frontend] Slice LeftToolRail in App.tsx | [x] Completed |
+| Task 53 | [frontend] Slice CanvasViewport in App.tsx | [x] Completed |
+| Task 54 | [frontend] Slice RightDock container structure in App.tsx | [x] Completed |
+| Task 55 | [frontend] Slice PropertiesPanel in App.tsx | [x] Completed |
+| Task 56 | [frontend] Slice LayersPanel and NavigatorPanel in App.tsx | [x] Completed |
+| Task 57 | [frontend] Slice BottomStatusBar in App.tsx | [x] Completed |
+| Task 58 | Verify TypeScript and Compile Production bundle | [x] Completed |
+| Task 59 | [style] Refactor theme variables, paddings, and alignment in index.css | [x] Completed |
+| Task 60 | [frontend] Set up isMockWorkspace signal and startup default mockup data in App.tsx | [x] Completed |
+| Task 61 | [frontend] Slice P H O T R E Z spaced uppercase branding & header controls | [x] Completed |
+| Task 62 | [frontend] Slice docked double-column RightDock structure (Properties + Layers side-by-side) | [x] Completed |
+| Task 63 | [frontend] Overhaul Properties Panel Transform & Basic sections with high-density inputs | [x] Completed |
+| Task 64 | [frontend] Overhaul Layers Panel list with thumbnails, actions, and custom Navigator | [x] Completed |
+| Task 65 | [frontend] Overhaul LeftToolRail active outline border and overlapping swatches | [x] Completed |
+| Task 66 | [frontend] Slice bottom status bar and move tool options bar capsules | [x] Completed |
+| Task 67 | [frontend] Integrate mock canvas rendering with Norway Fjord Sunset image preview | [x] Completed |
+| Task 68 | Verify unit tests and run Vite production build compiler | [x] Completed |
+| Task 69 | [docs] Update style guides, design tokens, component rules, and wireframe specs to match current UI | [x] Completed |
+
 

@@ -39,6 +39,7 @@ AI_CONTEXT.md (INI) ──┬──► AI_CURRENT_TASK.md    (Status tugas aktif
 | Performance                  | `docs/16-performance-measurement-protocol.md`                                                          |
 | Testing                      | `docs/17-test-matrix-by-milestone.md` → `docs/testing-policy.md`                                      |
 | CI / Release                 | `docs/18-ci-verification-plan.md` → `docs/09-public-release-gate.md`                                  |
+| Usable MVP / recovery         | `docs/38-usable-mvp-recovery-plan.md` -> `docs/27-key-user-flows.md` -> `docs/09-public-release-gate.md` |
 
 ### Otomatisasi Baca
 

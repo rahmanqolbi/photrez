@@ -195,6 +195,13 @@ impl Document {
 
         let rgba = img.to_rgba8();
         let (width, height) = rgba.dimensions();
+
+        // Enforce resource limits after decode
+        let pixel_bytes = width as usize * height as usize * 4;
+        if pixel_bytes > MAX_PIXEL_BUDGET {
+            return Err(format!("E_RESOURCE_LIMIT: Image too large ({}x{} exceeds memory budget)", width, height));
+        }
+
         let pixel_data = rgba.into_raw();
 
         let bitmap = crate::layers::BitmapData {

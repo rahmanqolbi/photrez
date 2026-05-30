@@ -35,6 +35,15 @@ pub struct WgpuRenderer {
     pub layer_textures: HashMap<String, LayerTexture>,
     pub composited_texture: Option<wgpu::Texture>,
     pub composited_view: Option<wgpu::TextureView>,
+    pub artboard_x: f32,
+    pub artboard_y: f32,
+    pub artboard_w: f32,
+    pub artboard_h: f32,
+    pub pan_x: f32,
+    pub pan_y: f32,
+    pub zoom: f32,
+    pub doc_width: f32,
+    pub doc_height: f32,
 }
 
 impl WgpuRenderer {
@@ -163,6 +172,15 @@ impl WgpuRenderer {
             layer_textures: HashMap::new(),
             composited_texture: None,
             composited_view: None,
+            artboard_x: 0.0,
+            artboard_y: 0.0,
+            artboard_w: 800.0,
+            artboard_h: 600.0,
+            pan_x: 0.0,
+            pan_y: 0.0,
+            zoom: 1.0,
+            doc_width: 800.0,
+            doc_height: 600.0,
         }
     }
 
@@ -246,24 +264,47 @@ impl WgpuRenderer {
         }
     }
 
-    pub fn update_viewport(&self, zoom: f32, pan_x: f32, pan_y: f32, canvas_w: f32, canvas_h: f32) {
+    pub fn set_viewport_state(
+        &mut self,
+        artboard_x: f32, artboard_y: f32,
+        artboard_w: f32, artboard_h: f32,
+        pan_x: f32, pan_y: f32,
+        zoom: f32,
+        doc_w: f32, doc_h: f32,
+    ) {
+        self.artboard_x = artboard_x;
+        self.artboard_y = artboard_y;
+        self.artboard_w = artboard_w;
+        self.artboard_h = artboard_h;
+        self.pan_x = pan_x;
+        self.pan_y = pan_y;
+        self.zoom = zoom;
+        self.doc_width = doc_w;
+        self.doc_height = doc_h;
+
         let screen_w = self.surface_config.as_ref().map(|c| c.width as f32).unwrap_or(800.0);
         let screen_h = self.surface_config.as_ref().map(|c| c.height as f32).unwrap_or(600.0);
-        let half_w = screen_w / (2.0 * zoom);
-        let half_h = screen_h / (2.0 * zoom);
-        let center_x = canvas_w / 2.0 - pan_x / zoom;
-        let center_y = canvas_h / 2.0 - pan_y / zoom;
-        let left = center_x - half_w;
-        let right = center_x + half_w;
-        let bottom = center_y - half_h;
-        let top = center_y + half_h;
+
+        // Map artboard screen position to NDC [-1, 1]
+        let ndc_x = (artboard_x / screen_w) * 2.0 - 1.0;
+        let ndc_y = 1.0 - (artboard_y / screen_h) * 2.0;
+        let ndc_w = (artboard_w / screen_w) * 2.0;
+        let ndc_h = (artboard_h / screen_h) * 2.0;
+
+        // Document coords -> artboard NDC position
+        // x_screen = scale * (x_doc - pan) maps [0, doc_w] -> artboard
+        let scale = zoom;
+        let sx = ndc_w / doc_w * scale;
+        let sy = ndc_h / doc_h * scale;
+        let tx = ndc_x - sx * pan_x;
+        let ty = ndc_y + sy * pan_y;
 
         #[rustfmt::skip]
         let view_proj = [
-            [2.0 / (right - left), 0.0, 0.0, 0.0],
-            [0.0, 2.0 / (top - bottom), 0.0, 0.0],
+            [sx,  0.0, 0.0, 0.0],
+            [0.0, -sy, 0.0, 0.0],  // flip Y for screen coords
             [0.0, 0.0, 1.0, 0.0],
-            [-(right + left) / (right - left), -(top + bottom) / (top - bottom), 0.0, 1.0],
+            [tx,  ty,  0.0, 1.0],
         ];
 
         let uniform = ViewportUniform { view_proj };
@@ -335,22 +376,48 @@ impl WgpuRenderer {
     pub fn render_layers(&mut self, layers: &[(&str, &[u8], u32, u32, f32, bool, f32, f32)]) {
         let surface = match &self.surface {
             Some(s) => s,
-            None => return,
+            None => {
+                eprintln!("[RENDER] No surface available");
+                return;
+            }
         };
         let output = match surface.get_current_texture() {
             Ok(t) => t,
-            Err(_) => return,
+            Err(e) => {
+                eprintln!("[RENDER] get_current_texture failed: {:?}", e);
+                return;
+            }
         };
         let screen_view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let (canvas_w, canvas_h) = self.surface_config.as_ref().map(|c| (c.width, c.height)).unwrap_or((800, 600));
+        let doc_w = self.doc_width.max(1.0) as u32;
+        let doc_h = self.doc_height.max(1.0) as u32;
 
-        // Create composited intermediate texture if needed
-        if self.composited_texture.is_none() || self.composited_texture.as_ref().map(|t| t.size().width) != Some(canvas_w) || self.composited_texture.as_ref().map(|t| t.size().height) != Some(canvas_h) {
+        // Diagnostic: log first frame
+        if self.layer_textures.is_empty() && !layers.is_empty() {
+            eprintln!("[RENDER] First render: surface={}x{}, doc={}x{}, layers={}, screen={}x{}",
+                self.surface_config.as_ref().map(|c| c.width).unwrap_or(0),
+                self.surface_config.as_ref().map(|c| c.height).unwrap_or(0),
+                doc_w, doc_h, layers.len(),
+                output.texture.width(), output.texture.height());
+            for (id, pixels, w, h, opacity, visible, x, y) in layers {
+                eprintln!("[RENDER]   layer '{}': {}x{} pixels={} bytes, opacity={}, visible={}, pos=({},{})",
+                    id, w, h, pixels.len(), opacity, visible, x, y);
+            }
+            eprintln!("[RENDER]   viewport: artboard=({},{}) {}x{}, pan=({},{}), zoom={}",
+                self.artboard_x, self.artboard_y, self.artboard_w, self.artboard_h,
+                self.pan_x, self.pan_y, self.zoom);
+        }
+
+        // Create composited texture at DOCUMENT resolution (not screen)
+        if self.composited_texture.is_none()
+            || self.composited_texture.as_ref().map(|t| t.size().width) != Some(doc_w)
+            || self.composited_texture.as_ref().map(|t| t.size().height) != Some(doc_h)
+        {
             let format = self.surface_format.unwrap_or(wgpu::TextureFormat::Rgba8UnormSrgb);
             let tex = self.device.create_texture(&wgpu::TextureDescriptor {
                 label: Some("Composited Texture"),
-                size: wgpu::Extent3d { width: canvas_w, height: canvas_h, depth_or_array_layers: 1 },
+                size: wgpu::Extent3d { width: doc_w, height: doc_h, depth_or_array_layers: 1 },
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
@@ -378,6 +445,15 @@ impl WgpuRenderer {
             ..Default::default()
         });
 
+        // Identity matrix — fullscreen quad maps to entire composited texture
+        let doc_vp: [[f32; 4]; 4] = [
+            [1.0,  0.0, 0.0, 0.0],
+            [0.0, -1.0, 0.0, 0.0],
+            [0.0,  0.0, 1.0, 0.0],
+            [0.0,  0.0, 0.0, 1.0],
+        ];
+        self.queue.write_buffer(&self.viewport_buffer, 0, bytemuck::cast_slice(&[ViewportUniform { view_proj: doc_vp }]));
+
         let viewport_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.viewport_bind_group_layout,
             entries: &[wgpu::BindGroupEntry { binding: 0, resource: self.viewport_buffer.as_entire_binding() }],
@@ -385,6 +461,24 @@ impl WgpuRenderer {
         });
 
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("Layer Render Encoder") });
+
+        // Clear composited texture
+        {
+            let _clear_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Clear Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: composited_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+        }
 
         // Render each visible layer bottom-to-top to composited texture
         for layer_entry in layers.iter().rev() {
@@ -404,7 +498,7 @@ impl WgpuRenderer {
                         view: composited_view,
                         resolve_target: None,
                         ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            load: wgpu::LoadOp::Load,
                             store: wgpu::StoreOp::Store,
                         },
                     })],
@@ -419,7 +513,24 @@ impl WgpuRenderer {
             }
         }
 
-        // Render composited texture to screen
+        // Identity matrix — fullscreen quad maps to entire screen
+        {
+            let screen_vp: [[f32; 4]; 4] = [
+                [1.0,  0.0, 0.0, 0.0],
+                [0.0, -1.0, 0.0, 0.0],
+                [0.0,  0.0, 1.0, 0.0],
+                [0.0,  0.0, 0.0, 1.0],
+            ];
+            self.queue.write_buffer(&self.viewport_buffer, 0, bytemuck::cast_slice(&[ViewportUniform { view_proj: screen_vp }]));
+        }
+
+        let viewport_bind_group_screen = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.viewport_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry { binding: 0, resource: self.viewport_buffer.as_entire_binding() }],
+            label: Some("viewport_bind_group_screen"),
+        });
+
+        // Render composited texture to screen at artboard position
         {
             let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Screen Render Pass"),
@@ -447,7 +558,7 @@ impl WgpuRenderer {
 
             rpass.set_pipeline(&self.render_pipeline);
             rpass.set_bind_group(0, &composited_bind_group, &[]);
-            rpass.set_bind_group(1, &viewport_bind_group, &[]);
+            rpass.set_bind_group(1, &viewport_bind_group_screen, &[]);
             rpass.draw(0..6, 0..1);
         }
 

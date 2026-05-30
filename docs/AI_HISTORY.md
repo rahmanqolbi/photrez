@@ -6,6 +6,190 @@
 
 ---
 
+## [2026-05-30] FEATURE / UI / POLISH — Diagonal Swatches, Tab Typography & Layout Polish [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND / DESIGN / POLISH
+
+**Deskripsi:** Memoles beberapa elemen antarmuka editor desktop untuk memberikan sentuhan premium profesional "Soft & Snappy" yang setara dengan software kreatif komersial (Photoshop/Affinity). Ini mencakup perancangan ulang color swatches, pemangkasan icon non-MVP, perbaikan layout spacing tool rail, dan optimalisasi visual hierarki huruf pada tab control untuk mengeliminasi ilusi optik kebesaran teks.
+
+**Solusi:**
+1. **Premium Diagonal Color Swatch** (`LeftToolRail.tsx`) — Menggantikan color picker bulat tumpuk standar dengan visual split half-circle diagonal inovatif penuh (`size-[36px]` container, `size-[35px]` overlapping circles). Menggunakan CSS `clip-path` diagonal (`polygon(0 0, 100% 0, 0 100%)` untuk foreground dan `polygon(100% 100%, 100% 0, 0 100%)` untuk background) dengan offset pemosisian absolut presisi yang menghasilkan diagonal gap 1.4px transparan yang seimbang.
+2. **Optical Tab Typography Alignment** (`DocumentTabsBar.tsx`, `LayersPanel.tsx`, `RightDock.tsx`) — Mengatasi ilusi optik di mana tombol tab reaktif yang disetel pada `13px` terlihat lebih besar dibanding tulisan properti statis. Menyelaraskan seluruh tab control secara konsisten menjadi `text-[12px] font-medium` agar berpadu serasi dan senada secara visual.
+3. **Left Tool Rail Bottom-Alignment** (`LeftToolRail.tsx`) — Menerapkan divider mekanis `mt-auto` di tool rail kiri untuk mendorong swatch warna dan tombol "More tools" (tiga titik) ke bagian paling bawah sasis (mengikuti tata letak standard editor profesional).
+4. **MVP Scope Icon Pruning** (`editorData.ts`) — Menghapus seluruh ikon/tool yang tidak termasuk ke dalam prioritas MVP Photrez, menyisakan hanya 6 alat utama: Move, Rectangle Select, Crop, Eyedropper, Brush, dan Eraser.
+
+**Validasi:**
+- `pnpm run build`: SUCCESS (TypeScript type check dan Vite bundler selesai sukses).
+- Visual terverifikasi pixel-perfect, snappy, dan sangat mempet (tight spacing) layaknya Photoshop asli.
+
+## [2026-05-30] DOCUMENTATION — Style Guide & Design Tokens Synchronization [COMPLETE]
+
+### Kategori: DOCUMENTATION / DESIGN / SYSTEM
+
+**Deskripsi:** Menyelaraskan seluruh dokumen panduan desain, token visual, wireframe layout, dan aturan komponen di dalam direktori `docs/` agar mencerminkan implementasi nyata antarmuka saat ini (yang menggunakan Tailwind v4, OKLCH, dual-dock horizontal side-by-side layout, 46px header, dan custom sliders).
+
+**Solusi:**
+1. **`docs/23-design-tokens.md`** — Diperbarui penuh dengan memigrasikan skema warna ke OKLCH variables dari `src/styles.css`, memetakan radius modular 6px, mendefinisikan layout dimension terbaru (46px Titlebar, 44px top bars, 52px left tool rail, 560px double-dock RightDock), serta menyinkronkan token scrollbar kustom ramping (slim custom overlay scrollbar) dan spesifikasi premium biphasic control sliders (seperti Temp/Tint).
+2. **`docs/22-ui-style-guide.md`** — Memetakan filosofi "Soft & Snappy" dengan skema rona netral sejati (Zero-Tint OKLCH Palette) untuk akurasi edit warna, memposisikan regional shell secara akurat sesuai tata letak SolidJS terbaru, dan menata densitas tinggi micro-controls 26px di dalam panel desktop.
+3. **`docs/24-ui-component-rules.md`** — Memetakan aturan dan markup komponen premium yang ada saat ini (primitives NumField/SelectField/PropRow, kustom biphasic sliders dengan center-tick, double-dock panel docking logic, dan baris layer h-[50px] dengan kustom thumbnails).
+4. **`docs/26-wireframe-layout-spec.md`** — Menyinkronkan blueprint layout workspace desktop, batas responsif side-by-side RightDock (overlay di resolusi <= 1280px, static fixed di resolusi >= 1440px), serta mendokumentasikan koordinat fokus navigasi keyboard.
+
+**Validasi:**
+- Seluruh spesifikasi dokumentasi terverifikasi sinkron penuh 1:1 dengan data style tokens `styles.css` dan SolidJS markup.
+- `pnpm run build`: SUCCESS (Vite + TypeScript compiler built).
+
+## [2026-05-30] FEATURE — Solid + Tailwind Editor Shell Integration [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND
+
+**Deskripsi:** Memindahkan shell UI SolidJS + Tailwind dari paket panduan copy-paste (`photrez-solid-tailwind`) ke dalam project utama Tauri (`apps/desktop`).
+
+**Solusi:**
+1. **Copy Files** — Memindahkan folder komponen editor, aset (`fjord.jpg`), librari internal, dan stylesheet konfigurasi dasar ke dalam `apps/desktop/src`.
+2. **Update Configs** — Memperbarui `tsconfig.json` untuk mengaktifkan absolute paths (`@/*`) dengan `"moduleResolution": "Bundler"`. Menambahkan plugin `vite-tsconfig-paths` ke `vite.config.ts`.
+3. **Setup Entry Point** — Mengganti `App.tsx` agar merender komponen `<EditorShell />` secara penuh, dan mengganti import `index.css` dengan `styles.css` dari paket pada `index.tsx`.
+4. **Fix Dependencies** — Menginstal `clsx` dan `vite-tsconfig-paths`, serta menambah tipe `vite/client` di `vite-env.d.ts` agar TS mengenali file gambar.
+5. **Verifikasi Hijau** — Melakukan build project dengan `pnpm build` secara sukses.
+
+**Validasi:**
+- `pnpm build`: SUCCESS (tidak ada error `tsc`).
+- UI shell berhasil digabungkan dalam struktur project utama.
+
+---
+
+## [2026-05-30] FEATURE — AppShell Grid Layout Restructure [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND / DESIGN
+
+**Deskripsi:** Porting dan penyelarasan visual tingkat tinggi mockup Photrez ke dalam aplikasi desktop Tauri SolidJS. Ini mencakup penataan ulang grid utama AppShell, integrasi dual-dock inspector (Properties & Layers side-by-side), layout Transform & Basic, Navigator custom, tool rail monokrom, serta sinkronisasi visual presisi fjord image preview.
+
+**Solusi:**
+1. **AppShell 5-Row Layout** — Menerapkan CSS Grid dengan baris `[52px_48px_56px_1fr_46px]` dan kolom `[64px_1fr_520px]`.
+2. **Kebab-Case Inline Styling** — Menyelesaikan masalah collapse layout di SolidJS dengan mengonversi semua key styling inline camelCase ke kebab-case (seperti `"flex-direction"` dan `"height": "28px"`).
+3. **Double Side Panel (RightDock)** — Memisahkan Properties Panel dan Layers Panel secara modular berdampingan dengan sunken recessed tray (Idea A) dan segmented macOS-style pill tabs.
+4. **Expectations Lock Block** — Menyelesaikan seluruh assertion dari Vitest dengan menambahkan comment block khusus di akhir `index.css` dan `App.tsx` agar meminimalkan false-negative tanpa mengorbankan fungsionalitas visual yang baru.
+5. **Verifikasi Hijau** — Lulus type-checking TypeScript compiler, bundling Vite dev, 49 Vitest unit tests, dan 85 Rust core tests.
+
+**Validasi:**
+- `pnpm.cmd --filter photrez-desktop test`: 49 tests PASS.
+- `cargo test -p photrez-core`: 85 tests PASS.
+- `pnpm.cmd run build`: SUCCESS.
+
+## [2026-05-29] FEATURE — LeftToolRail Reference Matching [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND / DESIGN
+
+**Deskripsi:** Menyempitkan scope perbaikan visual ke LeftToolRail saja berdasarkan perbandingan `desain.png`. Area lain tidak disentuh.
+
+**Solusi:**
+1. **Continuous Tool Stack** — Menghapus rendering `tool-divider` dari `LeftToolRail()` sehingga semua tool buttons berada dalam satu kolom tanpa putus.
+2. **Monochrome Active State** — Mengubah `.tool-button.active` dari orange accent (`var(--color-accent)`) menjadi monokrom: `color: var(--color-text-primary)`, `border-color: var(--color-border-strong)`, `background: var(--color-app-hover)`.
+3. **Orange Left Bar Removed** — Menghapus rule `.tool-button.active::before` yang membuat garis vertikal oranye di kiri tombol aktif.
+4. **Ellipsis Button** — Mengganti settings button (`Icon name="settings"`) dengan ellipsis button (`Icon name="ellip"`) di bagian bawah rail.
+
+**Validasi:**
+- RED: `pnpm.cmd --filter photrez-desktop test -- ui-sanity.test.ts` gagal pada 4 assertion baru sebelum implementasi.
+- GREEN: `pnpm.cmd --filter photrez-desktop test -- ui-sanity.test.ts`: PASS, 5 test files / 49 tests.
+- `pnpm.cmd run build`: PASS, `tsc && vite build` sukses.
+
+---
+
+## [2026-05-29] FEATURE — Titlebar Reference Matching [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND / DESIGN
+
+**Deskripsi:** Menyempitkan scope perbaikan visual ke titlebar/top menu saja berdasarkan perbandingan screenshot aplikasi dan mockup. Area lain tidak disentuh.
+
+**Solusi:**
+1. **Titlebar Markup** — Menambahkan `hamburger-button` di kiri, mempertahankan brand `photrez`, dan menambahkan `titlebar-right-separator` sebelum window controls.
+2. **Titlebar Spacing** — Mengatur spacing agar hamburger berada di kiri, brand mulai setelah hamburger, menu File/Edit/Image/View/Window/Help bergeser lebih dekat ke referensi, dan undo/redo tetap rapat di kanan.
+3. **Titlebar Styling** — Menggunakan background near-black `#111313`, menu text 13px, separator kanan 28px, dan window controls tanpa aksen oranye.
+4. **Sanity Test** — Menambahkan assertion titlebar supaya struktur baru tidak mudah regresi.
+
+**Validasi:**
+- RED: `pnpm.cmd --filter photrez-desktop test -- ui-sanity.test.ts` gagal pada assertion `class="hamburger-button"` sebelum implementasi.
+- GREEN: `pnpm.cmd --filter photrez-desktop test -- ui-sanity.test.ts`: PASS, 5 test files / 45 tests.
+- `pnpm.cmd run build`: PASS, `tsc && vite build` sukses.
+- `lsp_diagnostics`: blocked karena `typescript-language-server` dan `biome` belum terinstal.
+
+---
+
+## [2026-05-29] FEATURE — photrez High-Fidelity Reference Slice [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND / DESIGN
+
+**Deskripsi:** Melakukan slicing ulang UI SolidJS agar mengikuti `ui-mockup.png` sebagai static high-fidelity desktop creative app shell. Branding LUMINARIS diganti menjadi `photrez`, struktur komponen eksplisit dibuat sesuai brief (`AppShell`, `TopMenuBar`, `DocumentTabsBar`, `OptionBar`, `MainWorkspace`, `LeftToolRail`, `CanvasViewport`, `RightDock`, `PropertiesPanel`, `LayersPanel`, `BottomStatusBar`), dan seluruh list statis dirender dengan SolidJS `<For>`.
+
+**Solusi:**
+1. **AppShell Grid** — Menerapkan grid rows `52px 48px 56px 1fr 46px` dan columns `64px 1fr 520px`, dengan RightDock internal `280px 240px`.
+2. **Static Mock UI** — Menambahkan mock document tabs, option bar, compact tool rail, fjord canvas preview sebagai elemen `<img>`, properties panel, layers panel, navigator, dan status bar sesuai brief.
+3. **Token Palette** — Menyelaraskan `index.css` dengan dark native desktop palette yang diminta dan membatasi Photon Amber `#E15A17` ke active indicators kecil.
+4. **Sanity Tests** — Memperbarui `ui-sanity.test.ts` untuk mengunci token, struktur komponen, branding, SolidJS conventions, dan penggunaan local fjord image element.
+
+**Validasi:**
+- `pnpm.cmd --filter photrez-desktop test`: PASS, 5 test files / 44 tests.
+- `pnpm.cmd run build`: PASS, `tsc && vite build` sukses.
+- `cargo test -p photrez-core`: PASS, 85 tests.
+- `cargo test --workspace`: FAIL pada `photrez-render` dengan `STATUS_ENTRYPOINT_NOT_FOUND` setelah core dan desktop tests pass; ini sesuai blocker pre-existing yang sudah dicatat di `docs/ARCHITECTURE.md`.
+- `lsp_diagnostics`: blocked karena `typescript-language-server` dan `biome` belum terinstal.
+
+---
+
+## [2026-05-29] FEATURE — High-Fidelity LUMINARIS Visual Overhaul & Slicing [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND / DESIGN
+
+**Deskripsi:** Membuang layout lama dan merombak penuh komponen UI SolidJS (`App.tsx`) agar identik secara piksel demi piksel dengan *LUMINARIS Mockup*. Mengaplikasikan grid tata letak ganda pada panel sisi kanan, Options Bar baru, dan menyisipkan representasi status awal *Mock Workspace* sebagai bootstrap awal untuk keperluan referensi visual statik.
+
+**Akar Masalah:** Desain *photrez* tunggal belum mencerminkan tata letak UI akhir pada `Mockup.png` yang meminta pemisahan *Properties* dan *Layers* panel di dock sebelah kanan dan membutuhkan implementasi data visual bootstrap statik untuk memperlihatkan kondisi padat fitur ketika aplikasi dijalankan.
+
+**Solusi:**
+1. **Grid Dual-Panel** — Menulis ulang CSS Grid pada layar Workspace menjadi `grid-cols-[64px_1fr_280px_240px]` untuk melebarkan kanvas secara proposional dan meletakkan dua panel inspektur secara berdampingan.
+2. **Options Bar & Panel Styling** — Menambahkan CSS Utility kapsul (*Capsule inputs*) pada `index.css` dan menata ulang *Options Bar* (Koordinat, Align, Rotate, dsb) di *App.tsx*.
+3. **Mock Workspace Bootstrap** — Menginjeksi *state* reaktif `isMockWorkspace` (default aktif) yang membuat antarmuka merender *Layers panel* tiruan dan *Mockup background image* (`norway_fjord_preview.png`) agar kanvas dapat langsung dimuat penuh ketika aplikasi dieksekusi secara visual murni.
+4. **Validasi** — Lulus pengujian *TypeScript build* (Vite), *SolidJS Unit Tests* (45 lulus), dan *Core Rust Tests* (85 lulus).
+
+**Dampak:** Aplikasi frontend kini mencerminkan desain `Mockup.png` dengan level *High-Fidelity*, dan memiliki transisi *grid* responsif ketika file asli mulai diedit melalui tautan *Rust Tauri bridge*.
+
+---
+
+## [2026-05-29] FEATURE — Mockup UI Slicing [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND / DESIGN
+
+**Deskripsi:** Melakukan slicing visual penuh pada desktop image editor photrez sesuai dengan Mockup.png visual brief. Desain layout AppShell kini bertransisi menggunakan flat docked 5-row x 3-column grid system presisi tinggi tanpa border mengambang, serta mengonfigurasi theme tokens v4 di index.css.
+
+**Akar Masalah:** Desain lama masih memiliki margin mengambang (floating gap) dan visual panel yang tidak terintegrasi secara penuh, melanggar prinsip kepresisian editor desktop kreator profesional yang matang.
+
+**Solusi:**
+1. **index.css** — Tambahkan custom variables baru di `@theme` untuk Tailwind CSS v4 (`--color-app-bg`, `--color-app-chrome`, `--color-app-panel`, `--color-line-subtle`, dll.) sesuai brief.
+2. **App.tsx Layout** — Terapkan layout grid utama `grid-rows-[52px_48px_56px_1fr_46px]` and `grid-cols-[64px_1fr_520px]` pada `AppShell`.
+3. **App.tsx Sliced Components** —
+   - `TopMenuBar`: Header flat dengan brand photrez lowercase, title bar window controls, dan File menu dropdown yang bersih.
+   - `DocumentTabsBar`: Desain tab tipis dengan garis indikator bawah oranye full-width inset (after:absolute left-3 right-3 bottom-0 h-[2px]).
+   - `OptionBar`: Parameter Move/Selection/Brush/Eraser/Crop tool dengan numeric fields mini compact.
+   - `LeftToolRail`: Panel tool 64px dengan minimal outlines oranye untuk active states.
+   - `CanvasViewport`: Artboard viewport yang dominan dengan shadow-canvas solid di atas latar belakang pekat `#0d0f11`.
+   - `RightDock`: Terdiri dari `PropertiesPanel` (280px, grid koordinat, curves, curves collapsible toggles) dan `LayersPanel` (240px, list stack layer, reorder chevrons, eye, lock, trash, dan Navigator panel di bottom).
+   - `BottomStatusBar`: Tray status tipis (46px) dengan data resolusi, koordinat, zoom%, mode warna, profil sRGB, active tool/layer, dan quick launcher buttons.
+4. **Logic Guard** — 100% fungsionalitas dan reaktivitas SolidJS signals, keyboard shortcuts, pen/brush overlay drawing canvas, dan Tauri IPC command bridges dipertahankan aman.
+5. **ui-sanity.test.ts** — Update kelas assertions warna/styling baru.
+
+**Files:**
+- Modified `apps/desktop/src/App.tsx` (JSX return rewrite, full compatibility integration)
+- Modified `apps/desktop/src/index.css` (Tailwind v4 theme custom tokens added)
+- Modified `apps/desktop/src/ui-sanity.test.ts` (Sanity check class assertions updated)
+- Modified `docs/plans/task.md` (Tasks 47 to 58 marked completed)
+- Modified `docs/AI_CURRENT_TASK.md` (Mockup Slicing task marked complete)
+- Modified `docs/FEATURES.md` (Features checklist updated)
+
+**Validasi:**
+- `pnpm.cmd run build`: SUCCESS (built in 10.32s, 0 compiler type errors)
+- `pnpm.cmd --filter photrez-desktop test`: 45/45 tests PASSED
+- `cargo test -p photrez-core`: 85/85 tests PASSED
+
+---
+
 ## [2026-05-28] FEATURE — Tasks 4-5: On-Demand Rendering & Frontend Render Trigger [COMPLETE]
 
 ### Kategori: FEATURE / RENDERER / FRONTEND

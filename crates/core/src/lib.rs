@@ -5,6 +5,7 @@ pub mod transform;
 pub mod brush;
 pub mod export;
 pub mod history;
+pub mod workspace;
 
 pub fn init_core() -> &'static str {
     "Photrez Core Initialized"

@@ -1,45 +1,40 @@
-﻿# 23 - Design Tokens (MVP Baseline)
+# 23 - Design Tokens (MVP Baseline)
 
-Token ini menjadi sumber tunggal styling UI Photrez di MVP.
+Token ini menjadi sumber tunggal styling UI Photrez di MVP yang menggunakan Tailwind v4 dan sistem warna OKLCH.
 
-> **Last synced**: 2026-05-27 â€” Accent migrated from Studio Indigo â†’ Photon Amber. Layout dimensions scaled up for ergonomics.
+> **Last synced**: 2026-05-30 — Synced with current desktop SolidJS & Tailwind v4 UI implementation. Colors mapped to OKLCH values in `src/styles.css`, layout dimensions matched to current docked side-by-side double-dock layout.
 
 ## 1) Usage Rules
 
 1. Jangan hardcode nilai warna/spacing/radius di komponen.
-2. Semua style baru harus memakai token di file ini.
-3. Jika token baru diperlukan, tambahkan di file ini dulu.
+2. Semua style baru harus memakai token Tailwind v4 yang dideklarasikan di `@theme inline` atau CSS variables di `:root`.
+3. Jika token baru diperlukan, tambahkan di `src/styles.css` terlebih dahulu lalu sinkronkan ke dokumen ini.
 
-## 2) Color Tokens (Professional Studio)
+## 2) Color Tokens (True Neutral OKLCH Palette)
+
+Sistem warna menggunakan rona abu-abu netral sejati (Zero-Tint Gray) untuk mencegah distorsi atau bias warna saat desainer mengedit gambar. Aksen menggunakan warna hangat **Photon Amber** secara minimal.
 
 ```css
 :root {
   /* Studio Neutral Grays (Zero-Tint for accurate color perception) */
-  --color-bg-app: #1A1A1C;         /* Editor Shell / Menubar */
-  --color-bg-panel: #202022;       /* Inspector & Sidebars */
-  --color-bg-elevated: #29292B;    /* Controls / Active Tabs */
-  --color-bg-input: #121214;       /* Deep input fields (studio-input) */
-  --color-bg-canvas-wrap: #161618; /* Deepest backdrop behind artboard */
+  --editor-bg: oklch(0.205 0 0);           /* Core app container background */
+  --editor-topbar: oklch(0.19 0 0);        /* Titlebar, Document Tabs, Status Bar */
+  --editor-panel: oklch(0.235 0 0);        /* Properties, Layers sidebar panel background */
+  --editor-canvas: oklch(0.17 0 0);        /* Workspace well behind artboard */
+  --editor-field: oklch(0.265 0 0);        /* Recessed fields / input controls background */
+  --editor-field-border: oklch(0.34 0 0);  /* Soft borders for input fields */
+  --editor-divider: oklch(0.3 0 0);        /* Mechanical dividers between panels (1px border) */
+  --editor-toolbar: oklch(0.22 0 0);       /* Left Tool Rail / Options Bar background */
+  --editor-row-active: oklch(0.3 0 0);     /* Active layer / list item row */
 
-  --color-border-subtle: #343438;
-  --color-border-strong: #424246;
+  /* Typography / Text colors */
+  --editor-text: oklch(0.84 0 0);          /* High contrast primary text */
+  --editor-text-dim: oklch(0.58 0 0);      /* Secondary labels and meta text */
+  --editor-icon: oklch(0.62 0 0);          /* Default state for UI icons */
 
-  /* Low Eye-Strain Typography */
-  --color-text-primary: #D4D4D8;   /* Muted White/Silver */
-  --color-text-secondary: #A1A1AA;
-  --color-text-muted: #8E8E93;      /* Increased brightness for 4.5:1 contrast ratio */
-
-  /* Signature Accent: Photon Amber (changed from Studio Indigo 2026-05-27) */
-  --color-accent: #E15A17;          /* Base â€” warm orange */
-  --color-accent-hover: #F97316;    /* Hover â€” brighter */
-  --color-accent-active: #C2410C;   /* Pressed â€” deeper */
-
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
-  --color-danger: #EF4444;
-  --color-info: #E15A17;             /* Matches accent */
-
-  --color-focus-ring: #E15A17;
+  /* Signature Accent: Photon Amber */
+  --editor-accent: oklch(0.74 0.15 55);    /* Warm amber color for focus, active states, active tab bar */
+  --editor-brand: oklch(0.62 0.2 36);      /* Accent brand color for 'pz' logo icon container */
 }
 ```
 
@@ -47,157 +42,144 @@ Token ini menjadi sumber tunggal styling UI Photrez di MVP.
 
 ```css
 :root {
-  --font-family-ui: "Segoe UI Variable Text", "Segoe UI", sans-serif;
-  --font-size-xs: 11px;  /* Micro Labels / Coordinates / Shortcuts */
-  --font-size-sm: 12px;  /* Secondary / Meta / Toolbar */
-  --font-size-md: 13px;  /* Base UI / General Text */
-  --font-size-lg: 14px;  /* Panel Headers */
-
-  --font-weight-regular: 400;
-  --font-weight-medium: 500;  /* Strict Baseline */
-  --font-weight-semibold: 600;
-
-  --line-height-tight: 1.2;
-  --line-height-normal: 1.4;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  
+  /* Font size definitions mapped inside CSS/Tailwind rules */
+  --font-size-xs: 11px;  /* Micro labels in Transform / Anchor Matrix */
+  --font-size-sm: 12px;  /* Core inputs / Properties values / Status Bar */
+  --font-size-md: 13px;  /* General text, Titlebar Menu dropdowns, Layer titles */
+  --font-size-lg: 14px;  /* Section Header Titles (e.g. 'Properties', 'Layers') */
 }
-```
+```*Catatan: Keutuhan lebar angka dijaga secara global menggunakan `font-variant-numeric: tabular-nums;` di root. Untuk menghindari ilusi optis di mana teks tab terlihat terlalu besar dibandingkan teks properti statis, seluruh tab (seperti DocumentTabsBar, LayersPanel, dan RightDock) diselaraskan secara optikal menggunakan ukuran `text-[12px] font-medium`.*
 
-## 4) Spacing Tokens
+## 4) Radius and Border Tokens
+
+Aplikasi menerapkan aturan **Soft & Snappy** di mana radius didasarkan pada proporsi modular:
 
 ```css
 :root {
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
+  --radius: 0.375rem;                       /* Base radius: 6px */
+  --radius-sm: calc(var(--radius) - 4px);  /* 2px - Small items, color swatches */
+  --radius-md: calc(var(--radius) - 2px);  /* 4px - Inputs, buttons, tabs, dropdowns */
+  --radius-lg: var(--radius);              /* 6px - Outer panels, main container elements */
 }
 ```
 
-## 5) Radius and Border Tokens
+*Aturan Docking: Hanya sudut yang menghadap ke arah Canvas (inner corners) yang diberikan `--radius-lg` atau `--radius-md`. Sisi yang menempel pada tepi window (outer corners) wajib tajam (`0px`).*
 
-```css
-:root {
-  --radius-sm: 4px;   /* Inputs / Small Elements */
-  --radius-md: 6px;   /* Buttons / Tabs */
-  --radius-lg: 8px;   /* Outer Panels / Main Containers */
+## 5) Layout Dimension Tokens (Live Desktop Spec)
 
-  --border-thin: 1px;
-  --border-strong: 2px;
-}
-```
+Dimensi aktual yang berlabuh pada tepi window (docked layout):
 
-## 6) Shadow Tokens
-
-```css
-:root {
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.6);
-}
-```
-
-## 7) Layout Dimension Tokens (Live Implementation)
-
-Nilai berikut mencerminkan dimensi layout aktual di `App.tsx`.
-
-| Elemen | Nilai | Catatan |
+| Elemen | Dimensi | Catatan / Class Tailwind |
 | --- | --- | --- |
-| Menubar (header) height | `36px` | Scaled up dari 32px (ergonomics) |
-| Tool Options Bar height | `42px` | Scaled up dari 38px |
-| Status Bar height | `28px` | Scaled up dari 26px |
-| Left Tool Rail width | `52px` | Standard Pro Scale (updated 2026-05-27) |
-| Tool button size | `40×40 px` (`w-10 h-10`) | Ergonomic Hit Area |
-| Active tool indicator | `2px × 20px` solid bar | Left edge docked |
-| Right Inspector Panel width | `320px` | Unchanged |
-| Inspector tab height | `36px` | Unchanged |
-| Layer row height | `32px` | Unchanged |
-| Properties header height | `36px` (`h-9`) | Unchanged |
-| Input field height | `28px` | Unchanged |
-| Canvas ruler thickness | `22px` | Unchanged |
-| Lucide icon size (tools) | `20Ã—20 px` (`w-5 h-5`) | Scaled up dari 18Ã—18 |
-| Lucide icon size (controls) | `16Ã—16 px` (`w-4 h-4`) | Unchanged |
-| Lucide icon size (inspector header) | `18Ã—18 px` | Unchanged |
+| **AppTitleBar** height | `46px` | macOS/Figma style, centered doc title, `h-[46px]` |
+| **DocumentTabsBar** height | `44px` | `h-[44px] bg-editor-topbar` |
+| **OptionBar** height | `44px` | `h-[44px] bg-editor-toolbar` |
+| **BottomStatusBar** height | `32px` | `h-[32px] bg-editor-topbar` |
+| **LeftToolRail** width | `52px` | `w-[52px] bg-editor-toolbar` |
+| Tool rail items size | `36×36 px` | `size-9` (36px), rounded `[5px]` |
+| Tool rail icon size | `18px` | `size-[18px]` |
+| **RightDock** width (double-dock) | `560px` | `300px` Properties + `260px` Layers side-by-side |
+| RightDock 2XL screen width | `634px` | `336px` Properties + `298px` Layers side-by-side |
+| Input fields height | `26px` | Recessed boxes, `h-[26px] bg-editor-field` |
 
-## 8) Motion Tokens
+## 6) Scrollbar Tokens (Native-Feel Custom Overlay)
 
-```css
-:root {
-  --motion-fast: 80ms;
-  --motion-normal: 100ms;
-  --motion-slow: 150ms;
-  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
-}
-```
-
-## 9) Z-Index Tokens
-
-```css
-:root {
-  --z-base: 1;
-  --z-toolbar: 10;
-  --z-panel: 20;
-  --z-dropdown: 40;
-  --z-modal: 60;
-  --z-toast: 80;
-}
-```
-
-## 10) Token Change Policy
-
-- Perubahan token wajib dicatat di `docs/01-id-decision-log.md` jika memengaruhi UI global.
-- Hindari perubahan sering selama satu milestone kecuali ada alasan usability/performa kuat.
-
-## 11) Scrollbar Tokens (Native Feel)
-
-Implementasi aktual di `index.css` menggunakan scrollbar 4px ultra-slim:
+Menggunakan scrollbar 10px kustom yang digambar sebagai content-box dengan border transparan sehingga menghasilkan visualisasi ramping (slim overlay scrollbar):
 
 ```css
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background-color: var(--color-text-muted);  /* #71717A */
-  border-radius: var(--radius-sm);            /* 4px */
+  background: color-mix(in oklch, var(--editor-field-border), transparent 24%);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-text-secondary); /* #A1A1AA */
+  background: color-mix(in oklch, var(--editor-text-dim), transparent 25%);
+  border: 3px solid transparent;
+  background-clip: content-box;
 }
 ```
 
-## 12) Range Slider Tokens (Premium Control)
+## 7) Premium Biphasic Control Sliders
 
-```css
-input[type="range"]::-webkit-slider-runnable-track {
-  background: #161618;
-  border: 1px solid #343438;
-  height: 6px;
-  border-radius: 3px;
-}
-input[type="range"]::-webkit-slider-thumb {
-  background-color: #E15A17;     /* Photon Amber */
-  height: 14px;
-  width: 14px;
-  border-radius: 50%;
-  box-shadow: 0 0 6px rgba(225, 90, 23, 0.45);
-}
-input[type="range"]::-webkit-slider-thumb:hover {
-  background-color: #F97316;     /* Photon Amber Hover */
-  transform: scale(1.15);
+Properties panel menggunakan slider kustom tipis bergaris `3px` dengan handle bulat `10px` yang memiliki border pelindung dan shadow kedalaman:
+
+```tsx
+// Implementasi slider horizontal bergradien dan center-tick (seperti Temp/Tint)
+export function Slider(props: {
+  percent: number;
+  gradient?: string;
+  centerTick?: boolean;
+}) {
+  return (
+    <div
+      class={clsx(
+        "relative h-[3px] flex-1 rounded-full",
+        props.gradient ? "" : "bg-editor-field-border"
+      )}
+      style={props.gradient ? { "background-image": props.gradient } : undefined}
+    >
+      <Show when={props.centerTick}>
+        {/* Titik tengah balance untuk biphasic adjustments */}
+        <div class="absolute left-1/2 top-1/2 size-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/40" />
+      </Show>
+      <div
+        class="absolute top-1/2 size-[10px] -translate-y-1/2 rounded-full border border-black/40 bg-[#d4d4d4] shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
+        style={{ left: `calc(${props.percent}% - 5px)` }}
+      />
+    </div>
+  );
 }
 ```
 
-## 13) Change History
+Gradien warna biphasic yang digunakan saat ini:
+- **Temp (Temperature)**: Gradien dari biru (dingin), ke abu-abu tengah, ke kuning/jingga (hangat)
+  `linear-gradient(to right, #3b82f6, #6b8db8, #d98a2b)` dengan `centerTick` aktif.
+- **Tint**: Gradien dari hijau (green), ke abu-abu tengah, ke magenta/pink
+  `linear-gradient(to right, #5aa86a, #2b2b2b 50%, #b25fae)` dengan `centerTick` aktif.
+
+## 8) Premium Diagonal Color Swatch
+
+LeftToolRail memuat swatch warna bertumpuk diagonal inovatif yang memaksimalkan ukuran target klik hingga `36px` (mempet penuh untuk efisiensi ruang Photoshop-style), dengan visual potongan diagonal geometris yang presisi:
+
+```tsx
+// Implementasi custom diagonal swatches bertumpuk
+<div class="relative size-[36px]">
+  {/* Background Color (Bottom-Right Circle Segment) */}
+  <div 
+    class="absolute bottom-0 right-0 size-[35px] rounded-full bg-black border border-white/20"
+    style={{ "clip-path": "polygon(100% 100%, 100% 0, 0 100%)" }}
+  />
+  {/* Foreground Color (Top-Left Circle Segment) */}
+  <div 
+    class="absolute top-0 left-0 size-[35px] rounded-full bg-[#E8E8E8] border border-black/30 shadow-sm"
+    style={{ "clip-path": "polygon(0 0, 100% 0, 0 100%)" }}
+  />
+</div>
+```
+
+**Aturan Visual**:
+1. Menggunakan overlapping circles berukuran `size-[35px]` di dalam container `size-[36px]`.
+2. Segmentasi dilakukan murni melalui properti CSS `clip-path` diagonal:
+   - Foreground: `polygon(0 0, 100% 0, 0 100%)` (segitiga kiri-atas)
+   - Background: `polygon(100% 100%, 100% 0, 0 100%)` (segitiga kanan-bawah)
+3. Gap pemisah dibentuk secara natural dari offset pemosisian absolut `top-0 left-0` vs `bottom-0 right-0` (menghasilkan jarak diagonal 1.4px transparan yang seimbang tanpa membutuhkan border masking tambahan).
+
+---
+
+## 9) Change History
 
 | Tanggal | Perubahan | Alasan |
 | --- | --- | --- |
-| 2026-05-27 | Accent: Studio Indigo â†’ Photon Amber | Identitas visual hardware-tooling yang hangat, sesuai arah branding |
-| 2026-05-27 | Layout dimensions scaled up (+4px header, +8px tool rail, etc.) | Ergonomics â€” target area terlalu kecil di monitor HD |
-| 2026-05-27 | Scrollbar: 10px â†’ 4px ultra-slim | Mengurangi visual noise, feel lebih native |
-| 2026-05-27 | Info color = Accent color | Konsistensi â€” info state mengikuti brand identity |
-
+| 2026-05-27 | Accent: Studio Indigo → Photon Amber | Identitas visual hardware-tooling yang hangat, sesuai arah branding |
+| 2026-05-30 | Synced with SolidJS Tailwind v4 UI | Memperbarui token ke sistem warna OKLCH, radius 6px modular, slider horizontal bergradien, dan layout double-dock side-by-side |
+| 2026-05-30 | UI/UX Polish: Diagonal Swatches & Tab Sizing | Implementasi custom diagonal split color swatches penuh 36px, visual tab typography alignment 12px (mengatasi ilusi optis kebesaran), layout tool rail bottom-aligned mt-auto, dan pemangkasan non-MVP icons |

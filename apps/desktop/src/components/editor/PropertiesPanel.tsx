@@ -1,0 +1,230 @@
+import type { JSX } from "solid-js";
+import { For } from "solid-js";
+import { Icon, type IconName } from "./icons";
+import { NumField, PropRow, SelectField, Slider } from "./primitives";
+
+const COLLAPSED_SECTIONS: readonly {
+  icon: IconName;
+  iconClass: string;
+  label: string;
+}[] = [
+  { icon: "spline", iconClass: "text-editor-text-dim", label: "Tone Curve" },
+  { icon: "palette", iconClass: "text-sky-400", label: "HSL / Color" },
+  { icon: "swatch", iconClass: "text-amber-400", label: "Color Grading" },
+  { icon: "sparkles", iconClass: "text-sky-300", label: "Detail" },
+  {
+    icon: "aperture",
+    iconClass: "text-emerald-400",
+    label: "Lens Corrections",
+  },
+] as const;
+
+export function PropertiesPanel() {
+  return (
+    <section class="flex flex-1 shrink-0 flex-col overflow-hidden bg-editor-panel">
+      <div class="flex h-[46px] shrink-0 items-center border-b border-editor-divider px-4">
+        <h2 class="text-[13px] font-medium text-editor-text">Properties</h2>
+      </div>
+
+      <div class="flex-1 overflow-y-auto">
+        <div class="border-b border-editor-divider px-4 py-3.5">
+          <SectionHeader>
+            <div class="flex items-center gap-2">
+              <Icon
+                name="move"
+                class="size-3.5 text-editor-text-dim"
+                strokeWidth={1.75}
+              />
+              <span class="text-[12.5px] font-medium text-editor-text">
+                Transform
+              </span>
+            </div>
+            <Icon
+              name="chevron-up"
+              class="size-4 text-editor-text-dim"
+              strokeWidth={1.75}
+            />
+          </SectionHeader>
+
+          <div class="mt-3 flex flex-col gap-2.5">
+            <PropRow label="Position">
+              <NumField label="X" value="120 px" class="flex-1" />
+              <NumField label="Y" value="-35 px" class="flex-1" />
+            </PropRow>
+            <PropRow label="Size">
+              <NumField label="W" value="1920 px" class="flex-1" />
+              <NumField label="H" value="1280 px" class="flex-1" />
+            </PropRow>
+            <PropRow label="Rotation">
+              <NumField value="0.00°" class="flex-1" />
+            </PropRow>
+            <PropRow label="Scale">
+              <NumField label="X" value="100.0 %" class="flex-1" />
+              <NumField label="Y" value="100.0 %" class="flex-1" />
+              <button
+                class="flex size-[26px] shrink-0 items-center justify-center text-editor-accent"
+                aria-label="Lock scale"
+              >
+                <Icon name="link" class="size-3.5" strokeWidth={1.75} />
+              </button>
+            </PropRow>
+            <PropRow label="Opacity">
+              <Slider percent={100} />
+              <span class="w-[44px] shrink-0 text-right text-[12px] text-editor-text">
+                100 %
+              </span>
+            </PropRow>
+
+            <div class="flex items-start gap-2.5 pt-1">
+              <span class="w-[58px] shrink-0 text-[12px] text-editor-text-dim">
+                Anchor
+              </span>
+              <AnchorGrid />
+            </div>
+
+            <PropRow label="Constrain">
+              <SelectField value="Lock Aspect Ratio" class="flex-1" />
+            </PropRow>
+          </div>
+        </div>
+
+        <div class="border-b border-editor-divider px-4 py-3.5">
+          <SectionHeader>
+            <div class="flex items-center gap-2">
+              <Icon
+                name="sun"
+                class="size-3.5 text-editor-text-dim"
+                strokeWidth={1.75}
+              />
+              <span class="text-[12.5px] font-medium text-editor-text">
+                Basic
+              </span>
+            </div>
+            <Icon
+              name="x"
+              class="size-3.5 text-editor-text-dim"
+              strokeWidth={1.75}
+            />
+          </SectionHeader>
+
+          <div class="mt-3 flex flex-col gap-2.5">
+            <PropRow label="Profile">
+              <SelectField value="Landscape" class="flex-1" />
+            </PropRow>
+            <PropRow label="WB">
+              <SelectField value="As Shot" class="flex-1" />
+              <button
+                class="flex size-[26px] shrink-0 items-center justify-center text-editor-icon hover:text-editor-text"
+                aria-label="White balance picker"
+              >
+                <Icon name="pipette" class="size-3.5" strokeWidth={1.75} />
+              </button>
+            </PropRow>
+            <SliderRow
+              label="Temp"
+              percent={40}
+              value="5600"
+              gradient="linear-gradient(to right, #3b82f6, #6b8db8, #d98a2b)"
+              centerTick={true}
+            />
+            <SliderRow
+              label="Tint"
+              percent={50}
+              value="+6"
+              gradient="linear-gradient(to right, #5aa86a, #2b2b2b 50%, #b25fae)"
+              centerTick={true}
+            />
+          </div>
+        </div>
+
+        <For each={COLLAPSED_SECTIONS}>
+          {(section) => (
+            <CollapsedRow
+              icon={section.icon}
+              iconClass={section.iconClass}
+              label={section.label}
+            />
+          )}
+        </For>
+      </div>
+    </section>
+  );
+}
+
+function SectionHeader(props: { children: JSX.Element }) {
+  return <div class="flex items-center justify-between">{props.children}</div>;
+}
+
+function SliderRow(props: {
+  label: string;
+  percent: number;
+  value: string;
+  gradient?: string;
+  centerTick?: boolean;
+}) {
+  return (
+    <div class="flex items-center gap-2.5">
+      <span class="w-[58px] shrink-0 text-[12px] text-editor-text-dim">
+        {props.label}
+      </span>
+      <div class="flex flex-1 items-center gap-2.5">
+        <Slider
+          percent={props.percent}
+          gradient={props.gradient}
+          centerTick={props.centerTick}
+        />
+        <span class="w-[28px] shrink-0 text-right text-[12px] text-editor-text">
+          {props.value}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function AnchorGrid() {
+  return (
+    <div class="relative h-[42px] w-[88px]">
+      <div class="absolute left-1/2 top-1/2 h-[1px] w-[72px] -translate-x-1/2 -translate-y-1/2 bg-editor-field-border" />
+      <div class="absolute left-1/2 top-1/2 h-[34px] w-[1px] -translate-x-1/2 -translate-y-1/2 bg-editor-field-border" />
+      <div class="relative grid h-full grid-cols-3 grid-rows-3">
+        <For each={Array.from({ length: 9 })}>
+          {(_, index) => (
+            <div class="flex items-center justify-center">
+              {index() === 4 ? (
+                <div class="size-2.5 rounded-[2px] border border-editor-text bg-editor-panel" />
+              ) : (
+                <div class="size-[3px] rounded-full bg-editor-text-dim" />
+              )}
+            </div>
+          )}
+        </For>
+      </div>
+    </div>
+  );
+}
+
+function CollapsedRow(props: {
+  icon: IconName;
+  iconClass: string;
+  label: string;
+}) {
+  return (
+    <button class="flex h-[42px] w-full items-center justify-between border-b border-editor-divider px-4 hover:bg-white/[0.03]">
+      <div class="flex items-center gap-2.5">
+        <span class="flex size-4 items-center justify-center">
+          <Icon
+            name={props.icon}
+            class={`size-[15px] ${props.iconClass}`}
+            strokeWidth={1.75}
+          />
+        </span>
+        <span class="text-[12.5px] text-editor-text">{props.label}</span>
+      </div>
+      <Icon
+        name="chevron-right"
+        class="size-4 text-editor-text-dim"
+        strokeWidth={1.75}
+      />
+    </button>
+  );
+}

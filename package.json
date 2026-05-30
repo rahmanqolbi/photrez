@@ -4,9 +4,11 @@
   "scripts": {
     "dev": "pnpm --filter photrez-desktop dev",
     "build": "pnpm --filter photrez-desktop build",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.0.0"
+    "@tauri-apps/cli": "^2.0.0",
+    "husky": "^9.1.7"
   }
 }

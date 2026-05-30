@@ -1,117 +1,75 @@
 # 24 - UI Component Rules (MVP)
 
-Dokumen ini berisi aturan implementasi komponen agar hasil UI antar agent konsisten.
+Dokumen ini berisi aturan implementasi komponen agar hasil UI antar agent konsisten dengan komponen nyata yang ada di codebase saat ini.
 
-## 1) Scope
+## 1) Core Components List
 
-Komponen prioritas MVP:
+Komponen prioritas desktop editor:
 
-1. Button
-2. Icon Button (toolbar)
-3. Input / Number Input
-4. Select / Dropdown
-5. Panel Container
-6. Layer List Item
-7. Status Badge
-8. Tooltip
-9. Dialog / Modal
-10. Divider
+1. **AppTitleBar**: Header window desktop, macOS/Figma style, height `46px`.
+2. **LeftToolRail**: Sidebar vertikal tool, width `52px`.
+3. **RightDock**: Container sidebar ganda, side-by-side Properties + Layers.
+4. **PropertiesPanel**: Panel parameter transform, anchor grid, dan basic sliders (`300px` / `336px` 2XL).
+5. **LayersPanel**: Panel daftar layer kustom, eye visibility, thumbnail mask, navigator (`260px` / `298px` 2XL).
+6. **Slider / SliderRow**: Slider parameter biphasic (Temp, Tint) dan monophasic (Opacity) kustom.
+7. **NumField / SelectField**: Input box angka dan dropdown pilihan terdesentralisasi, height `26px`.
+8. **PropRow**: Baris layout label + input control dengan label lebar `58px` (`w-[58px]`).
 
-## 2) Global Rules
+## 2) Component Styling Rules
 
-1. Semua komponen wajib pakai token dari `docs/23-design-tokens.md`.
-2. Semua komponen interaktif wajib punya state: default/hover/active/focus-visible/disabled.
-3. Jangan buat varian baru tanpa dokumentasi varian.
+### Button Rules
 
-## 3) Button Rules
+- Height default: `26px` (panel inputs), `28px` (RightDock Export button).
+- Padding horizontal: `12px` (standard), `8px` (dense).
+- **Radius**: Dilarang keras menggunakan bentuk "Pill" (`rounded-full`). Gunakan radius `--radius-md` (calc(var(--radius) - 2px) = 4px) untuk memancarkan presisi alat profesional.
+- Primary action/state pakai background aksen `--editor-accent` atau text aksen.
 
-- Height default: `32px` (Standard), `24px` (Dense/Toolbar).
-- Padding horizontal default: `12px` (Standard), `8px` (Dense).
-- **Radius**: Dilarang keras menggunakan bentuk "Pill" (`rounded-full`). Gunakan sudut tajam atau radius sangat minim `--radius-sm` (sekitar 2px - 4px) untuk memancarkan presisi alat profesional.
-- Primary action pakai `--color-accent`.
-- Destructive action pakai `--color-danger`.
+### Input / Select Field Rules
 
-## 4) Icon Button Rules
-
-- Ukuran area klik minimum: `28px x 28px`.
-- Icon default: `16px`.
-- Toolbar dense mode: `24px x 24px` dengan icon `14px` (opsional area padat).
-
-## 5) Input Rules
-
-- Height default: `32px` (Standard), `26px` (Dense/Inspector).
-- Style: **Defined Box (Recessed)**. 
-- Background: `--color-bg-input` (#121214).
-- Border: `1px solid var(--color-border-subtle)`.
-- **Inset Effect**: Berikan `border-top-color: #101012` (lebih gelap dari border lainnya) untuk memberikan efek visual "masuk" ke dalam panel.
-- Focus: Border color berubah menjadi `--color-accent` (#E15A17).
+- Height default: `26px` (`h-[26px]`).
+- Style: **Defined Box (Recessed)**.
+- Background: `--editor-field` (`oklch(0.265 0 0)`).
+- Border: `1px solid var(--editor-field-border)` (`oklch(0.34 0 0)`).
+- Focus: Border color berubah menjadi aksen `--editor-accent` (`oklch(0.74 0.15 55)`).
 - **Typography Input**: Dilarang keras menggunakan font monospace (`font-mono`) atau `font-bold` di dalam input angka (seperti koordinat). Gunakan font UI utama biasa. Keutuhan lebar angka akan dijaga otomatis oleh CSS `tabular-nums` yang di-set di root.
 
-## 6) Panel Rules
+### Slider Rules (Biphasic & Monophasic)
 
-- **Docked Precision Logic**: Panel utama (Sidebar/Inspector) wajib menempel (*anchored/docked*) ke tepi window samping, atas, dan bawah.
-- **Visual Separation**: Pemisahan area tidak lagi menggunakan margin luar (`m-2`), melainkan border tipis `1px solid var(--color-studio-border)` di sisi yang berbatasan dengan Canvas.
+- Slider digambar menggunakan baris kustom horizontal tipis setinggi `3px` (`h-[3px] rounded-full`).
+- Handle slider berbentuk bulat berdiameter `10px` (`size-[10px] rounded-full border border-black/40 bg-[#d4d4d4] shadow-[0_1px_2px_rgba(0,0,0,0.5)]`).
+- Slider memiliki dukungan:
+  - **Center-Tick Balance**: Titik balance tengah setinggi `3px` (`size-[3px] rounded-full bg-white/40`) pada sumbu tengah `left-1/2` untuk adjustment biphasic (seperti Temp & Tint).
+  - **Horizontal Gradient Track**: Mendukung warna track bergradien melalui style inline `background-image` (seperti Temp biru-kuning dan Tint hijau-magenta).
+- **Slider Row Layout**: Terdiri atas label `w-[58px]`, slider bar responsif, dan teks nilai numerik di sebelah kanan selebar `28px` / `44px` (`w-[28px] shrink-0 text-right`).
+
+### Panel Rules (Docked Precision)
+
+- Panel utama (Sidebar/Inspector) wajib menempel (*anchored/docked*) ke tepi window samping, atas, dan bawah.
+- **Visual Separation**: Pemisahan area tidak menggunakan margin luar (`m-2`), melainkan border tipis `1px solid var(--editor-divider)` (`oklch(0.3 0 0)`) di sisi yang berbatasan dengan Canvas.
 - **Rounding Strategy**: 
-  - Hanya sudut yang menghadap ke arah Canvas (inner corners) yang diberikan `--radius-lg` (8px). 
+  - Hanya sudut yang menghadap ke arah Canvas (inner corners) yang diberikan `--radius-lg` atau `--radius-md`. 
   - Sudut yang menempel ke window (outer corners) wajib tajam (`0px`).
 - **Panel Header**:
-  - Background: `--color-studio-elevated` (#29292B).
-  - Height: `32px`.
-  - Typography: `11px`, `font-bold`, `uppercase`, `tracking-wider`.
-- **Shadow**: Gunakan *subtle shadow* di sisi dalam panel yang berbatasan dengan Canvas untuk memberikan efek kedalaman (*workspace well*).
+  - Background: Default panel background `bg-editor-panel` atau `bg-editor-topbar`.
+  - Height: `46px`.
+  - Typography: `14px`, `font-semibold`.
 
-## 7) Global Radius Discipline (Soft & Snappy)
+### Layer List Item Rules
 
-- **Outer Containers (Inner Corners Only)**: `8px` (`--radius-lg`).
-- **Buttons / Tabs / Group Containers**: `6px` (`--radius-md`).
-- **Inputs / Small Interactive Elements**: `4px` (`--radius-sm`).
-- **Tool Indicators / Swatches**: `1px - 2px` (Hampir kotak untuk presisi).
-- Dilarang menggunakan radius di luar variabel token tersebut kecuali untuk Artboard (minimal 1px).
+- Height item: `50px` (`h-[50px]`).
+- State aktif: Menggunakan background active row `--editor-row-active` (`oklch(0.3 0 0)`). State non-aktif hover menggunakan `hover:bg-white/[0.03]`.
+- Thumbnail Layer:
+  - Kotak mini `34x34px` (`size-[34px] rounded-[3px]`) dengan border tipis dan background `bg-cover`.
+  - Adjustment layer menggunakan thumbnail background conic kustom berwarna hitam-putih.
+  - Layer dengan mask menampilkan thumbnail tambahan berupa lingkaran putih di dalam kotak hitam.
+- Visibility: Eye / Sun icon di sebelah kiri (`size-4 text-editor-icon` atau `text-editor-text-dim`).
 
-## 8) Layer List Item Rules
+---
 
-- Height item default: `30px`.
-- State aktif wajib jelas kontras.
-- Aksi visibility/lock harus tetap terlihat di density default.
-- Reorder affordance harus konsisten di semua item.
+## 3) Component Review Checklist (Before Merge)
 
-## 8) Tooltip Rules
-
-- Tooltip hanya untuk bantuan singkat.
-- Jangan simpan informasi kritis hanya di tooltip.
-- Delay tampil harus singkat dan konsisten.
-
-## 9) Dialog Rules
-
-- Dialog wajib punya:
-1. judul,
-2. isi ringkas,
-3. action utama,
-4. action batal.
-- Escape key menutup dialog non-destruktif.
-- Destructive dialog wajib teks konfirmasi jelas.
-
-## 10) Empty / Loading / Error States
-
-- Empty state harus memberi next action.
-- Loading state gunakan indikator ringan (hindari animasi berat).
-- Error state harus menampilkan:
-1. ringkasan masalah,
-2. action retry atau close.
-
-## 11) Component Naming Convention
-
-- Gunakan prefix domain bila perlu, contoh:
-`StudioButton`, `StudioPanel`, `LayerItemRow`.
-- Hindari nama generik yang ambigu seperti `Card2` atau `WidgetNew`.
-
-## 12) Review Checklist (Before Merge)
-
-- [ ] Komponen pakai design token.
-- [ ] Semua state interaktif lengkap.
-- [ ] Akses keyboard dasar berfungsi.
-- [ ] Tidak ada hardcoded color/spacing global.
-- [ ] Nama komponen konsisten.
-] Akses keyboard dasar berfungsi.
-- [ ] Tidak ada hardcoded color/spacing global.
-- [ ] Nama komponen konsisten.
+- [ ] Komponen menggunakan Tailwind v4 utility classes dan OKLCH CSS variables.
+- [ ] Teks angka telah diamankan dengan format `tabular-nums` atau berlabuh pada width konstan.
+- [ ] Semua state interaktif lengkap (default/hover/active/focus).
+- [ ] Tidak ada padding atau margin luar yang memicu gap visual di tepi window desktop.
+- [ ] Radius sudut mematuhi aturan Docking (outer corners 0px, inner corners rounded).

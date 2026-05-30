@@ -64,8 +64,12 @@ Defined in `docs/27-key-user-flows.md` (Flow A).
 Additional specifications:
 
 - Supported formats: see `docs/33-file-format-support.md`.
-- If a document is already open: prompt to save/discard first (or open in new tab if post-MVP).
-- Opening replaces current document state entirely.
+- Multi-document workspace recovery spec: see `docs/superpowers/specs/2026-05-29-multi-document-workspace-design.md`.
+- Opening one image creates one document tab.
+- Opening multiple images creates one document tab per valid image.
+- If a document is already open, opening more images does not replace it; the new images open as additional document tabs.
+- Drag/drop file input follows the same rule: open as new document tabs in MVP.
+- The active document is the export/edit target.
 
 ## 4) Save Strategy (MVP)
 
@@ -106,11 +110,12 @@ Per `docs/04-erd-or-data-model.md` section 7:
 ### Behavior
 
 1. If document has unsaved changes (any edit after last export):
-   - Show confirmation dialog: `You have unsaved changes. Export before closing?`
-   - Options: `Export` | `Discard` | `Cancel`
+   - Show confirmation dialog: `Discard changes?`
+   - Options: `Discard` | `Cancel`
 2. If no unsaved changes:
    - Close document immediately.
-   - Return to empty state (or app close if single-document mode).
+   - If other tabs remain, activate the nearest document tab.
+   - If the last tab was closed, return to the minimal empty state.
 
 ### Dirty State Tracking
 
@@ -131,8 +136,8 @@ Per `docs/04-erd-or-data-model.md` section 7:
 
 ## 7) Open Questions
 
-- [ ] **Multiple documents**: MVP is single-document. Future multi-tab support?
-- [ ] **Recent files list**: Show in welcome/empty state? (Nice-to-have for MVP)
+- [x] **Multiple documents**: MVP recovery uses Photoshop/Affinity-style document tabs. See `docs/superpowers/specs/2026-05-29-multi-document-workspace-design.md`.
+- [x] **Recent files list**: Not in MVP. Empty state remains minimal and canvas-centered.
 
 ## 8) Change Control
 

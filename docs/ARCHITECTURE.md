@@ -13,11 +13,12 @@ Photrez adalah lightweight desktop image editor yang dibangun sebagai alternatif
 
 ## Status Proyek
 
-- **Phase**: Milestone 1 — Foundation & Command Contract Baseline
-- **Core Crate**: Document model, layer management, dan history engine sudah stabil.
-- **Render Crate**: Stub — wgpu integration belum dimulai.
-- **Frontend**: Full UI shell fungsional, layer CRUD via IPC operational.
-- **Testing**: Belum ada automated tests (planned per M1 checklist).
+- **Phase**: Usable MVP recovery gate (2026-05-29). Multi-document workspace implemented.
+- **Core Crate**: Document model, layer management, bitmap buffers, selection, transform, brush/eraser, import decode, export encode, and workspace management exist. Core tests pass (`cargo test -p photrez-core`: 85 tests).
+- **Render Crate**: wgpu renderer code exists, but render crate tests currently fail with `STATUS_ENTRYPOINT_NOT_FOUND`; workspace test gate is not green.
+- **Frontend**: Full UI shell with multi-document workspace, document tabs, empty state, drag/drop, and all core editing interactions. Artboard renders via IPC base64 pipeline.
+- **Testing**: Frontend build and tests pass (`pnpm.cmd run build`; `pnpm.cmd --filter photrez-desktop test`: 45 tests). Core tests pass (85 tests).
+- **Recovery Reference**: `docs/38-usable-mvp-recovery-plan.md`.
 
 ---
 
@@ -34,11 +35,13 @@ Photrez adalah lightweight desktop image editor yang dibangun sebagai alternatif
 | State (Backend)  | `tauri::State<'_, T>` + `Mutex` (Rust managed state)  |
 | State (Frontend) | SolidJS `createSignal` / `createStore`                 |
 | Package Manager  | pnpm (monorepo workspace)                              |
-| Icons            | Lucide (CDN)                                           |
+| Icons            | `lucide-solid` package                                 |
 
 ---
 
 ## Diagram Arsitektur
+
+Note 2026-05-29: the diagram below is historical and still useful for ownership boundaries, but some file labels/status markers are stale. Use the project status and registered command table above/below as the current runtime truth until the diagram is redrawn during the usable-MVP recovery pass.
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
@@ -47,19 +50,20 @@ Photrez adalah lightweight desktop image editor yang dibangun sebagai alternatif
 │                                                               │
 │  ┌──────────────────┐      ┌───────────────────────────────┐ │
 │  │   App Shell       │      │     Canvas Viewport           │ │
-│  │  (UI Chrome)      │      │  (Future: wgpu surface)       │ │
+│  │  (UI Chrome)      │      │  (IPC base64 preview)         │ │
 │  │                   │      │                               │ │
-│  │ - Menubar (36px)  │      │ - Ruler bars                  │ │
-│  │ - Toolbar (42px)  │      │ - Artboard preview            │ │
-│  │ - Tool Rail       │      │ - Transform handles           │ │
-│  │ - Inspector       │      │ - Selection overlay           │ │
+│  │ - Menubar (44px)  │      │ - Ruler bars                  │ │
+│  │ - Toolbar (40px)  │      │ - Artboard preview            │ │
+│  │ - Tab Strip (30px)│      │ - Transform handles           │ │
+│  │ - Tool Rail       │      │ - Selection overlay           │ │
+│  │ - Inspector       │      │ - Empty state (no docs)       │ │
 │  │ - Status Bar      │      │                               │ │
 │  └────────┬──────────┘      └──────────┬────────────────────┘ │
 │           │                            │                      │
 │  ┌────────┴────────────────────────────┴──────────────────┐  │
 │  │              SolidJS Reactive State                     │  │
 │  │  createSignal: activeTool, zoom, mousePos, layers       │  │
-│  │  createSignal: activeTab, selectedLayerId, fileMenuOpen │  │
+│  │  createSignal: documents, activeDocumentId, limits      │  │
 │  └───────────────────────────┬────────────────────────────┘  │
 │                              │ invoke() from                  │
 │                              │ @tauri-apps/api/core           │
@@ -75,19 +79,22 @@ Photrez adalah lightweight desktop image editor yang dibangun sebagai alternatif
 │  └──────┬─────────────┬──────────────┬────────────────────┘  │
 │         │             │              │                        │
 │  ┌──────┴─────┐  ┌────┴─────┐  ┌─────┴──────┐                │
-│  │ Layer      │  │ Document │  │ History    │                │
+│  │ Workspace  │  │ Layer    │  │ History    │                │
 │  │ Commands   │  │ Commands │  │ Commands   │                │
-│  │ add_layer  │  │ get_doc  │  │ undo       │                │
-│  │ delete     │  │ _state   │  │ redo       │                │
-│  │ reorder    │  │          │  │            │                │
-│  │ update     │  │          │  │            │                │
+│  │ get_ws_st  │  │ add_layer│  │ undo       │                │
+│  │ open_images│  │ delete   │  │ redo       │                │
+│  │ switch_doc │  │ reorder  │  │            │                │
+│  │ close_doc  │  │ update   │  │            │                │
 │  └──────┬─────┘  └────┬─────┘  └─────┬──────┘                │
 │         │             │              │                        │
 │  ┌──────┴─────────────┴──────────────┴────────────────────┐  │
-│  │              EditorState (tauri::manage)                 │  │
+│  │              AppRuntime (tauri::manage)                  │  │
 │  │  ┌─────────────────────┐  ┌─────────────────────────┐  │  │
-│  │  │ Mutex<Document>     │  │ Mutex<HistoryStore>      │  │  │
-│  │  │ (photrez-core)      │  │ (photrez-core)           │  │  │
+│  │  │ Mutex<WorkspaceState>│  │ Mutex<ViewportState>     │  │  │
+│  │  │ (photrez-core)       │  │ (presentation state)     │  │  │
+│  │  │ - documents[]        │  │ - artboard pos/size      │  │  │
+│  │  │ - active_document_id │  │ - pan/zoom               │  │  │
+│  │  │ - per-doc state      │  │                          │  │  │
 │  │  └─────────────────────┘  └─────────────────────────┘  │  │
 │  └─────────────────────────────────────────────────────────┘  │
 └───────────────────────────────────────────────────────────────┘
@@ -99,17 +106,18 @@ Photrez adalah lightweight desktop image editor yang dibangun sebagai alternatif
 │  │ photrez-core                 │  │ photrez-render          ││
 │  │ (crates/core/)               │  │ (crates/render/)        ││
 │  │                              │  │                         ││
-│  │ ├── document.rs              │  │ ├── lib.rs (stub)       ││
-│  │ │   Document, add/delete/    │  │ │   init_render()       ││
-│  │ │   reorder/update layer     │  │ │                       ││
-│  │ ├── layers.rs                │  │ │ TODO:                 ││
-│  │ │   Layer struct, serialize  │  │ │ - wgpu Device init    ││
-│  │ ├── history.rs               │  │ │ - Texture pipeline    ││
-│  │ │   HistoryStore, undo/redo  │  │ │ - Layer compositing   ││
-│  │ ├── selection.rs (stub)      │  │ │ - Viewport transforms ││
-│  │ ├── transform.rs (stub)      │  │ │ - Brush preview       ││
-│  │ ├── brush.rs (stub)          │  │ └─────────────────────────┘│
-│  │ ├── export.rs (stub)         │  │                         │
+│  │ ├── document.rs              │  │ ├── lib.rs              ││
+│  │ │   Document, layers,        │  │ │   init_render()       ││
+│  │ │   selection, transform     │  │ │   WgpuRenderer        ││
+│  │ ├── layers.rs                │  │ │                       ││
+│  │ │   Layer, BitmapData        │  │ └───────────────────────┘│
+│  │ ├── history.rs               │  │                         │
+│  │ │   HistoryStore, undo/redo  │  │                         │
+│  │ ├── workspace.rs ★ NEW       │  │                         │
+│  │ │   WorkspaceState           │  │                         │
+│  │ │   DocumentSession          │  │                         │
+│  │ ├── brush.rs                 │  │                         │
+│  │ ├── export.rs                │  │                         │
 │  │ └── lib.rs                   │  │                         │
 │  └──────────────────────────────┘                             │
 └───────────────────────────────────────────────────────────────┘
@@ -157,17 +165,36 @@ Detail lengkap: `docs/15-command-contract-spec.md`
 
 ## Registered Commands (Active)
 
-| Command              | Params                                          | Module   | Status |
-| -------------------- | ----------------------------------------------- | -------- | ------ |
-| `ping`               | —                                               | Shell    | ✅     |
-| `get_contract_info`  | —                                               | Shell    | ✅     |
-| `get_document_state` | —                                               | Document | ✅     |
-| `add_layer`          | `name: String`                                  | Layer    | ✅     |
-| `delete_layer`       | `id: String`                                    | Layer    | ✅     |
-| `reorder_layer`      | `from_idx: usize, to_idx: usize`               | Layer    | ✅     |
-| `update_layer`       | `id, opacity?, visible?, locked?, name?, blend_mode?` | Layer | ✅     |
-| `undo`               | —                                               | History  | ✅     |
-| `redo`               | —                                               | History  | ✅     |
+| Command              | Params | Module | Status |
+| -------------------- | ------ | ------ | ------ |
+| `ping`               | none | Shell | Active |
+| `get_contract_info`  | none | Shell | Active |
+| `get_workspace_state` | none | Workspace | Active |
+| `get_document_state` | none | Workspace | Active (compatibility, returns active document) |
+| `open_images`        | `paths: Vec<String>` | Workspace | Active |
+| `switch_document`    | `documentId: String` | Workspace | Active |
+| `close_document`     | `documentId: String, discardChanges: bool` | Workspace | Active |
+| `set_selected_layer` | `layerId: Option<String>` | Workspace | Active |
+| `add_layer`          | `name: String` | Layer | Active |
+| `delete_layer`       | `id: String` | Layer | Active |
+| `reorder_layer`      | `from_idx: usize, to_idx: usize` | Layer | Active |
+| `update_layer`       | `id, opacity?, visible?, locked?, name?, blend_mode?` | Layer | Active |
+| `undo`               | none | History | Active |
+| `redo`               | none | History | Active |
+| `create_selection`   | `x, y, width, height` | Selection | Active |
+| `clear_selection`    | none | Selection | Active |
+| `select_all`         | none | Selection | Active |
+| `move_layer`         | `id, x, y` | Layer | Active |
+| `transform_layer`    | `id, scale_x, scale_y, rotation, flip_h, flip_v` | Transform | Active |
+| `crop_canvas`        | `x, y, width, height` | Document | Active |
+| `resize_canvas`      | `width, height` | Document | Active |
+| `draw_brush_stroke`  | `layer_id, path, size, hardness, color, is_eraser` | Brush | Active |
+| `export_document`    | `format, quality, path` | Export | Active |
+| `sample_pixel`       | `x, y` | Color | Active |
+| `open_image`         | `path` | Import | Active (compatibility, delegates to open_images) |
+| `trigger_render`     | none | Renderer | Active |
+| `update_viewport_state` | artboard/pan/zoom params | Renderer | Active |
+| `preview_frame`      | none | Renderer | Active |
 
 ---
 

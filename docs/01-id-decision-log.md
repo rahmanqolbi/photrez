@@ -46,6 +46,8 @@ Dokumen ini dipakai untuk melacak keputusan inti proyek secara ringkas.
 | Ergonomic layout scaling | Menubar `36px` (dari 32), Toolbar `42px` (dari 38), Status `28px` (dari 26), Tool Rail `56px` (dari 48), Tool buttons `36×36` (dari 32×32), Lucide icons `20×20` (dari 18×18). Alasan: click target terlalu kecil di 1080p, accessibility | Locked |
 | Scrollbar style | Ultra-slim `4px` WebKit scrollbar dengan `var(--color-text-muted)` thumb. Alasan: mengurangi noise visual, feel lebih native | Locked |
 | Range slider style | Custom WebKit slider dengan Photon Amber thumb `14px`, glow shadow `rgba(225,90,23,0.45)`, hover scale `1.15x` | Locked |
+| Usable MVP release gate | Milestone DONE tidak sama dengan release usable. Release candidate hanya valid setelah open-edit-export smoke test lulus dan `docs/38-usable-mvp-recovery-plan.md` hijau. | Locked 2026-05-29 |
+| Multi-document workspace MVP recovery | Photrez memakai document tab strip ala Photoshop/Affinity. Setiap opened image menjadi document session/tab terpisah. Backend Rust owns `WorkspaceState` dan per-document editor truth. | Locked 2026-05-29 |
 
 ## Keputusan yang Masih Pending
 

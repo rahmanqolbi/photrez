@@ -47,6 +47,10 @@ After final name is locked:
 - Testing baseline policy exists (`docs/testing-policy.md`).
 - Performance protocol exists and evidence is complete:
 `docs/16-performance-measurement-protocol.md`.
+- Usable MVP recovery gate is green:
+`docs/38-usable-mvp-recovery-plan.md`.
+- Crash-free open-edit-export smoke test passes on a packaged desktop build.
+- `cargo test --workspace`, `pnpm.cmd run build`, and `pnpm.cmd --filter photrez-desktop test` all pass.
 
 ## Exit Criteria
 

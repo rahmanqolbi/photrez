@@ -47,6 +47,7 @@ Public project overview is available at [../README.md](../README.md).
 39. `35-error-code-registry.md` (error scenario to code+message mapping)
 40. `36-glossary.md` (standardized terminology guide)
 41. `37-i18n-strategy-note.md` (internationalization architecture guardrails)
+42. `38-usable-mvp-recovery-plan.md` (current usability truth reset and recovery gate)
 
 ## Standards Used
 
