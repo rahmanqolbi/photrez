@@ -1,5 +1,7 @@
 import type { ViewportState } from "../engine/types";
 
+export const MIN_ZOOM = 0.01;
+
 /**
  * Convert screen coordinates (client bounds relative to canvas rect)
  * to relative document coordinate space.
@@ -54,7 +56,7 @@ export function computeFitZoom(
     1.0 // Don't scale beyond 100%
   );
 
-  const finalZoom = Math.max(0.05, fitZoom);
+  const finalZoom = Math.max(MIN_ZOOM, fitZoom);
   const panX = (containerWidth - docWidth * finalZoom) / 2;
   const panY = (containerHeight - docHeight * finalZoom) / 2;
 

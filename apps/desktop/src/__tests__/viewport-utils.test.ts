@@ -79,6 +79,11 @@ describe('calculateFitScreen', () => {
     expect(result.panX).toBe(0);
     expect(result.panY).toBe(0);
   });
+
+  it('floors zoom at MIN_ZOOM for very small documents', () => {
+    const result = calculateFitScreen(800, 600, 0.001, 0.001, 80);
+    expect(result.zoom).toBeGreaterThanOrEqual(MIN_ZOOM);
+  });
 });
 
 describe('screenToDocument', () => {
@@ -88,6 +93,14 @@ describe('screenToDocument', () => {
     const result = screenToDocument(500, 300, canvasRect, viewport);
     expect(result.x).toBe((500 - 100 - 50) / 1.5);
     expect(result.y).toBe((300 - 50 - 30) / 1.5);
+  });
+
+  it('returns correct result with zero zoom', () => {
+    const canvasRect = new DOMRect(100, 50, 800, 600);
+    const viewport: ViewportState = { panX: 50, panY: 30, zoom: 0, rotation: 0 };
+    const result = screenToDocument(500, 300, canvasRect, viewport);
+    expect(result.x).toBe(Infinity);
+    expect(result.y).toBe(Infinity);
   });
 });
 
@@ -112,5 +125,17 @@ describe('getViewportTransformCSS', () => {
     const viewport: ViewportState = { panX: 0, panY: 0, zoom: 1.0, rotation: 0 };
     const result = getViewportTransformCSS(viewport);
     expect(result).toBe('translate3d(0px, 0px, 0) scale(1)');
+  });
+
+  it('includes rotation when non-zero', () => {
+    const viewport: ViewportState = { panX: 100, panY: 200, zoom: 2.0, rotation: 45 };
+    const result = getViewportTransformCSS(viewport);
+    expect(result).toBe('translate3d(100px, 200px, 0) scale(2) rotate(45deg)');
+  });
+
+  it('does not include rotation when zero', () => {
+    const viewport: ViewportState = { panX: 100, panY: 200, zoom: 2.0, rotation: 0 };
+    const result = getViewportTransformCSS(viewport);
+    expect(result).not.toContain('rotate');
   });
 });
