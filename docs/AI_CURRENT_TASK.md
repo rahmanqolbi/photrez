@@ -2,6 +2,38 @@
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
+## Current Task - Viewport Architecture Cleanup [COMPLETE]
+
+Date: 2026-05-31
+
+### Deskripsi
+
+Melakukan viewport architecture cleanup: remove dead code (viewportUtils.ts, computeFitZoom, unused computeViewMatrix params), consolidate state sync (single syncViewpoint() call site), add ResizeObserver for window resize handling, fix BrushCursorOverlay coordinate system, move strokePoints from global to per-instance ToolContext.
+
+### Rencana Kerja
+
+1. [x] **Task 1**: Remove zoom slider from BottomStatusBar (input range, +/– buttons) — keep zoom readout.
+2. [x] **Task 2**: Create `syncViewport()` helper in EditorContext that reads `engine.getViewport()` and writes zoom/pan signals.
+3. [x] **Task 3**: Refactor CanvasViewport to use syncViewport() — remove 9 manual setZoom/setPan calls.
+4. [x] **Task 4**: Add ResizeObserver for viewport re-fit on window resize. Clean up in onCleanup.
+5. [x] **Task 5**: Fix BrushCursorOverlay coordinates — replace ghost DOM query `[data-editor-container]` with `[data-viewport-container]`, compute container-relative divided by zoom.
+6. [x] **Task 6**: Delete viewportUtils.ts (7 unused functions, 267 lines) + its test file (14 tests).
+7. [x] **Task 7**: Remove computeFitZoom from coords.ts (duplicate of engine.fitToScreen()).
+8. [x] **Task 8**: Clean up computeViewMatrix unused parameters (_viewport, _canvasW, _canvasH).
+9. [x] **Task 9**: Move strokePoints from module-level global to per-instance ToolContext field.
+
+### Verifikasi
+
+- `pnpm.cmd --filter photrez-desktop test`: 105 tests PASS (11 test files)
+- `cargo test -p photrez-core`: 85 tests PASS
+- `tsc --noEmit`: PASS
+
+### Status
+
+COMPLETE. All 9 tasks verified.
+
+---
+
 ## Current Task - CSS Transform Coordinate Regression Fix [COMPLETE]
 
 Date: 2026-05-31

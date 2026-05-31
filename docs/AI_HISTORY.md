@@ -6,6 +6,40 @@
 
 ---
 
+## [2026-05-31] REFACTOR — Viewport Architecture Cleanup (Dead Code Removal, State Sync Consolidation, Per-Instance Stroke Points) [COMPLETE]
+
+### Kategori: REFACTOR / VIEWPORT / CLEANUP / ARCHITECTURE
+
+**Deskripsi:** Melakukan viewport architecture cleanup untuk menghilangkan dead code, mengkonsolidasikan state synchronization, memperbaiki BrushCursorOverlay coordinate system, menambahkan window resize handling, dan memindahkan strokePoints dari global ke per-instance.
+
+**Perubahan:**
+
+1. **Task 1 — Zoom slider removal** (`BottomStatusBar.tsx`): Hapus input range slider, +/– buttons, dan handler `handleZoomChange`/`zoomIn`/`zoomOut`. Hanya pertahankan zoom percentage readout (zoom dikendalikan via engine saja: scroll wheel, keyboard shortcuts, fit-to-screen).
+
+2. **Task 2 — syncViewport() helper** (`EditorContext.tsx:97-103`): Tambah helper `syncViewport()` yang membaca `engine.getViewport()` dan menulis `setZoom`/`setPan` signals. Diekspos via context value untuk digunakan oleh komponen anak.
+
+3. **Task 3 — SyncViewport refactor** (`CanvasViewport.tsx`): Hapus 9 call site manual `setZoom`/`setPan` — semua mutasi viewport melalui engine (via `engine.zoom()`, `engine.pan()`, `engine.fitToScreen()`) lalu `syncViewport()` membaca state back. Hapus `setZoom`/`setPan` dari destructuring. Eliminasi triple-state-sync problem (Engine + SolidJS signals + CSS transform yang sebelumnya disinkronkan manual di 9 tempat).
+
+4. **Task 4 — ResizeObserver** (`CanvasViewport.tsx`): Tambah `ResizeObserver` pada `canvasContainerRef` untuk auto re-fit viewport saat window/panel di-resize. Cleanup observer di `onCleanup`.
+
+5. **Task 5 — BrushCursorOverlay coordinate fix** (`BrushCursorOverlay.tsx`): Ganti ghost DOM query `document.querySelector('[data-editor-container]')` dengan `parentElement?.closest('[data-viewport-container]')`. Koordinat kursor dihitung sebagai container-relative dibagi zoom = document-space position. Tambah `data-viewport-container` attribute ke container div.
+
+6. **Task 6 — ViewportUtils deletion** (`viewportUtils.ts` + `viewport-utils.test.ts`): Hapus 7 fungsi utilitas yang tidak terpakai (267 lines) — `zoomAtPoint`, `calculateFitScreen`, `getViewportTransformCSS`, `applyZoomConstraints`, `getVisibleCanvasRect`, `hasZoomChanged`, `hasPanChanged`. Hapus 14 test cases. Fungsi `screenToDocument`/`documentToScreen` sudah di-re-export dari `coords.ts` untuk kompatibilitas.
+
+7. **Task 7 — ComputeFitZoom removal** (`coords.ts`): Hapus fungsi `computeFitZoom()` yang duplikat dari `DocumentEngine.fitToScreen()`.
+
+8. **Task 8 — ComputeViewMatrix parameter cleanup** (`webgl2.ts`): Hapus 3 parameter tidak terpakai (`_viewport: ViewportState`, `_canvasW: number`, `_canvasH: number`) dari `computeViewMatrix()`. Hapus import `ViewportState` yang tidak terpakai.
+
+9. **Task 9 — Per-instance strokePoints** (`input-handler.ts` + `CanvasViewport.tsx`): Pindahkan `strokePoints` dari module-level global `let strokePoints: {x:number,y:number}[] = []` ke per-instance `ToolContext.strokePoints: {x:number,y:number}[]`. Inisialisasi `strokePoints: []` di toolContext object dalam `CanvasViewport.tsx`. Semua referensi di pointer down/move/up handler diubah ke `context.strokePoints`.
+
+**Validasi:**
+- `pnpm.cmd --filter photrez-desktop test`: 105 tests PASS (11 test files, turun dari 123/12 karena penghapusan viewport-utils.test.ts)
+- `cargo test -p photrez-core`: 85 tests PASS
+- `tsc --noEmit`: PASS
+- `pnpm.cmd run build`: SUCCESS
+
+---
+
 ## [2026-05-31] BUG FIX — CSS Transform Coordinate Regressions [COMPLETE]
 
 ### Kategori: BUG FIX / VIEWPORT / COORDINATES

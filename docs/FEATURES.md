@@ -91,7 +91,7 @@
 
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
-| ✅ DONE      | Zoom in/out (UI buttons)                   |
+| ✅ DONE      | Zoom in/out (scroll wheel + keyboard shortcuts, slider removed) |
 | ✅ DONE      | Zoom level display (status bar)            |
 | ✅ DONE      | Zoom via scroll wheel (Ctrl+scroll)        |
 | ✅ DONE      | Pan canvas (Space+drag)                    |
@@ -107,7 +107,7 @@
 | ✅ DONE      | Crop mode indicator bar                    |
 | ✅ DONE      | Dimension tooltip (px/in/cm/mm)            |
 | ✅ DONE      | Transformation HUD near cursor             |
-| ✅ DONE      | Status bar tool hints + zoom slider        |
+| ✅ DONE      | Status bar tool hints + zoom readout       |
 
 ---
 
