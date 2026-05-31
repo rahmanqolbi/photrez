@@ -29,6 +29,8 @@ export interface EditorContextValue {
   pan: Accessor<{ x: number; y: number }>;
   setPan: Setter<{ x: number; y: number }>;
 
+  syncViewport: () => void;
+
   // Derived / Sync signals
   documents: Accessor<DocumentTabSummary[]>;
   activeDocumentId: Accessor<string | null>;
@@ -93,6 +95,15 @@ export function EditorProvider(props: {
         setPan({ x: 0, y: 0 });
       }
     });
+  };
+
+  const syncViewport = () => {
+    const engine = props.workspace.getActiveEngine();
+    if (engine) {
+      const vp = engine.getViewport();
+      setZoom(vp.zoom);
+      setPan({ x: vp.panX, y: vp.panY });
+    }
   };
 
   props.workspace.onChange(syncState);
@@ -226,6 +237,7 @@ export function EditorProvider(props: {
     setZoom,
     pan,
     setPan,
+    syncViewport,
     documents,
     activeDocumentId,
     layers,
