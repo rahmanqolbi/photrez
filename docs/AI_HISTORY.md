@@ -19,6 +19,7 @@
 4. **Double-Click Background to Fit Screen** (`CanvasViewport.tsx`) — Menambahkan listener `dblclick` pada sasis luar background artboard untuk recenter dan memanggil `engine.fitToScreen`.
 5. **Zoom Keyboard Shortcuts & Mouse Wheel** (`CanvasViewport.tsx`) — Mendaftarkan hotkey global `Ctrl + =` (Zoom In), `Ctrl + -` (Zoom Out), dan `Ctrl + 0` (Fit Screen) terpusat, serta mouse wheel zoom menggunakan modifier `Ctrl` atau `Alt` agar terpusat secara optik di posisi kursor pointer.
 6. **SolidJS & TypeScript Compilation Polish** — Memperbaiki issue event name `onDoubleClick` menjadi standard SolidJS JSX `onDblClick` untuk lulus kompilasi type-checking standard TypeScript.
+7. **Artboard Bounds and Drop Shadow Overlay** (`CanvasViewport.tsx`) — Mengimplementasikan elemen visual overlay di atas kanvas dengan detail dual-border 1px (inner border light `white/10`, outer outline dark `rgba(0,0,0,0.6)`) dan drop shadow premium `shadow-[0_8px_32px_rgba(0,0,0,0.7)]` untuk memisahkan secara visual tepi kanvas/gambar dari pasteboard background workspace gelap.
 
 **Validasi:**
 - `pnpm run build`: SUCCESS (Vite + TypeScript compiler built successfully in 7.38s).
