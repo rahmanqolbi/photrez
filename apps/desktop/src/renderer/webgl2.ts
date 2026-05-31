@@ -152,8 +152,8 @@ export class WebGL2Backend implements RenderBackend {
     gl.bindVertexArray(this.vao);
 
     // Compute document Viewport projection matrix
-    const docW = this.textures.size > 0 ? Array.from(this.textures.values())[0].width : 800;
-    const docH = this.textures.size > 0 ? Array.from(this.textures.values())[0].height : 600;
+    const docW = state.canvasSize.width;
+    const docH = state.canvasSize.height;
     const viewProj = this.computeViewMatrix(docW, docH);
 
     // 1. Render Checkerboard if requested

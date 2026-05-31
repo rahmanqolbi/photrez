@@ -8,14 +8,18 @@ export function BrushCursorOverlay() {
   const isBrushTool = () => activeTool() === "brush" || activeTool() === "eraser";
 
   onMount(() => {
+    let containerEl: HTMLElement | null = null;
+
     const handleMove = (e: PointerEvent) => {
       if (!isBrushTool()) {
         setVisible(false);
         return;
       }
-      const container = document.querySelector("[data-viewport-container]");
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
+      if (!containerEl) {
+        containerEl = document.querySelector("[data-viewport-container]");
+        if (!containerEl) return;
+      }
+      const rect = containerEl.getBoundingClientRect();
       const zoomVal = zoom();
       const docX = (e.clientX - rect.left) / zoomVal;
       const docY = (e.clientY - rect.top) / zoomVal;

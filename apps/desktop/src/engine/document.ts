@@ -344,6 +344,9 @@ export class DocumentEngine {
   setLayerImageBitmap(id: LayerId, bitmap: ImageBitmap): void {
     const layer = this.getLayer(id);
     if (layer) {
+      if (layer.imageBitmap && layer.imageBitmap !== bitmap) {
+        layer.imageBitmap.close();
+      }
       layer.imageBitmap = bitmap;
       layer.width = bitmap.width;
       layer.height = bitmap.height;

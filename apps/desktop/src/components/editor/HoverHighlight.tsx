@@ -3,7 +3,7 @@ import { useEditor } from "./EditorContext";
 import type { LayerNode } from "@/engine/types";
 
 export function HoverHighlight() {
-  const { hoveredLayerId, layers, activeLayerId } = useEditor();
+  const { hoveredLayerId, layers, activeLayerId, zoom } = useEditor();
 
   const hoveredLayer = createMemo(() => {
     const id = hoveredLayerId();
@@ -27,8 +27,7 @@ export function HoverHighlight() {
             height={h}
             fill="none"
             stroke="#8b5cf6"
-            stroke-width={1}
-            vector-effect="non-scaling-stroke"
+            stroke-width={1 / zoom()}
             style={{ opacity: 0.8 }}
           />
         );

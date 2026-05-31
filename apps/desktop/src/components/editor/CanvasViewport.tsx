@@ -16,6 +16,27 @@ import { BrushCursorOverlay } from "./BrushCursorOverlay";
 import { CropOverlay } from "./CropOverlay";
 import { CropModeIndicator } from "./CropModeIndicator";
 
+// Stable mutable ref for transient interactive state — survives re-renders
+// Persistent brush accumulator canvases per layer — avoids full-image redraw per move
+const brushAccumulators = new Map<string, {
+  canvas: OffscreenCanvas;
+  ctx: OffscreenCanvasRenderingContext2D;
+  pointCount: number;
+}>();
+
+const interactiveState: ToolContext = {
+  fgColor: "",
+  bgColor: "",
+  brushSize: 20,
+  brushHardness: 0.8,
+  brushOpacity: 1.0,
+  selectedLayerId: null,
+  isDragging: false,
+  dragStart: { x: 0, y: 0 },
+  dragCurrent: { x: 0, y: 0 },
+  strokePoints: [],
+};
+
 export function CanvasViewport() {
   const {
     workspace,
@@ -121,82 +142,83 @@ export function CanvasViewport() {
     eyedropperTarget: null,
   });
 
-  // Transient interactive panning & dragging state
-  const toolContext: ToolContext = {
-    fgColor: fgColor(),
-    bgColor: bgColor(),
-    brushSize: 20,
-    brushHardness: 0.8,
-    brushOpacity: 1.0,
-    selectedLayerId: null,
-    isDragging: false,
-    dragStart: { x: 0, y: 0 },
-    dragCurrent: { x: 0, y: 0 },
-    strokePoints: [],
-    setFgColor,
-    setBgColor,
-    onSelectionCreated: (x, y, w, h) => {
+  // ─── Stable tool context wiring ───
+  // Synchronize reactive signal values into the stable module-level ref
+  // before each pointer event handler call.
+  function prepareToolContext() {
+    const engine = workspace.getActiveEngine();
+    interactiveState.fgColor = fgColor();
+    interactiveState.bgColor = bgColor();
+    interactiveState.selectedLayerId = engine ? engine.getActiveLayerId() : null;
+    interactiveState.setFgColor = setFgColor;
+    interactiveState.setBgColor = setBgColor;
+    interactiveState.onSelectionCreated = (x, y, w, h) => {
       setSelectionBox({ x, y, w, h });
-    },
-    onPaintStroke: async (
-      points: { x: number; y: number }[],
-      isEraser: boolean,
-    ) => {
-      const activeEngine = workspace.getActiveEngine();
-      if (!activeEngine) return;
-      const activeId = activeEngine.getActiveLayerId();
-      if (!activeId) return;
+    };
+    interactiveState.onPaintStroke = onPaintStroke;
+  }
 
-      const layer = activeEngine.getLayer(activeId);
-      if (!layer || layer.locked || !layer.visible) return;
+  async function onPaintStroke(
+    points: { x: number; y: number }[],
+    isEraser: boolean,
+  ) {
+    const activeEngine = workspace.getActiveEngine();
+    if (!activeEngine) return;
+    const activeId = activeEngine.getActiveLayerId();
+    if (!activeId) return;
 
-      const width = layer.width;
-      const height = layer.height;
+    const layer = activeEngine.getLayer(activeId);
+    if (!layer || layer.locked || !layer.visible) return;
 
-      // Create offscreen canvas to paint the stroke
-      const offscreen = new OffscreenCanvas(width, height);
-      const ctx = offscreen.getContext("2d");
-      if (!ctx) return;
-
-      // Draw current layer contents
+    let acc = brushAccumulators.get(activeId);
+    if (!acc || acc.canvas.width !== layer.width || acc.canvas.height !== layer.height) {
+      const canvas = new OffscreenCanvas(layer.width, layer.height);
+      const ctx = canvas.getContext("2d")!;
       if (layer.imageBitmap) {
         ctx.drawImage(layer.imageBitmap, 0, 0);
       }
+      brushAccumulators.set(activeId, { canvas, ctx, pointCount: 0 });
+      acc = brushAccumulators.get(activeId)!;
+    }
 
-      // Draw stroke path
-      ctx.save();
-      if (isEraser) {
-        ctx.globalCompositeOperation = "destination-out";
-        ctx.strokeStyle = "rgba(0,0,0,1.0)";
-      } else {
-        ctx.globalCompositeOperation = "source-over";
-        ctx.strokeStyle = fgColor();
-      }
-      ctx.globalAlpha = 1.0;
-      ctx.lineWidth = 20; // 20px default size
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
+    const ctx = acc.ctx;
+    const prevCount = acc.pointCount;
 
-      if (points.length > 0) {
-        ctx.beginPath();
-        ctx.moveTo(points[0].x, points[0].y);
-        for (let i = 1; i < points.length; i++) {
-          ctx.lineTo(points[i].x, points[i].y);
-        }
-        ctx.stroke();
-      }
-      ctx.restore();
+    ctx.save();
+    ctx.globalAlpha = 1.0;
+    ctx.lineWidth = 20;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
 
-      try {
-        const newBitmap = await createImageBitmap(offscreen);
-        activeEngine.setLayerImageBitmap(layer.id, newBitmap);
-        renderer.uploadImage(layer.id, newBitmap);
-        scheduler.requestRender();
-      } catch (err) {
-        console.error("Failed to update ImageBitmap on stroke drawing:", err);
-      }
-    },
-  };
+    if (isEraser) {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.strokeStyle = "rgba(0,0,0,1.0)";
+    } else {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = fgColor();
+    }
+
+    // Draw only the delta segment since the last call
+    ctx.beginPath();
+    const startIdx = prevCount > 0 ? prevCount - 1 : 0;
+    ctx.moveTo(points[startIdx].x, points[startIdx].y);
+    for (let i = Math.max(1, prevCount); i < points.length; i++) {
+      ctx.lineTo(points[i].x, points[i].y);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    acc.pointCount = points.length;
+
+    try {
+      const newBitmap = await createImageBitmap(acc.canvas);
+      activeEngine.setLayerImageBitmap(layer.id, newBitmap);
+      renderer.uploadImage(layer.id, newBitmap);
+      scheduler.requestRender();
+    } catch (err) {
+      console.error("Failed to update ImageBitmap on stroke drawing:", err);
+    }
+  }
 
   // Sync contextual settings reactively
   onMount(() => {
@@ -240,6 +262,8 @@ export function CanvasViewport() {
           (active as HTMLElement).isContentEditable)
       )
         return;
+
+      stopMomentum();
 
       const engine = workspace.getActiveEngine();
       if (!engine) return;
@@ -419,13 +443,10 @@ export function CanvasViewport() {
       return;
     }
 
+    prepareToolContext();
+
     canvasRef.setPointerCapture(e.pointerId);
     const coords = getDocCoords(e);
-
-    // Set parameters
-    toolContext.fgColor = fgColor();
-    toolContext.bgColor = bgColor();
-    toolContext.selectedLayerId = engine.getActiveLayerId();
 
     handlePointerDown(
       activeTool() as ToolType,
@@ -434,7 +455,7 @@ export function CanvasViewport() {
       engine,
       history,
       () => scheduler.requestRender(),
-      toolContext,
+      interactiveState,
     );
   };
 
@@ -468,7 +489,7 @@ export function CanvasViewport() {
       coords.y,
       engine,
       () => scheduler.requestRender(),
-      toolContext,
+      interactiveState,
     );
   };
 
@@ -518,7 +539,7 @@ export function CanvasViewport() {
       engine,
       history,
       () => scheduler.requestRender(),
-      toolContext,
+      interactiveState,
     );
 
     // Reset temporary selection marquee visual

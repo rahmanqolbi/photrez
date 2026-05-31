@@ -84,15 +84,11 @@ export function EditorProvider(props: {
       if (engine) {
         setLayers([...engine.getLayers()]);
         setActiveLayerId(engine.getActiveLayerId());
-        setZoom(engine.getViewport().zoom);
-        setPan({ x: engine.getViewport().panX, y: engine.getViewport().panY });
         setDocWidth(engine.getWidth());
         setDocHeight(engine.getHeight());
       } else {
         setLayers([]);
         setActiveLayerId(null);
-        setZoom(1.0);
-        setPan({ x: 0, y: 0 });
       }
     });
   };
