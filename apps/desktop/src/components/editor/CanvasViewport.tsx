@@ -1,9 +1,14 @@
 import { createSignal, onMount, onCleanup, Show } from "solid-js";
 import { screenToDocument } from "@/viewport/coords";
-import { handlePointerDown, handlePointerMove, handlePointerUp, ToolType, ToolContext } from "@/viewport/input-handler";
+import {
+  handlePointerDown,
+  handlePointerMove,
+  handlePointerUp,
+  ToolType,
+  ToolContext,
+} from "@/viewport/input-handler";
 import { useEditor } from "./EditorContext";
 import { SelectionTransformOverlay } from "./SelectionTransformOverlay";
-
 
 export function CanvasViewport() {
   const {
@@ -18,14 +23,19 @@ export function CanvasViewport() {
     zoom,
     setZoom,
     pan,
-    setPan
+    setPan,
   } = useEditor();
 
   let canvasContainerRef!: HTMLDivElement;
   let canvasRef!: HTMLCanvasElement;
 
   // Selection visual marquee boundaries
-  const [selectionBox, setSelectionBox] = createSignal<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [selectionBox, setSelectionBox] = createSignal<{
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  } | null>(null);
 
   // Spacebar and Middle-click panning states
   const [isSpacePressed, setIsSpacePressed] = createSignal(false);
@@ -55,7 +65,10 @@ export function CanvasViewport() {
       momentumVelocity.x *= friction;
       momentumVelocity.y *= friction;
 
-      if (Math.abs(momentumVelocity.x) < 0.1 && Math.abs(momentumVelocity.y) < 0.1) {
+      if (
+        Math.abs(momentumVelocity.x) < 0.1 &&
+        Math.abs(momentumVelocity.y) < 0.1
+      ) {
         momentumVelocity = { x: 0, y: 0 };
         return;
       }
@@ -70,7 +83,6 @@ export function CanvasViewport() {
     momentumRafId = requestAnimationFrame(step);
   }
 
-  // Dynamic Cursor Styles according to Photoshop UX
   const getCursorClass = () => {
     if (isSpacePressed()) {
       return isPanning() ? "grabbing" : "grab";
@@ -100,7 +112,10 @@ export function CanvasViewport() {
     onSelectionCreated: (x, y, w, h) => {
       setSelectionBox({ x, y, w, h });
     },
-    onPaintStroke: async (points: { x: number; y: number }[], isEraser: boolean) => {
+    onPaintStroke: async (
+      points: { x: number; y: number }[],
+      isEraser: boolean,
+    ) => {
       const activeEngine = workspace.getActiveEngine();
       if (!activeEngine) return;
       const activeId = activeEngine.getActiveLayerId();
@@ -154,7 +169,7 @@ export function CanvasViewport() {
       } catch (err) {
         console.error("Failed to update ImageBitmap on stroke drawing:", err);
       }
-    }
+    },
   };
 
   // Sync contextual settings reactively
@@ -180,7 +195,13 @@ export function CanvasViewport() {
     // 3. Register global keyboard listeners for premium Photoshop Navigation
     const handleKeyDown = (e: KeyboardEvent) => {
       const active = document.activeElement;
-      if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || (active as HTMLElement).isContentEditable)) return;
+      if (
+        active &&
+        (active.tagName === "INPUT" ||
+          active.tagName === "TEXTAREA" ||
+          (active as HTMLElement).isContentEditable)
+      )
+        return;
 
       const engine = workspace.getActiveEngine();
       if (!engine) return;
@@ -199,11 +220,17 @@ export function CanvasViewport() {
       }
 
       // Zoom Shortcuts: Ctrl + Plus / Equal
-      if (ctrl && (key === "=" || key === "+" || e.code === "Equal" || e.code === "NumpadAdd")) {
+      if (
+        ctrl &&
+        (key === "=" ||
+          key === "+" ||
+          e.code === "Equal" ||
+          e.code === "NumpadAdd")
+      ) {
         e.preventDefault();
         e.stopPropagation();
         stopMomentum();
-        
+
         const rect = canvasContainerRef.getBoundingClientRect();
         engine.zoom(1.2, rect.width / 2, rect.height / 2);
         setZoom(engine.getViewport().zoom);
@@ -213,11 +240,14 @@ export function CanvasViewport() {
       }
 
       // Zoom Shortcuts: Ctrl + Minus
-      if (ctrl && (key === "-" || e.code === "Minus" || e.code === "NumpadSubtract")) {
+      if (
+        ctrl &&
+        (key === "-" || e.code === "Minus" || e.code === "NumpadSubtract")
+      ) {
         e.preventDefault();
         e.stopPropagation();
         stopMomentum();
-        
+
         const rect = canvasContainerRef.getBoundingClientRect();
         engine.zoom(0.8, rect.width / 2, rect.height / 2);
         setZoom(engine.getViewport().zoom);
@@ -227,11 +257,14 @@ export function CanvasViewport() {
       }
 
       // Fit Screen Shortcuts: Ctrl + 0
-      if (ctrl && (key === "0" || e.code === "Digit0" || e.code === "Numpad0")) {
+      if (
+        ctrl &&
+        (key === "0" || e.code === "Digit0" || e.code === "Numpad0")
+      ) {
         e.preventDefault();
         e.stopPropagation();
         stopMomentum();
-        
+
         const rect = canvasContainerRef.getBoundingClientRect();
         engine.fitToScreen(rect.width, rect.height);
         setZoom(engine.getViewport().zoom);
@@ -277,7 +310,7 @@ export function CanvasViewport() {
       e.preventDefault();
       const rect = canvasRef.getBoundingClientRect();
       const factor = e.deltaY < 0 ? 1.15 : 0.85;
-      
+
       // Zoom centered at cursor position
       engine.zoom(factor, e.clientX, e.clientY);
       setZoom(engine.getViewport().zoom);
@@ -315,7 +348,12 @@ export function CanvasViewport() {
     const rect = canvasRef.getBoundingClientRect();
     const activeEngine = workspace.getActiveEngine();
     if (!activeEngine) return { x: 0, y: 0 };
-    return screenToDocument(e.clientX, e.clientY, rect, activeEngine.getViewport());
+    return screenToDocument(
+      e.clientX,
+      e.clientY,
+      rect,
+      activeEngine.getViewport(),
+    );
   };
 
   const onPointerDown = (e: PointerEvent) => {
@@ -333,7 +371,7 @@ export function CanvasViewport() {
         clientX: e.clientX,
         clientY: e.clientY,
         panX: engine.getViewport().panX,
-        panY: engine.getViewport().panY
+        panY: engine.getViewport().panY,
       };
       // Record starting pointer position for flick velocity calculation
       lastPointerPositions = [{ time: Date.now(), x: e.clientX, y: e.clientY }];
@@ -342,7 +380,7 @@ export function CanvasViewport() {
 
     canvasRef.setPointerCapture(e.pointerId);
     const coords = getDocCoords(e);
-    
+
     // Set parameters
     toolContext.fgColor = fgColor();
     toolContext.bgColor = bgColor();
@@ -355,7 +393,7 @@ export function CanvasViewport() {
       engine,
       history,
       () => scheduler.requestRender(),
-      toolContext
+      toolContext,
     );
   };
 
@@ -376,7 +414,9 @@ export function CanvasViewport() {
       // Record position tracking for flick momentum
       const now = Date.now();
       lastPointerPositions.push({ time: now, x: e.clientX, y: e.clientY });
-      lastPointerPositions = lastPointerPositions.filter(p => now - p.time < 100);
+      lastPointerPositions = lastPointerPositions.filter(
+        (p) => now - p.time < 100,
+      );
       return;
     }
 
@@ -387,7 +427,7 @@ export function CanvasViewport() {
       coords.y,
       engine,
       () => scheduler.requestRender(),
-      toolContext
+      toolContext,
     );
   };
 
@@ -402,7 +442,9 @@ export function CanvasViewport() {
       setIsPanning(false);
 
       const now = Date.now();
-      lastPointerPositions = lastPointerPositions.filter(p => now - p.time < 100);
+      lastPointerPositions = lastPointerPositions.filter(
+        (p) => now - p.time < 100,
+      );
 
       if (lastPointerPositions.length > 1) {
         const oldest = lastPointerPositions[0];
@@ -435,7 +477,7 @@ export function CanvasViewport() {
       engine,
       history,
       () => scheduler.requestRender(),
-      toolContext
+      toolContext,
     );
 
     // Reset temporary selection marquee visual
@@ -473,7 +515,7 @@ export function CanvasViewport() {
           const viewport = engine.getViewport();
           const screenStart = {
             x: box().x * viewport.zoom + viewport.panX,
-            y: box().y * viewport.zoom + viewport.panY
+            y: box().y * viewport.zoom + viewport.panY,
           };
           const screenWidth = box().w * viewport.zoom;
           const screenHeight = box().h * viewport.zoom;
@@ -485,7 +527,7 @@ export function CanvasViewport() {
                 left: `${screenStart.x}px`,
                 top: `${screenStart.y}px`,
                 width: `${screenWidth}px`,
-                height: `${screenHeight}px`
+                height: `${screenHeight}px`,
               }}
             />
           );
@@ -494,4 +536,3 @@ export function CanvasViewport() {
     </div>
   );
 }
-
