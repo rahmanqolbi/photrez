@@ -27,13 +27,12 @@ export function CanvasViewport() {
     setFgColor,
     setBgColor,
     zoom,
-    setZoom,
     pan,
-    setPan,
     docWidth,
     docHeight,
     activeLayerId,
     layers,
+    syncViewport,
   } = useEditor();
 
   let canvasContainerRef!: HTMLDivElement;
@@ -102,7 +101,7 @@ export function CanvasViewport() {
       }
 
       engine.pan(momentumVelocity.x, momentumVelocity.y);
-      setPan({ x: engine.getViewport().panX, y: engine.getViewport().panY });
+      syncViewport();
       scheduler.requestRender();
 
       momentumRafId = requestAnimationFrame(step);
@@ -209,6 +208,15 @@ export function CanvasViewport() {
     renderer.resize(docWidth(), docHeight());
     scheduler.requestRender();
 
+    // Auto-fit document to screen on first load
+    const engine = workspace.getActiveEngine();
+    if (engine) {
+      const rect = canvasContainerRef.getBoundingClientRect();
+      engine.fitToScreen(rect.width, rect.height);
+      syncViewport();
+      scheduler.requestRender();
+    }
+
     // No ResizeObserver needed — canvas size is tied to document, not container.
 
     // 3. Register global keyboard listeners for premium Photoshop Navigation
@@ -257,8 +265,7 @@ export function CanvasViewport() {
 
         const rect = canvasContainerRef.getBoundingClientRect();
         engine.zoom(1.2, rect.width / 2, rect.height / 2);
-        setZoom(engine.getViewport().zoom);
-        setPan({ x: engine.getViewport().panX, y: engine.getViewport().panY });
+        syncViewport();
         scheduler.requestRender();
         return;
       }
@@ -274,8 +281,7 @@ export function CanvasViewport() {
 
         const rect = canvasContainerRef.getBoundingClientRect();
         engine.zoom(0.8, rect.width / 2, rect.height / 2);
-        setZoom(engine.getViewport().zoom);
-        setPan({ x: engine.getViewport().panX, y: engine.getViewport().panY });
+        syncViewport();
         scheduler.requestRender();
         return;
       }
@@ -291,8 +297,7 @@ export function CanvasViewport() {
 
         const rect = canvasContainerRef.getBoundingClientRect();
         engine.fitToScreen(rect.width, rect.height);
-        setZoom(engine.getViewport().zoom);
-        setPan({ x: engine.getViewport().panX, y: engine.getViewport().panY });
+        syncViewport();
         scheduler.requestRender();
         return;
       }
@@ -334,13 +339,12 @@ export function CanvasViewport() {
 
     if (e.ctrlKey || e.altKey) {
       e.preventDefault();
-      const rect = canvasRef.getBoundingClientRect();
       const factor = e.deltaY < 0 ? 1.15 : 0.85;
 
-      // Zoom centered at cursor position
-      engine.zoom(factor, e.clientX, e.clientY);
-      setZoom(engine.getViewport().zoom);
-      setPan({ x: engine.getViewport().panX, y: engine.getViewport().panY });
+      // Zoom centered at cursor position (container-relative coordinates)
+      const containerRect = canvasContainerRef.getBoundingClientRect();
+      engine.zoom(factor, e.clientX - containerRect.left, e.clientY - containerRect.top);
+      syncViewport();
       scheduler.requestRender();
     } else {
       e.preventDefault();
@@ -350,7 +354,7 @@ export function CanvasViewport() {
       } else {
         engine.pan(-e.deltaX, -e.deltaY);
       }
-      setPan({ x: engine.getViewport().panX, y: engine.getViewport().panY });
+      syncViewport();
       scheduler.requestRender();
     }
   };
@@ -362,8 +366,7 @@ export function CanvasViewport() {
       if (engine) {
         const rect = canvasContainerRef.getBoundingClientRect();
         engine.fitToScreen(rect.width, rect.height);
-        setZoom(engine.getViewport().zoom);
-        setPan({ x: engine.getViewport().panX, y: engine.getViewport().panY });
+        syncViewport();
         scheduler.requestRender();
       }
     }
@@ -371,7 +374,7 @@ export function CanvasViewport() {
 
   // Pointer interaction routing
   const getDocCoords = (e: PointerEvent) => {
-    const rect = canvasRef.getBoundingClientRect();
+    const rect = canvasContainerRef.getBoundingClientRect();
     const activeEngine = workspace.getActiveEngine();
     if (!activeEngine) return { x: 0, y: 0 };
     return screenToDocument(
@@ -434,7 +437,7 @@ export function CanvasViewport() {
       const nextPanX = panDragStart.panX + dx;
       const nextPanY = panDragStart.panY + dy;
       engine.setViewport({ panX: nextPanX, panY: nextPanY });
-      setPan({ x: nextPanX, y: nextPanY });
+      syncViewport();
       scheduler.requestRender();
 
       // Record position tracking for flick momentum
