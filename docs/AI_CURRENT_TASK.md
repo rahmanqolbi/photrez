@@ -2,6 +2,37 @@
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
+## Current Task - Viewport Architecture Fixes (Code Review Issues) [COMPLETE]
+
+Date: 2026-05-31
+
+### Deskripsi
+
+Memperbaiki 8 arsitektur issues yang diidentifikasi dalam code review: double zoom/pan sync, unstable toolContext (kehilangan dragging state saat re-render), non-incremental brush compositing (OffscreenCanvas per move), document.querySelector di BrushCursorOverlay, ImageBitmap leak, computeViewMatrix doc size dari texture pertama, vector-effect tidak work di CSS transform, momentum tidak berhenti saat keyboard interaction.
+
+### Perbaikan
+
+1. [x] **Double sync**: `syncState()` hapus zoom/pan writes — hanya `syncViewport()` yang menulis.
+2. [x] **Stable toolContext**: Module-level `interactiveState` mutable ref + `prepareToolContext()` sync per event.
+3. [x] **Incremental brush**: `brushAccumulators` Map menyimpan persistent OffscreenCanvas per layer. Delta segment drawing.
+4. [x] **BrushCursorOverlay**: Cache `containerEl` on mount, skip DOM query per move.
+5. [x] **ImageBitmap leak**: `layer.imageBitmap.close()` sebelum replace di `setLayerImageBitmap()`.
+6. [x] **computeViewMatrix**: Pakai `state.canvasSize` bukan `textures.values()[0]`.
+7. [x] **HoverHighlight stroke**: Ganti `vector-effect` dengan `stroke-width={1/zoom()}`.
+8. [x] **Momentum stop**: `stopMomentum()` di baris pertama `handleKeyDown`.
+
+### Verifikasi
+
+- `pnpm.cmd --filter photrez-desktop test`: 105 tests PASS (11 files)
+- `cargo test -p photrez-core`: 85 tests PASS
+- `tsc --noEmit`: PASS
+
+### Status
+
+COMPLETE. All 8 issues fixed and verified.
+
+---
+
 ## Current Task - Viewport Architecture Cleanup [COMPLETE]
 
 Date: 2026-05-31

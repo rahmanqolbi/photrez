@@ -6,6 +6,37 @@
 
 ---
 
+## [2026-05-31] BUG FIX — Viewport Architecture Fixes (Double Sync, Stable ToolContext, Brush Accumulator, ImageBitmap Leak) [COMPLETE]
+
+### Kategori: BUG FIX / VIEWPORT / PERFORMANCE / ARCHITECTURE
+
+**Deskripsi:** Memperbaiki 7 masalah arsitektur kritis di viewport setelah code review.
+
+### Perbaikan
+
+**Fix 1 — Double syncState/syncViewport zoom/pan write** (`EditorContext.tsx`): `syncState()` menulis zoom/pan signal setiap kali engine mutation memicu `notifyChange()`. Setiap handler juga manual memanggil `syncViewport()` yang menulis signal yang sama. Solusi: `syncState()` tidak lagi menulis zoom/pan — hanya `syncViewport()` yang menulisnya. Eliminasi double-write.
+
+**Fix 2 — toolContext unstable (re-created per render)** (`CanvasViewport.tsx`): `ToolContext` object dibuat di setiap render component, menyebabkan `isDragging` dan `strokePoints` hilang saat re-render terjadi di tengah brush stroke. Solusi: gunakan `interactiveState` module-level mutable ref (object identity stabil). Handler `prepareToolContext()` menyinkronkan signal reaktif ke ref sebelum setiap event. Mutasi `isDragging`/`strokePoints` persisten di seluruh re-render.
+
+**Fix 3 — OffscreenCanvas per pointermove (non-incremental brush)** (`CanvasViewport.tsx`): Setiap pointermove membuat `OffscreenCanvas` baru, draw full `ImageBitmap` + full stroke path, lalu `createImageBitmap()`. O(n²) untuk n-point stroke. Solusi: `brushAccumulators` Map module-level menyimpan persistent `OffscreenCanvas` per layer. Hanya delta segment yang digambar setiap move. `createImageBitmap` masih dipanggil setiap move (untuk visual feedback) tapi sumbernya persistent canvas — tidak ada alokasi baru.
+
+**Fix 4 — document.querySelector per pointermove** (`BrushCursorOverlay.tsx`): DOM query `[data-viewport-container]` di setiap pointermove event. Solusi: cache hasil query di `containerEl` variable — query sekali di awal, reuse untuk move selanjutnya.
+
+**Fix 5 — ImageBitmap leak** (`document.ts`): `setLayerImageBitmap()` tidak pernah `close()` ImageBitmap lama. Solusi: tambah `layer.imageBitmap.close()` sebelum replace.
+
+**Fix 6 — computeViewMatrix guess document size from first texture** (`webgl2.ts`): Menggunakan `Array.from(this.textures.values())[0]` untuk doc dimensions — asumsi salah saat layer punya ukuran berbeda. Solusi: gunakan `state.canvasSize.width/height` dari `RenderState`.
+
+**Fix 7 — vector-effect="non-scaling-stroke" tidak work di bawah CSS transform** (`HoverHighlight.tsx`): `vector-effect` SVG hanya resist transform SVG internal, bukan parent CSS `scale()`. Solusi: ganti ke `stroke-width={1 / zoom()}` — sama seperti selection marquee.
+
+**Fix 8 — Momentum tidak berhenti saat keyboard interaction** (`CanvasViewport.tsx`): `stopMomentum()` hanya dipanggil di handler wheel dan pointerdown — tidak untuk interaction keyboard (tool switch, shortcut). Solusi: tambah `stopMomentum()` di baris pertama `handleKeyDown`, sebelum logic apapun.
+
+### Validasi
+- `pnpm.cmd --filter photrez-desktop test`: 105 tests PASS
+- `cargo test -p photrez-core`: 85 tests PASS
+- `tsc --noEmit`: PASS
+
+---
+
 ## [2026-05-31] REFACTOR — Viewport Architecture Cleanup (Dead Code Removal, State Sync Consolidation, Per-Instance Stroke Points) [COMPLETE]
 
 ### Kategori: REFACTOR / VIEWPORT / CLEANUP / ARCHITECTURE
