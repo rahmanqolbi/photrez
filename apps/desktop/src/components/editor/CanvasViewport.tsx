@@ -1,4 +1,4 @@
-import { createSignal, onMount, onCleanup, Show } from "solid-js";
+import { createSignal, createMemo, onMount, onCleanup, Show } from "solid-js";
 import { screenToDocument } from "@/viewport/coords";
 import {
   handlePointerDown,
@@ -7,6 +7,7 @@ import {
   ToolType,
   ToolContext,
 } from "@/viewport/input-handler";
+import { resolveCursor } from "@/viewport/cursorResolver";
 import { useEditor } from "./EditorContext";
 import { SelectionTransformOverlay } from "./SelectionTransformOverlay";
 
@@ -26,6 +27,8 @@ export function CanvasViewport() {
     setPan,
     docWidth,
     docHeight,
+    activeLayerId,
+    layers,
   } = useEditor();
 
   let canvasContainerRef!: HTMLDivElement;
@@ -43,6 +46,20 @@ export function CanvasViewport() {
   const [isSpacePressed, setIsSpacePressed] = createSignal(false);
   const [isPanning, setIsPanning] = createSignal(false);
   let panDragStart = { clientX: 0, clientY: 0, panX: 0, panY: 0 };
+
+  // Alt key state for eyedropper shortcut (Alt+Brush/Eraser)
+  const [isAltPressed, setIsAltPressed] = createSignal(false);
+
+  // Hover handle state for cursor resolver (will be wired to crop/move handles)
+  const [hoverHandle, setHoverHandle] = createSignal<string | null>(null);
+
+  // Derived: is active layer locked
+  const isLayerLocked = createMemo(() => {
+    const id = activeLayerId();
+    if (!id) return false;
+    const layer = layers().find((l) => l.id === id);
+    return layer?.locked ?? false;
+  });
 
   // Kinetic momentum scroll physics
   let lastPointerPositions: { time: number; x: number; y: number }[] = [];
@@ -85,18 +102,16 @@ export function CanvasViewport() {
     momentumRafId = requestAnimationFrame(step);
   }
 
-  const getCursorClass = () => {
-    if (isSpacePressed()) {
-      return isPanning() ? "grabbing" : "grab";
-    }
-    const tool = activeTool();
-    if (tool === "move") return "default";
-    if (tool === "selection") return "crosshair";
-    if (tool === "crop") return "crosshair";
-    if (tool === "eyedropper") return "copy";
-    if (tool === "brush" || tool === "eraser") return "none";
-    return "default";
-  };
+  const cursorClass = () => resolveCursor({
+    isSpacePressed: isSpacePressed(),
+    isPanning: isPanning(),
+    activeTool: activeTool() as ToolType,
+    isAltPressed: isAltPressed(),
+    hoverHandle: hoverHandle(),
+    cropOn: false,
+    isLayerLocked: isLayerLocked(),
+    eyedropperTarget: null,
+  });
 
   // Transient interactive panning & dragging state
   const toolContext: ToolContext = {
@@ -211,6 +226,11 @@ export function CanvasViewport() {
       const key = e.key.toLowerCase();
       const ctrl = e.ctrlKey || e.metaKey;
 
+      // Alt key tracking for eyedropper shortcut
+      if (e.key === "Alt") {
+        setIsAltPressed(true);
+      }
+
       // Spacebar panning toggle
       if (e.code === "Space") {
         e.preventDefault();
@@ -279,6 +299,9 @@ export function CanvasViewport() {
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code === "Space") {
         setIsSpacePressed(false);
+      }
+      if (e.key === "Alt") {
+        setIsAltPressed(false);
       }
     };
 
@@ -514,7 +537,7 @@ export function CanvasViewport() {
               inset: 0,
               width: "100%",
               height: "100%",
-              cursor: getCursorClass(),
+              cursor: cursorClass(),
             }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
