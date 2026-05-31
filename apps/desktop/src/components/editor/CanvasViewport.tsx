@@ -217,7 +217,17 @@ export function CanvasViewport() {
       scheduler.requestRender();
     }
 
-    // No ResizeObserver needed — canvas size is tied to document, not container.
+    // Re-fit viewport on window resize
+    const resizeObserver = new ResizeObserver(() => {
+      const engine = workspace.getActiveEngine();
+      if (engine) {
+        const rect = canvasContainerRef.getBoundingClientRect();
+        engine.fitToScreen(rect.width, rect.height);
+        syncViewport();
+        scheduler.requestRender();
+      }
+    });
+    resizeObserver.observe(canvasContainerRef);
 
     // 3. Register global keyboard listeners for premium Photoshop Navigation
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -322,6 +332,7 @@ export function CanvasViewport() {
     window.addEventListener("blur", handleWindowBlur);
 
     onCleanup(() => {
+      resizeObserver.disconnect();
       renderer.dispose();
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
@@ -516,6 +527,7 @@ export function CanvasViewport() {
   return (
     <div
       ref={canvasContainerRef}
+      data-viewport-container
       class="flex flex-1 items-center justify-center overflow-hidden bg-editor-canvas relative"
       onWheel={handleWheel}
       onDblClick={handleDoubleClick}

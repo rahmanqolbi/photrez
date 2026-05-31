@@ -13,10 +13,13 @@ export function BrushCursorOverlay() {
         setVisible(false);
         return;
       }
-      const target = document.querySelector("[data-editor-container]");
-      if (!target) return;
-      const rect = target.getBoundingClientRect();
-      setCursorPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      const container = document.querySelector("[data-viewport-container]");
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const zoomVal = zoom();
+      const docX = (e.clientX - rect.left) / zoomVal;
+      const docY = (e.clientY - rect.top) / zoomVal;
+      setCursorPos({ x: docX, y: docY });
       setVisible(true);
     };
     const handleLeave = () => setVisible(false);
@@ -34,38 +37,10 @@ export function BrushCursorOverlay() {
         transform={`translate(${cursorPos().x}, ${cursorPos().y})`}
         pointer-events="none"
       >
-        <circle
-          cx={0}
-          cy={0}
-          r={20 / zoom()}
-          fill="none"
-          stroke="rgba(0,0,0,0.4)"
-          stroke-width={2 / zoom()}
-        />
-        <circle
-          cx={0}
-          cy={0}
-          r={20 / zoom()}
-          fill="none"
-          stroke="white"
-          stroke-width={1 / zoom()}
-        />
-        <line
-          x1={-4 / zoom()}
-          y1={0}
-          x2={4 / zoom()}
-          y2={0}
-          stroke="white"
-          stroke-width={1 / zoom()}
-        />
-        <line
-          x1={0}
-          y1={-4 / zoom()}
-          x2={0}
-          y2={4 / zoom()}
-          stroke="white"
-          stroke-width={1 / zoom()}
-        />
+        <circle cx={0} cy={0} r={20 / zoom()} fill="none" stroke="rgba(0,0,0,0.4)" stroke-width={2 / zoom()} />
+        <circle cx={0} cy={0} r={20 / zoom()} fill="none" stroke="white" stroke-width={1 / zoom()} />
+        <line x1={-4 / zoom()} y1={0} x2={4 / zoom()} y2={0} stroke="white" stroke-width={1 / zoom()} />
+        <line x1={0} y1={-4 / zoom()} x2={0} y2={4 / zoom()} stroke="white" stroke-width={1 / zoom()} />
       </g>
     </Show>
   );
