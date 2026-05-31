@@ -151,6 +151,17 @@ export class WebGL2Backend implements RenderBackend {
 
     gl.bindVertexArray(this.vao);
 
+    // Compute document Viewport projection matrix
+    const docW = this.textures.size > 0 ? Array.from(this.textures.values())[0].width : 800;
+    const docH = this.textures.size > 0 ? Array.from(this.textures.values())[0].height : 600;
+    const viewProj = this.computeViewMatrix(
+      state.viewport,
+      canvas.width,
+      canvas.height,
+      docW,
+      docH
+    );
+
     // 1. Render Checkerboard if requested
     if (state.checkerboard && this.checkerboardProgram) {
       gl.useProgram(this.checkerboardProgram);
@@ -159,30 +170,15 @@ export class WebGL2Backend implements RenderBackend {
       gl.uniform4f(this.checkerboardUniforms!.color1, 0.1, 0.11, 0.12, 1.0); // Sunken grays
       gl.uniform4f(this.checkerboardUniforms!.color2, 0.08, 0.09, 0.1, 1.0);
 
-      // Render full screen check via static NDC quad (viewProj as identity matrix)
-      const identityProj = new Float32Array([
-        2 / canvas.width, 0, 0, 0,
-        0, -2 / canvas.height, 0, 0,
-        0, 0, 1, 0,
-        -1, 1, 0, 1
-      ]);
       const checkerRectLocation = gl.getUniformLocation(this.checkerboardProgram, "u_layerRect");
       const checkerProjLocation = gl.getUniformLocation(this.checkerboardProgram, "u_viewProj");
       
-      gl.uniform4f(checkerRectLocation, 0, 0, canvas.width, canvas.height);
-      gl.uniformMatrix4fv(checkerProjLocation, false, identityProj);
+      // Render checkerboard ONLY within the bounds of the artboard/document
+      gl.uniform4f(checkerRectLocation, 0, 0, docW, docH);
+      gl.uniformMatrix4fv(checkerProjLocation, false, viewProj);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
-
-    // Compute document Viewport projection matrix
-    const viewProj = this.computeViewMatrix(
-      state.viewport,
-      canvas.width,
-      canvas.height,
-      this.textures.size > 0 ? Array.from(this.textures.values())[0].width : 800, // Document dimensions fallback
-      this.textures.size > 0 ? Array.from(this.textures.values())[0].height : 600
-    );
 
     // 2. Render Layers (bottom-to-top)
     if (this.layerProgram && this.layerUniforms) {
