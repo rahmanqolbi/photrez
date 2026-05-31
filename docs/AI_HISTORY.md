@@ -6,6 +6,27 @@
 
 ---
 
+## [2026-05-31] FEATURE — High-Fidelity Photoshop-style Viewport Navigation & Kinetic Panning [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND / DESIGN
+
+**Deskripsi:** Mengimplementasikan fungsionalitas navigasi viewport premium yang terinspirasi dari alur kerja Photoshop dan Figma, meliputi Spacebar drag-panning, middle-click panning, kinetic momentum scrolling, Shift+Scroll horizontal panning, double-click background to fit, dan hotkey zoom global.
+
+**Solusi:**
+1. **Spacebar & Middle-Click Panning** (`CanvasViewport.tsx`) — Mengintegrasikan event listeners `keydown` dan `keyup` global untuk mendeteksi Spacebar. Menampilkan cursor `"grab"` saat Spacebar ditekan dan `"grabbing"` saat dragging terjadi. Mengaktifkan drag-panning instan pada middle-mouse click (`button === 1`) tanpa Spacebar.
+2. **Kinetic Momentum Scrolling (Flick Panning)** (`CanvasViewport.tsx`) — Menerapkan rolling pointer-history buffer sepanjang 100ms untuk mengukur exit velocity mouse di pointer up. Menghitung exit delta per milidetik untuk dikonversi ke standard frame duration (16.6ms) dan menjalankan damping loop dynamic `requestAnimationFrame` dengan friction factor `0.92` yang diinterupsi seketika oleh click, Spacebar keydown, atau mouse scroll.
+3. **Shift+Scroll Horizontal Panning** (`CanvasViewport.tsx`) — Memodifikasi handler event wheel agar normal wheel scroll bergeser secara vertikal, namun dengan modifier `Shift` terdeteksi, scroll vertikal wheel bergeser secara horizontal demi kenyamanan editing presisi.
+4. **Double-Click Background to Fit Screen** (`CanvasViewport.tsx`) — Menambahkan listener `dblclick` pada sasis luar background artboard untuk recenter dan memanggil `engine.fitToScreen`.
+5. **Zoom Keyboard Shortcuts & Mouse Wheel** (`CanvasViewport.tsx`) — Mendaftarkan hotkey global `Ctrl + =` (Zoom In), `Ctrl + -` (Zoom Out), dan `Ctrl + 0` (Fit Screen) terpusat, serta mouse wheel zoom menggunakan modifier `Ctrl` atau `Alt` agar terpusat secara optik di posisi kursor pointer.
+6. **SolidJS & TypeScript Compilation Polish** — Memperbaiki issue event name `onDoubleClick` menjadi standard SolidJS JSX `onDblClick` untuk lulus kompilasi type-checking standard TypeScript.
+
+**Validasi:**
+- `pnpm run build`: SUCCESS (Vite + TypeScript compiler built successfully in 7.38s).
+- `vitest run`: SUCCESS (Semua 9 test files dan 67 tests berjalan 100% green).
+- Rust Cargo: `cargo test --workspace` dan `cargo test -p photrez-core` berjalan 100% sukses (85 tests).
+
+---
+
 ## [2026-05-31] FEATURE — High-Fidelity Photoshop-style Move & Transform Overlay [COMPLETE]
 
 ### Kategori: FEATURE / UI / FRONTEND / DESIGN

@@ -93,4 +93,9 @@
 | Task 93 | [MoveTool] Create SelectionTransformOverlay.tsx component for interactive scaling and moving | [x] Completed |
 | Task 94 | [Viewport] Integrate SelectionTransformOverlay.tsx into CanvasViewport.tsx | [x] Completed |
 | Task 95 | [Verify] Run Vitest tests, TypeScript compile checks, and Vite production builds | [x] Completed |
+| Task 96 | [Viewport] Implement Spacebar drag panning, middle-click panning, and custom grabbing cursors in CanvasViewport.tsx | [x] Completed |
+| Task 97 | [Viewport] Implement Kinetic Momentum Scrolling (Flick Panning) with friction and active interruption | [x] Completed |
+| Task 98 | [Viewport] Implement Shift+Scroll Horizontal Panning and Double-click background to Fit Screen | [x] Completed |
+| Task 99 | [Viewport] Implement Ctrl/Alt scroll zooming and Ctrl+Equal/Minus/Zero keyboard shortcuts | [x] Completed |
+| Task 100 | [Verify] Run Vitest tests, TypeScript compiler checks, cargo core tests, and Git commits | [x] Completed |
 

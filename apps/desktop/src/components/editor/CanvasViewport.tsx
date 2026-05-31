@@ -27,6 +27,63 @@ export function CanvasViewport() {
   // Selection visual marquee boundaries
   const [selectionBox, setSelectionBox] = createSignal<{ x: number; y: number; w: number; h: number } | null>(null);
 
+  // Spacebar and Middle-click panning states
+  const [isSpacePressed, setIsSpacePressed] = createSignal(false);
+  const [isPanning, setIsPanning] = createSignal(false);
+  let panDragStart = { clientX: 0, clientY: 0, panX: 0, panY: 0 };
+
+  // Kinetic momentum scroll physics
+  let lastPointerPositions: { time: number; x: number; y: number }[] = [];
+  let momentumVelocity = { x: 0, y: 0 };
+  let momentumRafId = 0;
+
+  function stopMomentum() {
+    if (momentumRafId) {
+      cancelAnimationFrame(momentumRafId);
+      momentumRafId = 0;
+    }
+  }
+
+  function startMomentumDeceleration() {
+    stopMomentum();
+
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+
+    const friction = 0.92; // Natural friction damping factor
+    const step = () => {
+      momentumVelocity.x *= friction;
+      momentumVelocity.y *= friction;
+
+      if (Math.abs(momentumVelocity.x) < 0.1 && Math.abs(momentumVelocity.y) < 0.1) {
+        momentumVelocity = { x: 0, y: 0 };
+        return;
+      }
+
+      engine.pan(momentumVelocity.x, momentumVelocity.y);
+      setPan({ x: engine.getViewport().panX, y: engine.getViewport().panY });
+      scheduler.requestRender();
+
+      momentumRafId = requestAnimationFrame(step);
+    };
+
+    momentumRafId = requestAnimationFrame(step);
+  }
+
+  // Dynamic Cursor Styles according to Photoshop UX
+  const getCursorClass = () => {
+    if (isSpacePressed()) {
+      return isPanning() ? "grabbing" : "grab";
+    }
+    const tool = activeTool();
+    if (tool === "move") return "default";
+    if (tool === "selection") return "crosshair";
+    if (tool === "crop") return "crosshair";
+    if (tool === "eyedropper") return "copy";
+    if (tool === "brush" || tool === "eraser") return "none";
+    return "default";
+  };
+
   // Transient interactive panning & dragging state
   const toolContext: ToolContext = {
     fgColor: fgColor(),
@@ -120,21 +177,106 @@ export function CanvasViewport() {
     renderer.resize(rect.width, rect.height);
     scheduler.requestRender();
 
+    // 3. Register global keyboard listeners for premium Photoshop Navigation
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const active = document.activeElement;
+      if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || (active as HTMLElement).isContentEditable)) return;
+
+      const engine = workspace.getActiveEngine();
+      if (!engine) return;
+
+      const key = e.key.toLowerCase();
+      const ctrl = e.ctrlKey || e.metaKey;
+
+      // Spacebar panning toggle
+      if (e.code === "Space") {
+        e.preventDefault();
+        stopMomentum();
+        if (!isSpacePressed()) {
+          setIsSpacePressed(true);
+        }
+        return;
+      }
+
+      // Zoom Shortcuts: Ctrl + Plus / Equal
+      if (ctrl && (key === "=" || key === "+" || e.code === "Equal" || e.code === "NumpadAdd")) {
+        e.preventDefault();
+        e.stopPropagation();
+        stopMomentum();
+        
+        const rect = canvasContainerRef.getBoundingClientRect();
+        engine.zoom(1.2, rect.width / 2, rect.height / 2);
+        setZoom(engine.getViewport().zoom);
+        setPan({ x: engine.getViewport().panX, y: engine.getViewport().panY });
+        scheduler.requestRender();
+        return;
+      }
+
+      // Zoom Shortcuts: Ctrl + Minus
+      if (ctrl && (key === "-" || e.code === "Minus" || e.code === "NumpadSubtract")) {
+        e.preventDefault();
+        e.stopPropagation();
+        stopMomentum();
+        
+        const rect = canvasContainerRef.getBoundingClientRect();
+        engine.zoom(0.8, rect.width / 2, rect.height / 2);
+        setZoom(engine.getViewport().zoom);
+        setPan({ x: engine.getViewport().panX, y: engine.getViewport().panY });
+        scheduler.requestRender();
+        return;
+      }
+
+      // Fit Screen Shortcuts: Ctrl + 0
+      if (ctrl && (key === "0" || e.code === "Digit0" || e.code === "Numpad0")) {
+        e.preventDefault();
+        e.stopPropagation();
+        stopMomentum();
+        
+        const rect = canvasContainerRef.getBoundingClientRect();
+        engine.fitToScreen(rect.width, rect.height);
+        setZoom(engine.getViewport().zoom);
+        setPan({ x: engine.getViewport().panX, y: engine.getViewport().panY });
+        scheduler.requestRender();
+        return;
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        setIsSpacePressed(false);
+      }
+    };
+
+    const handleWindowBlur = () => {
+      setIsSpacePressed(false);
+      setIsPanning(false);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleWindowBlur);
+
     onCleanup(() => {
       resizeObserver.disconnect();
       renderer.dispose();
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleWindowBlur);
+      stopMomentum();
     });
   });
 
-  // Wheel zoom (Ctrl+scroll)
+  // Wheel zoom (Ctrl+scroll or Alt+scroll) and Shift+Scroll horizontal panning
   const handleWheel = (e: WheelEvent) => {
     const engine = workspace.getActiveEngine();
     if (!engine) return;
 
-    if (e.ctrlKey) {
+    stopMomentum();
+
+    if (e.ctrlKey || e.altKey) {
       e.preventDefault();
       const rect = canvasRef.getBoundingClientRect();
-      const factor = e.deltaY < 0 ? 1.1 : 0.9;
+      const factor = e.deltaY < 0 ? 1.15 : 0.85;
       
       // Zoom centered at cursor position
       engine.zoom(factor, e.clientX, e.clientY);
@@ -142,10 +284,26 @@ export function CanvasViewport() {
       setPan({ x: engine.getViewport().panX, y: engine.getViewport().panY });
       scheduler.requestRender();
     } else {
-      // Regular pan offset scroll
+      e.preventDefault();
+      // Holding Shift scrolls horizontal, normal scrolls vertical
+      if (e.shiftKey) {
+        engine.pan(-e.deltaY, 0);
+      } else {
+        engine.pan(-e.deltaX, -e.deltaY);
+      }
+      setPan({ x: engine.getViewport().panX, y: engine.getViewport().panY });
+      scheduler.requestRender();
+    }
+  };
+
+  // Double Click empty background to fit screen
+  const handleDoubleClick = (e: MouseEvent) => {
+    if (e.target === canvasContainerRef || e.target === canvasRef) {
       const engine = workspace.getActiveEngine();
       if (engine) {
-        engine.pan(-e.deltaX, -e.deltaY);
+        const rect = canvasContainerRef.getBoundingClientRect();
+        engine.fitToScreen(rect.width, rect.height);
+        setZoom(engine.getViewport().zoom);
         setPan({ x: engine.getViewport().panX, y: engine.getViewport().panY });
         scheduler.requestRender();
       }
@@ -161,9 +319,26 @@ export function CanvasViewport() {
   };
 
   const onPointerDown = (e: PointerEvent) => {
+    stopMomentum();
+
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (!engine || !history) return;
+
+    // Check if panning navigation is active (either Space held or middle mouse click)
+    if (isSpacePressed() || e.button === 1) {
+      canvasRef.setPointerCapture(e.pointerId);
+      setIsPanning(true);
+      panDragStart = {
+        clientX: e.clientX,
+        clientY: e.clientY,
+        panX: engine.getViewport().panX,
+        panY: engine.getViewport().panY
+      };
+      // Record starting pointer position for flick velocity calculation
+      lastPointerPositions = [{ time: Date.now(), x: e.clientX, y: e.clientY }];
+      return;
+    }
 
     canvasRef.setPointerCapture(e.pointerId);
     const coords = getDocCoords(e);
@@ -188,6 +363,23 @@ export function CanvasViewport() {
     const engine = workspace.getActiveEngine();
     if (!engine) return;
 
+    // If currently drag-panning, update viewport offsets
+    if (isPanning()) {
+      const dx = e.clientX - panDragStart.clientX;
+      const dy = e.clientY - panDragStart.clientY;
+      const nextPanX = panDragStart.panX + dx;
+      const nextPanY = panDragStart.panY + dy;
+      engine.setViewport({ panX: nextPanX, panY: nextPanY });
+      setPan({ x: nextPanX, y: nextPanY });
+      scheduler.requestRender();
+
+      // Record position tracking for flick momentum
+      const now = Date.now();
+      lastPointerPositions.push({ time: now, x: e.clientX, y: e.clientY });
+      lastPointerPositions = lastPointerPositions.filter(p => now - p.time < 100);
+      return;
+    }
+
     const coords = getDocCoords(e);
     handlePointerMove(
       activeTool() as ToolType,
@@ -203,6 +395,36 @@ export function CanvasViewport() {
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (!engine || !history) return;
+
+    // Release panning and initiate kinetic momentum physics
+    if (isPanning()) {
+      canvasRef.releasePointerCapture(e.pointerId);
+      setIsPanning(false);
+
+      const now = Date.now();
+      lastPointerPositions = lastPointerPositions.filter(p => now - p.time < 100);
+
+      if (lastPointerPositions.length > 1) {
+        const oldest = lastPointerPositions[0];
+        const newest = lastPointerPositions[lastPointerPositions.length - 1];
+        const dt = newest.time - oldest.time;
+        if (dt > 10) {
+          const frameMs = 16.67;
+          const vx = ((newest.x - oldest.x) / dt) * frameMs;
+          const vy = ((newest.y - oldest.y) / dt) * frameMs;
+
+          // Damping clamp to avoid wild infinite flies
+          const maxSpeed = 80;
+          const speed = Math.sqrt(vx * vx + vy * vy);
+          if (speed > 1) {
+            const scale = Math.min(speed, maxSpeed) / speed;
+            momentumVelocity = { x: vx * scale, y: vy * scale };
+            startMomentumDeceleration();
+          }
+        }
+      }
+      return;
+    }
 
     canvasRef.releasePointerCapture(e.pointerId);
     const coords = getDocCoords(e);
@@ -225,10 +447,12 @@ export function CanvasViewport() {
       ref={canvasContainerRef}
       class="flex flex-1 items-center justify-center overflow-hidden bg-editor-canvas relative"
       onWheel={handleWheel}
+      onDblClick={handleDoubleClick}
     >
       <canvas
         ref={canvasRef}
-        class="absolute inset-0 w-full h-full cursor-crosshair"
+        class="absolute inset-0 w-full h-full"
+        style={{ cursor: getCursorClass() }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -270,3 +494,4 @@ export function CanvasViewport() {
     </div>
   );
 }
+

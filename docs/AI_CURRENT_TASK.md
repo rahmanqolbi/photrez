@@ -2,6 +2,25 @@
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
+## Current Task - Premium Viewport Controls & Kinetic Panning [COMPLETE]
+
+Date: 2026-05-31
+
+### Deskripsi
+
+Mengimplementasikan sistem Viewport navigasi tingkat tinggi persis Photoshop/Figma, yang meliputi Spacebar drag-panning, middle-click panning, Kinetic Momentum Scrolling (flick panning), Shift+Scroll horizontal panning, double-click background untuk fit screen, serta shortcut keyboard Ctrl+Equal/Minus/Zero.
+
+### Rencana Kerja
+
+1. **Spacebar & Middle-click Panning**: Wire keydown/keyup untuk Spacebar, resolver cursor grab/grabbing dinamis, dan handler PointerEvent untuk pan drag di `CanvasViewport.tsx`.
+2. **Kinetic Momentum Scrolling**: Rekam koordinat/waktu mouse terakhir (100ms), hitung exit velocity di pointer up, dan jalankan loop requestAnimationFrame dengan damping factor `0.92` untuk momentum geser.
+3. **Shift+Scroll Horizontal Panning**: Modifikasi `handleWheel` di `CanvasViewport.tsx` untuk memetakan scroll wheel vertikal dengan modifier `Shift` menjadi scroll horizontal.
+4. **Double-Click Background to Fit Screen**: Implementasikan listener double click di viewport container background untuk recenter dan memanggil `engine.fitToScreen`.
+5. **Zoom Keyboard Shortcuts**: Tambahkan keydown listener global untuk Ctrl+Equal (Zoom In), Ctrl+Minus (Zoom Out), dan Ctrl+0 (Fit Screen).
+6. **Verifikasi**: Jalankan Vite build, Vitest tests, dan cargo check.
+
+---
+
 ## Current Task - High-Fidelity Move & Transform Tool [COMPLETE]
 
 Date: 2026-05-31
