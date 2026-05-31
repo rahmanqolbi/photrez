@@ -6,6 +6,72 @@
 
 ---
 
+## [2026-05-31] BUG FIX — CSS Transform Coordinate Regressions [COMPLETE]
+
+### Kategori: BUG FIX / VIEWPORT / COORDINATES
+
+**Deskripsi:** Setelah migrasi CSS transform, `getDocCoords` menggunakan `canvasRef.getBoundingClientRect()` yang mengembalikan visual rect SETELAH CSS transform (pan/zoom), menyebabkan koordinat dokumen salah. Scroll-wheel zoom menggunakan `clientX/clientY` absolut (viewport-relatif) sebagai anchor, bukan container-relatif. Auto-fit-to-screen tidak dipanggil saat dokumen pertama dimuat.
+
+**Perbaikan:**
+1. **`CanvasViewport.tsx` — `getDocCoords`**: Ganti `canvasRef.getBoundingClientRect()` → `canvasContainerRef.getBoundingClientRect()`. Container rect adalah referensi layar yang stabil (tidak terpengaruh CSS transform), sehingga konversi `screenToDocument` menghasilkan koordinat dokumen yang benar.
+2. **`CanvasViewport.tsx` — `handleWheel`**: Ubah `engine.zoom(factor, e.clientX, e.clientY)` → `engine.zoom(factor, e.clientX - containerRect.left, e.clientY - containerRect.top)` agar anchor zoom dalam ruang koordinat yang sama dengan panX/panY (container-relatif, bukan viewport-absolut). Hapus variabel `rect` yang tidak terpakai.
+3. **`CanvasViewport.tsx` — `onMount`**: Tambah auto-fit-to-screen setelah inisialisasi renderer agar dokumen selalu terlihat pas di layar saat pertama dimuat.
+
+**Validasi:**
+- `pnpm.cmd --filter photrez-desktop test`: 123 tests PASS
+- `pnpm.cmd run build`: SUCCESS
+- `cargo test -p photrez-core`: 85 tests PASS
+
+---
+
+## [2026-05-31] BUG FIX — Double Viewport Transform (WebGL + CSS) [COMPLETE]
+
+### Kategori: BUG FIX / RENDERER / VIEWPORT
+
+**Deskripsi:** Viewport menerapkan pan/zoom dua kali — CSS transform (`translate3d + scale`) DAN WebGL shader (`computeViewMatrix` dengan zoom/pan projection). Akibatnya canvas muncul di posisi salah dan zoom ganda.
+
+**Akar Masalah (Root Cause):**
+CSS transform container menerapkan `translate3d(panX, panY, 0) scale(zoom)` ke seluruh content. WebGL renderer juga menerapkan pan/zoom via `computeViewMatrix` yang mengalikan zoom ke projection matrix dan offset pan. Keduanya aktif bersamaan → double transform.
+
+**Logika Perbaikan (Fix Rationale):**
+WebGL renderer harus render dokumen di resolusi 1:1 tanpa viewport transform. CSS transform yang handle semua positioning.
+
+1. **`webgl2.ts` — `computeViewMatrix`**: Mengembalikan identity orthographic matrix yang hanya map [0, docW] → [-1, 1] dan [0, docH] → [1, -1] tanpa pan/zoom. Parameter viewport diabaikan.
+2. **`CanvasViewport.tsx` — Canvas sizing**: Resize canvas ke `docWidth() × docHeight()` (1:1 document pixels), bukan container size. Hapus ResizeObserver yang tidak diperlukan.
+
+**Validasi:**
+- `pnpm.cmd --filter photrez-desktop test`: 123 tests PASS
+- `pnpm.cmd run build`: SUCCESS
+- `cargo test -p photrez-core`: 85 tests PASS
+
+---
+
+## [2026-05-31] FEATURE — Viewport UX Migration & Overlay System [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND / ARCHITECTURE
+
+**Deskripsi:** Migrasi viewport dari manual position calculation ke CSS `transform: translate3d() scale()` untuk GPU-accelerated panning/zooming, ditambah 13 overlay UX components (cursor resolver, hover highlight, smart guides, brush cursor, crop overlay, status bar enhancements, tooltips).
+
+**Solusi:**
+1. **Viewport Math Utilities** (`viewportUtils.ts`) — `zoomAtPoint`, `calculateFitScreen`, `screenToDocument`, `getViewportTransformCSS` dengan 14 unit tests.
+2. **CSS Transform Architecture** (`CanvasViewport.tsx`) — Container menggunakan `translate3d(panX, panY, 0) scale(zoom)` dengan `transform-origin: 0 0`, smooth transition 150ms saat idle, `will-change` hanya saat dragging.
+3. **Handle-Aware Cursor Resolver** (`cursorResolver.ts`) — 11 aturan cursor berdasarkan tool, handle hover, locked state, Alt modifier. 22 unit tests.
+4. **Hover Highlight** (`HoverHighlight.tsx`) — Purple outline (`#8b5cf6`) saat hover layer yang belum selected.
+5. **Smart Guides** (`smartGuides.ts` + `SmartGuides.tsx`) — Magenta snap lines untuk center/edge alignment saat move/transform. 10 unit tests.
+6. **Brush Cursor Overlay** (`BrushCursorOverlay.tsx`) — Lingkaran size preview + crosshair untuk brush/eraser.
+7. **Status Bar Enhancement** (`BottomStatusBar.tsx`) — Tool hints dinamis + zoom slider (0.05-32x).
+8. **Crop Overlay** (`CropOverlay.tsx`) — Crop boundaries + composition guides (thirds, grid, diagonal, golden).
+9. **Crop Mode Indicator** (`CropModeIndicator.tsx`) — Floating bar dengan Enter/Esc keyboard hints.
+10. **Dimension Tooltip** (`DimensionTooltip.tsx`) — Size tooltip untuk crop/selection.
+11. **Transformation HUD** (`TransformationHUD.tsx`) — Live transform info near cursor.
+
+**Validasi:**
+- `pnpm.cmd --filter photrez-desktop test`: 123 tests PASS
+- `pnpm.cmd run build`: SUCCESS (6.29s)
+- `cargo test -p photrez-core`: 85 tests PASS
+
+---
+
 ## [2026-05-31] FEATURE — UX Overlays: Hover Highlight, Smart Guides, Brush Cursor [COMPLETE]
 
 ### Kategori: FEATURE / UI / FRONTEND

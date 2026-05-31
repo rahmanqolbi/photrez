@@ -15,6 +15,7 @@ export interface ToolContext {
   isDragging: boolean;
   dragStart: { x: number; y: number };
   dragCurrent: { x: number; y: number };
+  strokePoints: { x: number; y: number }[];
   
   // Custom updates
   setFgColor?: (c: string) => void;
@@ -23,9 +24,6 @@ export interface ToolContext {
   onCropCreated?: (x: number, y: number, w: number, h: number) => void;
   onPaintStroke?: (points: { x: number; y: number }[], isEraser: boolean) => void;
 }
-
-// Global active points cache for brushes
-let strokePoints: { x: number; y: number }[] = [];
 
 export function handlePointerDown(
   tool: ToolType,
@@ -47,8 +45,8 @@ export function handlePointerDown(
     context.onCropCreated?.(docX, docY, 0, 0);
   } else if (tool === "brush" || tool === "eraser") {
     history.commit(engine.snapshot());
-    strokePoints = [{ x: docX, y: docY }];
-    context.onPaintStroke?.([...strokePoints], tool === "eraser");
+    context.strokePoints = [{ x: docX, y: docY }];
+    context.onPaintStroke?.([...context.strokePoints], tool === "eraser");
   } else if (tool === "eyedropper") {
     const color = engine.samplePixel(docX, docY);
     const hex = rgbToHex(color[0], color[1], color[2]);
@@ -88,8 +86,8 @@ export function handlePointerMove(
     const h = Math.abs(context.dragStart.y - docY);
     context.onCropCreated?.(x, y, w, h);
   } else if (tool === "brush" || tool === "eraser") {
-    strokePoints.push({ x: docX, y: docY });
-    context.onPaintStroke?.([...strokePoints], tool === "eraser");
+    context.strokePoints.push({ x: docX, y: docY });
+    context.onPaintStroke?.([...context.strokePoints], tool === "eraser");
   } else if (tool === "eyedropper") {
     const color = engine.samplePixel(docX, docY);
     const hex = rgbToHex(color[0], color[1], color[2]);
@@ -129,12 +127,10 @@ export function handlePointerUp(
       engine.clearSelection();
     }
   } else if (tool === "brush" || tool === "eraser") {
-    // Stroke drawing completes: we'll trigger final raster commit onto the active layer
-    if (context.selectedLayerId && strokePoints.length > 0) {
-      // Triggers offscreen paint composite
-      context.onPaintStroke?.([...strokePoints], tool === "eraser");
+    if (context.selectedLayerId && context.strokePoints.length > 0) {
+      context.onPaintStroke?.([...context.strokePoints], tool === "eraser");
     }
-    strokePoints = [];
+    context.strokePoints = [];
   }
   requestRender();
 }

@@ -132,6 +132,7 @@ export function CanvasViewport() {
     isDragging: false,
     dragStart: { x: 0, y: 0 },
     dragCurrent: { x: 0, y: 0 },
+    strokePoints: [],
     setFgColor,
     setBgColor,
     onSelectionCreated: (x, y, w, h) => {

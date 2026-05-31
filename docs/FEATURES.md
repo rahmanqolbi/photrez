@@ -98,9 +98,16 @@
 | ✅ DONE      | Fit to screen (Ctrl+0)                     |
 | ✅ DONE      | Pixel-level canvas rendering (wgpu canvas) |
 | ✅ DONE      | On-demand rendering (dirty flag system)    |
+| ✅ DONE      | CSS transform viewport (GPU-accelerated)  |
 | ✅ DONE      | Hover highlight (purple outline)           |
 | ✅ DONE      | Smart guides (magenta snap lines)          |
 | ✅ DONE      | Brush cursor overlay (size preview)        |
+| ✅ DONE      | Handle-aware cursor resolver               |
+| ✅ DONE      | Crop overlay with composition guides       |
+| ✅ DONE      | Crop mode indicator bar                    |
+| ✅ DONE      | Dimension tooltip (px/in/cm/mm)            |
+| ✅ DONE      | Transformation HUD near cursor             |
+| ✅ DONE      | Status bar tool hints + zoom slider        |
 
 ---
 

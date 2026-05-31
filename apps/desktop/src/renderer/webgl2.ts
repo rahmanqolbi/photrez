@@ -1,5 +1,5 @@
 import type { RenderBackend, RenderCapabilities, TextureRef } from "./types";
-import type { RenderState, ViewportState } from "../engine/types";
+import type { RenderState } from "../engine/types";
 import {
   VERTEX_SHADER_SOURCE,
   FRAGMENT_SHADER_SOURCE,
@@ -154,13 +154,7 @@ export class WebGL2Backend implements RenderBackend {
     // Compute document Viewport projection matrix
     const docW = this.textures.size > 0 ? Array.from(this.textures.values())[0].width : 800;
     const docH = this.textures.size > 0 ? Array.from(this.textures.values())[0].height : 600;
-    const viewProj = this.computeViewMatrix(
-      state.viewport,
-      canvas.width,
-      canvas.height,
-      docW,
-      docH
-    );
+    const viewProj = this.computeViewMatrix(docW, docH);
 
     // 1. Render Checkerboard if requested
     if (state.checkerboard && this.checkerboardProgram) {
@@ -276,13 +270,7 @@ export class WebGL2Backend implements RenderBackend {
     return program;
   }
 
-  private computeViewMatrix(
-    _viewport: ViewportState,
-    _canvasW: number,
-    _canvasH: number,
-    docW: number,
-    docH: number
-  ): Float32Array {
+  private computeViewMatrix(docW: number, docH: number): Float32Array {
     // Identity orthographic projection: map document bounds [0,docW]x[0,docH]
     // directly to NDC [-1,1]x[-1,1]. Pan and zoom are handled entirely by
     // the CSS transform in CanvasViewport — the WebGL canvas renders at 1:1

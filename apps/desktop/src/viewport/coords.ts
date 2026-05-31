@@ -36,29 +36,3 @@ export function documentToScreen(
   return { x: screenX, y: screenY };
 }
 
-/**
- * Compute zoom and translation required to fit document inside client size.
- */
-export function computeFitZoom(
-  docWidth: number,
-  docHeight: number,
-  containerWidth: number,
-  containerHeight: number,
-  padding: number = 80
-): { zoom: number; panX: number; panY: number } {
-  if (docWidth === 0 || docHeight === 0) {
-    return { zoom: 1.0, panX: 0, panY: 0 };
-  }
-
-  const fitZoom = Math.min(
-    (containerWidth - padding) / docWidth,
-    (containerHeight - padding) / docHeight,
-    1.0 // Don't scale beyond 100%
-  );
-
-  const finalZoom = Math.max(MIN_ZOOM, fitZoom);
-  const panX = (containerWidth - docWidth * finalZoom) / 2;
-  const panY = (containerHeight - docHeight * finalZoom) / 2;
-
-  return { zoom: finalZoom, panX, panY };
-}

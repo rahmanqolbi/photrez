@@ -2,7 +2,33 @@
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
-## Current Task - Viewport UX Migration & Overlay System [IN PROGRESS]
+## Current Task - CSS Transform Coordinate Regression Fix [COMPLETE]
+
+Date: 2026-05-31
+
+### Deskripsi
+
+Memperbaiki regresi koordinat setelah CSS transform migration: `getDocCoords` membaca rect dari canvas (terpengaruh CSS transform) bukan dari container (stabil), wheel zoom anchor menggunakan viewport-absolute coordinates, dan auto-fit-to-screen tidak dijalankan saat mount dokumen pertama.
+
+### Perbaikan
+
+1. **`getDocCoords`**: `canvasRef.getBoundingClientRect()` → `canvasContainerRef.getBoundingClientRect()` — container rect adalah referensi layar stabil.
+2. **`handleWheel`**: Anchor zoom diubah ke container-relative (`e.clientX - containerRect.left`), bukan viewport-absolute (`e.clientX`).
+3. **`onMount`**: Tambah `engine.fitToScreen()` setelah renderer inisialisasi agar dokumen terlihat pas saat load.
+
+### Verifikasi
+
+- `pnpm.cmd --filter photrez-desktop test`: 123 tests PASS
+- `pnpm.cmd run build`: SUCCESS
+- `cargo test -p photrez-core`: 85 tests PASS
+
+### Status
+
+COMPLETE.
+
+---
+
+## Current Task - Viewport UX Migration & Overlay System [COMPLETE]
 
 Date: 2026-05-31
 
@@ -10,23 +36,15 @@ Date: 2026-05-31
 
 Migrasi viewport dari manual position calculation ke CSS `transform: translate3d() scale()` untuk GPU-accelerated panning/zooming, lalu layer semua UX overlays (hover highlight, smart guides, cursor system, crop overlay, status bar enhancements) di atas viewport.
 
-### Rencana Kerja
+### Verifikasi
 
-1. **Viewport Math Utilities** — Buat `viewportUtils.ts` dengan `zoomAtPoint`, `calculateFitScreen`, `screenToDocument`, `getViewportTransformCSS`.
-2. **Refactor CanvasViewport** — Ubah container ke CSS transform `translate3d(panX, panY, 0) scale(zoom)` dengan `transform-origin: 0 0`.
-3. **Cursor Resolver** — Sistem cursor handle-aware (space=grab, alt+brush=crosshair, locked=default, handles=resize).
-4. **Hover Highlight** — Purple outline saat hover layer.
-5. **Smart Guides** — Magenta snap lines saat move/transform.
-6. **Brush Cursor Overlay** — Lingkaran size preview + crosshair.
-7. **Status Bar Enhancement** — Tool hints dinamis + zoom slider.
-8. **Crop Overlay** — Crop boundaries + composition guides (thirds, grid, golden).
-9. **Crop Mode Indicator** — Bar indikator dengan Enter/Esc hints.
-10. **Dimension Tooltip** — Size tooltip px/in/cm/mm.
-11. **Transformation HUD** — Live transform info near cursor.
+- `pnpm.cmd --filter photrez-desktop test`: 123 tests PASS
+- `pnpm.cmd run build`: SUCCESS
+- `cargo test -p photrez-core`: 85 tests PASS
 
 ### Status
 
-IN PROGRESS. Phase 1-6 Complete (Tasks 5, 6, 7: Hover Highlight, Smart Guides, Brush Cursor Overlay implemented). Moving to Phase 7.
+COMPLETE. Seluruh 13 tasks selesai dan terverifikasi.
 
 ---
 
