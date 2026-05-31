@@ -2,6 +2,34 @@
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
+## Current Task - Viewport UX Migration & Overlay System [IN PROGRESS]
+
+Date: 2026-05-31
+
+### Deskripsi
+
+Migrasi viewport dari manual position calculation ke CSS `transform: translate3d() scale()` untuk GPU-accelerated panning/zooming, lalu layer semua UX overlays (hover highlight, smart guides, cursor system, crop overlay, status bar enhancements) di atas viewport.
+
+### Rencana Kerja
+
+1. **Viewport Math Utilities** — Buat `viewportUtils.ts` dengan `zoomAtPoint`, `calculateFitScreen`, `screenToDocument`, `getViewportTransformCSS`.
+2. **Refactor CanvasViewport** — Ubah container ke CSS transform `translate3d(panX, panY, 0) scale(zoom)` dengan `transform-origin: 0 0`.
+3. **Cursor Resolver** — Sistem cursor handle-aware (space=grab, alt+brush=crosshair, locked=default, handles=resize).
+4. **Hover Highlight** — Purple outline saat hover layer.
+5. **Smart Guides** — Magenta snap lines saat move/transform.
+6. **Brush Cursor Overlay** — Lingkaran size preview + crosshair.
+7. **Status Bar Enhancement** — Tool hints dinamis + zoom slider.
+8. **Crop Overlay** — Crop boundaries + composition guides (thirds, grid, golden).
+9. **Crop Mode Indicator** — Bar indikator dengan Enter/Esc hints.
+10. **Dimension Tooltip** — Size tooltip px/in/cm/mm.
+11. **Transformation HUD** — Live transform info near cursor.
+
+### Status
+
+IN PROGRESS. Memulai Phase 1 (Viewport Architecture Migration).
+
+---
+
 ## Current Task - Premium Viewport Controls & Kinetic Panning [COMPLETE]
 
 Date: 2026-05-31

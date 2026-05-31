@@ -493,61 +493,77 @@ export function CanvasViewport() {
       onWheel={handleWheel}
       onDblClick={handleDoubleClick}
     >
-      <canvas
-        ref={canvasRef}
-        class="absolute inset-0 w-full h-full"
-        style={{ cursor: getCursorClass() }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-      />
-
-      {/* Premium Artboard Bounds & Shadow Overlay */}
+      {/* CSS Transform container — GPU-accelerated pan/zoom */}
       <Show when={workspace.getActiveEngine()}>
         <div
-          class="absolute pointer-events-none select-none border border-white/10 z-0"
           style={{
-            left: `${pan().x}px`,
-            top: `${pan().y}px`,
-            width: `${docWidth() * zoom()}px`,
-            height: `${docHeight() * zoom()}px`,
-            "box-shadow": "0 0 0 1px rgba(0, 0, 0, 0.6), 0 8px 32px rgba(0, 0, 0, 0.7)",
+            transform: `translate3d(${pan().x}px, ${pan().y}px, 0) scale(${zoom()})`,
+            "transform-origin": "0 0",
+            transition: isPanning() ? "none" : "transform 0.15s cubic-bezier(0.2, 0, 0, 1)",
+            "will-change": isPanning() ? "transform" : "auto",
+            position: "absolute",
+            width: `${docWidth()}px`,
+            height: `${docHeight()}px`,
           }}
-        />
-      </Show>
+        >
+          {/* WebGL Canvas — fills document space */}
+          <canvas
+            ref={canvasRef}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              cursor: getCursorClass(),
+            }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+          />
 
-      {/* Photoshop-style Move & Transform Overlay */}
-      <Show when={activeTool() === "move"}>
-        <SelectionTransformOverlay />
-      </Show>
+          {/* Artboard border & shadow */}
+          <div
+            class="absolute inset-0 pointer-events-none border border-white/10"
+            style={{
+              "box-shadow": "0 0 0 1px rgba(0, 0, 0, 0.6), 0 8px 32px rgba(0, 0, 0, 0.7)",
+            }}
+          />
 
-      {/* Screen-space Selection Marquee Visual Overlay */}
-      <Show when={selectionBox()}>
-        {(box) => {
-          const rect = canvasRef?.getBoundingClientRect();
-          const engine = workspace.getActiveEngine();
-          if (!rect || !engine) return null;
+          {/* SVG Overlay Layer in document space */}
+          <svg
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              overflow: "visible",
+              "pointer-events": "none",
+            }}
+          >
+            {/* Selection marquee — document-space coordinates */}
+            <Show when={selectionBox()}>
+              {(box) => (
+                <rect
+                  x={box().x}
+                  y={box().y}
+                  width={box().w}
+                  height={box().h}
+                  fill="none"
+                  stroke="#E15A17"
+                  stroke-width={1 / zoom()}
+                  stroke-dasharray="4 4"
+                  class="animate-dash"
+                  style={{ "pointer-events": "none" }}
+                />
+              )}
+            </Show>
+          </svg>
 
-          const viewport = engine.getViewport();
-          const screenStart = {
-            x: box().x * viewport.zoom + viewport.panX,
-            y: box().y * viewport.zoom + viewport.panY,
-          };
-          const screenWidth = box().w * viewport.zoom;
-          const screenHeight = box().h * viewport.zoom;
-
-          return (
-            <div
-              class="absolute border border-dashed border-accent pointer-events-none select-none animate-dash"
-              style={{
-                left: `${screenStart.x}px`,
-                top: `${screenStart.y}px`,
-                width: `${screenWidth}px`,
-                height: `${screenHeight}px`,
-              }}
-            />
-          );
-        }}
+          {/* SelectionTransformOverlay — document-space coordinates */}
+          <Show when={activeTool() === "move"}>
+            <SelectionTransformOverlay />
+          </Show>
+        </div>
       </Show>
     </div>
   );

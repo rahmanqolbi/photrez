@@ -3,7 +3,7 @@ import { useEditor } from "./EditorContext";
 import type { Transform2D } from "@/engine/types";
 
 export function SelectionTransformOverlay() {
-  const { workspace, activeLayerId, layers, zoom, pan, scheduler } = useEditor();
+  const { workspace, activeLayerId, layers, zoom, scheduler } = useEditor();
 
   const activeLayer = createMemo(() => {
     const id = activeLayerId();
@@ -21,29 +21,29 @@ export function SelectionTransformOverlay() {
     startHeight: number;
   } | null>(null);
 
-  // Screen coordinates bounds calculations
+  // Document-space coordinates (parent CSS transform handles screen mapping)
   const left = createMemo(() => {
     const layer = activeLayer();
     if (!layer) return 0;
-    return layer.transform.x * zoom() + pan().x;
+    return layer.transform.x;
   });
 
   const top = createMemo(() => {
     const layer = activeLayer();
     if (!layer) return 0;
-    return layer.transform.y * zoom() + pan().y;
+    return layer.transform.y;
   });
 
   const width = createMemo(() => {
     const layer = activeLayer();
     if (!layer) return 0;
-    return layer.width * layer.transform.scaleX * zoom();
+    return layer.width * layer.transform.scaleX;
   });
 
   const height = createMemo(() => {
     const layer = activeLayer();
     if (!layer) return 0;
-    return layer.height * layer.transform.scaleY * zoom();
+    return layer.height * layer.transform.scaleY;
   });
 
   const handles = [
