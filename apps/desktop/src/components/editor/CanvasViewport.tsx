@@ -13,6 +13,8 @@ import { SelectionTransformOverlay } from "./SelectionTransformOverlay";
 import { HoverHighlight } from "./HoverHighlight";
 import { SmartGuides } from "./SmartGuides";
 import { BrushCursorOverlay } from "./BrushCursorOverlay";
+import { CropOverlay } from "./CropOverlay";
+import { CropModeIndicator } from "./CropModeIndicator";
 
 export function CanvasViewport() {
   const {
@@ -44,6 +46,10 @@ export function CanvasViewport() {
     w: number;
     h: number;
   } | null>(null);
+
+  // Crop overlay state
+  const [cropRect, setCropRect] = createSignal<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [cropGuideMode, setCropGuideMode] = createSignal<"none" | "thirds" | "grid" | "diagonal" | "golden">("none");
 
   // Spacebar and Middle-click panning states
   const [isSpacePressed, setIsSpacePressed] = createSignal(false);
@@ -586,7 +592,16 @@ export function CanvasViewport() {
             <HoverHighlight />
             <SmartGuides lines={[]} />
             <BrushCursorOverlay />
+            <CropOverlay
+              cropRect={cropRect()}
+              guideMode={cropGuideMode()}
+              canvasWidth={docWidth()}
+              canvasHeight={docHeight()}
+            />
           </svg>
+
+          {/* Crop mode indicator bar */}
+          <CropModeIndicator isActive={activeTool() === "crop"} />
 
           {/* SelectionTransformOverlay — document-space coordinates */}
           <Show when={activeTool() === "move"}>

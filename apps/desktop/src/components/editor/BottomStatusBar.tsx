@@ -3,8 +3,17 @@ import { clsx } from "clsx";
 import { Icon } from "./icons";
 import { useEditor } from "./EditorContext";
 
+const TOOL_DESCRIPTIONS: Record<string, string> = {
+  move: "Drag to move layer. Hold Shift for constrained movement.",
+  selection: "Click and drag to create rectangular selection.",
+  crop: "Click and drag to define crop area. Enter to apply, Esc to cancel.",
+  eyedropper: "Click to sample color from canvas.",
+  brush: "Click and drag to paint. Hold Alt for eyedropper.",
+  eraser: "Click and drag to erase. Hold Alt for eyedropper.",
+};
+
 export function BottomStatusBar() {
-  const { workspace, activeTool, zoom, docWidth, docHeight, layers, activeLayerId, activeDocumentId } = useEditor();
+  const { workspace, activeTool, setActiveTool, zoom, setZoom, scheduler, docWidth, docHeight, layers, activeLayerId, activeDocumentId } = useEditor();
 
   const activeLayerName = () => {
     const activeId = activeLayerId();
@@ -25,6 +34,36 @@ export function BottomStatusBar() {
     }
   };
 
+  const handleZoomChange = (e: Event) => {
+    const val = parseFloat((e.target as HTMLInputElement).value);
+    setZoom(val);
+    const engine = workspace.getActiveEngine();
+    if (engine) {
+      engine.setViewport({ zoom: val });
+      scheduler.requestRender();
+    }
+  };
+
+  const zoomOut = () => {
+    const engine = workspace.getActiveEngine();
+    if (engine) {
+      const newZoom = Math.max(0.05, zoom() / 1.2);
+      setZoom(newZoom);
+      engine.setViewport({ zoom: newZoom });
+      scheduler.requestRender();
+    }
+  };
+
+  const zoomIn = () => {
+    const engine = workspace.getActiveEngine();
+    if (engine) {
+      const newZoom = Math.min(32, zoom() * 1.2);
+      setZoom(newZoom);
+      engine.setViewport({ zoom: newZoom });
+      scheduler.requestRender();
+    }
+  };
+
   return (
     <footer class="flex h-[32px] shrink-0 items-center justify-between gap-4 overflow-x-auto border-t border-editor-divider bg-editor-topbar px-4 text-[12px] text-editor-text-dim">
       <div class="flex shrink-0 items-center gap-5">
@@ -35,8 +74,25 @@ export function BottomStatusBar() {
           <span class="text-editor-text/80">
             {docWidth()} × {docHeight()} px
           </span>
-          <span class="border-l border-editor-divider pl-4">
-            Zoom: {Math.round(zoom() * 100)}%
+          <span class="border-l border-editor-divider pl-4 flex items-center gap-2">
+            <button
+              onClick={zoomOut}
+              class="hover:text-editor-text text-[10px] font-bold"
+            >−</button>
+            <input
+              type="range"
+              min={0.05}
+              max={32}
+              step={0.01}
+              value={zoom()}
+              onInput={handleZoomChange}
+              class="w-24 h-1 cursor-default accent-[#E15A17]"
+            />
+            <button
+              onClick={zoomIn}
+              class="hover:text-editor-text text-[10px] font-bold"
+            >+</button>
+            <span class="text-editor-text/80">{Math.round(zoom() * 100)}%</span>
           </span>
           <span class="border-l border-editor-divider pl-4">
             RGB/8
@@ -54,6 +110,9 @@ export function BottomStatusBar() {
         >
           <span>
             Active: <strong class="text-editor-text">{getToolDisplayName()}</strong>
+          </span>
+          <span class="border-l border-editor-divider pl-4">
+            <span class="text-editor-text/60">{TOOL_DESCRIPTIONS[activeTool()] || ""}</span>
           </span>
           <span class="border-l border-editor-divider pl-4">
             Selected Layer: <strong class="text-editor-text">{activeLayerName()}</strong>
