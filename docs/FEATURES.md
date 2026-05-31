@@ -98,6 +98,9 @@
 | ✅ DONE      | Fit to screen (Ctrl+0)                     |
 | ✅ DONE      | Pixel-level canvas rendering (wgpu canvas) |
 | ✅ DONE      | On-demand rendering (dirty flag system)    |
+| ✅ DONE      | Hover highlight (purple outline)           |
+| ✅ DONE      | Smart guides (magenta snap lines)          |
+| ✅ DONE      | Brush cursor overlay (size preview)        |
 
 ---
 

@@ -34,6 +34,8 @@ export interface EditorContextValue {
   activeDocumentId: Accessor<string | null>;
   layers: Accessor<LayerNode[]>;
   activeLayerId: Accessor<string | null>;
+  hoveredLayerId: Accessor<string | null>;
+  setHoveredLayerId: Setter<string | null>;
   docWidth: Accessor<number>;
   docHeight: Accessor<number>;
 }
@@ -65,6 +67,7 @@ export function EditorProvider(props: {
   const [activeDocumentId, setActiveDocumentId] = createSignal<string | null>(null);
   const [layers, setLayers] = createSignal<LayerNode[]>([]);
   const [activeLayerId, setActiveLayerId] = createSignal<string | null>(null);
+  const [hoveredLayerId, setHoveredLayerId] = createSignal<string | null>(null);
   const [docWidth, setDocWidth] = createSignal(800);
   const [docHeight, setDocHeight] = createSignal(600);
 
@@ -227,6 +230,8 @@ export function EditorProvider(props: {
     activeDocumentId,
     layers,
     activeLayerId,
+    hoveredLayerId,
+    setHoveredLayerId,
     docWidth,
     docHeight
   };

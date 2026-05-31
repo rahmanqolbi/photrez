@@ -6,6 +6,26 @@
 
 ---
 
+## [2026-05-31] FEATURE — UX Overlays: Hover Highlight, Smart Guides, Brush Cursor [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND
+
+**Deskripsi:** Mengimplementasikan tiga overlay UX untuk viewport editor: Hover Highlight (purple outline saat hover layer), Smart Guides (magenta snap lines saat move/transform), dan Brush Cursor Overlay (lingkaran size preview + crosshair saat brush/eraser aktif).
+
+**Solusi:**
+1. **Hover Highlight** (`HoverHighlight.tsx`) — Komponen SolidJS yang menampilkan outline ungu (#8b5cf6) pada layer yang di-hover (selain layer aktif). Menggunakan `createMemo` untuk filter layer dan menghitung bounding box dari transform.
+2. **Smart Guides** (`smartGuides.ts` + `SmartGuides.tsx`) — Utility function `computeSnapLines` yang mendeteksi alignment snap (edge, center) antara layer yang bergerak dan target lainnya. Komponen SolidJS merender garis magenta (#ff00ff) dengan `vector-effect="non-scaling-stroke"`.
+3. **Brush Cursor Overlay** (`BrushCursorOverlay.tsx`) — Komponen yang menampilkan lingkaran cursor + crosshair saat tool brush/eraser aktif. Menggunakan pointer event global untuk tracking posisi cursor.
+4. **EditorContext Integration** — Menambahkan signal `hoveredLayerId` ke `EditorContext.tsx` untuk komunikasi antar komponen.
+5. **CanvasViewport Integration** — Semua overlay diintegrasikan ke dalam SVG layer di dalam CSS transform container.
+
+**Validasi:**
+- `pnpm.cmd --filter photrez-desktop test`: 123 tests PASS (termasuk 10 tests baru untuk smartGuides)
+- `pnpm.cmd run build`: SUCCESS (TypeScript compiler + Vite production build)
+- Semua komponen menggunakan `vector-effect="non-scaling-stroke"` untuk konsistensi visual di semua zoom level
+
+---
+
 ## [2026-05-31] FEATURE — High-Fidelity Photoshop-style Viewport Navigation & Kinetic Panning [COMPLETE]
 
 ### Kategori: FEATURE / UI / FRONTEND / DESIGN

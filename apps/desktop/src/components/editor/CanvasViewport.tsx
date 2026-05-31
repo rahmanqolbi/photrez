@@ -10,6 +10,9 @@ import {
 import { resolveCursor } from "@/viewport/cursorResolver";
 import { useEditor } from "./EditorContext";
 import { SelectionTransformOverlay } from "./SelectionTransformOverlay";
+import { HoverHighlight } from "./HoverHighlight";
+import { SmartGuides } from "./SmartGuides";
+import { BrushCursorOverlay } from "./BrushCursorOverlay";
 
 export function CanvasViewport() {
   const {
@@ -580,6 +583,9 @@ export function CanvasViewport() {
                 />
               )}
             </Show>
+            <HoverHighlight />
+            <SmartGuides lines={[]} />
+            <BrushCursorOverlay />
           </svg>
 
           {/* SelectionTransformOverlay — document-space coordinates */}
