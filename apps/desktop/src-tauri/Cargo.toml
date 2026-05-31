@@ -1,24 +1,14 @@
 [package]
 name = "photrez-desktop"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
 tauri = { version = "2.0.0", features = [] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-uuid = { version = "1.7", features = ["v4"] }
-photrez-core = { path = "../../../crates/core" }
-photrez-render = { path = "../../../crates/render" }
 tauri-plugin-dialog = "2"
 base64 = "0.22"
-pollster = "0.3.0"
-
-[target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = [
-    "Win32_Foundation",
-    "Win32_UI_WindowsAndMessaging",
-] }
 
 [build-dependencies]
 tauri-build = { version = "2.0.0", features = [] }

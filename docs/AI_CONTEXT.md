@@ -57,13 +57,14 @@ Sebelum memodifikasi file apapun, AI WAJIB melakukan:
    - **BUG BARU**: Bug yang baru ditemukan atau dilaporkan (tanpa/sebelum perbaikan).
    - **BUG FIX**: Perbaikan untuk bug yang sudah ada/ditemukan. **WAJIB** mencatat: **Akar Masalah (Root Cause)** dan **Logika Perbaikan (Fix Rationale)**.
 3. **Perbarui Feature Status**: Setelah fitur selesai, update `docs/FEATURES.md` dengan status terbaru.
-4. **Verifikasi Eksistensi File & Fungsi**: Gunakan tools pencarian (`grep_search` / `list_dir`) untuk memastikan path dan nama fungsi benar-benar ada. **JANGAN MENEBAK.**
-5. **Analisis Dampak (Blast Radius)**: Pahami apakah komponen atau tipe yang diubah digunakan di tempat lain.
-6. **Integritas Dokumentasi (ANTI-TRUNCATE)**: JANGAN PERNAH menghapus riwayat lama di `AI_HISTORY.md` atau `AI_CURRENT_TASK.md`. Gunakan `replace_file_content` untuk menambahkan entri baru. Penggunaan `write_to_file` dengan `Overwrite: true` pada file dokumentasi besar sangat dilarang kecuali untuk inisialisasi awal.
+4. **Verifikasi Eksistensi & Penjelajahan Kode**: Gunakan `codegraph` (MCP tool) secara proaktif sebagai instrumen utama untuk penjelajahan kode, melacak relasi panggilan (callers/callees), dan memahami arsitektur. Gunakan pula tools pencarian pembantu (`grep_search` / `list_dir`) untuk memastikan path fisik benar-benar ada. **JANGAN MENEBAK.**
+5. **Analisis Dampak (Blast Radius)**: Pahami apakah komponen atau tipe yang diubah digunakan di tempat lain menggunakan bantuan pelacakan dampak CodeGraph.
+6. **Riset API Eksternal & Library (Context7)**: Untuk setiap pencarian dokumentasi API library eksternal (seperti Tauri, SolidJS, WebGL2, Tailwind v4, wgpu), AI **WAJIB** menggunakan `Context7` (MCP tool `resolve-library-id` dan `query-docs`). Jangan pernah menebak signature API atau bersandar pada training data bawaan.
+7. **Integritas Dokumentasi (ANTI-TRUNCATE)**: JANGAN PERNAH menghapus riwayat lama di `AI_HISTORY.md` atau `AI_CURRENT_TASK.md`. Gunakan `replace_file_content` untuk menambahkan entri baru. Penggunaan `write_to_file` dengan `Overwrite: true` pada file dokumentasi besar sangat dilarang kecuali untuk inisialisasi awal.
    - **WAJIB UTF-8**: Semua file dokumentasi (`*.md`) harus disimpan sebagai **UTF-8** (disarankan tanpa BOM). DILARANG menulis dokumen dengan UTF-16/`Unicode` karena akan menyebabkan mojibake/karakter rusak.
    - **LARANGAN POWERSHELL ENCODING BERISIKO**: DILARANG menggunakan `Set-Content -Encoding Unicode` untuk file markdown. Jika perlu write via script, gunakan UTF-8 eksplisit (mis. `[System.IO.File]::WriteAllText(path, text, [System.Text.UTF8Encoding]::new($false))`).
    - **WAJIB VERIFIKASI PASCA-EDIT DOKUMEN**: Setelah mengubah file docs, cek `git diff -- docs/*.md`. Jika muncul `Binary files differ`, STOP dan perbaiki encoding sebelum lanjut.
-7. **LARANGAN PENGHAPUSAN BERKAS FISIK SECARA DESTRUKTIF TANPA DISKUSI**: DILARANG keras menghapus file, folder, atau aset fisik apa pun dari workspace secara permanen (melalui `Remove-Item`, `rm`, atau utilitas penghapusan lainnya) sebelum mendiskusikannya secara terbuka dan mendapatkan persetujuan/konfirmasi eksplisit dari USER. Diskusi wajib dilakukan untuk menghindari hilangnya file referensi atau backup yang masih dibutuhkan oleh USER.
+8. **LARANGAN PENGHAPUSAN BERKAS FISIK SECARA DESTRUKTIF TANPA DISKUSI**: DILARANG keras menghapus file, folder, atau aset fisik apa pun dari workspace secara permanen (melalui `Remove-Item`, `rm`, atau utilitas penghapusan lainnya) sebelum mendiskusikannya secara terbuka dan mendapatkan persetujuan/konfirmasi eksplisit dari USER. Diskusi wajib dilakukan untuk menghindari hilangnya file referensi atau backup yang masih dibutuhkan oleh USER.
 
 ---
 
@@ -380,6 +381,7 @@ fn add_layer(name: String, state: tauri::State<'_, EditorState>) -> Result<Value
 8. **DILARANG** menggunakan `any` type — gunakan `unknown` + type guard.
 9. **DILARANG** menambahkan dependency baru tanpa update `docs/31-dependency-inventory.md`.
 10. **DILARANG** menambah fitur di luar MVP scope tanpa persetujuan eksplisit user.
+11. **DILARANG** mengubah, memodifikasi, atau memoles desain UI/UX, tata letak visual, warna, border, atau estetika antarmuka apa pun tanpa instruksi atau persetujuan eksplisit dari USER.
 
 ### 🟢 WAJIB DILAKUKAN
 
@@ -409,6 +411,8 @@ fn add_layer(name: String, state: tauri::State<'_, EditorState>) -> Result<Value
 | 8   | Lucide icons tidak muncul setelah DOM update  | Icon kosong setelah dynamic render    | Panggil `lucide.createIcons()` setelah DOM update             |
 | 9   | Response bukan envelope format                | Frontend parsing error                | Selalu pakai `ok_response()` / `err_response()`               |
 | 10  | `any` type untuk bypass TypeScript error      | Bug tersembunyi, type safety hilang   | Gunakan `unknown` + type guard, atau definisikan interface     |
+| 11  | Skip resource compilation sepenuhnya pada windows-gnu | STATUS_ENTRYPOINT_NOT_FOUND (COMCTL32.dll v5) | Gunakan custom manifest compiler workaround dengan `windres --preprocessor=cat` di `build.rs` dan auto-copy `WebView2Loader.dll` |
+
 
 ---
 

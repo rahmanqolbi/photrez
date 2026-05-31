@@ -6,6 +6,65 @@
 
 ---
 
+## [2026-05-31] FEATURE — High-Fidelity Photoshop-style Move & Transform Overlay [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND / DESIGN
+
+**Deskripsi:** Mengimplementasikan fungsionalitas "Move Tool" dengan fidelitas tinggi di viewport kanvas (SolidJS + WebGL2) yang berperilaku persis seperti UX Photoshop. Ini menyediakan gizmo bounding box interaktif dengan 8 resize handles dan crosshair tengah, yang terikat dinamis dengan TypeScript Document Engine dan WebGL2 renderer.
+
+**Solusi:**
+1. **SelectionTransformOverlay Component** (`SelectionTransformOverlay.tsx`) — Membuat overlay SolidJS dengan outline dashed oranye Photon Amber (`#E15A17`) dan pixel-perfect 1px shadow border.
+2. **8 Interactive Drag Handles** — Membuat resize handles (`tl`, `t`, `tr`, `r`, `br`, `b`, `bl`, `l`) dan target translation box dengan pointer capture native (`setPointerCapture`) agar event drag tidak putus ketika mouse bergerak cepat.
+3. **Aspect Ratio Lock & Clamping** — Menambahkan logic proportional scaling saat tombol `Shift` ditekan selama drag sudut. Menambahkan batas clamp minimum 5px untuk mencegah dimensi layer mengecil ke nilai negatif/invalid.
+4. **Esc-Cancel Interaction** — Mengintegrasikan event listener window keydown di mana tombol `Escape` secara instan membatalkan drag transform aktif dan mengembalikan ke koordinat/skala semula.
+5. **History Store Integration** — Lakukan komit history snapshot secara synchronous di pointer down sebelum mutasi transform terjadi agar support full undo/redo (`Ctrl+Z` / `Ctrl+Y`) bekerja secara sempurna.
+6. **Dynamic Viewport Binding** — Mengintegrasikan overlay di `CanvasViewport.tsx` di bawah activeTool condition "move".
+
+**Validasi:**
+- `pnpm run build`: SUCCESS (TypeScript compiler + Vite production build built in 39.98s).
+- `vitest run`: SUCCESS (Semua 9 test files dan 67 tests berjalan 100% green).
+- Rust Cargo: `cargo test -p photrez-core` berjalan 100% lulus (85 tests).
+
+---
+
+## [2026-05-30] BUG FIX — Custom Manifest Compiler & WebView2Loader Linking Workaround [COMPLETE]
+
+### Kategori: BUG FIX / BUILD / INFRASTRUCTURE / TAURI
+
+**Deskripsi:** Memperbaiki crash `STATUS_ENTRYPOINT_NOT_FOUND (0xc0000139)` yang terjadi secara konstan saat menjalankan aplikasi desktop Tauri under toolchain Windows GNU (MinGW-w64).
+
+**Akar Masalah (Root Cause):**
+1. **Ketiadaan Manifest**: Karena `windres` panik saat memproses resource Tauri, compile-script sebelumnya melewati `tauri_build::build()`. Akibatnya, biner yang dihasilkan tidak memiliki manifest Windows, sehingga Windows memuat `COMCTL32.dll` versi 5.82 kuno (ketiadaan modern GUI entry points) alih-alih versi 6.0.0.0.
+2. **DLL Mismatch**: Tidak adanya `WebView2Loader.dll` resmi Microsoft di target directory memaksa Windows memuat DLL dari global MSYS2 `PATH` (`/mingw64/bin/WebView2Loader.dll`), yang memiliki ABI tidak kompatibel dengan biner Rust Rust-Tauri.
+
+**Logika Perbaikan (Fix Rationale):**
+1. **Workaround Manifest `no-cpp` via `cat`**: Menulis compiler manual untuk manifest di `build.rs` menggunakan `windres` dengan flag `--preprocessor=cat` (bypassing preprocessor GCC yang buggy), lalu menautkannya secara langsung lewat `cargo:rustc-link-arg`. Ini secara sah menanamkan manifest Common-Controls v6 ke dalam executable.
+2. **Auto-Copy WebView2Loader.dll**: Menambahkan logic salin otomatis di `build.rs` untuk memindahkan `WebView2Loader.dll` resmi Microsoft dari build cache `webview2-com-sys` langsung ke profile target directory (`target/debug` / `target/release`), memprioritaskan DLL yang benar di atas `PATH` global.
+
+**Validasi:**
+- `pnpm tauri dev`: SUCCESS (Aplikasi berhasil terkompilasi dalam 9 menit 0 detik pada MSYS2 GNU, berhasil menanamkan manifest dan DLL resmi, dan booting secara sukses tanpa satu pun runtime crash).
+
+## [2026-05-30] FEATURE / REFACTOR / ARCHITECTURE — Architecture Migration v2 with Modular UI Alignment [COMPLETE]
+
+
+### Kategori: FEATURE / REFACTOR / ARCHITECTURE / FRONTEND / TAURI
+
+**Deskripsi:** Melakukan migrasi arsitektur secara total dari Rust-heavy stateful backend ke frontend-owned TypeScript Document Engine + WebGL2 render backend. Langkah ini menyingkirkan semua Tauri command IPC latency pada hot-paths editing, brush stroke, pan/zoom, dan memindahkan logic persistence & manipulation ke sisi browser-native ImageBitmap. Migrasi ini diselaraskan sepenuhnya dengan struktur komponen modular SolidJS kreatif yang sudah di-slicing sebelumnya.
+
+**Solusi:**
+1. **Frontend Document Engine** (`engine/`) — Membuat `types.ts` (type definitions), `document.ts` (`DocumentEngine` class synchronous), `history.ts` (`CommandHistory` dengan stack depth 50), dan `workspace.ts` (`WorkspaceManager` koordinasi multi-document).
+2. **WebGL2 GPU Renderer** (`renderer/`) — Membuat shader GLSL ES 3.0 dalam `shaders.ts`, compositor layer drawing `webgl2.ts` berbasis WebGL2 context, dan scheduler requestAnimationFrame `scheduler.ts` untuk on-demand drawing.
+3. **Coordinate mapping & inputs** (`viewport/`) — Membuat converter `coords.ts` (screen↔document), `input-handler.ts` (penanganan events move/select/brush/eraser/eyedropper secara synchronous di engine), dan mengupgrade `<canvas>` pada `CanvasViewport.tsx`.
+4. **Tauri Bridge Simplification** (`src-tauri/`) — Menyederhanakan `main.rs` dari 809 baris ke hanya 116 baris (ping, get_contract_info, read_file_bytes, write_file_bytes), memperkecil `Cargo.toml` Rust, dan membungkusnya dalam type-safe TS wrappers `tauri/native.ts`.
+5. **Modular UI Integration & Bootstrap** (`EditorContext.tsx` & `components/editor/`) — Membuat global provider context `EditorProvider` yang otomatis mensinkronisasi data reaktif serta mem-bootstrap 4 dokumen mockup default dengan background image Fjord di kanvas pada saat startup. Semua sub-panel modular di-refaktor agar langsung memakai context ini secara reaktif (SolidJS signals).
+
+**Validasi:**
+- `pnpm run build`: SUCCESS (TypeScript compiler + Vite bundler berhasil membangun aset produksi tanpa satu pun warning/error dalam 7.45s).
+- `vitest run`: SUCCESS (Semua 67 tests berjalan sukses dengan tambahan 18 tests baru untuk core engine & scheduler).
+- Rust Cargo: Crate `photrez-render` dilepas dari workspace members di `Cargo.toml`, dan wgpu core dilepas untuk stabilitas Tauri.
+
+---
+
 ## [2026-05-30] FEATURE / UI / POLISH — Diagonal Swatches, Tab Typography & Layout Polish [COMPLETE]
 
 ### Kategori: FEATURE / UI / FRONTEND / DESIGN / POLISH

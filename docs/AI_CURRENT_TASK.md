@@ -2,6 +2,52 @@
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
+## Current Task - High-Fidelity Move & Transform Tool [COMPLETE]
+
+Date: 2026-05-31
+
+### Deskripsi
+
+Mengimplementasikan Move Tool dengan UX interaktif persis Photoshop, yang merender bounding outline dan 8 resize handles, serta memetakan pergeseran/skala pointer ke DocumentEngine transform parameters dengan dukungan rasio aspek terkunci (Shift key) dan Undo/Redo history.
+
+### Rencana Kerja
+
+1. **Buat Bounding Box Overlay** (`SelectionTransformOverlay.tsx`): Hitung batas layar dari layer terpilih (memperhitungkan zoom & pan) lalu render outline & 8 resize handles. [x]
+2. **Implementasikan pointer down/move/up**: Hubungkan interaksi mouse/pointer ke `engine.transformLayer` secara reaktif dan panggil `scheduler.requestRender()` untuk rendering WebGL2 real-time. [x]
+3. **Tambahkan Aspect Ratio Lock**: Implementasikan proportional scaling ketika tombol `Shift` ditahan selama drag sudut. [x]
+4. **History commits**: Lakukan komit history snapshot di `PointerDown` sebelum mutasi transform terjadi agar Undo/Redo bekerja sempurna. [x]
+5. **Integrasikan ke CanvasViewport**: Render overlay saat tool "move" aktif. [x]
+6. **Verifikasi**: Jalankan build dan test. [x]
+
+---
+
+## Current Task - Architecture Migration v2 [COMPLETE]
+
+Date: 2026-05-30
+
+### Deskripsi
+
+Melakukan migrasi arsitektur sistem dari Rust-heavy stateful backend ke frontend-owned TypeScript Document Engine + WebGL2 render backend.
+Menyelaraskan rencana migrasi dengan struktur UI termutakhir yang sudah di-slicing ke dalam komponen-komponen modular (`apps/desktop/src/components/editor/`), bukan memaksakan pengerjaan satu berkas `App.tsx` yang besar.
+
+### Rencana Kerja
+
+1. **Analisis UI Saat Ini**: Periksa komponen-komponen modular di `components/editor/` dan petakan bagaimana state Document Engine (Signal & Store) akan mengalir menggantikan `invoke` Tauri.
+2. **Phase 1: Engine Foundation**: Buat `src/engine/types.ts` dan `src/engine/document.ts` dengan DocumentEngine class.
+3. **Phase 2: History System**: Buat `src/engine/history.ts` dengan CommandHistory.
+4. **Phase 3: Workspace Manager**: Buat `src/engine/workspace.ts` dengan WorkspaceManager.
+5. **Phase 4: WebGL2 Renderer**: Buat render backend berbasis WebGL2 di `src/renderer/` dan render scheduler.
+6. **Phase 5: Canvas Viewport**: Hubungkan viewport SolidJS dengan WebGL2 dan dispatch input pointer events ke tool handlers baru.
+7. **Phase 6 & 7: Tauri Simplification & UI Component Refactoring**: Sederhanakan `main.rs` dan Cargo.toml Tauri. Refaktorkan komponen editor modular di `components/editor/` agar langsung memakai `WorkspaceManager` dan `DocumentEngine` (tanpa IPC command sync).
+8. **Phase 8-10: File Pipeline, Editing, and Export**: Selesaikan file open/save, brush/eraser drawing, layer CRUD, selection/transform, dan canvas export berbasis offscreen Canvas.
+9. **Cleanup & Final Verification**: Hapus crates Rust lama, verifikasi test suite (Vitest + Cargo check) berjalan sukses.
+
+### Status
+
+IN PROGRESS. Memulai Analisis UI modular dan mempersiapkan Phase 1 (Engine Foundation).
+
+---
+
 ## Current Task - AppShell Grid Layout Restructure [COMPLETE]
 
 Date: 2026-05-30

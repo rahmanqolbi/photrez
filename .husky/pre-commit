@@ -24,7 +24,7 @@ pnpm --filter photrez-desktop test || {
 # 3. Rust Core & Workspace Check/Tests
 echo ""
 echo "[3/3] Running Rust Compilation Check & Core Tests..."
-cargo check -p photrez-core -p photrez-render || {
+cargo check -p photrez-core || {
   echo ""
   echo "❌ ERROR: Rust compilation check failed!"
   exit 1

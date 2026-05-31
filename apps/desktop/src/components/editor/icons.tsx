@@ -23,6 +23,8 @@ import {
   Grid2X2,
   Grid3X3,
   History,
+  Image as ImageIcon,
+  ImagePlus,
   Layers,
   Link,
   Lock,
@@ -42,6 +44,7 @@ import {
   Redo2,
   RotateCw,
   Slice,
+  Sliders,
   Sparkles,
   SplitSquareHorizontal,
   Square,
@@ -114,7 +117,10 @@ export type IconName =
   | "paint-bucket"
   | "rotate"
   | "panel-right-open"
-  | "panel-right-close";
+  | "panel-right-close"
+  | "image"
+  | "image-plus"
+  | "sliders";
 
 type IconProps = Omit<LucideProps, "children"> & {
   name: IconName;
@@ -178,6 +184,9 @@ const ICONS: Record<IconName, LucideIcon> = {
   rotate: RotateCw,
   "panel-right-open": PanelRightOpen,
   "panel-right-close": PanelRightClose,
+  image: ImageIcon,
+  "image-plus": ImagePlus,
+  sliders: Sliders,
 };
 
 export function Icon(props: IconProps) {

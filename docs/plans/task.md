@@ -70,6 +70,27 @@
 | Task 66 | [frontend] Slice bottom status bar and move tool options bar capsules | [x] Completed |
 | Task 67 | [frontend] Integrate mock canvas rendering with Norway Fjord Sunset image preview | [x] Completed |
 | Task 68 | Verify unit tests and run Vite production build compiler | [x] Completed |
-| Task 69 | [docs] Update style guides, design tokens, component rules, and wireframe specs to match current UI | [x] Completed |
-
+| Task 73 | [docs] Update style guides, design tokens, component rules, and wireframe specs to match current UI | [x] Completed |
+| Task 74 | [engine] Create types.ts with all core type definitions | [x] Completed |
+| Task 75 | [engine] Create document.ts with DocumentEngine class | [x] Completed |
+| Task 76 | [engine] Create document.test.ts and verify | [x] Completed |
+| Task 77 | [engine] Create history.ts and history.test.ts and verify | [x] Completed |
+| Task 78 | [engine] Create workspace.ts and workspace.test.ts and verify | [x] Completed |
+| Task 79 | [renderer] Create renderer types, shaders, webgl2 backend, and scheduler | [x] Completed |
+| Task 80 | [viewport] Create coordinate utilities & input handler | [x] Completed |
+| Task 81 | [viewport] Upgrade CanvasViewport.tsx to use WebGL2 and input-handler | [x] Completed |
+| Task 82 | [tauri] Simplify main.rs to ~80 lines, simplified Cargo.toml, create native.ts IPC wrappers | [x] Completed |
+| Task 83 | [ui] Refactor EditorShell.tsx to own the state singleton and solid provider context | [x] Completed |
+| Task 84 | [ui] Update all modular components in components/editor/ to use local DocumentEngine | [x] Completed |
+| Task 85 | [feature] Implement drag & drop and file pipeline with base64 decoded ImageBitmaps | [x] Completed |
+| Task 86 | [feature] Implement brush, eraser, selection, transform handles, and export | [x] Completed |
+| Task 87 | [cleanup] Delete crates/render/ and remove unused Rust dependencies | [x] Completed |
+| Task 88 | [verify] Verify all frontend Vitest tests and cargo checks pass, smoke test | [x] Completed |
+| Task 89 | [EmptyWorkspace] Connect Open Image, New Canvas, and add HTML5 Drag & Drop handlers | [x] Completed |
+| Task 90 | [EditorContext] Support programmatic web browser fallback for image loading | [x] Completed |
+| Task 91 | [CanvasViewport] Implement onPaintStroke brush & eraser rasterization on active layers | [x] Completed |
+| Task 92 | [Verify] Verify frontend Vitest tests, TypeScript compilation, and run build checks | [x] Completed |
+| Task 93 | [MoveTool] Create SelectionTransformOverlay.tsx component for interactive scaling and moving | [x] Completed |
+| Task 94 | [Viewport] Integrate SelectionTransformOverlay.tsx into CanvasViewport.tsx | [x] Completed |
+| Task 95 | [Verify] Run Vitest tests, TypeScript compile checks, and Vite production builds | [x] Completed |
 
