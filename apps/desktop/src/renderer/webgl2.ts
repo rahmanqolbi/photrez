@@ -277,29 +277,23 @@ export class WebGL2Backend implements RenderBackend {
   }
 
   private computeViewMatrix(
-    viewport: ViewportState,
-    canvasW: number,
-    canvasH: number,
+    _viewport: ViewportState,
+    _canvasW: number,
+    _canvasH: number,
     docW: number,
     docH: number
   ): Float32Array {
-    // 2D View Projection Matrix mapping Document Space to NDC Space.
-    // 1. Scale document bounds by Zoom factor
-    // 2. Translate offset by PanX and PanY
-    // 3. Map result to clip space range [-1, 1] using standard orthographic projection
-    const z = viewport.zoom;
-    const px = viewport.panX;
-    const py = viewport.panY;
-
-    // Standard column-major 4x4 matrix
+    // Identity orthographic projection: map document bounds [0,docW]x[0,docH]
+    // directly to NDC [-1,1]x[-1,1]. Pan and zoom are handled entirely by
+    // the CSS transform in CanvasViewport — the WebGL canvas renders at 1:1
+    // document pixel resolution with no viewport transform applied here.
     const m = new Float32Array(16);
-    m[0] = (2 * z) / canvasW;
-    m[5] = (-2 * z) / canvasH;
+    m[0] = 2.0 / docW;   // scale X: [0, docW] → [-1, 1]
+    m[5] = -2.0 / docH;  // scale Y: [0, docH] → [1, -1] (Y flip)
     m[10] = 1.0;
-    m[12] = (2 * px) / canvasW - 1.0;
-    m[13] = 1.0 - (2 * py) / canvasH;
+    m[12] = -1.0;         // offset X: center
+    m[13] = 1.0;          // offset Y: center
     m[15] = 1.0;
-
     return m;
   }
 }

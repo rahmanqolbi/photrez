@@ -203,20 +203,13 @@ export function CanvasViewport() {
     // 1. Initialize WebGL2 context
     renderer.initialize(canvasRef);
 
-    // 2. Setup Resize Observer to resize GPU drawing buffer matching container
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        renderer.resize(width, height);
-        scheduler.requestRender();
-      }
-    });
-    resizeObserver.observe(canvasContainerRef);
-
-    // Initial resize
-    const rect = canvasContainerRef.getBoundingClientRect();
-    renderer.resize(rect.width, rect.height);
+    // 2. Resize WebGL canvas to document dimensions (1:1 pixel mapping).
+    //    CSS transform handles all viewport positioning — no resize needed
+    //    when the container resizes, only when document size changes.
+    renderer.resize(docWidth(), docHeight());
     scheduler.requestRender();
+
+    // No ResizeObserver needed — canvas size is tied to document, not container.
 
     // 3. Register global keyboard listeners for premium Photoshop Navigation
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -324,7 +317,6 @@ export function CanvasViewport() {
     window.addEventListener("blur", handleWindowBlur);
 
     onCleanup(() => {
-      resizeObserver.disconnect();
       renderer.dispose();
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
