@@ -24,6 +24,8 @@ export function CanvasViewport() {
     setZoom,
     pan,
     setPan,
+    docWidth,
+    docHeight,
   } = useEditor();
 
   let canvasContainerRef!: HTMLDivElement;
@@ -499,6 +501,20 @@ export function CanvasViewport() {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
       />
+
+      {/* Premium Artboard Bounds & Shadow Overlay */}
+      <Show when={workspace.getActiveEngine()}>
+        <div
+          class="absolute pointer-events-none select-none border border-white/10 z-0"
+          style={{
+            left: `${pan().x}px`,
+            top: `${pan().y}px`,
+            width: `${docWidth() * zoom()}px`,
+            height: `${docHeight() * zoom()}px`,
+            "box-shadow": "0 0 0 1px rgba(0, 0, 0, 0.6), 0 8px 32px rgba(0, 0, 0, 0.7)",
+          }}
+        />
+      </Show>
 
       {/* Photoshop-style Move & Transform Overlay */}
       <Show when={activeTool() === "move"}>
