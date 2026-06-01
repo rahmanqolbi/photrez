@@ -252,7 +252,7 @@ export function computeSnapAdjustment(
     const te = buildAxis(t);
     for (const mk of X_KEYS) {
       for (const tk of X_KEYS) {
-        const d = me[mk] - te[tk];
+        const d = te[tk] - me[mk];
         const dist = Math.abs(d);
         if (dist < threshold && dist < bestDxDist) {
           bestDxDist = dist;
@@ -265,7 +265,7 @@ export function computeSnapAdjustment(
     }
     for (const mk of Y_KEYS) {
       for (const tk of Y_KEYS) {
-        const d = me[mk] - te[tk];
+        const d = te[tk] - me[mk];
         const dist = Math.abs(d);
         if (dist < threshold && dist < bestDyDist) {
           bestDyDist = dist;

@@ -32,8 +32,9 @@ describe("computeSnapAdjustment", () => {
   });
 
   it("snaps moving center to canvas horizontal center (synthetic vertical line)", () => {
-    // doc width 1000, moving 200x200 centered at x=498 (200 + 100 - 2)
-    // vertical center line: x=500 spanning full height
+    // doc width 1000; moving at x=298 with w=200 → right edge = 498
+    // vertical center line: x=500 spanning full height (target via Infinity sentinels)
+    // dx=2 to push right edge from 498 to 500
     const moving = { x: 298, y: 0, w: 200, h: 200 };
     const targets = [
       { x: 500, y: -Infinity, w: 0, h: Infinity },
