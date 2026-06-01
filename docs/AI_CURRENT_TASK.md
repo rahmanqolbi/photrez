@@ -2,7 +2,48 @@
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
-## Current Task — Move Tool Snapping (Task 2: computeSnapAdjustment Implementation) [COMPLETE]
+## Current Task — Move Tool Snapping (Task 2: computeSnapAdjustment — Code Review Fix) [COMPLETE]
+
+Date: 2026-06-01
+
+### Deskripsi
+
+Code review menemukan issue pada `computeSnapAdjustment` di `apps/desktop/src/viewport/smartGuides.ts`: guide line endpoints (`y1`/`y2` untuk X-axis, `x1`/`x2` untuk Y-axis) bisa menjadi `-Infinity` atau `NaN` ketika winning target adalah synthetic "line" rect (e.g., canvas center line dengan `{x: 500, y: -Infinity, w: 0, h: Infinity}`). NaN vertices tidak rasterize di WebGL/wgpu, dan `-Infinity` clips ke screen edge → canvas-center snap guide line jadi invisible saat di-wire ke renderer di Task 5.
+
+### Perbaikan
+
+1. **`apps/desktop/src/viewport/smartGuides.ts`** — `Number.isFinite` guard di kedua axis blocks (line 63-66 dan 78-81):
+   - X-axis block: compute `rawY1`/`rawY2` → `Number.isFinite` check → fallback ke `moving.y - 10000` / `moving.y + moving.h + 10000`
+   - Y-axis block: compute `rawX1`/`rawX2` → `Number.isFinite` check → fallback ke `moving.x - 10000` / `moving.x + moving.w + 10000`
+   - Finite values: tetap pakai tight extent (existing behavior preserved)
+   - Non-finite: fallback ke moving rect extent + 10000px margin (line spans well beyond canvas)
+
+2. **`apps/desktop/src/__tests__/snap-adjustment.test.ts`** — Add test "produces finite guide-line endpoints when snapping to synthetic center line" untuk regression guard.
+
+3. Amend commit `c20bc77` (Task 2 code commit) dengan fix + test. New message: `feat(smartGuides): add computeSnapAdjustment and use it from computeSnapLines`.
+
+### Verifikasi
+
+- [x] `npx vitest run snap-adjustment`: **11/11 PASS** (10 existing + 1 new)
+- [x] `npx vitest run smart-guides`: **11/11 PASS** (existing wrapper tests)
+- [x] `npx vitest run` (full suite): **110/110 PASS** (12 test files) — 99 existing + 11 snap-adjustment
+- [x] `pnpm.cmd run build`: SUCCESS (TypeScript + Vite, 6.20s)
+
+### Files Changed
+
+- `apps/desktop/src/viewport/smartGuides.ts`: +8 lines, −4 lines (Number.isFinite guards in both axis blocks)
+- `apps/desktop/src/__tests__/snap-adjustment.test.ts`: +10 lines (new test case)
+- `docs/FEATURES.md`: 1 row update (frontend tests count 109 → 110)
+- `docs/AI_HISTORY.md`: +1 entry (this code review fix)
+- `docs/AI_CURRENT_TASK.md`: this entry (replaces previous Task 2 entry)
+
+### Catatan
+
+- 10000px margin cukup besar untuk typical canvases (1920×1280 max) — line akan span entire viewport area bahkan dengan zoom out, tapi tidak begitu besar sehingga menyebabkan render issues.
+- Existing test "snaps moving center to canvas horizontal center" passes karena TIDAK inspect `y1`/`y2` — but new test explicitly verifies finiteness untuk guard against regression.
+- Sign convention dan behavior lain TIDAK berubah (hanya line extent math yang di-guard).
+
+## Previous Task — Move Tool Snapping (Task 2: computeSnapAdjustment Implementation) [COMPLETE]
 
 Date: 2026-06-01
 
