@@ -8,7 +8,7 @@ import {
   ToolContext,
 } from "@/viewport/input-handler";
 import { resolveCursor } from "@/viewport/cursorResolver";
-import { computeSnapLines } from "@/viewport/smartGuides";
+import { computeSnapAdjustment } from "@/viewport/smartGuides";
 import type { SnapRect } from "@/viewport/smartGuides";
 import type { DocumentEngine } from "@/engine/document";
 import { useEditor } from "./EditorContext";
@@ -32,6 +32,7 @@ const interactiveState: ToolContext = {
   brushHardness: 0.8,
   brushOpacity: 1.0,
   selectedLayerId: null,
+  isAltPressed: false,
   isDragging: false,
   dragStart: { x: 0, y: 0 },
   dragCurrent: { x: 0, y: 0 },
@@ -172,25 +173,41 @@ export function CanvasViewport() {
     interactiveState.fgColor = fgColor();
     interactiveState.bgColor = bgColor();
     interactiveState.selectedLayerId = engine ? engine.getActiveLayerId() : null;
+    interactiveState.isAltPressed = isAltPressed();
     interactiveState.setFgColor = setFgColor;
     interactiveState.setBgColor = setBgColor;
     interactiveState.onSelectionCreated = (x, y, w, h) => {
       setSelectionBox({ x, y, w, h });
     };
     interactiveState.onHoverHandle = setHoverHandle;
-    interactiveState.onComputeSnapLines = (rect: SnapRect) => {
-      const activeEngine = workspace.getActiveEngine();
-      if (!activeEngine) { setSnapLines([]); return; }
-      const movingId = activeEngine.getActiveLayerId();
-      const visibleLayers = activeEngine.getLayers().filter(l => l.visible && l.id !== movingId);
-      const targets = visibleLayers.map(l => ({
-        x: l.transform.x,
-        y: l.transform.y,
-        w: l.width * l.transform.scaleX,
-        h: l.height * l.transform.scaleY,
-      }));
-      setSnapLines(computeSnapLines(rect, targets));
+    const activeEngineForTargets = workspace.getActiveEngine();
+    const movingId = activeEngineForTargets ? activeEngineForTargets.getActiveLayerId() : null;
+    const docW = activeEngineForTargets ? activeEngineForTargets.getWidth() : 0;
+    const docH = activeEngineForTargets ? activeEngineForTargets.getHeight() : 0;
+    const layerTargets: SnapRect[] = activeEngineForTargets
+      ? activeEngineForTargets.getLayers()
+        .filter((l) => l.id !== movingId)
+        .map((l) => ({
+          x: l.transform.x,
+          y: l.transform.y,
+          w: l.width * l.transform.scaleX,
+          h: l.height * l.transform.scaleY,
+        }))
+      : [];
+    const snapTargets: SnapRect[] = [
+      ...layerTargets,
+      { x: 0, y: 0, w: docW, h: docH },
+      { x: docW / 2, y: -Infinity, w: 0, h: Infinity },
+      { x: -Infinity, y: docH / 2, w: Infinity, h: 0 },
+    ];
+    interactiveState.onComputeSnap = (rect: SnapRect) => {
+      if (!activeEngineForTargets) {
+        setSnapLines([]);
+        return { dx: 0, dy: 0, lines: [] };
+      }
+      return computeSnapAdjustment(rect, snapTargets);
     };
+    interactiveState.onSnapLines = (lines) => setSnapLines(lines);
     interactiveState.onPaintStroke = onPaintStroke;
   }
 
@@ -407,6 +424,7 @@ export function CanvasViewport() {
     const handleWindowBlur = () => {
       setIsSpacePressed(false);
       setIsPanning(false);
+      setIsAltPressed(false);
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -605,6 +623,8 @@ export function CanvasViewport() {
 
     const engine = workspace.getActiveEngine();
     if (!engine) return;
+
+    interactiveState.isAltPressed = isAltPressed();
 
     const coords = getDocCoords(e);
     handlePointerMove(
