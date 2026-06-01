@@ -72,3 +72,7 @@ photrez-solid-tailwind/
 .codegraph/
 .omo/
 .playwright-mcp/
+
+# Git Worktrees (isolated workspaces)
+.worktrees/
+worktrees/
