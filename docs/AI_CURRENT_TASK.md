@@ -2,6 +2,68 @@
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
+## Current Task — Move Tool Snapping (Implementation Complete) [COMPLETE]
+
+Date: 2026-06-01
+
+### Deskripsi
+
+Implementasi Move Tool snapping selesai sesuai spec `docs/superpowers/specs/2026-06-01-move-tool-snapping-design.md` dan plan `docs/superpowers/plans/2026-06-01-move-tool-snapping.md`.
+
+Fitur sekarang:
+- Auto-snap layer aktif ke layer lain + canvas edges/centers.
+- Nearest-wins per axis, default threshold 5 document px.
+- Smart guides hanya muncul saat snap aktif.
+- Hold `Alt` saat drag untuk disable snapping dan clear guides.
+- Pointer-up clear guides.
+- Window blur clear Alt state agar snap tidak stuck disabled setelah Alt-tab.
+
+### Perubahan Utama
+
+1. **`apps/desktop/src/viewport/smartGuides.ts`**
+   - Add `SnapResult`.
+   - Add `computeSnapAdjustment()` pure helper returning `{ dx, dy, lines }`.
+   - `computeSnapLines()` now delegates to `computeSnapAdjustment(...).lines`.
+   - Guard non-finite guide endpoints for synthetic center-line targets.
+
+2. **`apps/desktop/src/viewport/input-handler.ts`**
+   - `ToolContext` now has `isAltPressed`, `onComputeSnap`, `onSnapLines`.
+   - Move branch applies snap deltas unless Alt is pressed.
+   - Alt branch and pointer-up clear snap lines.
+
+3. **`apps/desktop/src/components/editor/CanvasViewport.tsx`**
+   - Precomputes snap targets per drag: every non-active layer, canvas rect, synthetic vertical/horizontal center lines.
+   - Wires `onComputeSnap` and `onSnapLines`.
+   - Re-syncs Alt state per pointer-move sample and clears Alt on blur.
+
+4. **Tests**
+   - New `snap-adjustment.test.ts`: 11 tests.
+   - New `input-handler-snap.test.ts`: 4 tests.
+
+### Verifikasi Final
+
+- [x] `pnpm.cmd run build`: **PASS**
+- [x] `pnpm.cmd --filter photrez-desktop test`: **114/114 PASS**
+- [x] `cargo test -p photrez-core`: **85/85 PASS**
+
+### Files Changed
+
+- `apps/desktop/src/viewport/smartGuides.ts`
+- `apps/desktop/src/viewport/input-handler.ts`
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- `apps/desktop/src/__tests__/snap-adjustment.test.ts`
+- `apps/desktop/src/__tests__/input-handler-snap.test.ts`
+- `docs/FEATURES.md`
+- `docs/AI_HISTORY.md`
+- `docs/AI_CURRENT_TASK.md`
+
+### Catatan
+
+- Out of scope tetap tidak disentuh: grid snapping, rotated-bounds snap, multi-select drag, editable X/Y/W/H, keyboard nudge.
+- No Rust/core behavior changes; Rust core test run hanya regression gate.
+
+---
+
 ## Current Task — Move Tool Snapping (Task 3: Input Handler Snap Test Review Fix) [COMPLETE]
 
 Date: 2026-06-01

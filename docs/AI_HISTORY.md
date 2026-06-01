@@ -5,6 +5,31 @@
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_CURRENT_TASK.md` (status), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
 ---
+## [2026-06-01] FEATURE — Move Tool Snapping End-to-End [COMPLETE]
+
+### Kategori: FEATURE / VIEWPORT / MOVE TOOL / UX
+
+**Deskripsi:** Implementasi Move Tool snapping selesai end-to-end. Layer aktif sekarang auto-snap saat drag ke layer lain serta canvas edges/centers, memakai nearest-wins per axis dengan threshold default 5 document px. Smart guides muncul saat snap aktif. Hold `Alt` menonaktifkan snap sementara dan clear guides; pointer-up juga clear guides.
+
+**Files Changed:**
+- `apps/desktop/src/viewport/smartGuides.ts`: add `SnapResult`, `computeSnapAdjustment()`, wrapper `computeSnapLines()`, finite endpoint guard untuk synthetic line targets.
+- `apps/desktop/src/viewport/input-handler.ts`: add `isAltPressed`, `onComputeSnap`, `onSnapLines`; apply snap deltas in Move branch; Alt bypass; pointer-up clear.
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`: target list generation (non-active layers + canvas + center lines), `onComputeSnap`/`onSnapLines` wiring, per-move Alt sync, blur cleanup.
+- `apps/desktop/src/__tests__/snap-adjustment.test.ts`: 11 helper tests.
+- `apps/desktop/src/__tests__/input-handler-snap.test.ts`: 4 input-handler wiring tests.
+- `docs/FEATURES.md`: mark Alt-disable complete and frontend tests 114 passing.
+
+**Verifikasi Final:**
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `pnpm.cmd --filter photrez-desktop test`: 114/114 PASS
+- ✅ `cargo test -p photrez-core`: 85/85 PASS
+
+**Catatan:**
+- Snap target canvas center uses synthetic line rects with Infinity sentinels; `computeSnapAdjustment` guards guide-line endpoints so renderer never receives `NaN`/`Infinity` line endpoints.
+- `Alt` state is re-synced per pointer move and cleared on window blur to prevent snap staying disabled after Alt-tab.
+- No PSD workflow, print checker, plugin runtime, AI feature, multi-select drag, rotated-bounds snap, or keyboard nudge added.
+
+---
 ## [2026-06-01] TEST FIX — Input Handler Snap Pointer-Up Cleanup Test Review [COMPLETE]
 
 ### Kategori: BUG FIX / TEST / VIEWPORT / MOVE TOOL

@@ -37,7 +37,7 @@
 | ✅ DONE      | Commit/cancel transform (ESC key deselect) |
 | ✅ DONE      | Rotation angle snapping (15-degree with Shift) |
 | ✅ DONE      | Move tool snapping — layer edges/centers + canvas edges/centers (5px threshold, nearest-wins per axis) |
-| ⬜ TODO      | Move tool Alt-key hold to disable snap       |
+| ✅ DONE      | Move tool Alt-key hold to disable snap       |
 
 ---
 
@@ -190,6 +190,6 @@
 | ⬜ TODO      | CI pipeline (GitHub Actions)               |
 | ✅ DONE      | Unit tests (core crate) — 69 tests         |
 | ✅ DONE      | Contract tests (IPC commands) — 13 tests   |
-| ✅ DONE      | Frontend tests — 110 passing tests + 4 input-handler snap wiring tests intentionally red pending Task 4 |
+| ✅ DONE      | Frontend tests — 114 passing tests           |
 | ✅ DONE      | M6 Perf Gate (all metrics PASS)            |
 | ✅ DONE      | Release candidate (MSI + NSIS installers)  |
