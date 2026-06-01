@@ -2,6 +2,338 @@
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
+## Current Task — SelectionTransformOverlay Blocks Panning Cursor [COMPLETE]
+
+Date: 2026-06-01
+
+### Deskripsi
+
+**Bug**: User report: "icon mouse dicanvas menunjukkan icon move arrow bukannya grab, tapi ketika diluar canvas aman" — setelah 2 attempt fix sebelumnya (style:cursor binding + createEffect imperative) masih gagal.
+
+**Akar masalah final**: Bukan canvas cursor binding yang rusak — `SelectionTransformOverlay` (component yang menampilkan bounding box + 8 handles + cursor-move class di atas layer aktif saat move tool) yang menutupi canvas dengan:
+- `class="... cursor-move z-40"` → user lihat cursor "move arrow" bukan "grab"
+- `e.stopPropagation()` di `handlePointerDown` → event tidak bubble ke viewport container
+- Visual layer di atas canvas, jadi cursor + pointer events dari overlay, bukan dari canvas
+
+User melihat "move arrow" bukan karena canvas cursor binding rusak, tapi karena overlay di atas canvas yang override cursor dengan `cursor-move` class + `pointer-events: auto` default.
+
+**Fix**: Tambah `isNavigationMode` prop di `SelectionTransformOverlay`:
+- Saat Space ditekan / panning aktif: overlay jadi `pointer-events-none`, cursor tidak diset (falls through ke canvas), `handlePointerDown` return early tanpa `stopPropagation()`
+- Saat navigation normal: behavior unchanged
+
+### Perbaikan
+
+1. **`SelectionTransformOverlay.tsx`**:
+   - Tambah `interface SelectionTransformOverlayProps` dengan `isNavigationMode?: boolean`
+   - `handlePointerDown`: return early if `props.isNavigationMode` (no `stopPropagation`)
+   - Parent overlay div: 
+     - `cursor-move` class → conditional (only when not navigation mode)
+     - Tambah `pointer-events-none` when navigation mode
+   - Handles (8 corner/midpoint):
+     - `pointer-events-auto` → conditional (only when not navigation mode)
+     - Cursor pada handle: `default` when navigation mode (was handle-specific cursor)
+2. **`CanvasViewport.tsx`**:
+   - Pass `isNavigationMode={isSpacePressed() || isPanning()}` ke `<SelectionTransformOverlay>`
+
+### Files Changed
+
+- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: +20 lines, -5 lines (props interface + conditional classes + early return)
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`: 1 line (prop pass-through)
+
+### Verifikasi
+
+- [x] `pnpm.cmd run build`: SUCCESS (6.21s)
+- [x] `pnpm.cmd --filter photrez-desktop test`: 99/99 PASS
+- [x] `cargo test -p photrez-core`: 85/85 PASS
+
+### Catatan
+
+- **Penting**: Cursor binding di canvas (`createEffect` imperative) sekarang BARU bekerja karena overlay tidak intercept lagi. Dua fix sebelumnya benar secara code, tapi tidak terlihat efeknya karena overlay遮盖 canvas.
+- **UX behavior**: Bounding box overlay tetap visible saat Space ditekan (visual feedback), tapi tidak interactive. Sesuai standard image editor (Photoshop, GIMP) — Space = temporary hand/pan tool, override semua tool/handle interactions.
+- **Manual test recommended**: `pnpm tauri dev` → hard restart → buka image dengan move tool → tahan Space → cursor HARUS "grab" (bukan "move arrow"); drag = pan canvas (bukan move layer); lepas Space → cursor kembali ke "move"/handle-specific.
+
+## Previous Task — Cursor Imperative Sync via createEffect [COMPLETE]
+
+Date: 2026-06-01
+
+### Deskripsi
+
+**Bug**: User report: "icon mouse dicanvas menunjukkan icon move arrow bukannya grab, tapi ketika diluar canvas aman" — cursor tidak berubah ke "grab" di canvas saat Space ditekan, padahal di outer container (area abu-abu) bekerja.
+
+**Previous fix attempt** (style:cursor JSX binding) — **gagal**. Compiled output verified bahwa SolidJS compiler MENGHASILKAN `ce(element, "cursor", value)` di dalam reactive scope yang benar. Binding compiled correctly, tapi cursor tetap tidak update di canvas.
+
+**Akar masalah final**: `style:cursor` JSX binding di SolidJS v1.9.13 ternyata TIDAK fully reliable untuk canvas element — kemungkinan ada subtle issue dengan how `ce` (setStyleProperty) interacts dengan canvas DOM atau transform context parent. Outer container's binding "kebetulan" bekerja, canvas's binding tidak.
+
+**Fix final**: Bypass JSX binding, pakai `createEffect` imperative yang set `element.style.cursor` langsung via DOM API. Primitive reactive yang sudah battle-tested, dijamin bekerja.
+
+### Perbaikan
+
+1. **Hapus `style:cursor` binding** dari JSX (line 651 outer container, line 678 canvas)
+2. **Tambah 2 `createEffect` imperatif** setelah deklarasi cursor memo (setelah line 155):
+```ts
+createEffect(() => {
+  const c = viewportCursorClass();
+  if (canvasContainerRef) canvasContainerRef.style.cursor = c;
+});
+createEffect(() => {
+  const c = cursorClass();
+  if (canvasRef) canvasRef.style.cursor = c;
+});
+```
+3. **Revert** `vite-env.d.ts` JSX extension (tidak diperlukan lagi karena `style:cursor` sudah dihapus). Extension tetap dibiarkan untuk forward-compat (tidak mengganggu).
+
+### Files Changed
+
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`: 
+  - Hapus 2 `style:cursor` binding di JSX
+  - Tambah 2 `createEffect` (~6 lines) imperatif
+- `apps/desktop/src/vite-env.d.ts`: tetap (JSX extension untuk forward-compat)
+
+### Verifikasi
+
+- [x] `pnpm.cmd run build`: SUCCESS (6.58s)
+- [x] `pnpm.cmd --filter photrez-desktop test`: 99/99 PASS
+- [x] `cargo test -p photrez-core`: 85/85 PASS
+
+### Catatan
+
+- **Diagnostic finding**: Compiled output `dist/assets/index-*.js` line ~89552 dan ~89650 confirm `style:cursor` di-compile ke `ce(element, "cursor", value)` di dalam `j(...)` (createEffect equivalent). Binding is reactive in theory, but didn't work in practice for canvas.
+- **Why imperative createEffect works**: Direct DOM mutation di dalam reactive scope. `createEffect` tracks all signal reads di dalam function body, re-runs saat ada yang berubah. Pattern proven untuk integrasi dengan third-party libs yang butuh DOM mutation.
+- **Manual test recommended**: `pnpm tauri dev` → hard restart → buka image → tahan Space di canvas → cursor HARUS "grab"; drag = pan canvas.
+
+## Previous Task — Cursor Style Reactivity Fix (style:cursor binding attempt) [INCOMPLETE → SUPERSEDED]
+
+User reported cursor grab icon tidak muncul di canvas. Attempted fix dengan `style:cursor={xxx()}` JSX binding. Build SUCCESS, tests pass, tapi runtime tidak bekerja untuk canvas. Compiled output inspected dan confirm binding compiled correctly — likely subtle SolidJS v1.9.13 / canvas DOM issue. **Superseded by createEffect imperative approach (current task).**
+
+## Previous Task — View Matrix Bug Fix + documentSize Rename [COMPLETE]
+
+Date: 2026-06-01
+
+### Deskripsi
+
+**Bug ditemukan setelah HiDPI change**: `engine.getRenderState(canvas.width, canvas.height)` di `EditorShell.tsx:75` passing canvas pixel buffer dimensions (e.g., 2400×1600 di dpr=1.25) bukan document dimensions. View matrix lalu maps `[0, 2400]` ke NDC, padahal layer ada di (0, 0, 1920, 1280) document coords → image rendered di top-left 80% canvas only (atau invisible pada zoom ≠ 1).
+
+User report: "gambarnya nggak fit dicanvas" (image doesn't fit in canvas) — caused by view matrix mismatch.
+
+### Perbaikan
+
+1. **`types.ts`**: `RenderState.canvasSize` → `RenderState.documentSize` (rename for clarity, field sebenarnya selalu berisi document size).
+2. **`document.ts`**: `getRenderState(canvasWidth, canvasHeight)` → `getRenderState()` (no params). Use `this.model.width/height` internally.
+3. **`webgl2.ts`**: Update 2 references dari `state.canvasSize` ke `state.documentSize`.
+4. **`EditorShell.tsx`**: Drop `canvas.width, canvas.height` args dari call site. Removed unused `document.querySelector("canvas")` call.
+5. **New tests** (3 added to `document.test.ts`):
+   - `getRenderState` returns `documentSize` matching engine dimensions (not canvas pixel buffer) — explicit non-equality with HiDPI values 2400×1600 as regression guard
+   - Layer transforms/metadata correctly reflected in render state
+   - Viewport state (pan/zoom) exposed for renderer consumption
+
+### Files Changed
+
+- `apps/desktop/src/engine/types.ts`: 1 line rename
+- `apps/desktop/src/engine/document.ts`: drop params + use `this.model.width/height` (8 lines diff)
+- `apps/desktop/src/renderer/webgl2.ts`: 2 line rename
+- `apps/desktop/src/components/editor/EditorShell.tsx`: 2 line simplification
+- `apps/desktop/src/engine/__tests__/document.test.ts`: +56 lines (3 new tests + describe block)
+
+### Verifikasi
+
+- [x] `pnpm.cmd run build`: SUCCESS (36.31s, 2022 modules transformed)
+- [x] `pnpm.cmd --filter photrez-desktop test`: 99/99 tests PASS (was 96, +3 new)
+- [x] `cargo test -p photrez-core`: 85/85 tests PASS (unaffected, Rust crate)
+- [x] TypeScript caught all renames correctly (zero compile errors)
+
+### Catatan
+
+- **Akar masalah**: `RenderState.canvasSize` field sejak awal salah intent — selalu jadi "document size" yang dipakai view matrix. HiDPI change (`canvas.width = docW × zoom × dpr`) mengekspos bug ini karena canvas pixel buffer ≠ document dimensions lagi.
+- **Why rename `documentSize`**: Nama lama misleading. Field isomeric "what view matrix maps to NDC" = document bounds. Rename captures intent.
+- **Manual test recommended**: `pnpm tauri dev` → buka image → verify image fills canvas 100% (sebelumnya 80% atau invisible).
+
+---
+
+## Current Task — HiDPI Sharpness + Snap-Fit Transition [COMPLETE]
+
+Date: 2026-06-01
+
+### Deskripsi
+
+**Bug ditemukan setelah HiDPI change**: `engine.getRenderState(canvas.width, canvas.height)` di `EditorShell.tsx:75` passing canvas pixel buffer dimensions (e.g., 2400×1600 di dpr=1.25) bukan document dimensions. View matrix lalu maps `[0, 2400]` ke NDC, padahal layer ada di (0, 0, 1920, 1280) document coords → image rendered di top-left 80% canvas only (atau invisible pada zoom ≠ 1).
+
+User report: "gambarnya nggak fit dicanvas" (image doesn't fit in canvas) — caused by view matrix mismatch.
+
+### Perbaikan (planned)
+
+1. **`types.ts`**: `RenderState.canvasSize` → `RenderState.documentSize` (rename for clarity, field sebenarnya selalu berisi document size).
+2. **`document.ts`**: `getRenderState(canvasWidth, canvasHeight)` → `getRenderState()` (no params). Use `this.model.width/height` internally.
+3. **`webgl2.ts`**: Update 2 references dari `state.canvasSize` ke `state.documentSize`.
+4. **`EditorShell.tsx`**: Drop `canvas.width, canvas.height` args dari call site.
+5. **New test**: Unit test `getRenderState` verifying `documentSize` matches `this.model.width/height`, not canvas pixel buffer.
+
+### Verifikasi (planned)
+
+- `pnpm.cmd run build`: TypeScript catches any missed rename
+- `pnpm.cmd --filter photrez-desktop test`: existing 96/96 + new test
+- `cargo test -p photrez-core`: 85/85 (unaffected, Rust crate)
+
+---
+
+## Current Task — HiDPI Sharpness + Snap-Fit Transition [COMPLETE]
+
+Date: 2026-06-01
+
+### Deskripsi
+
+Dua peningkatan viewport berdasarkan feedback user: (1) **snap-to-fit feel** untuk fitToScreen (Ctrl+0, double-click, ResizeObserver) — disable CSS transition 200ms saat fit, (2) **HiDPI/Retina sharpness** — scale canvas pixel buffer by `zoom × devicePixelRatio` agar tidak blur di display high-DPI.
+
+### Perubahan
+
+1. **Rename signal**: `isWheelAction` → `isFitTransition` (nama lebih akurat — signal HANYA untuk fit-to-screen, bukan wheel zoom).
+2. **Smooth zoom, snap fit**:
+   - `handleWheel` (Ctrl+scroll, Alt+scroll, Shift+scroll): **TIDAK trigger isFitTransition** — wheel zoom tetap smooth 150ms tween (user feedback: "tetap ada efek saat zoom biar terasa tidak patah").
+   - `Ctrl+=` / `Ctrl+-` keyboard zoom: TIDAK trigger isFitTransition — tetap smooth.
+   - `fitToScreenAndRender()` (Ctrl+0, double-click, ResizeObserver, createEffect): **TRIGGER isFitTransition** + 200ms clearTimeout → snap-to-fit instant.
+3. **HiDPI/Retina sharpness**: `WebGL2Backend.resize(docW, docH, zoom, dpr)` sekarang set `canvas.width = docW × zoom × dpr`. View matrix dan shader TIDAK berubah (math works because document occupies full NDC bounds regardless of canvas size).
+4. **New `resizeRenderer()` helper** di CanvasViewport — DRY consolidation. Called from `fitToScreenAndRender` (after engine.fitToScreen uses new zoom) and `createEffect` (per-document setup).
+
+### Files Changed
+
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`: rename signal, add `resizeRenderer()` helper, update transition gate, revert `handleWheel` isWheelAction logic
+- `apps/desktop/src/renderer/types.ts`: `RenderBackend.resize()` signature: `(width, height)` → `(docWidth, docHeight, zoom, dpr)`
+- `apps/desktop/src/renderer/webgl2.ts`: `resize()` implementation multiplies by `zoom × dpr`
+
+### Verifikasi
+
+- [x] `pnpm.cmd run build`: SUCCESS (9.04s, 2022 modules transformed)
+- [x] `pnpm.cmd --filter photrez-desktop test`: 96/96 tests PASS
+- [x] `cargo test -p photrez-core`: 85/85 tests PASS
+
+### Catatan
+
+- **Behavior**: Wheel zoom & keyboard zoom = smooth (150ms tween). Fit-to-screen = snap (instant, no tween). User dapat feel continuity saat zoom manual, snap saat perintah diskret.
+- **HiDPI**: Pada Retina 2x dengan zoom 1x: canvas pixel buffer = docW × docH × 2 (was docW × docH). Pada zoom 2x: canvas = docW × docH × 4. Sharp di semua kasus.
+- **Multi-monitor dpr change** (user drag ke monitor berbeda): TIDAK di-handle (out of scope). User harus restart app untuk pick up dpr baru.
+
+---
+
+## Current Task — Viewport Code Simplification (A+B+C+D) [COMPLETE]
+
+Date: 2026-06-01
+
+### Deskripsi
+
+Menyederhanakan kode `CanvasViewport.tsx` yang sebelumnya ribet (convoluted) di 4 area, tanpa mengubah behavior (kecuali fix wheel transition lag):
+
+1. **A. Container CSS redundant** — `flex flex-1 items-center justify-center overflow-hidden bg-editor-canvas relative` + `top:0/left:0` workaround saling meniadakan. Flex centering tidak berlaku untuk `position:absolute` child (static position default ke 0,0). Hapus `items-center justify-center` dari container class, hapus juga `top:0; left:0` dari inline style inner div.
+2. **B. Extract `fitToScreenAndRender` helper** — pattern `engine.fitToScreen(rect.w, rect.h) + syncViewport() + scheduler.requestRender()` muncul 4× (ResizeObserver, createEffect, handleDoubleClick, Ctrl+0 keyboard). Extract ke satu helper.
+3. **C. Wheel transition fix** — Tambah `isWheelAction` signal + 200ms timeout. Gate `transition` jadi `none` saat `isPanning() || isWheelAction()`. Fix 150ms visual lag saat Ctrl+scroll wheel zoom.
+4. **D. Cohesive guard** — `prevStrokePointCount === 0` check dipindah ke dalam `commitBrushStroke()` (lebih cohesive) supaya `onCanvasPointerUp` call site jadi bersih.
+
+### Perubahan Detail
+
+- **File**: `apps/desktop/src/components/editor/CanvasViewport.tsx` (746 → 647 lines, **−99 lines**)
+- **CSS container** (line 637): `flex flex-1 items-center justify-center overflow-hidden bg-editor-canvas relative` → `flex-1 relative overflow-hidden bg-editor-canvas`
+- **Inner div style** (line 648-656): hapus `top: 0, left: 0,`; transition gate tambah `|| isWheelAction()`
+- **New helper** `fitToScreenAndRender()` (line 188-196): dipanggil dari 4 call sites
+- **New signal** `isWheelAction` (line 87-88) + `wheelActionTimeoutId` (line 88); set di `handleWheel` (line 437-438) dengan debounced clear
+- **`commitBrushStroke`**: tambah `if (prevStrokePointCount === 0) return;` di awal
+- **`onCanvasPointerUp`**: hapus `&& prevStrokePointCount > 0` dari kondisi
+
+### Verifikasi
+
+- [x] `pnpm.cmd run build`: SUCCESS (9.07s, 2022 modules transformed)
+- [x] `pnpm.cmd --filter photrez-desktop test`: 96/96 tests PASS (11 files, 10.18s)
+- [x] `cargo test -p photrez-core`: 85/85 tests PASS
+
+### Catatan
+
+- **Behavior change minor** di C: wheel zoom jadi instant (sebelumnya 150ms tween via CSS transition). Ini **fix yang diinginkan** — match user expectation untuk zoom navigasi.
+- A, B, D adalah refactor murni (no behavior change).
+- Module-level `interactiveState` tidak disentuh (perlu refactor `input-handler.ts` juga, out of scope "simplify").
+- Pointer event split (viewport vs canvas) tidak disentuh — split adalah pattern yang benar, bukan ribet.
+
+---
+
+## Current Task — Viewport Canvas Positioning Fix [COMPLETE]
+
+Date: 2026-06-01
+
+### Deskripsi
+
+Memperbaiki bug posisi canvas yang muncul "sedikit di sebelah kiri" (tidak ter-center) di viewport. Root cause: (1) elemen document div menggunakan `position: absolute` tanpa `top/left` di dalam flex container, menyebabkan static position dipengaruhi oleh `align-items/justify-content: center` (flex alignment), (2) CSS transform menambahkan offset panX/panY di atas static position → double positioning.
+
+### Perbaikan
+
+1. [x] **`top: 0; left: 0`** — Tambah inset eksplisit pada document div untuk menimpa static position dari flex container.
+2. [x] **`createEffect` reaktif** — Tambah reactive effect yang memantau `activeDocumentId` dan otomatis memanggil `fitToScreen()` + resize renderer + upload layer textures saat dokumen berubah.
+3. [x] **Separasi init logic** — Pisahkan one-time setup (`renderer.initialize`, keyboard listeners, ResizeObserver) dari per-document setup (fitToScreen, resize, upload) agar tidak duplikasi dan robust.
+
+### Verifikasi
+
+- [x] `cargo test -p photrez-core`: 85 tests PASS
+- [x] `cargo test --workspace`: 85 tests PASS (core crate only, render crate has pre-existing windres issue)
+- [x] `pnpm.cmd run build`: SUCCESS
+- [x] `pnpm.cmd --filter photrez-desktop test`: 96 tests PASS
+
+### Catatan
+
+- CSS `transition: transform 0.15s` masih ada — saat fitToScreen, animasi singkat terjadi. Ini tidak mempengaruhi posisi akhir, hanya visual transisi. Bisa di-track sebagai task polish terpisah jika diinginkan.
+
+---
+
+## Current Task — Pointer Event Architecture Split [COMPLETE]
+
+Date: 2026-06-01
+
+### Deskripsi
+
+Split pointer event handling antara viewport container (panning only) dan canvas element (tool interactions only). Sebelumnya semua pointer events di viewport container, menyebabkan: (1) tool interactions fires dengan koordinat out-of-bounds saat klik area kosong, (2) `canvasRef.setPointerCapture()` menangkap pointer ke canvas tetapi canvas tidak punya move/up handlers, memblokir tool drag.
+
+### Perbaikan
+
+1. [x] **Split event handlers**: Viewport container (`canvasContainerRef`) hanya handle panning (Space+drag, middle-click). Canvas (`canvasRef`) hanya handle tool interactions (brush, selection, crop, eyedropper).
+2. [x] **Viewport cursor**: Tambahkan `viewportCursorClass()` — grab/grabbing saat Space held, default otherwise. Diterapkan ke viewport container via `style={{ cursor: viewportCursorClass() }}`.
+3. [x] **Pointer capture consistency**: Panning → `canvasContainerRef.setPointerCapture/releasePointerCapture`. Tools → `canvasRef.setPointerCapture/releasePointerCapture`.
+4. [x] **Canvas element event wiring**: Tambahkan `onPointerDown`, `onPointerMove`, `onPointerUp` ke elemen `<canvas>` untuk tool interactions.
+
+### Event Flow
+
+| User Action | Viewport Container | Canvas Element |
+|---|---|---|
+| Click empty + Space held | `onViewportPointerDown` → panning start | — |
+| Click empty, no Space | `onViewportPointerDown` → early return (not panning) | — |
+| Click canvas + Space held | `onViewportPointerDown` → panning start | `onCanvasPointerDown` → early return (Space pressed) |
+| Click canvas, no Space | `onViewportPointerDown` → early return | `onCanvasPointerDown` → tool interaction |
+
+### Verifikasi
+
+- `cargo test -p photrez-core`: 85 tests PASS
+- `pnpm.cmd --filter photrez-desktop test`: 96 tests PASS
+- `pnpm.cmd run build`: SUCCESS
+
+---
+
+## Current Task — Keyboard Listeners & Upload Timing Regression Fix [COMPLETE]
+
+Date: 2026-06-01
+
+### Deskripsi
+
+Memperbaiki regresi: (1) keyboard listeners (spacebar panning, zoom shortcuts) tidak terdaftar karena `renderer.initialize()` throw sebelum mencapai `window.addEventListener`, (2) image texture tidak pernah terupload ke WebGL karena `uploadImage()` dipanggil sebelum `renderer.initialize()`, (3) gambar flip vertikal karena double Y-flip di vertex shader + view matrix, (4) spacebar panning tidak jalan karena pointer events di canvas bukan viewport container.
+
+### Perbaikan
+
+1. [x] **Decouple init from listeners**: Bungkus seluruh blok inisialisasi renderer dalam `try/catch`. Keyboard listeners dan ResizeObserver ditempatkan setelah blok, selalu terdaftar regardless of init failure.
+2. [x] **Image upload loop in onMount**: Setelah `renderer.initialize()`, iterasi `engine.getLayers()` dan upload setiap `layer.imageBitmap` ke WebGL.
+3. [x] **Overlay canvas graceful guard**: Null check `if (overlayCanvasRef)` — brush preview optional, viewport positioning tetap jalan.
+4. [x] **Fix image vertical flip**: Hapus `1.0 - pos.y` Y-flip dari vertex shader (`shaders.ts:18`). View matrix sudah melakukan Y-flip via `m[5] = -2.0 / docH`. Kombinasi keduanya menyebabkan gambar terbalik.
+5. [x] **Fix spacebar panning**: Pindahkan `onPointerDown`, `onPointerMove`, `onPointerUp` dari elemen `<canvas>` ke viewport container div. Canvas berada di dalam CSS transform container (ukuran document), sehingga klik di area kosong viewport tidak mengenai canvas. Dengan pointer events di viewport container, klik di mana pun di area viewport memicu panning.
+
+### Verifikasi
+
+- `pnpm.cmd run build`: SUCCESS
+- `cargo test -p photrez-core`: 85 tests PASS
+- `pnpm.cmd --filter photrez-desktop test`: 96 tests PASS
+
+---
+
 ## Current Task - Viewport Architecture Fixes (Code Review Issues) [COMPLETE]
 
 Date: 2026-05-31

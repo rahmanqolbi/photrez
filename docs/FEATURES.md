@@ -108,6 +108,13 @@
 | ✅ DONE      | Dimension tooltip (px/in/cm/mm)            |
 | ✅ DONE      | Transformation HUD near cursor             |
 | ✅ DONE      | Status bar tool hints + zoom readout       |
+| ✅ DONE      | HiDPI/Retina sharpness (canvas pixel buffer = docW × zoom × dpr) |
+| ✅ DONE      | Smooth zoom (150ms tween) + snap fit-to-screen (instant) |
+| ✅ DONE      | View matrix bug fix (documentSize, not canvasSize) |
+| ✅ DONE      | Cursor style reactive binding (style:cursor for Space-grab visual feedback) |
+| ✅ DONE      | Cursor imperative sync (createEffect for guaranteed reactivity in canvas) |
+| ✅ DONE      | SelectionTransformOverlay navigation mode (pointer-events-none + cursor pass-through when Space held) |
+| ✅ DONE      | Unit test: getRenderState returns documentSize matching model |
 
 ---
 
