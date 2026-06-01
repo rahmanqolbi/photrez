@@ -1,5 +1,6 @@
 import type { DocumentEngine } from "../engine/document";
 import type { CommandHistory } from "../engine/history";
+import type { SnapRect } from "./smartGuides";
 
 export type ToolType = "move" | "selection" | "crop" | "eyedropper" | "brush" | "eraser";
 
@@ -23,6 +24,8 @@ export interface ToolContext {
   onSelectionCreated?: (x: number, y: number, w: number, h: number) => void;
   onCropCreated?: (x: number, y: number, w: number, h: number) => void;
   onPaintStroke?: (points: { x: number; y: number }[], isEraser: boolean) => void;
+  onHoverHandle?: (handle: string | null) => void;
+  onComputeSnapLines?: (rect: SnapRect) => void;
 }
 
 export function handlePointerDown(
@@ -98,6 +101,12 @@ export function handlePointerMove(
       const newX = docX - context.dragStart.x;
       const newY = docY - context.dragStart.y;
       engine.moveLayer(context.selectedLayerId, newX, newY);
+      context.onComputeSnapLines?.({
+        x: layer.transform.x,
+        y: layer.transform.y,
+        w: layer.width * layer.transform.scaleX,
+        h: layer.height * layer.transform.scaleY,
+      });
     }
   }
   requestRender();

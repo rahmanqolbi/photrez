@@ -15,6 +15,7 @@ export class WorkspaceManager {
   private sessions: Map<DocumentId, DocumentSession> = new Map();
   private activeDocumentId: DocumentId | null = null;
   private onChangeCallback: (() => void) | null = null;
+  private onVisualChangeCallback: (() => void) | null = null;
 
   // ─── Document Lifecycle ───
   addDocument(session: DocumentSession): void {
@@ -30,6 +31,10 @@ export class WorkspaceManager {
     session.engine.onChange(() => {
       session.dirty = session.engine.isDirty();
       this.notifyChange();
+    });
+    session.engine.onVisualChange(() => {
+      session.dirty = true;
+      this.notifyVisualChange();
     });
 
     this.notifyChange();
@@ -113,6 +118,16 @@ export class WorkspaceManager {
   private notifyChange(): void {
     if (this.onChangeCallback) {
       this.onChangeCallback();
+    }
+  }
+
+  onVisualChange(callback: () => void): void {
+    this.onVisualChangeCallback = callback;
+  }
+
+  notifyVisualChange(): void {
+    if (this.onVisualChangeCallback) {
+      this.onVisualChangeCallback();
     }
   }
 

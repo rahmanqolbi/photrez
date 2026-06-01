@@ -2,8 +2,16 @@ import { createSignal, createMemo, For, Show, onMount, onCleanup } from "solid-j
 import { useEditor } from "./EditorContext";
 import type { Transform2D } from "@/engine/types";
 
-export function SelectionTransformOverlay() {
-  const { workspace, activeLayerId, layers, zoom, scheduler } = useEditor();
+interface SelectionTransformOverlayProps {
+  /**
+   * When true, overlay becomes non-interactive so pointer events fall through
+   * to the canvas/viewport for Space+drag panning. Visual bounding box is kept.
+   */
+  isNavigationMode?: boolean;
+}
+
+export function SelectionTransformOverlay(props: SelectionTransformOverlayProps = {}) {
+  const { workspace, activeLayerId, layers, zoom, scheduler, setHoverHandle } = useEditor();
 
   const activeLayer = createMemo(() => {
     const id = activeLayerId();
@@ -59,6 +67,8 @@ export function SelectionTransformOverlay() {
 
   // Pointer event handlers
   const handlePointerDown = (e: PointerEvent, type: string) => {
+    // Navigation mode (Space held) — let pointer events fall through to viewport for panning
+    if (props.isNavigationMode) return;
     e.stopPropagation();
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
@@ -236,7 +246,12 @@ export function SelectionTransformOverlay() {
     <Show when={activeLayer()}>
       {(layer) => (
         <div
-          class="absolute border border-dashed border-[#E15A17] select-none cursor-move z-40"
+          class={
+            "absolute border border-dashed border-[#E15A17] select-none z-40 " +
+            (props.isNavigationMode
+              ? "pointer-events-none"
+              : "cursor-move")
+          }
           style={{
             left: `${left()}px`,
             top: `${top()}px`,
@@ -244,6 +259,8 @@ export function SelectionTransformOverlay() {
             height: `${height()}px`,
             "box-shadow": "0 0 0 1px rgba(0,0,0,0.5)",
           }}
+          onPointerEnter={() => setHoverHandle("move")}
+          onPointerLeave={() => setHoverHandle(null)}
           onPointerDown={(e) => handlePointerDown(e, "move")}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -255,12 +272,17 @@ export function SelectionTransformOverlay() {
           <For each={handles}>
             {(h) => (
               <div
-                class="absolute size-[8px] bg-white border border-[#E15A17] rounded-sm hover:scale-125 hover:bg-[#E15A17] transition-all duration-75 shadow-sm pointer-events-auto z-50"
+                class={
+                  "absolute size-[8px] bg-white border border-[#E15A17] rounded-sm hover:scale-125 hover:bg-[#E15A17] transition-all duration-75 shadow-sm z-50 " +
+                  (props.isNavigationMode ? "pointer-events-none" : "pointer-events-auto")
+                }
                 style={{
                   ...parseStyleString(h.style),
-                  cursor: h.cursor,
+                  cursor: props.isNavigationMode ? "default" : h.cursor,
                   transform: "translate(-50%, -50%)",
                 }}
+                onPointerEnter={() => setHoverHandle(h.type)}
+                onPointerLeave={() => setHoverHandle(null)}
                 onPointerDown={(e) => handlePointerDown(e, h.type)}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}

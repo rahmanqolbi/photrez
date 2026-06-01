@@ -22,7 +22,7 @@ export interface RenderBackend {
   uploadImage(layerId: string, source: ImageBitmap): TextureRef;
   destroyTexture(layerId: string): void;
   render(state: RenderState): void;
-  resize(width: number, height: number): void;
+  resize(docWidth: number, docHeight: number, zoom: number, dpr: number): void;
   dispose(): void;
 
   readPixel(x: number, y: number): [number, number, number, number] | null;

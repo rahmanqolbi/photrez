@@ -9,7 +9,6 @@ describe('resolveCursor', () => {
     activeTool: 'selection',
     isAltPressed: false,
     hoverHandle: null,
-    cropOn: false,
     isLayerLocked: false,
     eyedropperTarget: null,
   };
@@ -55,89 +54,6 @@ describe('resolveCursor', () => {
       isAltPressed: true,
     };
     expect(resolveCursor(ctx)).toBe('crosshair');
-  });
-
-  describe('crop mode', () => {
-    it('returns crosshair when crop is on and no handle hovered', () => {
-      const ctx: CursorContext = {
-        ...base,
-        cropOn: true,
-        hoverHandle: null,
-      };
-      expect(resolveCursor(ctx)).toBe('crosshair');
-    });
-
-    it('returns nwse-resize for tl handle', () => {
-      const ctx: CursorContext = {
-        ...base,
-        cropOn: true,
-        hoverHandle: 'tl',
-      };
-      expect(resolveCursor(ctx)).toBe('nwse-resize');
-    });
-
-    it('returns nwse-resize for tr handle', () => {
-      const ctx: CursorContext = {
-        ...base,
-        cropOn: true,
-        hoverHandle: 'tr',
-      };
-      expect(resolveCursor(ctx)).toBe('nwse-resize');
-    });
-
-    it('returns nesw-resize for bl handle', () => {
-      const ctx: CursorContext = {
-        ...base,
-        cropOn: true,
-        hoverHandle: 'bl',
-      };
-      expect(resolveCursor(ctx)).toBe('nesw-resize');
-    });
-
-    it('returns nesw-resize for br handle', () => {
-      const ctx: CursorContext = {
-        ...base,
-        cropOn: true,
-        hoverHandle: 'br',
-      };
-      expect(resolveCursor(ctx)).toBe('nesw-resize');
-    });
-
-    it('returns ns-resize for t handle', () => {
-      const ctx: CursorContext = {
-        ...base,
-        cropOn: true,
-        hoverHandle: 't',
-      };
-      expect(resolveCursor(ctx)).toBe('ns-resize');
-    });
-
-    it('returns ns-resize for b handle', () => {
-      const ctx: CursorContext = {
-        ...base,
-        cropOn: true,
-        hoverHandle: 'b',
-      };
-      expect(resolveCursor(ctx)).toBe('ns-resize');
-    });
-
-    it('returns ew-resize for l handle', () => {
-      const ctx: CursorContext = {
-        ...base,
-        cropOn: true,
-        hoverHandle: 'l',
-      };
-      expect(resolveCursor(ctx)).toBe('ew-resize');
-    });
-
-    it('returns ew-resize for r handle', () => {
-      const ctx: CursorContext = {
-        ...base,
-        cropOn: true,
-        hoverHandle: 'r',
-      };
-      expect(resolveCursor(ctx)).toBe('ew-resize');
-    });
   });
 
   describe('move tool with handles', () => {

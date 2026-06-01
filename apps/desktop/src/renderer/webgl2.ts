@@ -152,8 +152,8 @@ export class WebGL2Backend implements RenderBackend {
     gl.bindVertexArray(this.vao);
 
     // Compute document Viewport projection matrix
-    const docW = state.canvasSize.width;
-    const docH = state.canvasSize.height;
+    const docW = state.documentSize.width;
+    const docH = state.documentSize.height;
     const viewProj = this.computeViewMatrix(docW, docH);
 
     // 1. Render Checkerboard if requested
@@ -208,10 +208,11 @@ export class WebGL2Backend implements RenderBackend {
     gl.bindVertexArray(null);
   }
 
-  resize(width: number, height: number): void {
+  resize(docWidth: number, docHeight: number, zoom: number, dpr: number): void {
     if (this.canvas) {
-      this.canvas.width = width;
-      this.canvas.height = height;
+      // Scale pixel buffer by zoom × dpr so visual area = device pixel area (sharp on HiDPI)
+      this.canvas.width = Math.round(docWidth * zoom * dpr);
+      this.canvas.height = Math.round(docHeight * zoom * dpr);
     }
   }
 

@@ -1,4 +1,4 @@
-import { createSignal, createMemo, onMount, onCleanup, Show } from "solid-js";
+import { createSignal, createMemo, createEffect, onMount, onCleanup, Show } from "solid-js";
 import { screenToDocument } from "@/viewport/coords";
 import {
   handlePointerDown,
@@ -8,6 +8,9 @@ import {
   ToolContext,
 } from "@/viewport/input-handler";
 import { resolveCursor } from "@/viewport/cursorResolver";
+import { computeSnapLines } from "@/viewport/smartGuides";
+import type { SnapRect } from "@/viewport/smartGuides";
+import type { DocumentEngine } from "@/engine/document";
 import { useEditor } from "./EditorContext";
 import { SelectionTransformOverlay } from "./SelectionTransformOverlay";
 import { HoverHighlight } from "./HoverHighlight";
@@ -16,13 +19,11 @@ import { BrushCursorOverlay } from "./BrushCursorOverlay";
 import { CropOverlay } from "./CropOverlay";
 import { CropModeIndicator } from "./CropModeIndicator";
 
-// Stable mutable ref for transient interactive state — survives re-renders
-// Persistent brush accumulator canvases per layer — avoids full-image redraw per move
-const brushAccumulators = new Map<string, {
-  canvas: OffscreenCanvas;
-  ctx: OffscreenCanvasRenderingContext2D;
-  pointCount: number;
-}>();
+// Overlay canvas for real-time brush stroke preview — sync 2D drawing, no createImageBitmap per move
+let overlayCanvasRef!: HTMLCanvasElement;
+let overlayCtx: CanvasRenderingContext2D | null = null;
+let prevStrokePointCount = 0;
+let strokeGen = 0;
 
 const interactiveState: ToolContext = {
   fgColor: "",
@@ -52,7 +53,10 @@ export function CanvasViewport() {
     docWidth,
     docHeight,
     activeLayerId,
+    activeDocumentId,
     layers,
+    hoverHandle,
+    setHoverHandle,
     syncViewport,
   } = useEditor();
 
@@ -79,8 +83,11 @@ export function CanvasViewport() {
   // Alt key state for eyedropper shortcut (Alt+Brush/Eraser)
   const [isAltPressed, setIsAltPressed] = createSignal(false);
 
-  // Hover handle state for cursor resolver (will be wired to crop/move handles)
-  const [hoverHandle, setHoverHandle] = createSignal<string | null>(null);
+  // Fit transition state — gates CSS transition OFF during fitToScreen for snap-to-fit feel
+  const [isFitTransition, setIsFitTransition] = createSignal(false);
+  let fitTransitionTimeoutId = 0;
+
+  const [snapLines, setSnapLines] = createSignal<{ x1: number; y1: number; x2: number; y2: number }[]>([]);
 
   // Derived: is active layer locked
   const isLayerLocked = createMemo(() => {
@@ -131,15 +138,30 @@ export function CanvasViewport() {
     momentumRafId = requestAnimationFrame(step);
   }
 
-  const cursorClass = () => resolveCursor({
+  const cursorClass = createMemo(() => resolveCursor({
     isSpacePressed: isSpacePressed(),
     isPanning: isPanning(),
     activeTool: activeTool() as ToolType,
     isAltPressed: isAltPressed(),
     hoverHandle: hoverHandle(),
-    cropOn: false,
     isLayerLocked: isLayerLocked(),
     eyedropperTarget: null,
+  }));
+
+  // Viewport container cursor: grab/grabbing when Space held, default otherwise
+  const viewportCursorClass = createMemo(() => {
+    if (isSpacePressed()) return isPanning() ? "grabbing" : "grab";
+    return "default";
+  });
+
+  // Imperative cursor sync — bypass JSX style:cursor binding for guaranteed reactivity
+  createEffect(() => {
+    const c = viewportCursorClass();
+    if (canvasContainerRef) canvasContainerRef.style.cursor = c;
+  });
+  createEffect(() => {
+    const c = cursorClass();
+    if (canvasRef) canvasRef.style.cursor = c;
   });
 
   // ─── Stable tool context wiring ───
@@ -155,10 +177,48 @@ export function CanvasViewport() {
     interactiveState.onSelectionCreated = (x, y, w, h) => {
       setSelectionBox({ x, y, w, h });
     };
+    interactiveState.onHoverHandle = setHoverHandle;
+    interactiveState.onComputeSnapLines = (rect: SnapRect) => {
+      const activeEngine = workspace.getActiveEngine();
+      if (!activeEngine) { setSnapLines([]); return; }
+      const movingId = activeEngine.getActiveLayerId();
+      const visibleLayers = activeEngine.getLayers().filter(l => l.visible && l.id !== movingId);
+      const targets = visibleLayers.map(l => ({
+        x: l.transform.x,
+        y: l.transform.y,
+        w: l.width * l.transform.scaleX,
+        h: l.height * l.transform.scaleY,
+      }));
+      setSnapLines(computeSnapLines(rect, targets));
+    };
     interactiveState.onPaintStroke = onPaintStroke;
   }
 
-  async function onPaintStroke(
+  // Shared fit-to-screen workflow — used by ResizeObserver, double-click, Ctrl+0, and reactive per-document setup
+  function fitToScreenAndRender() {
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+    const rect = canvasContainerRef?.getBoundingClientRect();
+    if (!rect) return;
+    // Disable CSS transition for snap-to-fit feel, then re-enable after 200ms
+    if (fitTransitionTimeoutId) clearTimeout(fitTransitionTimeoutId);
+    setIsFitTransition(true);
+    engine.fitToScreen(rect.width, rect.height);
+    syncViewport();
+    resizeRenderer();
+    scheduler.requestRender();
+    fitTransitionTimeoutId = window.setTimeout(() => setIsFitTransition(false), 200);
+  }
+
+  // Shared renderer resize — scales canvas pixel buffer by zoom × devicePixelRatio for HiDPI sharpness
+  function resizeRenderer() {
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+    const dpr = window.devicePixelRatio || 1;
+    renderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr);
+  }
+
+  function onPaintStroke(
     points: { x: number; y: number }[],
     isEraser: boolean,
   ) {
@@ -170,85 +230,86 @@ export function CanvasViewport() {
     const layer = activeEngine.getLayer(activeId);
     if (!layer || layer.locked || !layer.visible) return;
 
-    let acc = brushAccumulators.get(activeId);
-    if (!acc || acc.canvas.width !== layer.width || acc.canvas.height !== layer.height) {
-      const canvas = new OffscreenCanvas(layer.width, layer.height);
-      const ctx = canvas.getContext("2d")!;
-      if (layer.imageBitmap) {
-        ctx.drawImage(layer.imageBitmap, 0, 0);
-      }
-      brushAccumulators.set(activeId, { canvas, ctx, pointCount: 0 });
-      acc = brushAccumulators.get(activeId)!;
+    if (!overlayCtx) return;
+
+    // Lazy resize overlay canvas to match layer dimensions
+    if (overlayCanvasRef.width !== layer.width || overlayCanvasRef.height !== layer.height) {
+      overlayCanvasRef.width = layer.width;
+      overlayCanvasRef.height = layer.height;
     }
 
-    const ctx = acc.ctx;
-    const prevCount = acc.pointCount;
-
-    ctx.save();
-    ctx.globalAlpha = 1.0;
-    ctx.lineWidth = 20;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    if (isEraser) {
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.strokeStyle = "rgba(0,0,0,1.0)";
-    } else {
-      ctx.globalCompositeOperation = "source-over";
-      ctx.strokeStyle = fgColor();
+    // Seed overlay with current layer image at start of a new stroke
+    if (prevStrokePointCount === 0) {
+      if (layer.imageBitmap) {
+        overlayCtx.drawImage(layer.imageBitmap, 0, 0);
+      } else {
+        overlayCtx.clearRect(0, 0, layer.width, layer.height);
+      }
+      overlayCtx.globalAlpha = 1.0;
+      overlayCtx.lineWidth = 20;
+      overlayCtx.lineCap = "round";
+      overlayCtx.lineJoin = "round";
+      overlayCtx.globalCompositeOperation = isEraser ? "destination-out" : "source-over";
+      overlayCtx.strokeStyle = isEraser ? "rgba(0,0,0,1.0)" : fgColor();
     }
 
     // Draw only the delta segment since the last call
-    ctx.beginPath();
-    const startIdx = prevCount > 0 ? prevCount - 1 : 0;
-    ctx.moveTo(points[startIdx].x, points[startIdx].y);
-    for (let i = Math.max(1, prevCount); i < points.length; i++) {
-      ctx.lineTo(points[i].x, points[i].y);
+    const startIdx = prevStrokePointCount > 0 ? prevStrokePointCount - 1 : 0;
+    overlayCtx.beginPath();
+    overlayCtx.moveTo(points[startIdx].x, points[startIdx].y);
+    for (let i = Math.max(1, prevStrokePointCount); i < points.length; i++) {
+      overlayCtx.lineTo(points[i].x, points[i].y);
     }
-    ctx.stroke();
-    ctx.restore();
+    overlayCtx.stroke();
 
-    acc.pointCount = points.length;
+    prevStrokePointCount = points.length;
+  }
+
+  async function commitBrushStroke(engine: DocumentEngine, layerId: string) {
+    if (prevStrokePointCount === 0) return;
+    const w = overlayCanvasRef.width;
+    const h = overlayCanvasRef.height;
+    if (w === 0 || h === 0 || !overlayCtx) return;
+
+    // Sync snapshot — captures current overlay pixels before any async gap
+    const snapshot = new OffscreenCanvas(w, h);
+    const sCtx = snapshot.getContext("2d")!;
+    sCtx.drawImage(overlayCanvasRef, 0, 0);
 
     try {
-      const newBitmap = await createImageBitmap(acc.canvas);
-      activeEngine.setLayerImageBitmap(layer.id, newBitmap);
-      renderer.uploadImage(layer.id, newBitmap);
+      const gen = ++strokeGen;
+      const newBitmap = await createImageBitmap(snapshot);
+      if (gen !== strokeGen) {
+        newBitmap.close();
+        return;
+      }
+      engine.setLayerImageBitmap(layerId, newBitmap);
+      renderer.uploadImage(layerId, newBitmap);
       scheduler.requestRender();
+      overlayCtx.clearRect(0, 0, w, h);
+      prevStrokePointCount = 0;
     } catch (err) {
-      console.error("Failed to update ImageBitmap on stroke drawing:", err);
+      console.error("Stroke commit failed:", err);
     }
   }
 
-  // Sync contextual settings reactively
+  // ─── One-time setup (renderer, overlay, observers, listeners) ───
   onMount(() => {
-    // 1. Initialize WebGL2 context
-    renderer.initialize(canvasRef);
-
-    // 2. Resize WebGL canvas to document dimensions (1:1 pixel mapping).
-    //    CSS transform handles all viewport positioning — no resize needed
-    //    when the container resizes, only when document size changes.
-    renderer.resize(docWidth(), docHeight());
-    scheduler.requestRender();
-
-    // Auto-fit document to screen on first load
-    const engine = workspace.getActiveEngine();
-    if (engine) {
-      const rect = canvasContainerRef.getBoundingClientRect();
-      engine.fitToScreen(rect.width, rect.height);
-      syncViewport();
-      scheduler.requestRender();
+    try {
+      renderer.initialize(canvasRef);
+    } catch (err) {
+      console.error("Renderer init failed:", err);
     }
 
-    // Re-fit viewport on window resize
+    if (overlayCanvasRef) {
+      overlayCanvasRef.width = docWidth();
+      overlayCanvasRef.height = docHeight();
+      overlayCtx = overlayCanvasRef.getContext("2d");
+    }
+
+    // ─── ResizeObserver — always active ───
     const resizeObserver = new ResizeObserver(() => {
-      const engine = workspace.getActiveEngine();
-      if (engine) {
-        const rect = canvasContainerRef.getBoundingClientRect();
-        engine.fitToScreen(rect.width, rect.height);
-        syncViewport();
-        scheduler.requestRender();
-      }
+      fitToScreenAndRender();
     });
     resizeObserver.observe(canvasContainerRef);
 
@@ -329,11 +390,7 @@ export function CanvasViewport() {
         e.preventDefault();
         e.stopPropagation();
         stopMomentum();
-
-        const rect = canvasContainerRef.getBoundingClientRect();
-        engine.fitToScreen(rect.width, rect.height);
-        syncViewport();
-        scheduler.requestRender();
+        fitToScreenAndRender();
         return;
       }
     };
@@ -364,6 +421,34 @@ export function CanvasViewport() {
       window.removeEventListener("blur", handleWindowBlur);
       stopMomentum();
     });
+  });
+
+  // ─── Reactive per-document setup (fitToScreen, renderer resize, layer upload) ───
+  createEffect(() => {
+    const id = activeDocumentId();
+    if (!id) return;
+
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+
+    try {
+      if (overlayCanvasRef) {
+        overlayCanvasRef.width = engine.getWidth();
+        overlayCanvasRef.height = engine.getHeight();
+      }
+
+      resizeRenderer();
+
+      for (const layer of engine.getLayers()) {
+        if (layer.imageBitmap) {
+          renderer.uploadImage(layer.id, layer.imageBitmap);
+        }
+      }
+
+      fitToScreenAndRender();
+    } catch (err) {
+      console.error("Viewport sync failed:", err);
+    }
   });
 
   // Wheel zoom (Ctrl+scroll or Alt+scroll) and Shift+Scroll horizontal panning
@@ -398,13 +483,7 @@ export function CanvasViewport() {
   // Double Click empty background to fit screen
   const handleDoubleClick = (e: MouseEvent) => {
     if (e.target === canvasContainerRef || e.target === canvasRef) {
-      const engine = workspace.getActiveEngine();
-      if (engine) {
-        const rect = canvasContainerRef.getBoundingClientRect();
-        engine.fitToScreen(rect.width, rect.height);
-        syncViewport();
-        scheduler.requestRender();
-      }
+      fitToScreenAndRender();
     }
   };
 
@@ -421,33 +500,94 @@ export function CanvasViewport() {
     );
   };
 
-  const onPointerDown = (e: PointerEvent) => {
-    stopMomentum();
+  // ─── Viewport container handlers: panning only ───
+  const onViewportPointerDown = (e: PointerEvent) => {
+    // Only handle panning (Space held or middle mouse click)
+    if (!isSpacePressed() && e.button !== 1) return;
 
+    stopMomentum();
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+
+    canvasContainerRef.setPointerCapture(e.pointerId);
+    setIsPanning(true);
+    panDragStart = {
+      clientX: e.clientX,
+      clientY: e.clientY,
+      panX: engine.getViewport().panX,
+      panY: engine.getViewport().panY,
+    };
+    lastPointerPositions = [{ time: Date.now(), x: e.clientX, y: e.clientY }];
+  };
+
+  const onViewportPointerMove = (e: PointerEvent) => {
+    if (!isPanning()) return;
+
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+
+    const dx = e.clientX - panDragStart.clientX;
+    const dy = e.clientY - panDragStart.clientY;
+    engine.setViewport({
+      panX: panDragStart.panX + dx,
+      panY: panDragStart.panY + dy,
+    });
+    syncViewport();
+    scheduler.requestRender();
+
+    const now = Date.now();
+    lastPointerPositions.push({ time: now, x: e.clientX, y: e.clientY });
+    lastPointerPositions = lastPointerPositions.filter(
+      (p) => now - p.time < 100,
+    );
+  };
+
+  const onViewportPointerUp = (e: PointerEvent) => {
+    if (!isPanning()) return;
+
+    canvasContainerRef.releasePointerCapture(e.pointerId);
+    setIsPanning(false);
+
+    const now = Date.now();
+    lastPointerPositions = lastPointerPositions.filter(
+      (p) => now - p.time < 100,
+    );
+
+    if (lastPointerPositions.length > 1) {
+      const oldest = lastPointerPositions[0];
+      const newest = lastPointerPositions[lastPointerPositions.length - 1];
+      const dt = newest.time - oldest.time;
+      if (dt > 10) {
+        const frameMs = 16.67;
+        const vx = ((newest.x - oldest.x) / dt) * frameMs;
+        const vy = ((newest.y - oldest.y) / dt) * frameMs;
+
+        const maxSpeed = 80;
+        const speed = Math.sqrt(vx * vx + vy * vy);
+        if (speed > 1) {
+          const scale = Math.min(speed, maxSpeed) / speed;
+          momentumVelocity = { x: vx * scale, y: vy * scale };
+          startMomentumDeceleration();
+        }
+      }
+    }
+  };
+
+  // ─── Canvas element handlers: tool interactions only ───
+  const onCanvasPointerDown = (e: PointerEvent) => {
+    // Ignore if panning is active (Space held or middle-click) — viewport handles it
+    if (isSpacePressed() || e.button === 1) return;
+
+    stopMomentum();
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (!engine || !history) return;
 
-    // Check if panning navigation is active (either Space held or middle mouse click)
-    if (isSpacePressed() || e.button === 1) {
-      canvasRef.setPointerCapture(e.pointerId);
-      setIsPanning(true);
-      panDragStart = {
-        clientX: e.clientX,
-        clientY: e.clientY,
-        panX: engine.getViewport().panX,
-        panY: engine.getViewport().panY,
-      };
-      // Record starting pointer position for flick velocity calculation
-      lastPointerPositions = [{ time: Date.now(), x: e.clientX, y: e.clientY }];
-      return;
-    }
-
     prepareToolContext();
-
+    setSnapLines([]);
     canvasRef.setPointerCapture(e.pointerId);
-    const coords = getDocCoords(e);
 
+    const coords = getDocCoords(e);
     handlePointerDown(
       activeTool() as ToolType,
       coords.x,
@@ -459,28 +599,12 @@ export function CanvasViewport() {
     );
   };
 
-  const onPointerMove = (e: PointerEvent) => {
+  const onCanvasPointerMove = (e: PointerEvent) => {
+    // Ignore if panning is active
+    if (isPanning()) return;
+
     const engine = workspace.getActiveEngine();
     if (!engine) return;
-
-    // If currently drag-panning, update viewport offsets
-    if (isPanning()) {
-      const dx = e.clientX - panDragStart.clientX;
-      const dy = e.clientY - panDragStart.clientY;
-      const nextPanX = panDragStart.panX + dx;
-      const nextPanY = panDragStart.panY + dy;
-      engine.setViewport({ panX: nextPanX, panY: nextPanY });
-      syncViewport();
-      scheduler.requestRender();
-
-      // Record position tracking for flick momentum
-      const now = Date.now();
-      lastPointerPositions.push({ time: now, x: e.clientX, y: e.clientY });
-      lastPointerPositions = lastPointerPositions.filter(
-        (p) => now - p.time < 100,
-      );
-      return;
-    }
 
     const coords = getDocCoords(e);
     handlePointerMove(
@@ -493,44 +617,17 @@ export function CanvasViewport() {
     );
   };
 
-  const onPointerUp = (e: PointerEvent) => {
+  const onCanvasPointerUp = (e: PointerEvent) => {
+    // Ignore if panning is active
+    if (isPanning()) return;
+
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (!engine || !history) return;
 
-    // Release panning and initiate kinetic momentum physics
-    if (isPanning()) {
-      canvasRef.releasePointerCapture(e.pointerId);
-      setIsPanning(false);
-
-      const now = Date.now();
-      lastPointerPositions = lastPointerPositions.filter(
-        (p) => now - p.time < 100,
-      );
-
-      if (lastPointerPositions.length > 1) {
-        const oldest = lastPointerPositions[0];
-        const newest = lastPointerPositions[lastPointerPositions.length - 1];
-        const dt = newest.time - oldest.time;
-        if (dt > 10) {
-          const frameMs = 16.67;
-          const vx = ((newest.x - oldest.x) / dt) * frameMs;
-          const vy = ((newest.y - oldest.y) / dt) * frameMs;
-
-          // Damping clamp to avoid wild infinite flies
-          const maxSpeed = 80;
-          const speed = Math.sqrt(vx * vx + vy * vy);
-          if (speed > 1) {
-            const scale = Math.min(speed, maxSpeed) / speed;
-            momentumVelocity = { x: vx * scale, y: vy * scale };
-            startMomentumDeceleration();
-          }
-        }
-      }
-      return;
-    }
-
+    setSnapLines([]);
     canvasRef.releasePointerCapture(e.pointerId);
+
     const coords = getDocCoords(e);
     handlePointerUp(
       activeTool() as ToolType,
@@ -542,7 +639,12 @@ export function CanvasViewport() {
       interactiveState,
     );
 
-    // Reset temporary selection marquee visual
+    const tool = activeTool() as ToolType;
+    if (tool === "brush" || tool === "eraser") {
+      const layerId = engine.getActiveLayerId();
+      if (layerId) commitBrushStroke(engine, layerId);
+    }
+
     setSelectionBox(null);
   };
 
@@ -550,9 +652,12 @@ export function CanvasViewport() {
     <div
       ref={canvasContainerRef}
       data-viewport-container
-      class="flex flex-1 items-center justify-center overflow-hidden bg-editor-canvas relative"
+      class="flex-1 relative overflow-hidden bg-editor-canvas"
       onWheel={handleWheel}
       onDblClick={handleDoubleClick}
+      onPointerDown={onViewportPointerDown}
+      onPointerMove={onViewportPointerMove}
+      onPointerUp={onViewportPointerUp}
     >
       {/* CSS Transform container — GPU-accelerated pan/zoom */}
       <Show when={workspace.getActiveEngine()}>
@@ -560,7 +665,7 @@ export function CanvasViewport() {
           style={{
             transform: `translate3d(${pan().x}px, ${pan().y}px, 0) scale(${zoom()})`,
             "transform-origin": "0 0",
-            transition: isPanning() ? "none" : "transform 0.15s cubic-bezier(0.2, 0, 0, 1)",
+            transition: isPanning() || isFitTransition() ? "none" : "transform 0.15s cubic-bezier(0.2, 0, 0, 1)",
             "will-change": isPanning() ? "transform" : "auto",
             position: "absolute",
             width: `${docWidth()}px`,
@@ -570,16 +675,27 @@ export function CanvasViewport() {
           {/* WebGL Canvas — fills document space */}
           <canvas
             ref={canvasRef}
+            onPointerDown={onCanvasPointerDown}
+            onPointerMove={onCanvasPointerMove}
+            onPointerUp={onCanvasPointerUp}
             style={{
               position: "absolute",
               inset: 0,
               width: "100%",
               height: "100%",
-              cursor: cursorClass(),
             }}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
+          />
+
+          {/* Overlay canvas — sync 2D brush preview, no createImageBitmap per move */}
+          <canvas
+            ref={overlayCanvasRef}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              "pointer-events": "none",
+            }}
           />
 
           {/* Artboard border & shadow */}
@@ -619,7 +735,7 @@ export function CanvasViewport() {
               )}
             </Show>
             <HoverHighlight />
-            <SmartGuides lines={[]} />
+            <SmartGuides lines={snapLines()} />
             <BrushCursorOverlay />
             <CropOverlay
               cropRect={cropRect()}
@@ -634,7 +750,9 @@ export function CanvasViewport() {
 
           {/* SelectionTransformOverlay — document-space coordinates */}
           <Show when={activeTool() === "move"}>
-            <SelectionTransformOverlay />
+            <SelectionTransformOverlay
+              isNavigationMode={isSpacePressed() || isPanning()}
+            />
           </Show>
         </div>
       </Show>

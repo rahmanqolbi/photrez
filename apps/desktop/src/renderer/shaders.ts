@@ -15,7 +15,7 @@ void main() {
   );
 
   vec2 pos = positions[gl_VertexID];
-  v_texCoord = vec2(pos.x, 1.0 - pos.y); // Flip texture coordinate Y-axis to match browser space
+  v_texCoord = vec2(pos.x, pos.y); // Y-axis already handled by view matrix flip
 
   // Map to layer position in document coordinates
   vec2 docPos = u_layerRect.xy + pos * u_layerRect.zw;

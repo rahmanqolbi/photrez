@@ -6,7 +6,6 @@ export interface CursorContext {
   activeTool: ToolType;
   isAltPressed: boolean;
   hoverHandle: string | null;
-  cropOn: boolean;
   isLayerLocked: boolean;
   eyedropperTarget: string | null;
 }
@@ -38,15 +37,7 @@ export function resolveCursor(ctx: CursorContext): string {
     return "crosshair";
   }
 
-  // 4. Crop on → crosshair (or resize cursor if hovering handle)
-  if (ctx.cropOn) {
-    if (ctx.hoverHandle && handleCursorMap[ctx.hoverHandle]) {
-      return handleCursorMap[ctx.hoverHandle];
-    }
-    return "crosshair";
-  }
-
-  // 5. Move tool + locked layer → default
+  // 4. Move tool + locked layer → default
   if (ctx.activeTool === "move" && ctx.isLayerLocked) {
     return "default";
   }

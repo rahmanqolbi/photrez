@@ -112,7 +112,7 @@ describe('DocumentEngine', () => {
     const engine = new DocumentEngine('doc-1', 'My Document', 800, 600);
     engine.addLayer('Layer 1');
     engine.addLayer('Layer 2');
-    
+
     const snap = engine.snapshot();
     expect(snap.layers.length).toBe(2);
 
@@ -122,5 +122,53 @@ describe('DocumentEngine', () => {
     engine.restore(snap);
     expect(engine.getLayers().length).toBe(2);
     expect(engine.getLayers().map(l => l.name)).toEqual(['Layer 2', 'Layer 1']);
+  });
+
+  describe('getRenderState', () => {
+    it('returns documentSize matching engine dimensions (not canvas pixel buffer)', () => {
+      // Bug regression test: getRenderState() must use the document's intrinsic
+      // dimensions, never the canvas pixel buffer. The renderer relies on
+      // documentSize to build the orthographic view projection — feeding it
+      // canvas dimensions (which can be docW × zoom × dpr) breaks the fit.
+      const engine = new DocumentEngine('doc-render', 'Render Test', 1920, 1280);
+      engine.addLayer('Background');
+
+      const state = engine.getRenderState();
+
+      expect(state.documentSize.width).toBe(1920);
+      expect(state.documentSize.height).toBe(1280);
+      // Ensure these do NOT match a hypothetical canvas pixel buffer
+      // (e.g., 1920 × 1 × 1.25 = 2400 for HiDPI)
+      expect(state.documentSize.width).not.toBe(2400);
+      expect(state.documentSize.height).not.toBe(1600);
+    });
+
+    it('reflects layer transforms and metadata in render state', () => {
+      const engine = new DocumentEngine('doc-render-2', 'Render Test 2', 800, 600);
+      const layer = engine.addLayer('Subject');
+      layer.transform.x = 100;
+      layer.transform.y = 50;
+      layer.opacity = 0.75;
+
+      const state = engine.getRenderState();
+
+      expect(state.layers.length).toBe(1);
+      expect(state.layers[0].id).toBe(layer.id);
+      expect(state.layers[0].transform.x).toBe(100);
+      expect(state.layers[0].transform.y).toBe(50);
+      expect(state.layers[0].opacity).toBe(0.75);
+      expect(state.documentSize).toEqual({ width: 800, height: 600 });
+    });
+
+    it('exposes viewport state for the renderer to consume', () => {
+      const engine = new DocumentEngine('doc-render-3', 'Render Test 3', 400, 300);
+      engine.setViewport({ panX: 25, panY: -10, zoom: 1.5 });
+
+      const state = engine.getRenderState();
+
+      expect(state.viewport.panX).toBe(25);
+      expect(state.viewport.panY).toBe(-10);
+      expect(state.viewport.zoom).toBe(1.5);
+    });
   });
 });

@@ -70,9 +70,7 @@ export function EditorShell() {
   const scheduler = new RenderScheduler(() => {
     const engine = workspace.getActiveEngine();
     if (!engine) return;
-    const canvas = document.querySelector("canvas");
-    if (!canvas) return;
-    renderer.render(engine.getRenderState(canvas.width, canvas.height));
+    renderer.render(engine.getRenderState());
   });
 
   onCleanup(() => {

@@ -38,6 +38,8 @@ export interface EditorContextValue {
   activeLayerId: Accessor<string | null>;
   hoveredLayerId: Accessor<string | null>;
   setHoveredLayerId: Setter<string | null>;
+  hoverHandle: Accessor<string | null>;
+  setHoverHandle: Setter<string | null>;
   docWidth: Accessor<number>;
   docHeight: Accessor<number>;
 }
@@ -70,6 +72,7 @@ export function EditorProvider(props: {
   const [layers, setLayers] = createSignal<LayerNode[]>([]);
   const [activeLayerId, setActiveLayerId] = createSignal<string | null>(null);
   const [hoveredLayerId, setHoveredLayerId] = createSignal<string | null>(null);
+  const [hoverHandle, setHoverHandle] = createSignal<string | null>(null);
   const [docWidth, setDocWidth] = createSignal(800);
   const [docHeight, setDocHeight] = createSignal(600);
 
@@ -103,6 +106,9 @@ export function EditorProvider(props: {
   };
 
   props.workspace.onChange(syncState);
+  props.workspace.onVisualChange(() => {
+    props.scheduler.requestRender();
+  });
 
   const openImage = async () => {
     // 1. Web browser fallback check
@@ -240,6 +246,8 @@ export function EditorProvider(props: {
     activeLayerId,
     hoveredLayerId,
     setHoveredLayerId,
+    hoverHandle,
+    setHoverHandle,
     docWidth,
     docHeight
   };

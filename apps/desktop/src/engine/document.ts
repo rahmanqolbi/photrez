@@ -10,6 +10,7 @@ export class DocumentEngine {
   private textureHandles: Map<LayerId, TextureHandle>;
   private dirtyLayerIds: Set<LayerId>;
   private onChangeCallback: (() => void) | null = null;
+  private onVisualChangeCallback: (() => void) | null = null;
 
   constructor(id: DocumentId, name: string, width: number, height: number) {
     this.model = {
@@ -303,7 +304,7 @@ export class DocumentEngine {
     const fitZoom = Math.min(
       (containerWidth - padding) / this.model.width,
       (containerHeight - padding) / this.model.height,
-      1.0
+      10.0
     );
 
     this.model.viewport.zoom = Math.max(0.05, fitZoom);
@@ -352,7 +353,7 @@ export class DocumentEngine {
       layer.height = bitmap.height;
       this.model.dirty = true;
       this.markLayerDirty(id);
-      this.notifyChange();
+      this.notifyVisualChange();
     }
   }
 
@@ -366,7 +367,7 @@ export class DocumentEngine {
   }
 
   // ─── Render State ───
-  getRenderState(canvasWidth: number, canvasHeight: number): RenderState {
+  getRenderState(): RenderState {
     const renderLayers: RenderLayer[] = this.model.layers.map(l => {
       const handle = this.textureHandles.get(l.id) || { id: `tex-${l.id}` };
       return {
@@ -384,7 +385,7 @@ export class DocumentEngine {
     return {
       documentId: this.model.id,
       viewport: this.model.viewport,
-      canvasSize: { width: canvasWidth, height: canvasHeight },
+      documentSize: { width: this.model.width, height: this.model.height },
       layers: renderLayers,
       selection: this.model.selection,
       checkerboard: true,
@@ -411,9 +412,19 @@ export class DocumentEngine {
     this.onChangeCallback = callback;
   }
 
+  onVisualChange(callback: () => void): void {
+    this.onVisualChangeCallback = callback;
+  }
+
   private notifyChange(): void {
     if (this.onChangeCallback) {
       this.onChangeCallback();
+    }
+  }
+
+  private notifyVisualChange(): void {
+    if (this.onVisualChangeCallback) {
+      this.onVisualChangeCallback();
     }
   }
 

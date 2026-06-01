@@ -82,7 +82,7 @@ export interface RenderLayer {
 export interface RenderState {
   documentId: DocumentId;
   viewport: ViewportState;
-  canvasSize: { width: number; height: number };
+  documentSize: { width: number; height: number };
   layers: RenderLayer[];
   selection: SelectionState | null;
   checkerboard: boolean;
