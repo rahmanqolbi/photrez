@@ -52,7 +52,7 @@ the canvas bounds and center.
 Behavior:
 
 - The target list passed to the helper includes:
-  - Every layer except the active layer (hidden or locked included).
+  - Every visible layer except the active layer (locked included).
   - The canvas rect at `{ x: 0, y: 0, w: docW, h: docH }`.
 - Each layer contributes one axis-aligned snap rect:
   - `x = layer.transform.x`
@@ -66,8 +66,8 @@ Behavior:
   are represented in the target list as synthetic rects spanning the
   full axis (e.g. `{ x: docW / 2, y: -Infinity, w: 0, h: Infinity }`
   for the vertical center line).
-- Locked layers still appear as snap references. This matches how
-  Photoshop treats locked layers.
+- Locked layers still appear as snap references. Hidden layers do not,
+  because snapping to invisible geometry creates surprising movement.
 - Off-canvas layer transforms are clamped to the rect math but do
   not get skipped.
 

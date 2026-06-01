@@ -252,7 +252,7 @@ export function computeSnapAdjustment(
     const te = buildAxis(t);
     for (const mk of X_KEYS) {
       for (const tk of X_KEYS) {
-        const d = me[mk] - te[tk];
+        const d = te[tk] - me[mk];
         const dist = Math.abs(d);
         if (dist < threshold && dist < bestDxDist) {
           bestDxDist = dist;
@@ -265,7 +265,7 @@ export function computeSnapAdjustment(
     }
     for (const mk of Y_KEYS) {
       for (const tk of Y_KEYS) {
-        const d = me[mk] - te[tk];
+        const d = te[tk] - me[mk];
         const dist = Math.abs(d);
         if (dist < threshold && dist < bestDyDist) {
           bestDyDist = dist;
@@ -726,7 +726,7 @@ In the same file, replace the `interactiveState.onComputeSnapLines = ...` block 
     const docW = activeEngineForTargets ? activeEngineForTargets.getWidth() : 0;
     const docH = activeEngineForTargets ? activeEngineForTargets.getHeight() : 0;
     const visibleLayers = activeEngineForTargets
-      ? activeEngineForTargets.getLayers().filter((l) => l.id !== movingId)
+      ? activeEngineForTargets.getLayers().filter((l) => l.visible && l.id !== movingId)
       : [];
     const layerTargets: SnapRect[] = visibleLayers.map((l) => ({
       x: l.transform.x,
@@ -906,7 +906,7 @@ Append (do not overwrite prior content):
 - Added `computeSnapAdjustment` pure helper in `apps/desktop/src/viewport/smartGuides.ts` that returns `{ dx, dy, lines }` for a moving rect against a target list (3 candidates per axis, nearest wins, default threshold 5).
 - Replaced the side-effect-only `onComputeSnapLines` callback on `ToolContext` with a pure `onComputeSnap` + `onSnapLines` pair. Move branch in `input-handler.ts` now applies the deltas and emits guide lines.
 - Hold `Alt` during Move drag disables snapping and clears guide lines.
-- `CanvasViewport` precomputes the target list per drag: every other layer (locked or hidden included), the canvas rect, and two synthetic rects representing the canvas center lines.
+- `CanvasViewport` precomputes the target list per drag: every visible non-active layer (locked included), the canvas rect, and two synthetic rects representing the canvas center lines.
 - Added 10 unit tests for `computeSnapAdjustment` and 4 for the input-handler snap wiring. All 113 frontend tests pass. Rust core tests unaffected and still pass.
 ```
 

@@ -1,6 +1,6 @@
 import type { DocumentEngine } from "../engine/document";
 import type { CommandHistory } from "../engine/history";
-import type { SnapRect } from "./smartGuides";
+import type { SnapLine, SnapRect, SnapResult } from "./smartGuides";
 
 export type ToolType = "move" | "selection" | "crop" | "eyedropper" | "brush" | "eraser";
 
@@ -11,6 +11,7 @@ export interface ToolContext {
   brushHardness: number;
   brushOpacity: number;
   selectedLayerId: string | null;
+  isAltPressed: boolean;
 
   // Transient interactive state
   isDragging: boolean;
@@ -25,7 +26,8 @@ export interface ToolContext {
   onCropCreated?: (x: number, y: number, w: number, h: number) => void;
   onPaintStroke?: (points: { x: number; y: number }[], isEraser: boolean) => void;
   onHoverHandle?: (handle: string | null) => void;
-  onComputeSnapLines?: (rect: SnapRect) => void;
+  onComputeSnap?: (rect: SnapRect) => SnapResult;
+  onSnapLines?: (lines: SnapLine[]) => void;
 }
 
 export function handlePointerDown(
@@ -100,13 +102,22 @@ export function handlePointerMove(
     if (layer && !layer.locked) {
       const newX = docX - context.dragStart.x;
       const newY = docY - context.dragStart.y;
-      engine.moveLayer(context.selectedLayerId, newX, newY);
-      context.onComputeSnapLines?.({
-        x: layer.transform.x,
-        y: layer.transform.y,
-        w: layer.width * layer.transform.scaleX,
-        h: layer.height * layer.transform.scaleY,
-      });
+      let nextX = newX;
+      let nextY = newY;
+      if (!context.isAltPressed && context.onComputeSnap) {
+        const snap = context.onComputeSnap({
+          x: newX,
+          y: newY,
+          w: layer.width * layer.transform.scaleX,
+          h: layer.height * layer.transform.scaleY,
+        });
+        nextX += snap.dx;
+        nextY += snap.dy;
+        context.onSnapLines?.(snap.lines);
+      } else {
+        context.onSnapLines?.([]);
+      }
+      engine.moveLayer(context.selectedLayerId, nextX, nextY);
     }
   }
   requestRender();
@@ -140,6 +151,8 @@ export function handlePointerUp(
       context.onPaintStroke?.([...context.strokePoints], tool === "eraser");
     }
     context.strokePoints = [];
+  } else if (tool === "move") {
+    context.onSnapLines?.([]);
   }
   requestRender();
 }

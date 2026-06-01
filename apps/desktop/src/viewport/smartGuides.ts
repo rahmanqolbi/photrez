@@ -12,53 +12,103 @@ export interface SnapLine {
   y2: number;
 }
 
-export function computeSnapLines(moving: SnapRect, targets: SnapRect[], threshold = 5): SnapLine[] {
-  const lines: SnapLine[] = [];
-  const me = {
-    left: moving.x,
-    right: moving.x + moving.w,
-    cx: moving.x + moving.w / 2,
-    top: moving.y,
-    bottom: moving.y + moving.h,
-    cy: moving.y + moving.h / 2,
+export interface SnapResult {
+  dx: number;
+  dy: number;
+  lines: SnapLine[];
+}
+
+const X_KEYS = ["left", "right", "cx"] as const;
+const Y_KEYS = ["top", "bottom", "cy"] as const;
+
+function buildAxis(rect: SnapRect) {
+  return {
+    left: rect.x,
+    right: rect.x + rect.w,
+    cx: rect.x + rect.w / 2,
+    top: rect.y,
+    bottom: rect.y + rect.h,
+    cy: rect.y + rect.h / 2,
   };
+}
+
+export function computeSnapAdjustment(
+  moving: SnapRect,
+  targets: SnapRect[],
+  threshold = 5,
+): SnapResult {
+  const me = buildAxis(moving);
+  let bestDx = 0;
+  let bestDxDist = Infinity;
+  let bestDxLineY1 = moving.y;
+  let bestDxLineY2 = moving.y + moving.h;
+  let bestDxHitX: number | null = null;
+
+  let bestDy = 0;
+  let bestDyDist = Infinity;
+  let bestDyLineX1 = moving.x;
+  let bestDyLineX2 = moving.x + moving.w;
+  let bestDyHitY: number | null = null;
+
   for (const t of targets) {
-    const te = {
-      left: t.x,
-      right: t.x + t.w,
-      cx: t.x + t.w / 2,
-      top: t.y,
-      bottom: t.y + t.h,
-      cy: t.y + t.h / 2,
-    };
-    // Vertical snap lines
-    for (const mk of ["left", "right", "cx"] as const) {
-      for (const tk of ["left", "right", "cx"] as const) {
-        if (Math.abs(me[mk] - te[tk]) < threshold) {
-          const sx = te[tk];
-          lines.push({
-            x1: sx,
-            y1: Math.min(moving.y, t.y) - 10,
-            x2: sx,
-            y2: Math.max(moving.y + moving.h, t.y + t.h) + 10,
-          });
+    const te = buildAxis(t);
+    for (const mk of X_KEYS) {
+      for (const tk of X_KEYS) {
+        const d = te[tk] - me[mk];
+        const dist = Math.abs(d);
+        if (dist < threshold && dist < bestDxDist) {
+          bestDxDist = dist;
+          bestDx = d;
+          bestDxHitX = te[tk];
+          const rawY1 = Math.min(moving.y, t.y) - 10;
+          const rawY2 = Math.max(moving.y + moving.h, t.y + t.h) + 10;
+          bestDxLineY1 = Number.isFinite(rawY1) ? rawY1 : moving.y - 10000;
+          bestDxLineY2 = Number.isFinite(rawY2) ? rawY2 : moving.y + moving.h + 10000;
         }
       }
     }
-    // Horizontal snap lines
-    for (const mk of ["top", "bottom", "cy"] as const) {
-      for (const tk of ["top", "bottom", "cy"] as const) {
-        if (Math.abs(me[mk] - te[tk]) < threshold) {
-          const sy = te[tk];
-          lines.push({
-            x1: Math.min(moving.x, t.x) - 10,
-            y1: sy,
-            x2: Math.max(moving.x + moving.w, t.x + t.w) + 10,
-            y2: sy,
-          });
+    for (const mk of Y_KEYS) {
+      for (const tk of Y_KEYS) {
+        const d = te[tk] - me[mk];
+        const dist = Math.abs(d);
+        if (dist < threshold && dist < bestDyDist) {
+          bestDyDist = dist;
+          bestDy = d;
+          bestDyHitY = te[tk];
+          const rawX1 = Math.min(moving.x, t.x) - 10;
+          const rawX2 = Math.max(moving.x + moving.w, t.x + t.w) + 10;
+          bestDyLineX1 = Number.isFinite(rawX1) ? rawX1 : moving.x - 10000;
+          bestDyLineX2 = Number.isFinite(rawX2) ? rawX2 : moving.x + moving.w + 10000;
         }
       }
     }
   }
-  return lines;
+
+  const lines: SnapLine[] = [];
+  if (bestDxHitX !== null) {
+    lines.push({
+      x1: bestDxHitX,
+      y1: bestDxLineY1,
+      x2: bestDxHitX,
+      y2: bestDxLineY2,
+    });
+  }
+  if (bestDyHitY !== null) {
+    lines.push({
+      x1: bestDyLineX1,
+      y1: bestDyHitY,
+      x2: bestDyLineX2,
+      y2: bestDyHitY,
+    });
+  }
+
+  return { dx: bestDx, dy: bestDy, lines };
+}
+
+export function computeSnapLines(
+  moving: SnapRect,
+  targets: SnapRect[],
+  threshold = 5,
+): SnapLine[] {
+  return computeSnapAdjustment(moving, targets, threshold).lines;
 }
