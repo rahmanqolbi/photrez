@@ -190,6 +190,6 @@
 | ⬜ TODO      | CI pipeline (GitHub Actions)               |
 | ✅ DONE      | Unit tests (core crate) — 69 tests         |
 | ✅ DONE      | Contract tests (IPC commands) — 13 tests   |
-| ✅ DONE      | Frontend tests — 110 tests (99 existing + 11 snap-adjustment) |
+| ✅ DONE      | Frontend tests — 110 passing tests + 4 input-handler snap wiring tests intentionally red pending Task 4 |
 | ✅ DONE      | M6 Perf Gate (all metrics PASS)            |
 | ✅ DONE      | Release candidate (MSI + NSIS installers)  |

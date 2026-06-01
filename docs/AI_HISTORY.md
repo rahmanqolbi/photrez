@@ -5,6 +5,31 @@
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_CURRENT_TASK.md` (status), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
 ---
+## [2026-06-01] TEST FIX — Input Handler Snap Pointer-Up Cleanup Test Review [COMPLETE]
+
+### Kategori: BUG FIX / TEST / VIEWPORT / MOVE TOOL
+
+**Deskripsi:** Code quality review menemukan test `clears snap lines on pointer up` di `apps/desktop/src/__tests__/input-handler-snap.test.ts` belum membuktikan pointer-up benar-benar membersihkan snap lines. Test lama membuat `onComputeSnap` return `lines: []`, sehingga move handler yang benar akan memanggil `onSnapLines([])` saat move dan pointer-up bisa no-op tanpa terdeteksi.
+
+**Akar Masalah (Root Cause):** Assertion akhir memakai `toHaveBeenLastCalledWith([])` setelah move dan pointer-up, tetapi tidak pernah memastikan ada non-empty snap lines sebelum pointer-up. Dengan setup `lines: []`, test tidak membedakan cleanup di move-time vs cleanup di pointer-up.
+
+**Logika Perbaikan (Fix Rationale):** Test pointer-up sekarang membuat `onComputeSnap` return non-empty guide line, assert line tersebut emitted setelah `handlePointerMove`, lalu `mockClear()` sebelum `handlePointerUp`. Setelah pointer-up, test assert `onSnapLines` dipanggil tepat sekali dengan `[]`, sehingga hanya cleanup pointer-up yang bisa memenuhi assertion final.
+
+**Files Changed:**
+- `apps/desktop/src/__tests__/input-handler-snap.test.ts`: removed unused `SnapLine` import; strengthened `clears snap lines on pointer up` with non-empty guide line, post-move assertion, `mockClear()`, and exact cleanup assertion.
+- `docs/AI_CURRENT_TASK.md`: completion entry for this review fix.
+- `docs/FEATURES.md`: note that input-handler snap wiring tests are intentionally red pending Task 4.
+- `docs/AI_HISTORY.md`: this entry.
+
+**Verifikasi:**
+- Expected red: `npx vitest run input-handler-snap` -> 4 tests, **3 failed / 1 passed**. New pointer-up assertion fails before pointer-up cleanup because production input handler has not wired snap callbacks yet.
+- Green guard: `npx vitest run snap-adjustment smart-guides` -> **22/22 PASS**.
+
+**Catatan:**
+- No production code changed. This preserves Task 3 as failing test coverage for Task 4 move-handler snap wiring.
+- Commit will amend `6d68ca1` with message `test: add failing tests for input-handler snap wiring`.
+
+---
 ## [2026-06-01] BUG FIX — computeSnapAdjustment Non-Finite Guide Line Endpoints (Code Review) [COMPLETE]
 
 ### Kategori: BUG FIX / VIEWPORT / SMART GUIDES / MOVE TOOL

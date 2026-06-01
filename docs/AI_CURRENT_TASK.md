@@ -2,6 +2,40 @@
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
+## Current Task — Move Tool Snapping (Task 3: Input Handler Snap Test Review Fix) [COMPLETE]
+
+Date: 2026-06-01
+
+### Deskripsi
+
+Code quality review menemukan test `clears snap lines on pointer up` di `apps/desktop/src/__tests__/input-handler-snap.test.ts` belum membuktikan pointer-up benar-benar membersihkan snap lines. Test sebelumnya membuat `onComputeSnap` return `lines: []`, sehingga handler move yang benar sudah akan memanggil `onSnapLines([])` dan pointer-up bisa tidak melakukan apa pun tetapi test tetap pass.
+
+### Perbaikan
+
+1. Ubah `onComputeSnap` di test pointer-up agar return non-empty guide line pada move.
+2. Assert setelah `handlePointerMove` bahwa non-empty guide line sudah emitted.
+3. `mockClear()` sebelum `handlePointerUp`, lalu assert pointer-up memanggil `onSnapLines([])` tepat sekali.
+4. Hapus unused type import `SnapLine`, pertahankan `SnapResult`.
+
+### Verifikasi
+
+- [x] `npx vitest run input-handler-snap`: expected FAIL, confirmed **3 failed / 1 passed**. Pointer-up test now fails at the non-empty guide line assertion because current production handler has not wired `onComputeSnap`/`onSnapLines` yet.
+- [x] `npx vitest run snap-adjustment smart-guides`: **22/22 PASS**.
+
+### Files Changed
+
+- `apps/desktop/src/__tests__/input-handler-snap.test.ts`: removed unused `SnapLine` import; strengthened pointer-up test with non-empty snap guide line, post-move assertion, `mockClear()`, and exact pointer-up cleanup assertion.
+- `docs/AI_CURRENT_TASK.md`: this completion entry.
+- `docs/AI_HISTORY.md`: appended history entry for the test review fix.
+- `docs/FEATURES.md`: noted input-handler snap wiring tests are intentionally red pending Task 4 wiring.
+
+### Catatan
+
+- No production code changed. This keeps Task 3 as failing tests only for Task 4 implementation.
+- The targeted pointer-up test now cannot pass from a prior move-time `onSnapLines([])` call.
+
+---
+
 ## Current Task — Move Tool Snapping (Task 2: computeSnapAdjustment — Code Review Fix) [COMPLETE]
 
 Date: 2026-06-01
