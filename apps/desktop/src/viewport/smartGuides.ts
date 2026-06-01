@@ -60,8 +60,10 @@ export function computeSnapAdjustment(
           bestDxDist = dist;
           bestDx = d;
           bestDxHitX = te[tk];
-          bestDxLineY1 = Math.min(moving.y, t.y) - 10;
-          bestDxLineY2 = Math.max(moving.y + moving.h, t.y + t.h) + 10;
+          const rawY1 = Math.min(moving.y, t.y) - 10;
+          const rawY2 = Math.max(moving.y + moving.h, t.y + t.h) + 10;
+          bestDxLineY1 = Number.isFinite(rawY1) ? rawY1 : moving.y - 10000;
+          bestDxLineY2 = Number.isFinite(rawY2) ? rawY2 : moving.y + moving.h + 10000;
         }
       }
     }
@@ -73,8 +75,10 @@ export function computeSnapAdjustment(
           bestDyDist = dist;
           bestDy = d;
           bestDyHitY = te[tk];
-          bestDyLineX1 = Math.min(moving.x, t.x) - 10;
-          bestDyLineX2 = Math.max(moving.x + moving.w, t.x + t.w) + 10;
+          const rawX1 = Math.min(moving.x, t.x) - 10;
+          const rawX2 = Math.max(moving.x + moving.w, t.x + t.w) + 10;
+          bestDyLineX1 = Number.isFinite(rawX1) ? rawX1 : moving.x - 10000;
+          bestDyLineX2 = Number.isFinite(rawX2) ? rawX2 : moving.x + moving.w + 10000;
         }
       }
     }

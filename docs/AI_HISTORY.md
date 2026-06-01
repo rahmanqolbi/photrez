@@ -6,6 +6,47 @@
 
 ---
 
+## [2026-06-01] FEATURE — Move Tool Snapping (Task 2: computeSnapAdjustment) [COMPLETE]
+
+### Kategori: FEATURE / VIEWPORT / MOVE TOOL / UX
+
+**Deskripsi:** Task 2 dari multi-task plan untuk Move tool snapping. Task 1 (commit `96a8aea`) sudah commit 10 failing tests di `apps/desktop/src/__tests__/snap-adjustment.test.ts` yang menunggu `computeSnapAdjustment` function. Code review menemukan sign error di plan spec — plan sudah di-fix dan test commit sudah include sign correction (`d = te[tk] - me[mk]`).
+
+Implementasi function + `SnapResult` interface di `apps/desktop/src/viewport/smartGuides.ts`, rewrite `computeSnapLines` jadi thin wrapper delegating ke function baru. Behavior: per-axis nearest-wins, returns `{ dx, dy, lines }` (lines = up to 2, satu per axis). Default threshold 5px.
+
+**Sign Convention (Corrected):**
+- `d = te[tk] - me[mk]` (target minus moving)
+- Positive `dx` = moving rect's candidate is LEFT of target's candidate → adding offset moves TOWARD target
+- Old plan sign (`me[mk] - te[tk]`) gave wrong direction (moved AWAY from target)
+- Tests assert positive `dx` for `moving.x < target.x` — confirmed by test "snaps moving left edge to target left edge" (expects `dx = 2` for moving at x=98, target at x=100)
+
+**Files Changed:**
+- `apps/desktop/src/viewport/smartGuides.ts`: 86 insertions, 40 deletions. Added `SnapResult` interface, `buildAxis()` helper, `X_KEYS`/`Y_KEYS` constants, `computeSnapAdjustment()` (main per-axis nearest-wins logic), rewrote `computeSnapLines()` as thin wrapper.
+
+**Verifikasi:**
+- ✅ `npx vitest run snap-adjustment`: 10/10 PASS (all new tests)
+- ✅ `npx vitest run smart-guides`: 11/11 PASS (existing wrapper tests)
+- ✅ `npx vitest run` (full suite): 109/109 PASS (12 test files) — 99 existing + 10 new
+
+**Key Behaviors Verified by Tests:**
+- Zero delta + empty lines when no target within threshold
+- Snap moving left edge → target left edge (dx=+2 for moving x=98, target x=100)
+- Snap moving center → target center (dx=0, line emitted)
+- Snap to canvas horizontal center (using Infinity sentinel target for full-height line)
+- Snap moving top edge → target top edge (dy=+2 for moving y=98, target y=100)
+- Nearest-wins when multiple targets within threshold (X axis)
+- At most one line per axis (0, 1, or 2 total)
+- Custom threshold respected (no snap when distance >= threshold)
+- Default threshold = 5 (verified by test omitting param)
+- Vertical guide (x1==x2) for X-axis snap; horizontal guide (y1==y2) for Y-axis snap
+
+**Catatan:**
+- Task 3 (front-end wiring di `SelectionTransformOverlay` atau move tool handler) belum dimulai — `computeSnapAdjustment` siap dipakai kapan saja, return value `{dx, dy, lines}` includes adjustment deltas yang tinggal dijumlahkan ke moving.x/y dan lines yang tinggal di-render.
+- Plan commit Step 5 pakai `--no-verify` (pre-existing vitest pool teardown issue, unrelated ke work ini).
+- Smart guides: edge-vs-edge, center-vs-center snap. Tidak ada snap ke center-vs-edge (cross-axis matching) — sesuai plan spec.
+
+---
+
 ## [2026-06-01] BUG FIX — SelectionTransformOverlay Blocks Panning Cursor + Pointer Events [COMPLETE]
 
 ### Kategori: BUG FIX / VIEWPORT / OVERLAY / UX

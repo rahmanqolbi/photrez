@@ -115,4 +115,15 @@ describe("computeSnapAdjustment", () => {
     expect(yOnly.lines.length).toBeGreaterThan(0);
     expect(yOnly.lines[0].y1).toBe(yOnly.lines[0].y2);
   });
+
+  it("produces finite guide-line endpoints when snapping to synthetic center line", () => {
+    const moving = { x: 298, y: 0, w: 200, h: 200 };
+    const targets = [
+      { x: 500, y: -Infinity, w: 0, h: Infinity },
+    ];
+    const result = computeSnapAdjustment(moving, targets, 5);
+    expect(result.lines.length).toBe(1);
+    expect(Number.isFinite(result.lines[0].y1)).toBe(true);
+    expect(Number.isFinite(result.lines[0].y2)).toBe(true);
+  });
 });
