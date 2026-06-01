@@ -14,7 +14,7 @@
 **Files Changed:**
 - `apps/desktop/src/viewport/smartGuides.ts`: add `SnapResult`, `computeSnapAdjustment()`, wrapper `computeSnapLines()`, finite endpoint guard untuk synthetic line targets.
 - `apps/desktop/src/viewport/input-handler.ts`: add `isAltPressed`, `onComputeSnap`, `onSnapLines`; apply snap deltas in Move branch; Alt bypass; pointer-up clear.
-- `apps/desktop/src/components/editor/CanvasViewport.tsx`: target list generation (non-active layers + canvas + center lines), `onComputeSnap`/`onSnapLines` wiring, per-move Alt sync, blur cleanup.
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`: target list generation (visible non-active layers + canvas + center lines), `onComputeSnap`/`onSnapLines` wiring, per-move Alt sync, blur cleanup.
 - `apps/desktop/src/__tests__/snap-adjustment.test.ts`: 11 helper tests.
 - `apps/desktop/src/__tests__/input-handler-snap.test.ts`: 4 input-handler wiring tests.
 - `docs/FEATURES.md`: mark Alt-disable complete and frontend tests 114 passing.

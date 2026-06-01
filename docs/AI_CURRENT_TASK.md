@@ -32,7 +32,7 @@ Fitur sekarang:
    - Alt branch and pointer-up clear snap lines.
 
 3. **`apps/desktop/src/components/editor/CanvasViewport.tsx`**
-   - Precomputes snap targets per drag: every non-active layer, canvas rect, synthetic vertical/horizontal center lines.
+   - Precomputes snap targets per drag: visible non-active layers, canvas rect, synthetic vertical/horizontal center lines.
    - Wires `onComputeSnap` and `onSnapLines`.
    - Re-syncs Alt state per pointer-move sample and clears Alt on blur.
 

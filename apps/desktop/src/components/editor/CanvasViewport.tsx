@@ -186,7 +186,7 @@ export function CanvasViewport() {
     const docH = activeEngineForTargets ? activeEngineForTargets.getHeight() : 0;
     const layerTargets: SnapRect[] = activeEngineForTargets
       ? activeEngineForTargets.getLayers()
-        .filter((l) => l.id !== movingId)
+        .filter((l) => l.visible && l.id !== movingId)
         .map((l) => ({
           x: l.transform.x,
           y: l.transform.y,
