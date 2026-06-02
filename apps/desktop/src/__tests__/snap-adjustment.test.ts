@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeSnapAdjustment } from "../viewport/smartGuides";
+import { computeSnapAdjustment, SnapRect } from "../viewport/smartGuides";
 
 describe("computeSnapAdjustment", () => {
   it("returns zero delta and no lines when no target is within threshold", () => {
@@ -125,5 +125,68 @@ describe("computeSnapAdjustment", () => {
     expect(result.lines.length).toBe(1);
     expect(Number.isFinite(result.lines[0].y1)).toBe(true);
     expect(Number.isFinite(result.lines[0].y2)).toBe(true);
+  });
+
+  it("snaps layer 10px from canvas edge (within 12px threshold)", () => {
+    const moving = { x: 10, y: 100, w: 50, h: 50 };
+    const targets: SnapRect[] = [
+      { x: 0, y: 0, w: 1000, h: 800, snapThreshold: 12, snapPriority: 3 },
+    ];
+    const result = computeSnapAdjustment(moving, targets, 5);
+    expect(result.dx).toBe(-10);
+  });
+
+  it("snaps layer 11px from canvas edge (within 12px threshold)", () => {
+    const moving = { x: 11, y: 100, w: 50, h: 50 };
+    const targets: SnapRect[] = [
+      { x: 0, y: 0, w: 1000, h: 800, snapThreshold: 12, snapPriority: 3 },
+    ];
+    const result = computeSnapAdjustment(moving, targets, 5);
+    expect(result.dx).toBe(-11);
+  });
+
+  it("does NOT snap layer 13px from canvas edge (outside 12px threshold)", () => {
+    const moving = { x: 13, y: 100, w: 50, h: 50 };
+    const targets: SnapRect[] = [
+      { x: 0, y: 0, w: 1000, h: 800, snapThreshold: 12, snapPriority: 3 },
+    ];
+    const result = computeSnapAdjustment(moving, targets, 5);
+    expect(result.dx).toBe(0);
+  });
+
+  it("canvas edge wins over layer edge when both are candidates", () => {
+    const moving = { x: 7, y: 100, w: 50, h: 50 };
+    const targets: SnapRect[] = [
+      { x: 0, y: 0, w: 1000, h: 800, snapThreshold: 12, snapPriority: 3 },
+      { x: -48, y: 100, w: 50, h: 50 },
+    ];
+    const result = computeSnapAdjustment(moving, targets, 5);
+    expect(result.dx).toBe(-7);
+  });
+
+  it("canvas center snap works within its 6px threshold", () => {
+    const moving = { x: 100, y: 0, w: 50, h: 50 };
+    const result = computeSnapAdjustment(moving, [
+      { x: 120, y: -Infinity, w: 0, h: Infinity, snapThreshold: 6, snapPriority: 2 },
+    ], 5);
+    expect(result.dx).toBe(-5);
+  });
+
+  it("canvas center does NOT snap beyond its 6px threshold", () => {
+    const moving = { x: 100, y: 0, w: 50, h: 50 };
+    const result = computeSnapAdjustment(moving, [
+      { x: 132, y: -Infinity, w: 0, h: Infinity, snapThreshold: 6, snapPriority: 2 },
+    ], 5);
+    expect(result.dx).toBe(0);
+  });
+
+  it("backward compat: bare SnapRect uses default threshold and priority", () => {
+    const moving = { x: 97, y: 100, w: 50, h: 50 };
+    const targets: SnapRect[] = [
+      { x: 100, y: 200, w: 50, h: 50 },
+    ];
+    const result = computeSnapAdjustment(moving, targets, 5);
+    expect(result.dx).toBe(3);
+    expect(result.lines.length).toBe(1);
   });
 });
