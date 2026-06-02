@@ -1,6 +1,30 @@
 # AI History — Photrez
 
 ---
+## [2026-06-02] BUG FIX — Crop Box Invisible on Tool Activation [COMPLETE]
+
+### Kategori: BUG FIX / CROP / UI / VIEWPORT
+
+**Deskripsi:** Crop box tidak muncul saat Crop Tool diaktifkan. Root cause: `cropRect` tetap `null` sampai user drag di canvas.
+
+**Root Cause:**
+1. Tidak ada logic untuk bikin initial crop rect saat tool crop aktif — `cropRect` default `null`.
+2. `<CropOverlay>` hanya render kalau `props.cropRect` non-null.
+3. CropOverlay di shared SVG yang parent-nya `pointer-events: none`, jadi handle tidak bisa interaksi.
+
+**Perbaikan:**
+1. `ensureCropRect()` helper + `createEffect` on `activeTool() === "crop"`: bikin full-document rect saat tool aktif.
+2. Di `createEffect` on `activeDocumentId()`: clear/reinit crop rect saat ganti dokumen.
+3. Pindah `<CropOverlay>` dari shared SVG (`pointer-events: none`) ke SVG sendiri dengan `pointer-events: auto`, `z-index: 35`.
+
+**Files Changed:**
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`: `ensureCropRect`, activeTool effect, document reinit, crop SVG separator
+
+**Verifikasi:**
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `npx vitest run`: 182 PASS (17 files)
+
+---
 ## [2026-06-02] FEATURE — OptionBar Crop Section Rewrite [COMPLETE]
 
 ### Kategori: FEATURE / CROP / OPTION BAR / UI

@@ -143,6 +143,27 @@ export function CanvasViewport() {
     return layer?.locked ?? false;
   });
 
+  // ─── Crop tool auto-init ───
+  const ensureCropRect = () => {
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+    const rect = cropRect();
+    if (
+      rect &&
+      rect.x >= 0 &&
+      rect.y >= 0 &&
+      rect.w <= engine.getWidth() &&
+      rect.h <= engine.getHeight()
+    )
+      return;
+    setCropRect({ x: 0, y: 0, w: engine.getWidth(), h: engine.getHeight() });
+  };
+
+  createEffect(() => {
+    if (activeTool() !== "crop") return;
+    ensureCropRect();
+  });
+
   // Kinetic momentum scroll physics
   let lastPointerPositions: { time: number; x: number; y: number }[] = [];
   let momentumVelocity = { x: 0, y: 0 };
@@ -574,6 +595,12 @@ export function CanvasViewport() {
     const engine = workspace.getActiveEngine();
     if (!engine) return;
 
+    if (activeTool() === "crop") {
+      setCropRect({ x: 0, y: 0, w: engine.getWidth(), h: engine.getHeight() });
+    } else {
+      setCropRect(null);
+    }
+
     try {
       if (overlayCanvasRef) {
         overlayCanvasRef.width = engine.getWidth();
@@ -893,16 +920,6 @@ export function CanvasViewport() {
             <HoverHighlight />
             <SmartGuides lines={snapLines()} />
             <BrushCursorOverlay />
-            <CropOverlay
-              cropRect={cropRect()}
-              guideMode={cropGuideMode()}
-              canvasWidth={docWidth()}
-              canvasHeight={docHeight()}
-              zoom={zoom()}
-              cropMode={cropMode()}
-              cropAspect={cropAspect()}
-              onCropRectChange={(rect) => setCropRect(rect)}
-            />
             <Show when={hudInfo()}>
               {(h) => (
                 <TransformHud
@@ -961,6 +978,32 @@ export function CanvasViewport() {
               }}
               snapActive={snapLines().length > 0}
             />
+          </Show>
+
+          {/* Crop Overlay — own SVG layer (parent shared SVG has pointer-events: none) */}
+          <Show when={activeTool() === "crop" && cropRect()}>
+            <svg
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                overflow: "visible",
+                "pointer-events": "auto",
+                "z-index": 35,
+              }}
+            >
+              <CropOverlay
+                cropRect={cropRect()}
+                guideMode={cropGuideMode()}
+                canvasWidth={docWidth()}
+                canvasHeight={docHeight()}
+                zoom={zoom()}
+                cropMode={cropMode()}
+                cropAspect={cropAspect()}
+                onCropRectChange={(rect) => setCropRect(rect)}
+              />
+            </svg>
           </Show>
         </div>
       </Show>

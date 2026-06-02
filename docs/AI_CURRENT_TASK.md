@@ -2,6 +2,49 @@
 
 ---
 
+## Current Task — Crop Box Invisible Fix [COMPLETE]
+
+**Date:** 2026-06-02
+
+### Root Cause
+
+Crop box tidak muncul saat Crop Tool diaktifkan karena:
+1. `cropRect` default `null` di `EditorContext.tsx`, dan tidak ada logic untuk bikin initial rect saat tool aktif.
+2. `<CropOverlay>` hanya render kalau `props.cropRect` ada (`<Show when={props.cropRect}>`).
+3. CropOverlay berada di shared SVG yang parent-nya `pointer-events: none`, menyebabkan handle interaksi tidak bisa menerima event.
+
+### Perbaikan
+
+1. **Task 1 — Init crop rect on tool activation:**
+   - Helper `ensureCropRect()` bikin full-document rect kalau `cropRect()` null/out-of-bounds.
+   - `createEffect` memanggil `ensureCropRect()` setiap kali `activeTool()` berubah menjadi `"crop"`.
+   - Lokasi: `CanvasViewport.tsx` setelah `isLayerLocked`.
+
+2. **Task 2 — Clear/reinit crop rect on document change:**
+   - Di `createEffect` yang bergantung `activeDocumentId()`, tambah `setCropRect(null)` untuk dokumen baru.
+   - Jika `activeTool() === "crop"`, langsung set ke full-document rect dari engine baru.
+   - Cegah stale crop rect dari dokumen sebelumnya.
+
+3. **Task 3 — Own SVG layer for CropOverlay:**
+   - Pindahkan `<CropOverlay>` dari shared SVG (yang `pointer-events: none`) ke SVG sendiri.
+   - SVG baru punya `pointer-events: auto`, `z-index: 35`, `position: absolute`, `inset: 0`.
+   - Ditampilkan hanya saat `activeTool() === "crop" && cropRect()`, ditaruh setelah SelectionTransformOverlay.
+
+### Files Changed
+
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`: `ensureCropRect` helper, activeTool createEffect, document change reinit, CropOverlay SVG separation
+
+### Verifikasi
+
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `npx vitest run`: 182 PASS (17 files)
+
+### Follow-up
+
+- Drag-anywhere-to-create-new-crop-rect (deferred — existing drag via canvas + handles covers this)
+
+---
+
 ## Current Task — OptionBar Crop Section Rewrite [COMPLETE]
 
 **Date:** 2026-06-02
