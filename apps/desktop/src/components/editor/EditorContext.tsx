@@ -85,7 +85,7 @@ export function EditorProvider(props: {
 
       const engine = props.workspace.getActiveEngine();
       if (engine) {
-        setLayers([...engine.getLayers()]);
+        setLayers(engine.getLayers().map(l => ({ ...l, transform: { ...l.transform } })));
         setActiveLayerId(engine.getActiveLayerId());
         setDocWidth(engine.getWidth());
         setDocHeight(engine.getHeight());

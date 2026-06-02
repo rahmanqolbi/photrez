@@ -95,7 +95,7 @@ export function CanvasViewport() {
 
   const [snapLines, setSnapLines] = createSignal<{ x1: number; y1: number; x2: number; y2: number }[]>([]);
 
-  const [hudInfo, setHudInfo] = createSignal<{
+  type HudData = {
     mode: HudMode;
     clientX: number;
     clientY: number;
@@ -106,7 +106,22 @@ export function CanvasViewport() {
     scalePercent: number;
     angle: number;
     snapActive: boolean;
-  } | null>(null);
+  };
+
+  const [hudInfo, setHudInfoInner] = createSignal<HudData | null>(null);
+
+  const setHudInfo = (hud: HudData | null) => {
+    if (!hud) return setHudInfoInner(null);
+    const rect = canvasContainerRef?.getBoundingClientRect();
+    const engine = workspace.getActiveEngine();
+    if (!rect || !engine) return setHudInfoInner(hud);
+    const doc = screenToDocument(hud.clientX, hud.clientY, rect, engine.getViewport());
+    setHudInfoInner({
+      ...hud,
+      clientX: doc.x,
+      clientY: doc.y,
+    });
+  };
 
   // Derived: is active layer locked
   const isLayerLocked = createMemo(() => {
@@ -867,6 +882,28 @@ export function CanvasViewport() {
             <SelectionTransformOverlay
               isNavigationMode={isSpacePressed() || isPanning()}
               onHudUpdate={setHudInfo}
+              onComputeSnap={(rect) => {
+                const engine = workspace.getActiveEngine();
+                if (!engine) return { dx: 0, dy: 0, lines: [] };
+                const movingId = engine.getActiveLayerId();
+                const docW = engine.getWidth();
+                const docH = engine.getHeight();
+                const layerTargets: SnapRect[] = engine.getLayers()
+                  .filter((l) => l.visible && l.id !== movingId)
+                  .map((l) => {
+                    const aabb = getLayerAabb(l.transform, l.width, l.height);
+                    return { x: aabb.x, y: aabb.y, w: aabb.width, h: aabb.height };
+                  });
+                const snapTargets: SnapRect[] = [
+                  ...layerTargets,
+                  { x: 0, y: 0, w: docW, h: docH },
+                  { x: docW / 2, y: -Infinity, w: 0, h: Infinity },
+                  { x: -Infinity, y: docH / 2, w: Infinity, h: 0 },
+                ];
+                const result = computeSnapAdjustment(rect, snapTargets);
+                setSnapLines(result.lines);
+                return result;
+              }}
               snapActive={snapLines().length > 0}
             />
           </Show>

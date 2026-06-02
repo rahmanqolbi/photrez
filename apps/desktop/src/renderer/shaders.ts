@@ -1,7 +1,7 @@
 // Vertex shader: Fullscreen quad with view projection matrix transforms
-// Handles center-anchored scale, flipH/flipV, and rotation.
-// u_layerRect.zw = effective pixel dimensions (layerWidth * |scaleX|, layerHeight * |scaleY|)
-// u_flipSign = (±1, ±1) — sign mirrors when scaleX<0 XOR flipH (same for Y)
+// Handles center-anchored flip, rotation, and scale.
+// u_layerRect.zw = effective pixel dimensions (layerWidth * scaleX, layerHeight * scaleY)
+// u_flipSign = (±1, ±1) — from flipH/flipV booleans only (not from scaleX sign)
 export const VERTEX_SHADER_SOURCE = `#version 300 es
 precision highp float;
 
@@ -25,11 +25,11 @@ void main() {
   // Map to layer-local in effective pixel dimensions
   vec2 localPos = pos * u_layerRect.zw;
 
-  // Apply mirror (flip) in local space
-  localPos *= u_flipSign;
-
-  // Offset to center for rotation pivot
+  // Center for rotation pivot
   vec2 centered = localPos - u_layerRect.zw * 0.5;
+
+  // Mirror (flip) around center — order: center first, then flip
+  centered *= u_flipSign;
 
   // Rotation — negate for CW (Photoshop convention)
   float rad = -radians(u_layerRotation);

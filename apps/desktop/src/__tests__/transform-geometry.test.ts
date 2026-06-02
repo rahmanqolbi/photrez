@@ -19,6 +19,40 @@ function makeLayer(overrides: Partial<Transform2D> = {}) {
   return { transform: { ...BASE_TRANSFORM, ...overrides }, width: LAYER_W, height: LAYER_H } as const;
 }
 
+describe("flip semantics", () => {
+  it("getLayerCorners same rect regardless of flipH", () => {
+    const base = getLayerCorners(makeLayer().transform, LAYER_W, LAYER_H);
+    const flipped = getLayerCorners(makeLayer({ flipH: true }).transform, LAYER_W, LAYER_H);
+    for (let i = 0; i < 4; i++) {
+      expect(flipped[i].x).toBe(base[i].x);
+      expect(flipped[i].y).toBe(base[i].y);
+    }
+  });
+
+  it("getLayerAabb same rect regardless of flipH", () => {
+    const base = getLayerAabb(makeLayer().transform, LAYER_W, LAYER_H);
+    const flipped = getLayerAabb(makeLayer({ flipH: true }).transform, LAYER_W, LAYER_H);
+    expect(flipped.x).toBe(base.x);
+    expect(flipped.y).toBe(base.y);
+    expect(flipped.width).toBe(base.width);
+    expect(flipped.height).toBe(base.height);
+  });
+
+  it("applyResizeHandle returns positive scaleX even when flipH is true", () => {
+    const start = { ...BASE_TRANSFORM, scaleX: 1, scaleY: 1, x: 100, y: 100, flipH: true };
+    const result = applyResizeHandle(start, LAYER_W, LAYER_H, "se", 50, 0, false, false);
+    expect(result.scaleX).toBeGreaterThan(0);
+    expect(result.flipH).toBe(true);
+  });
+
+  it("applyResizeHandle preserves flipH boolean", () => {
+    const start = { ...BASE_TRANSFORM, scaleX: 1, scaleY: 1, x: 100, y: 100, flipH: true };
+    const result = applyResizeHandle(start, LAYER_W, LAYER_H, "se", 50, 0, true, false);
+    expect(result.flipH).toBe(true);
+    expect(result.scaleX).toBeGreaterThan(0);
+  });
+});
+
 describe("getLayerCenter", () => {
   it("returns center of unrotated layer", () => {
     const c = getLayerCenter(makeLayer().transform, LAYER_W, LAYER_H);

@@ -29,17 +29,12 @@ export function getLayerCorners(transform: Transform2D, w: number, h: number): P
   const effW = w * Math.abs(transform.scaleX);
   const effH = h * Math.abs(transform.scaleY);
 
-  const sxSign = Math.sign(transform.scaleX) * (transform.flipH ? -1 : 1);
-  const sySign = Math.sign(transform.scaleY) * (transform.flipV ? -1 : 1);
-
-  const effectiveW = sxSign < 0 ? -effW : effW;
-  const effectiveH = sySign < 0 ? -effH : effH;
-
+  // Visual rect is always [x, y, effW, effH]; flipH/flipV only mirror texture in shader
   const rawCorners: Point[] = [
     { x: transform.x, y: transform.y },
-    { x: transform.x + effectiveW, y: transform.y },
-    { x: transform.x + effectiveW, y: transform.y + effectiveH },
-    { x: transform.x, y: transform.y + effectiveH },
+    { x: transform.x + effW, y: transform.y },
+    { x: transform.x + effW, y: transform.y + effH },
+    { x: transform.x, y: transform.y + effH },
   ];
 
   const center = getLayerCenter(transform, w, h);
@@ -76,21 +71,19 @@ export function detectHandle(
   const center = getLayerCenter(transform, w, h);
   const local = rotatePoint(point, center, -transform.rotation);
 
-  const sxSign = Math.sign(transform.scaleX) * (transform.flipH ? -1 : 1);
-  const sySign = Math.sign(transform.scaleY) * (transform.flipV ? -1 : 1);
   const effW = w * Math.abs(transform.scaleX);
   const effH = h * Math.abs(transform.scaleY);
-  const effectiveX = sxSign < 0 ? transform.x + effW : transform.x;
-  const effectiveY = sySign < 0 ? transform.y + effH : transform.y;
+  const rX = transform.x;
+  const rY = transform.y;
 
   const handleHit = HANDLE_HIT / zoom;
   const rotateThresh = ROTATE_THRESHOLD / zoom;
 
   const corners: Array<{ id: string; x: number; y: number }> = [
-    { id: "nw", x: effectiveX, y: effectiveY },
-    { id: "ne", x: effectiveX + effW, y: effectiveY },
-    { id: "se", x: effectiveX + effW, y: effectiveY + effH },
-    { id: "sw", x: effectiveX, y: effectiveY + effH },
+    { id: "nw", x: rX, y: rY },
+    { id: "ne", x: rX + effW, y: rY },
+    { id: "se", x: rX + effW, y: rY + effH },
+    { id: "sw", x: rX, y: rY + effH },
   ];
 
   for (const c of corners) {
@@ -98,10 +91,10 @@ export function detectHandle(
   }
 
   const sides: Array<{ id: string; x: number; y: number }> = [
-    { id: "n", x: effectiveX + effW / 2, y: effectiveY },
-    { id: "e", x: effectiveX + effW, y: effectiveY + effH / 2 },
-    { id: "s", x: effectiveX + effW / 2, y: effectiveY + effH },
-    { id: "w", x: effectiveX, y: effectiveY + effH / 2 },
+    { id: "n", x: rX + effW / 2, y: rY },
+    { id: "e", x: rX + effW, y: rY + effH / 2 },
+    { id: "s", x: rX + effW / 2, y: rY + effH },
+    { id: "w", x: rX, y: rY + effH / 2 },
   ];
 
   for (const s of sides) {
@@ -109,16 +102,16 @@ export function detectHandle(
   }
 
   const insideCore =
-    local.x >= effectiveX &&
-    local.x <= effectiveX + effW &&
-    local.y >= effectiveY &&
-    local.y <= effectiveY + effH;
+    local.x >= rX &&
+    local.x <= rX + effW &&
+    local.y >= rY &&
+    local.y <= rY + effH;
 
   if (insideCore) return "move";
 
   const expanded = {
-    x: effectiveX - rotateThresh,
-    y: effectiveY - rotateThresh,
+    x: rX - rotateThresh,
+    y: rY - rotateThresh,
     w: effW + rotateThresh * 2,
     h: effH + rotateThresh * 2,
   };
@@ -150,16 +143,13 @@ export function applyResizeHandle(
   const dx = screenDx * cos - screenDy * sin;
   const dy = screenDx * sin + screenDy * cos;
 
-  const sxSign = Math.sign(transform.scaleX) * (transform.flipH ? -1 : 1);
-  const sySign = Math.sign(transform.scaleY) * (transform.flipV ? -1 : 1);
-
   const absSX = Math.abs(transform.scaleX);
   const absSY = Math.abs(transform.scaleY);
 
   let vw = layerW * absSX;
   let vh = layerH * absSY;
-  let vx = sxSign < 0 ? transform.x + vw : transform.x;
-  let vy = sySign < 0 ? transform.y + vh : transform.y;
+  let vx = transform.x;
+  let vy = transform.y;
 
   let localDx = altKey ? dx * 2 : dx;
   let localDy = altKey ? dy * 2 : dy;
@@ -194,22 +184,24 @@ export function applyResizeHandle(
   }
 
   if (altKey) {
-    vx = (sxSign < 0 ? transform.x + layerW * absSX : transform.x) - (vw - layerW * absSX) / 2;
-    vy = (sySign < 0 ? transform.y + layerH * absSY : transform.y) - (vh - layerH * absSY) / 2;
+    const cx = vx + vw / 2;
+    const cy = vy + vh / 2;
+    vx = transform.x - (vw - layerW * absSX) / 2;
+    vy = transform.y - (vh - layerH * absSY) / 2;
   }
 
   const newCenterX = vx + vw / 2;
   const newCenterY = vy + vh / 2;
 
-  const newSX = sxSign * (Math.abs(transform.scaleX) * (vw / (layerW * absSX)));
-  const newSY = sySign * (Math.abs(transform.scaleY) * (vh / (layerH * absSY)));
+  const newSX = Math.abs(transform.scaleX) * (vw / (layerW * absSX));
+  const newSY = Math.abs(transform.scaleY) * (vh / (layerH * absSY));
 
   return {
     ...transform,
     scaleX: newSX,
     scaleY: newSY,
-    x: newCenterX - (newSX * layerW) / 2,
-    y: newCenterY - (newSY * layerH) / 2,
+    x: vx,
+    y: vy,
   };
 }
 

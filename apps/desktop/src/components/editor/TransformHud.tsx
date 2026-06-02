@@ -39,14 +39,12 @@ export function TransformHud(props: TransformHudProps) {
     }
   });
 
-  const docX = () => props.clientX / props.zoom;
-  const docY = () => props.clientY / props.zoom;
   const padX = 16;
   const padY = 24;
 
   return (
     <Show when={label().length > 0}>
-      <g transform={`translate(${docX() + padX / props.zoom}, ${docY() + padY / props.zoom})`}>
+      <g transform={`translate(${props.clientX + padX / props.zoom}, ${props.clientY + padY / props.zoom})`}>
         <rect
           x={0}
           y={0}

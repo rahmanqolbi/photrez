@@ -2,6 +2,7 @@ import { createSignal, createMemo, Show, For, onMount, onCleanup } from "solid-j
 import { useEditor } from "./EditorContext";
 import type { Transform2D } from "@/engine/types";
 import type { HudMode } from "./TransformHud";
+import type { SnapRect, SnapResult } from "@/viewport/smartGuides";
 import {
   getLayerCenter,
   getLayerAabb,
@@ -24,6 +25,7 @@ interface SelectionTransformOverlayProps {
     angle: number;
     snapActive: boolean;
   } | null) => void;
+  onComputeSnap?: (rect: SnapRect) => SnapResult;
   snapActive?: boolean;
 }
 
@@ -142,17 +144,31 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
     const cent = getLayerCenter(drag.startTransform, layer.width, layer.height);
 
     if (drag.type === "move") {
-      engine.transformLayer(layer.id, {
-        x: drag.startTransform.x + dx,
-        y: drag.startTransform.y + dy,
-      });
+      let nextX = drag.startTransform.x + dx;
+      let nextY = drag.startTransform.y + dy;
+      let snapActive = false;
+      if (props.onComputeSnap) {
+        const aabb = getLayerAabb(drag.startTransform, layer.width, layer.height);
+        const baseX = aabb.x;
+        const baseY = aabb.y;
+        const snap = props.onComputeSnap({
+          x: baseX + (nextX - drag.startTransform.x),
+          y: baseY + (nextY - drag.startTransform.y),
+          w: aabb.width,
+          h: aabb.height,
+        });
+        nextX += snap.dx;
+        nextY += snap.dy;
+        snapActive = snap.lines.length > 0;
+      }
+      engine.transformLayer(layer.id, { x: nextX, y: nextY });
       props.onHudUpdate?.({
         mode: "move",
         clientX: e.clientX,
         clientY: e.clientY,
-        deltaX: dx,
-        deltaY: dy,
-        width: 0, height: 0, scalePercent: 0, angle: 0, snapActive: props.snapActive ?? false,
+        deltaX: nextX - drag.startTransform.x,
+        deltaY: nextY - drag.startTransform.y,
+        width: 0, height: 0, scalePercent: 0, angle: 0, snapActive,
       });
     } else if (drag.type === "rotate") {
       const newRot = applyRotationDrag(
@@ -216,6 +232,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
           engine.transformLayer(layer.id, drag.startTransform);
           scheduler.requestRender();
         }
+        props.onHudUpdate?.(null);
         setDragState(null);
       }
     };
@@ -256,20 +273,35 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
             )}
           </Show>
 
-          {/* Rotated group for handles and interactions */}
-          <g transform={`rotate(${rotation()} ${center().x} ${center().y})`}>
-            {/* Center pivot dot */}
-            <circle
-              cx={center().x}
-              cy={center().y}
-              r={3 / z()}
-              fill="#E15A17"
-              vector-effect="non-scaling-stroke"
-              style={{ "pointer-events": "none" }}
-            />
+            {/* Rotated group for handles and interactions */}
+            <g transform={`rotate(${rotation()} ${center().x} ${center().y})`}>
+              {/* Center pivot dot */}
+              <circle
+                cx={center().x}
+                cy={center().y}
+                r={3 / z()}
+                fill="#E15A17"
+                vector-effect="non-scaling-stroke"
+                style={{ "pointer-events": "none" }}
+              />
 
-            {/* 8 handles at unrotated edges, in layer-local coords */}
-            <For each={[
+              {/* Move hit zone — rendered before handles so handles are on top */}
+              <rect
+                x={layerX()}
+                y={layerY()}
+                width={effW()}
+                height={effH()}
+                fill="transparent"
+                style={{ cursor: "move", "pointer-events": "all" }}
+                onPointerDown={(e) => handlePointerDown(e, "move")}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerEnter={() => setHoverHandle("move")}
+                onPointerLeave={() => setHoverHandle(null)}
+              />
+
+              {/* 8 handles at unrotated edges, in layer-local coords */}
+              <For each={[
               { type: "nw", x: layerX(), y: layerY() },
               { type: "n", x: layerX() + effW() / 2, y: layerY() },
               { type: "ne", x: layerX() + effW(), y: layerY() },
@@ -334,21 +366,6 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
                 );
               }}
             </For>
-
-            {/* Move hit zone — unrotated rect, visually covers rotated layer */}
-            <rect
-              x={layerX()}
-              y={layerY()}
-              width={effW()}
-              height={effH()}
-              fill="transparent"
-              style={{ cursor: "move", "pointer-events": "all" }}
-              onPointerDown={(e) => handlePointerDown(e, "move")}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerEnter={() => setHoverHandle("move")}
-              onPointerLeave={() => setHoverHandle(null)}
-            />
           </g>
         </svg>
       )}

@@ -202,8 +202,8 @@ export class WebGL2Backend implements RenderBackend {
         const effH = renderLayer.height * Math.abs(t.scaleY);
         const cx = t.x + effW / 2;
         const cy = t.y + effH / 2;
-        const flipX = Math.sign(t.scaleX) * (t.flipH ? -1 : 1);
-        const flipY = Math.sign(t.scaleY) * (t.flipV ? -1 : 1);
+        const flipX = t.flipH ? -1 : 1;
+        const flipY = t.flipV ? -1 : 1;
 
         gl.uniform4f(
           this.layerUniforms.layerRect,
