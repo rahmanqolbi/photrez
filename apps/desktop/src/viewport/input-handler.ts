@@ -153,6 +153,14 @@ export function handlePointerUp(
       context.onPaintStroke?.([...context.strokePoints], tool === "eraser");
     }
     context.strokePoints = [];
+  } else if (tool === "crop") {
+    const x = Math.min(context.dragStart.x, docX);
+    const y = Math.min(context.dragStart.y, docY);
+    const w = Math.abs(context.dragStart.x - docX);
+    const h = Math.abs(context.dragStart.y - docY);
+    if (w > 2 && h > 2) {
+      context.onCropCreated?.(x, y, w, h);
+    }
   } else if (tool === "move") {
     context.onSnapLines?.([]);
   }
