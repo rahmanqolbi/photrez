@@ -21,6 +21,8 @@ import { SmartGuides } from "./SmartGuides";
 import { BrushCursorOverlay } from "./BrushCursorOverlay";
 import { CropOverlay } from "./CropOverlay";
 import { CropModeIndicator } from "./CropModeIndicator";
+import { TransformHud } from "./TransformHud";
+import type { HudMode } from "./TransformHud";
 
 // Overlay canvas for real-time brush stroke preview — sync 2D drawing, no createImageBitmap per move
 let overlayCanvasRef!: HTMLCanvasElement;
@@ -92,6 +94,19 @@ export function CanvasViewport() {
   let fitTransitionTimeoutId = 0;
 
   const [snapLines, setSnapLines] = createSignal<{ x1: number; y1: number; x2: number; y2: number }[]>([]);
+
+  const [hudInfo, setHudInfo] = createSignal<{
+    mode: HudMode;
+    clientX: number;
+    clientY: number;
+    deltaX: number;
+    deltaY: number;
+    width: number;
+    height: number;
+    scalePercent: number;
+    angle: number;
+    snapActive: boolean;
+  } | null>(null);
 
   // Derived: is active layer locked
   const isLayerLocked = createMemo(() => {
@@ -825,6 +840,21 @@ export function CanvasViewport() {
               canvasWidth={docWidth()}
               canvasHeight={docHeight()}
             />
+            <Show when={hudInfo()}>
+              <TransformHud
+                mode={hudInfo()?.mode ?? "move"}
+                clientX={hudInfo()?.clientX ?? 0}
+                clientY={hudInfo()?.clientY ?? 0}
+                zoom={zoom()}
+                deltaX={hudInfo()?.deltaX}
+                deltaY={hudInfo()?.deltaY}
+                width={hudInfo()?.width}
+                height={hudInfo()?.height}
+                scalePercent={hudInfo()?.scalePercent}
+                angle={hudInfo()?.angle}
+                snapActive={hudInfo()?.snapActive}
+              />
+            </Show>
           </svg>
 
           {/* Crop mode indicator bar */}
@@ -834,6 +864,7 @@ export function CanvasViewport() {
           <Show when={activeTool() === "move"}>
             <SelectionTransformOverlay
               isNavigationMode={isSpacePressed() || isPanning()}
+              onHudUpdate={setHudInfo}
             />
           </Show>
         </div>
