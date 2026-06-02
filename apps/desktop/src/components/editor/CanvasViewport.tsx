@@ -371,6 +371,9 @@ export function CanvasViewport() {
       const engine = workspace.getActiveEngine();
       if (!engine) return;
 
+      const history = workspace.getActiveHistory();
+      if (!history) return;
+
       const key = e.key.toLowerCase();
       const ctrl = e.ctrlKey || e.metaKey;
 
@@ -386,6 +389,29 @@ export function CanvasViewport() {
         if (!isSpacePressed()) {
           setIsSpacePressed(true);
         }
+        return;
+      }
+
+      // Keyboard nudge for Move Tool: Arrow = 1px, Shift+Arrow = 10px
+      if (activeTool() === "move" && (e.key.startsWith("Arrow"))) {
+        const activeId = engine.getActiveLayerId();
+        if (!activeId) return;
+        const layer = engine.getLayer(activeId);
+        if (!layer || layer.locked) return;
+
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        let dx = 0, dy = 0;
+        if (e.key === "ArrowUp") dy = -step;
+        else if (e.key === "ArrowDown") dy = step;
+        else if (e.key === "ArrowLeft") dx = -step;
+        else if (e.key === "ArrowRight") dx = step;
+
+        if (!e.repeat) {
+          history.commit(engine.snapshot());
+        }
+        engine.moveLayer(activeId, layer.transform.x + dx, layer.transform.y + dy);
+        scheduler.requestRender();
         return;
       }
 
