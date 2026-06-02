@@ -5,6 +5,63 @@
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_CURRENT_TASK.md` (status), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
 ---
+## [2026-06-02] FEATURE — Precision Move Pack (keyboard nudge, canvas auto-select, transform HUD, snap feedback) [COMPLETE]
+
+### Kategori: FEATURE / VIEWPORT / MOVE TOOL / UX
+
+**Deskripsi:** Enhance Move Tool dengan 4 peningkatan presisi: (1) keyboard nudge Arrow=1px / Shift+Arrow=10px, (2) canvas auto-select via transformed polygon hit-test, (3) transform HUD near cursor showing ΔX/ΔY, W/H/%, angle, (4) snap feedback label on HUD when snap lines active.
+
+**Files Changed:**
+- `apps/desktop/src/viewport/layerHitTest.ts`: NEW — `hitTestLayer`, `hitTestLayers` pure helpers (ray-casting point-in-polygon)
+- `apps/desktop/src/__tests__/layer-hit-test.test.ts`: NEW — 8 unit tests
+- `apps/desktop/src/components/editor/TransformHud.tsx`: NEW — SVG HUD component with `createMemo`, `HudMode` type
+- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: MODIFIED — `onHudUpdate` prop, `snapActive` prop, HUD emits per drag branch + clear on pointer-up
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`: MODIFIED — auto-select before `prepareToolContext()`, keyboard nudge in `handleKeyDown`, `hudInfo` signal, HUD wiring
+- `docs/AI_CURRENT_TASK.md`: completion entry
+- `docs/AI_HISTORY.md`: entry ini
+- `docs/FEATURES.md`: +5 rows in Selection + Move + Transform
+
+**Verifikasi Final:**
+- ✅ `npx vitest run`: 142/142 PASS (15 test files)
+- ✅ `pnpm.cmd run build`: PASS (6.07s, 2025 modules)
+- ✅ `cargo test -p photrez-core`: 85/85 PASS
+
+**Catatan:**
+- Canvas auto-select uses transformed polygon hit-test (ray-casting, not AABB) so rotated layers feel correct
+- Nudge commits history once per non-repeat keydown only; holding arrow doesn't spam undo stack
+- Nudge does NOT trigger snapping — it's explicit precision move, not drag behavior
+- Transform HUD is transient SVG overlay with `pointer-events: none`, no state persistence, positioned near cursor in document space
+- HUD "snap" label dynamically appears when `snapLines().length > 0` during drag
+- Code review found 6 issues (1 critical, 2 important, 3 minor) — all fixed before commit
+- All 5 commits in Precision Move Pack: layerHitTest → auto-select → nudge → HUD → fix reviews
+
+---
+## [2026-06-02] FEATURE — Remove vite-tsconfig-paths Plugin (Use Native Vite Resolver) [COMPLETE]
+
+### Kategori: FEATURE / BUILD CONFIG / INFRASTRUCTURE
+
+**Deskripsi:** Vite >= 6 (termasuk Vite 8.0.14 yang dipakai proyek ini) mendukung resolusi `tsconfig.paths` secara native lewat opsi `resolve.tsconfigPaths`. Plugin `vite-tsconfig-paths` menjadi redundan dan Vite memunculkan warning setiap kali build/dev dijalankan. Task ini menghapus plugin dan menggantinya dengan opsi native, sambil menjaga perilaku module resolution tetap identik (alias `@/*` → `./src/*`).
+
+**Files Changed:**
+- `apps/desktop/vite.config.ts`: hapus import `tsconfigPaths`, hapus dari array `plugins`, tambah `resolve: { tsconfigPaths: true }`.
+- `apps/desktop/package.json`: hapus `vite-tsconfig-paths@^6.1.1` dari `devDependencies`.
+- `pnpm-lock.yaml`: regenerated (`pnpm install` sukses, −3 packages, tidak ada orphan lockfile entry).
+- `docs/AI_CURRENT_TASK.md`: entri completion.
+- `docs/AI_HISTORY.md`: entri ini.
+- `docs/FEATURES.md`: baris baru di section Infrastructure.
+
+**Verifikasi Final:**
+- ✅ `pnpm.cmd run build`: PASS (7.69s, 2022 modules transformed). Warning plugin `vite-tsconfig-paths` sudah hilang.
+- ✅ `pnpm.cmd --filter photrez-desktop test`: 114/114 PASS (13 test files, 36.70s).
+- ✅ `pnpm.cmd install`: sukses regenerate lockfile.
+
+**Catatan:**
+- Perilaku module resolution identik: `tsconfig.json` `"paths": { "@/*": ["./src/*"] }` dibaca langsung oleh native Vite resolver.
+- Tidak ada perubahan di source code (`apps/desktop/src/**`).
+- Dependency `vite-tsconfig-paths` (3 packages total termasuk transitive) ter-cleanup dari `node_modules` dan `pnpm-lock.yaml`.
+- PLUGIN_TIMINGS warning yang muncul saat build adalah untuk plugin `solid` (unrelated, info-only).
+
+---
 ## [2026-06-01] FEATURE — Move Tool Snapping End-to-End [COMPLETE]
 
 ### Kategori: FEATURE / VIEWPORT / MOVE TOOL / UX

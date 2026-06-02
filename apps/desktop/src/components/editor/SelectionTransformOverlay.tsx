@@ -3,7 +3,6 @@ import { useEditor } from "./EditorContext";
 import type { Transform2D } from "@/engine/types";
 import type { HudMode } from "./TransformHud";
 import {
-  getLayerCorners,
   getLayerCenter,
   getLayerAabb,
   getCursorForHandle,
@@ -25,6 +24,7 @@ interface SelectionTransformOverlayProps {
     angle: number;
     snapActive: boolean;
   } | null) => void;
+  snapActive?: boolean;
 }
 
 const HANDLE_SIZE = 8;
@@ -147,12 +147,12 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
         y: drag.startTransform.y + dy,
       });
       props.onHudUpdate?.({
-        mode: "move" as HudMode,
+        mode: "move",
         clientX: e.clientX,
         clientY: e.clientY,
         deltaX: dx,
         deltaY: dy,
-        width: 0, height: 0, scalePercent: 0, angle: 0, snapActive: false,
+        width: 0, height: 0, scalePercent: 0, angle: 0, snapActive: props.snapActive ?? false,
       });
     } else if (drag.type === "rotate") {
       const newRot = applyRotationDrag(
@@ -164,11 +164,11 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
       );
       engine.transformLayer(layer.id, { rotation: newRot });
       props.onHudUpdate?.({
-        mode: "rotate" as HudMode,
+        mode: "rotate",
         clientX: e.clientX,
         clientY: e.clientY,
         angle: newRot - drag.startTransform.rotation,
-        deltaX: 0, deltaY: 0, width: 0, height: 0, scalePercent: 0, snapActive: false,
+        deltaX: 0, deltaY: 0, width: 0, height: 0, scalePercent: 0, snapActive: props.snapActive ?? false,
       });
     } else {
       const newTransform = applyResizeHandle(
@@ -185,13 +185,13 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
       const effW = layer.width * Math.abs(newTransform.scaleX);
       const effH = layer.height * Math.abs(newTransform.scaleY);
       props.onHudUpdate?.({
-        mode: "resize" as HudMode,
+        mode: "resize",
         clientX: e.clientX,
         clientY: e.clientY,
         width: effW,
         height: effH,
         scalePercent: Math.abs(newTransform.scaleX) * 100,
-        deltaX: 0, deltaY: 0, angle: 0, snapActive: false,
+        deltaX: 0, deltaY: 0, angle: 0, snapActive: props.snapActive ?? false,
       });
     }
     scheduler.requestRender();

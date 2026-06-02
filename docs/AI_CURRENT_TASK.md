@@ -2,6 +2,144 @@
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
+## Current Task — Precision Move Pack [COMPLETE]
+
+Date: 2026-06-02
+
+### Deskripsi
+
+Meningkatkan Move Tool dengan keyboard nudge, canvas auto-select layer, transform HUD minimal, dan snap feedback refinement. Tidak memperbesar MVP scope — tetap sesuai "selection + move + basic transform".
+
+### Tasks
+
+1. **[COMPLETE]** Spec design & review
+2. **[COMPLETE]** Keyboard nudge (Arrow=1px, Shift+Arrow=10px)
+3. **[COMPLETE]** Canvas auto-select (click-to-select layer under cursor)
+4. **[COMPLETE]** Transform HUD (ΔX/ΔY, W/H/%, angle near cursor)
+5. **[COMPLETE]** Snap feedback refinement (HUD "snap" label when snap lines active)
+6. **[COMPLETE]** Verification + docs updates
+
+### Verifikasi Final
+
+- ✅ `npx vitest run`: 142/142 PASS (15 test files)
+- ✅ `pnpm.cmd run build`: PASS (6.07s, 2025 modules)
+- ✅ `cargo test -p photrez-core`: 85/85 PASS
+
+### Files Changed
+
+- `apps/desktop/src/viewport/layerHitTest.ts`: NEW — `hitTestLayer`, `hitTestLayers` pure helpers
+- `apps/desktop/src/__tests__/layer-hit-test.test.ts`: NEW — 8 unit tests
+- `apps/desktop/src/components/editor/TransformHud.tsx`: NEW — SVG HUD component
+- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: MODIFIED — onHudUpdate prop, snapActive prop, HUD emits
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`: MODIFIED — canvas auto-select, keyboard nudge, HUD wiring
+- `docs/superpowers/specs/2026-06-02-precision-move-pack-design.md`: design spec
+- `docs/superpowers/plans/2026-06-02-precision-move-pack.md`: implementation plan
+
+### Catatan
+
+- Canvas auto-select uses transformed polygon hit-test (not AABB) via `getLayerCorners` + ray-casting
+- Nudge commits history once per non-repeat keydown (holding key doesn't spam undo stack)
+- Nudge does NOT trigger snapping (explicit precision move, not drag behavior)
+- Transform HUD is transient SVG overlay with `pointer-events: none`, no state persistence
+- HUD "snap" label appears when snap lines are active during drag
+- All 5 review findings fixed before merge (snapActive wiring, dead import, createMemo, as casts, JSX cleanup)
+
+---
+
+## Current Task — Photoshop-Like Free Transform for Move Tool [COMPLETE]
+
+Date: 2026-06-02
+
+### Deskripsi
+
+Implementasi Photoshop-like Free Transform overlay untuk Move Tool. Layer rendering, bounding box, handles, hit testing, cursor, resize math semua menggunakan true 2D transform, sehingga bounding box dan handle mengikuti rotasi/flip layer dengan benar.
+
+### Tasks
+
+1. **[COMPLETE]** Transform geometry helpers (`transformGeometry.ts`) + unit tests
+2. **[COMPLETE]** Renderer applies real transform in shader (rotation, flip, center-anchored scale)
+3. **[COMPLETE]** SVG free transform overlay (replace HTML div overlay)
+4. **[COMPLETE]** Photoshop-like pointer math (local-axis resize, rotate drag, modifier keys)
+5. **[COMPLETE]** Dynamic cursor UX (rotation-aware resize cursor)
+6. **[COMPLETE]** Snapping uses transformed AABB
+7. **[COMPLETE]** Verification + docs updates
+
+### Verifikasi Final
+
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `pnpm.cmd --filter photrez-desktop test`: 134/134 PASS (14 test files)
+- ✅ `cargo test -p photrez-core`: 85/85 PASS
+
+### Files Changed
+
+- `apps/desktop/src/viewport/transformGeometry.ts`: NEW — pure geometry helpers
+- `apps/desktop/src/__tests__/transform-geometry.test.ts`: NEW — 20 unit tests
+- `apps/desktop/src/renderer/shaders.ts`: vertex shader with center-anchored flip/rotation/scale
+- `apps/desktop/src/renderer/webgl2.ts`: new uniforms (u_layerCenter, u_layerRotation, u_flipSign)
+- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: SVG rotated group overlay
+- `apps/desktop/src/viewport/cursorResolver.ts`: rotation-aware resize cursors, new CursorContext fields
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`: pass layer rotation/scale to CursorContext; snap targets use getLayerAabb
+- `apps/desktop/src/viewport/input-handler.ts`: moving snap rect uses getLayerAabb
+- `apps/desktop/src/__tests__/cursor-resolver.test.ts`: updated handle naming to nw/se/n/e
+
+### Catatan
+
+- Convention: positive rotation = CW (Photoshop-like), shader negates radians to match
+- SVG bounding box rect is axis-aligned (AABB) outside rotated group; handles inside rotated group
+- Handle naming changed from tl/tr/br/bl/t/b/l/r to nw/ne/se/sw/n/e/s/w
+- cursor-resolver tests updated to use new handle naming
+- Multi-layer selection transform (group AABB) still out of scope
+- Rotated edge-to-edge snapping (per-edge) still out of scope
+- Committing transformed pixels back to bitmap out of scope
+
+### Spec
+
+`docs/superpowers/specs/2026-06-02-photoshop-like-free-transform-design.md`
+
+---
+
+## Current Task — Remove vite-tsconfig-paths Plugin (Use Native Vite) [COMPLETE]
+
+Date: 2026-06-02
+
+### Deskripsi
+
+Vite >= 6 mendukung resolusi `tsconfig.paths` secara native lewat opsi `resolve.tsconfigPaths`. Plugin `vite-tsconfig-paths` menjadi redundan dan Vite memunculkan warning setiap kali build/dev dijalankan. Task ini menghapus plugin tersebut dan menggantinya dengan opsi native, sambil menjaga perilaku module resolution tetap identik.
+
+### Perubahan
+
+1. **`apps/desktop/vite.config.ts`**
+   - Hapus `import tsconfigPaths from "vite-tsconfig-paths";`
+   - Hapus `tsconfigPaths()` dari `plugins` array
+   - Tambah `resolve: { tsconfigPaths: true }` (native Vite option)
+2. **`apps/desktop/package.json`**
+   - Hapus `vite-tsconfig-paths` dari `devDependencies` (cleanup `pnpm-lock.yaml`: −3 packages)
+3. **`tsconfig.json`** tetap: `"paths": { "@/*": ["./src/*"] }` dibaca langsung oleh Vite native resolver.
+4. **Docs**: tambah entri `AI_HISTORY.md` (kategori FEATURE / BUILD CONFIG) + baris baru di `FEATURES.md` (Infrastructure).
+
+### Verifikasi Final
+
+- [x] `pnpm.cmd run build`: **PASS** (7.69s, 2022 modules transformed) — warning plugin `vite-tsconfig-paths` sudah tidak muncul.
+- [x] `pnpm.cmd --filter photrez-desktop test`: **114/114 PASS** (13 test files, 36.70s).
+- [x] `pnpm.cmd install`: sukses, `pnpm-lock.yaml` ter-update (−3 packages, orphan `vite-tsconfig-paths@6.1.1` dan transitive dependencies-nya hilang).
+
+### Files Changed
+
+- `apps/desktop/vite.config.ts`: −2 import, −1 plugin call, +3 baris `resolve` block.
+- `apps/desktop/package.json`: −1 devDependency.
+- `pnpm-lock.yaml`: regenerated oleh `pnpm install`.
+- `docs/AI_CURRENT_TASK.md`: entri ini.
+- `docs/AI_HISTORY.md`: entri kategori FEATURE / BUILD CONFIG.
+- `docs/FEATURES.md`: baris baru di section Infrastructure.
+
+### Catatan
+
+- Vite 8.0.14 sudah include native `resolve.tsconfigPaths` (di-backport dari Vite 6 ke semua versi mayor aktif); tidak perlu upgrade Vite.
+- Perilaku module resolution identik karena `tsconfig.json` `paths` dibaca oleh native resolver yang sama.
+- Tidak ada perubahan di source code (`apps/desktop/src/**`) — perubahan murni build configuration.
+
+---
+
 ## Current Task — Move Tool Snapping (Implementation Complete) [COMPLETE]
 
 Date: 2026-06-01

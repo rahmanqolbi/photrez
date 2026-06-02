@@ -38,6 +38,10 @@
 | ✅ DONE      | Rotation angle snapping (15-degree with Shift) |
 | ✅ DONE      | Move tool snapping — layer edges/centers + canvas edges/centers (5px threshold, nearest-wins per axis) |
 | ✅ DONE      | Move tool Alt-key hold to disable snap       |
+| ✅ DONE      | Keyboard nudge (Arrow=1px, Shift+Arrow=10px) |
+| ✅ DONE      | Canvas auto-select (click-to-select visible layer under cursor) |
+| ✅ DONE      | Transform HUD (ΔX/ΔY, W/H/%, angle near cursor) |
+| ✅ DONE      | HUD "snap" label when snap lines active       |
 
 ---
 
@@ -190,6 +194,7 @@
 | ⬜ TODO      | CI pipeline (GitHub Actions)               |
 | ✅ DONE      | Unit tests (core crate) — 69 tests         |
 | ✅ DONE      | Contract tests (IPC commands) — 13 tests   |
-| ✅ DONE      | Frontend tests — 114 passing tests           |
+| ✅ DONE      | Frontend tests — 142 passing tests (15 files) |
 | ✅ DONE      | M6 Perf Gate (all metrics PASS)            |
+| ✅ DONE      | Native Vite tsconfig paths (removed `vite-tsconfig-paths` plugin) |
 | ✅ DONE      | Release candidate (MSI + NSIS installers)  |

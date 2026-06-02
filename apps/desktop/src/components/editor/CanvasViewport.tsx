@@ -841,19 +841,21 @@ export function CanvasViewport() {
               canvasHeight={docHeight()}
             />
             <Show when={hudInfo()}>
-              <TransformHud
-                mode={hudInfo()?.mode ?? "move"}
-                clientX={hudInfo()?.clientX ?? 0}
-                clientY={hudInfo()?.clientY ?? 0}
-                zoom={zoom()}
-                deltaX={hudInfo()?.deltaX}
-                deltaY={hudInfo()?.deltaY}
-                width={hudInfo()?.width}
-                height={hudInfo()?.height}
-                scalePercent={hudInfo()?.scalePercent}
-                angle={hudInfo()?.angle}
-                snapActive={hudInfo()?.snapActive}
-              />
+              {(h) => (
+                <TransformHud
+                  mode={h().mode}
+                  clientX={h().clientX}
+                  clientY={h().clientY}
+                  zoom={zoom()}
+                  deltaX={h().deltaX}
+                  deltaY={h().deltaY}
+                  width={h().width}
+                  height={h().height}
+                  scalePercent={h().scalePercent}
+                  angle={h().angle}
+                  snapActive={h().snapActive}
+                />
+              )}
             </Show>
           </svg>
 
@@ -865,6 +867,7 @@ export function CanvasViewport() {
             <SelectionTransformOverlay
               isNavigationMode={isSpacePressed() || isPanning()}
               onHudUpdate={setHudInfo}
+              snapActive={snapLines().length > 0}
             />
           </Show>
         </div>

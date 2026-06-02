@@ -1,4 +1,4 @@
-import { Show } from "solid-js";
+import { Show, createMemo } from "solid-js";
 
 export type HudMode = "move" | "resize" | "rotate";
 
@@ -7,21 +7,17 @@ interface TransformHudProps {
   clientX: number;
   clientY: number;
   zoom: number;
-  // Move mode values (delta)
   deltaX?: number;
   deltaY?: number;
-  // Resize mode values (width, height, percent)
   width?: number;
   height?: number;
   scalePercent?: number;
-  // Rotate mode values
   angle?: number;
-  // Snap
   snapActive?: boolean;
 }
 
 export function TransformHud(props: TransformHudProps) {
-  const label = () => {
+  const label = createMemo(() => {
     switch (props.mode) {
       case "move": {
         let s = `ΔX ${Math.round(props.deltaX ?? 0)}  ΔY ${Math.round(props.deltaY ?? 0)}`;
@@ -41,7 +37,7 @@ export function TransformHud(props: TransformHudProps) {
       default:
         return "";
     }
-  };
+  });
 
   const docX = () => props.clientX / props.zoom;
   const docY = () => props.clientY / props.zoom;
