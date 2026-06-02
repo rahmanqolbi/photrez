@@ -26,6 +26,7 @@ interface SelectionTransformOverlayProps {
     snapActive: boolean;
   } | null) => void;
   onComputeSnap?: (rect: SnapRect) => SnapResult;
+  onScreenToDoc?: (clientX: number, clientY: number) => { x: number; y: number };
   snapActive?: boolean;
 }
 
@@ -171,10 +172,13 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
         width: 0, height: 0, scalePercent: 0, angle: 0, snapActive,
       });
     } else if (drag.type === "rotate") {
+      const toDoc = props.onScreenToDoc ?? ((cx, cy) => ({ x: cx / z, y: cy / z }));
+      const startDoc = toDoc(drag.startX, drag.startY);
+      const currDoc = toDoc(e.clientX, e.clientY);
       const newRot = applyRotationDrag(
         cent,
-        { x: drag.startX / z, y: drag.startY / z },
-        { x: e.clientX / z, y: e.clientY / z },
+        startDoc,
+        currDoc,
         drag.startTransform.rotation,
         e.shiftKey
       );

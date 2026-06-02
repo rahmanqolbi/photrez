@@ -904,6 +904,12 @@ export function CanvasViewport() {
                 setSnapLines(result.lines);
                 return result;
               }}
+              onScreenToDoc={(cx, cy) => {
+                const rect = canvasContainerRef?.getBoundingClientRect();
+                const engine = workspace.getActiveEngine();
+                if (!rect || !engine) return { x: cx / zoom(), y: cy / zoom() };
+                return screenToDocument(cx, cy, rect, engine.getViewport());
+              }}
               snapActive={snapLines().length > 0}
             />
           </Show>
