@@ -42,6 +42,26 @@ export interface EditorContextValue {
   setHoverHandle: Setter<string | null>;
   docWidth: Accessor<number>;
   docHeight: Accessor<number>;
+
+  // Move Tool options
+  moveAutoSelect: Accessor<boolean>;
+  setMoveAutoSelect: Setter<boolean>;
+  moveSnapEnabled: Accessor<boolean>;
+  setMoveSnapEnabled: Setter<boolean>;
+
+  // Crop Tool options
+  cropRect: Accessor<{ x: number; y: number; w: number; h: number } | null>;
+  setCropRect: Setter<{ x: number; y: number; w: number; h: number } | null>;
+  cropMode: Accessor<"free" | "ratio" | "size">;
+  setCropMode: Setter<"free" | "ratio" | "size">;
+  cropGuideMode: Accessor<"none" | "thirds" | "grid" | "diagonal" | "golden">;
+  setCropGuideMode: Setter<"none" | "thirds" | "grid" | "diagonal" | "golden">;
+  cropDeletePixels: Accessor<boolean>;
+  setCropDeletePixels: Setter<boolean>;
+  cropAspect: Accessor<{ w: number; h: number } | null>;
+  setCropAspect: Setter<{ w: number; h: number } | null>;
+  cropSizeTarget: Accessor<{ w: number; h: number } | null>;
+  setCropSizeTarget: Setter<{ w: number; h: number } | null>;
 }
 
 const EditorContext = createContext<EditorContextValue>();
@@ -75,6 +95,16 @@ export function EditorProvider(props: {
   const [hoverHandle, setHoverHandle] = createSignal<string | null>(null);
   const [docWidth, setDocWidth] = createSignal(800);
   const [docHeight, setDocHeight] = createSignal(600);
+
+  const [moveAutoSelect, setMoveAutoSelect] = createSignal(true);
+  const [moveSnapEnabled, setMoveSnapEnabled] = createSignal(true);
+
+  const [cropRect, setCropRect] = createSignal<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("free");
+  const [cropGuideMode, setCropGuideMode] = createSignal<"none" | "thirds" | "grid" | "diagonal" | "golden">("thirds");
+  const [cropDeletePixels, setCropDeletePixels] = createSignal<boolean>(true);
+  const [cropAspect, setCropAspect] = createSignal<{ w: number; h: number } | null>(null);
+  const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
 
   // Synchronization logic
   const syncState = () => {
@@ -249,7 +279,23 @@ export function EditorProvider(props: {
     hoverHandle,
     setHoverHandle,
     docWidth,
-    docHeight
+    docHeight,
+    moveAutoSelect,
+    setMoveAutoSelect,
+    moveSnapEnabled,
+    setMoveSnapEnabled,
+    cropRect,
+    setCropRect,
+    cropMode,
+    setCropMode,
+    cropGuideMode,
+    setCropGuideMode,
+    cropDeletePixels,
+    setCropDeletePixels,
+    cropAspect,
+    setCropAspect,
+    cropSizeTarget,
+    setCropSizeTarget
   };
 
   return (
