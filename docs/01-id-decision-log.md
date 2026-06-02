@@ -11,7 +11,8 @@ Dokumen ini dipakai untuk melacak keputusan inti proyek secara ringkas.
 | Messaging | Product-first (performa + workflow), open-source bukan headline utama | Locked |
 | Target user utama | Content creator / UMKM | Locked |
 | Platform v1 | Desktop Windows | Locked |
-| Arsitektur | Hybrid modular: `Tauri shell + Rust core + wgpu renderer` | Locked |
+| Arsitektur (future target) | Hybrid modular: `Tauri shell + Rust core (photrez-core) + wgpu renderer (photrez-render)` | Locked (future) |
+| Arsitektur (MVP runtime) | `Tauri shell + TypeScript DocumentEngine + WebGL2 renderer` — lihat Architecture Migration v2 | Locked (MVP) |
 | Frontend | `SolidJS + TypeScript + Vite` | Locked |
 | Scope MVP v1 | Layer basic, selection/move/transform dasar, crop/resize, brush/eraser, export JPG/PNG/WebP | Locked |
 | Scope transform v1 | `Scale + rotate + flip` | Locked |

@@ -3,8 +3,10 @@
 ## 1. Runtime Stack
 
 - Desktop shell: Tauri.
-- Core engine: Rust.
-- Rendering: wgpu.
+- Core engine (MVP): TypeScript `DocumentEngine`.
+- Core engine (future): Rust `photrez-core`.
+- Rendering (MVP): WebGL2.
+- Rendering (future): wgpu.
 
 ## 2. Functional Technical Requirements
 
@@ -88,13 +90,14 @@ error `{ ok: false, contract_version, error: { code, message, details? } }`.
 
 - Core modules must remain capability-based:
 `document`, `layers`, `selection`, `transform`, `brush`, `export`.
-- New tools must be integrated via command contracts, not ad hoc shared mutable state.
+- New tools must be integrated via typed engine/adapter contracts (TS `DocumentEngine` interface + renderer adapter), not ad hoc shared mutable state. Tauri commands hanya untuk native I/O, bukan editing hot-path.
 - Renderer should support region-based invalidation for changed areas.
 - Feature expansions (PSD, print checker, plugin runtime) must be added as isolated modules/crates.
 
 ## 10. Maintainability Requirements
 
-- Rust core is the only mutable source of truth for document state.
+- **MVP runtime:** TypeScript `DocumentEngine` adalah mutable source of truth untuk document state. Rust `photrez-core` mempertahankan model domain sebagai reference + test coverage.
+- **Future target:** Migrasi ke Rust Core sebagai single source of truth saat task eksplisit runtime migration. Kedua source tidak boleh divergen — TS engine harus passing test yang sama dengan Rust core untuk operasi identik.
 - Frontend state is limited to UI/view state and must not own pixel/document truth.
 - Every command must define:
 name, payload schema, validation rules, and deterministic error output.

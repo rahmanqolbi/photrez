@@ -1,12 +1,14 @@
 # 02 - Architecture (MVP)
 
+> **Catatan 2026-06-02:** Dokumen ini mendeskripsikan arsitektur target. Untuk deskripsi runtime MVP saat ini, lihat **Section 11 — MVP Runtime Reality** di bawah.
+
 ## 1. Architecture Style
 
 Hybrid modular desktop architecture:
 
 - `Shell`: Tauri app + window lifecycle + command bridge.
-- `Core`: Rust domain logic for image operations, document state, history.
-- `Renderer`: wgpu-based rendering path for canvas/layers/compositing.
+- `Core`: Rust domain logic for image operations, document state, history (future target).
+- `Renderer`: wgpu-based rendering path for canvas/layers/compositing (future target).
 
 ## 2. Module Boundaries
 
@@ -90,3 +92,45 @@ malformed files should return clear errors without partial unsafe state mutation
 3. Selection/transform/crop/resize.
 4. Brush/eraser.
 5. Export and perf hardening.
+
+## 11. MVP Runtime Reality (2026-06-02)
+
+Dokumen ini (Section 1-10) mendeskripsikan arsitektur **target** dengan Rust Core + wgpu renderer. Runtime MVP saat ini berbeda:
+
+### 11.1 Current Stack
+
+| Layer | MVP Runtime | Future Target |
+|---|---|---|
+| Desktop Shell | Tauri 2 (shell only) | Same |
+| Frontend | SolidJS + TypeScript | Same |
+| Core Engine | TypeScript `DocumentEngine` (`apps/desktop/src/engine/document.ts`) | Rust `photrez-core` |
+| Renderer | WebGL2 (`apps/desktop/src/renderer/webgl2.ts`) | wgpu (`photrez-render`) |
+| IPC (editing hot-path) | Langsung TS → TS (no Tauri invoke) | Tauri command → Rust Core |
+| IPC (native I/O) | Tauri invoke → `main.rs` (file read/write) | Same |
+
+### 11.2 Data Flow (MVP)
+
+```
+1. User action (click/drag/shortcut) di SolidJS
+  ↓
+2. Tool handler memanggil DocumentEngine method langsung
+3. Engine mutasi TS state + history
+  ↓
+4. WebGL2 renderer consume `getRenderState()` → draw frame
+  ↓
+5. SolidJS reactivity update UI panels
+```
+
+### 11.3 Key Differences from Target Architecture
+
+- **No Rust editing commands**: `main.rs` hanya memiliki `ping`, `get_contract_info`, `read_file_bytes`, `write_file_bytes`. Semua editing hot-path (move, transform, brush, selection, crop) via TS `DocumentEngine`.
+- **No wgpu renderer**: WebGL2 backend aktif. `photrez-render` crate ada sebagai code reference + future target.
+- **Bitmap ownership**: `ImageBitmap` di TS layer objects, bukan di Rust buffers.
+- **History**: TS `CommandHistory` (`apps/desktop/src/engine/history.ts`) — snapshot-based, max 50 depth.
+
+### 11.4 Migration Path
+
+Migration ke Rust Core + wgpu dilakukan saat task eksplisit runtime migration. Sampai saat itu:
+- Pertahankan TS `DocumentEngine` sebagai development truth.
+- `photrez-core` dan `photrez-render` crates tetap di workspace sebagai reference + test coverage.
+- Jangan paksa editing commands lewat Tauri invoke kecuali untuk native I/O (file open/save).

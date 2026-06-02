@@ -1,5 +1,33 @@
 # AI_CURRENT_TASK.md - Photrez Current Task
 
+---
+
+## Current Task — OptionBar Crop Section Rewrite [COMPLETE]
+
+**Date:** 2026-06-02
+
+### Scope
+
+Replace old display-only crop section (W/H display + APPLY CROP + Cancel) with full interactive Photoshop-style crop controls:
+- Mode dropdown: Free / Ratio / Size
+- Free mode: display cropRect W/H
+- Ratio mode: editable aspect ratio W:H
+- Size mode: editable target W/H with px suffix
+- Swap W/H button
+- Guide overlay dropdown: None / Thirds / Grid / Diagonal / Golden
+- Delete cropped pixels toggle
+- Reset / Cancel / Apply buttons
+
+### Files Changed
+
+- `apps/desktop/src/components/editor/OptionBar.tsx`: expanded useEditor destructuring with 6 crop signals, replaced old crop JSX with interactive controls
+
+### Verifikasi
+
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `npx vitest run`: 182 PASS (17 files)
+- ✅ `cargo test -p photrez-core`: 85/85 PASS
+
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
 ---
@@ -61,7 +89,32 @@ X/Y/R option bar fields seolah "tidak update transform" ketika selected layer **
 
 ---
 
-## Current Task — Move Tool Option Bar Hybrid [ACTIVE]
+## Current Task — CropOverlay Full Rewrite [COMPLETE]
+
+**Date:** 2026-06-02
+
+### Scope
+
+Full rewrite of `CropOverlay.tsx` from placeholder to interactive SVG crop overlay:
+- SVG mask-based shield cutout
+- 8 resize handles with hover/active states
+- Corner bracket extensions (12px L-shapes)
+- Guide lines for all 5 modes (thirds, grid, diagonal, golden)
+- Interactive resize via pointer events (corner proportional, shift=free, edge single-axis, alt=center)
+- Move inside crop rect via pointer drag
+- Dimension tooltip near cursor during drag
+- Uses pure math helpers from `cropGeometry.ts`
+
+### Files Touched
+- `apps/desktop/src/components/editor/CropOverlay.tsx` — full rewrite
+
+### Verifikasi
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `npx vitest run`: 182 PASS (17 files)
+
+---
+
+## Current Task — Move Tool Option Bar Hybrid [COMPLETE]
 
 **Date:** 2026-06-02
 

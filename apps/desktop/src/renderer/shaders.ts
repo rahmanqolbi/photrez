@@ -20,7 +20,10 @@ void main() {
   );
 
   vec2 pos = positions[gl_VertexID];
-  v_texCoord = vec2(pos.x, 1.0 - pos.y);
+  // No Y-flip needed: computeViewMatrix flips Y (m[5] = -2/docH) so pos.y=0 is visual TOP.
+  // default UNPACK_FLIP_Y_WEBGL=false means texel v=0 = first uploaded row = top of image.
+  // pos.y=0 → v=0 → top of image ✓ — without 1.0-pos.y double-flip.
+  v_texCoord = vec2(pos.x, pos.y);
 
   // Map to layer-local in effective pixel dimensions
   vec2 localPos = pos * u_layerRect.zw;

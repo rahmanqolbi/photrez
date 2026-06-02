@@ -103,7 +103,7 @@ body {
 }
 
 button {
-  font: inherit;
+  font-family: inherit;
   cursor: default;
   user-select: none;
   -webkit-user-select: none;

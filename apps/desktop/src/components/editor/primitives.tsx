@@ -1,26 +1,30 @@
 import type { JSX } from "solid-js";
-import { Show } from "solid-js";
+import { Show, createSignal, createEffect } from "solid-js";
 import { clsx } from "clsx";
 import { Icon } from "./icons";
 
 export function NumField(props: {
   label?: string;
   value: string;
+  suffix?: string;
   class?: string;
 }) {
   return (
     <div
       class={clsx(
-        "flex h-[26px] items-center gap-1.5 rounded-[4px] border border-editor-field-border bg-editor-field px-2",
+        "flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5",
         props.class,
       )}
     >
       <Show when={props.label}>
-        <span class="text-[11px] font-medium text-editor-text-dim">
+        <span class="text-[10px] font-medium text-editor-text-dim">
           {props.label}
         </span>
       </Show>
-      <span class="text-[12px] text-editor-text">{props.value}</span>
+      <span class="text-[11px] text-editor-text">{props.value}</span>
+      <Show when={props.suffix}>
+        <span class="text-[10px] text-editor-text-dim">{props.suffix}</span>
+      </Show>
     </div>
   );
 }
@@ -86,6 +90,76 @@ export function Slider(props: {
         class="absolute top-1/2 size-[10px] -translate-y-1/2 rounded-full border border-black/40 bg-[#d4d4d4] shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
         style={{ left: `calc(${props.percent}% - 5px)` }}
       />
+    </div>
+  );
+}
+
+export function EditableNumField(props: {
+  label: string;
+  value: number;
+  suffix?: string;
+  class?: string;
+  disabled?: boolean;
+  onSubmit: (val: number) => void;
+}) {
+  let inputRef: HTMLInputElement | undefined;
+  const [draft, setDraft] = createSignal(props.value);
+  const [editing, setEditing] = createSignal(false);
+
+  createEffect(() => {
+    if (!editing()) setDraft(props.value);
+  });
+
+  const commit = () => {
+    setEditing(false);
+    const v = draft();
+    if (v !== props.value) {
+      props.onSubmit(v);
+    }
+  };
+
+  const revert = () => {
+    setEditing(false);
+    setDraft(props.value);
+    inputRef?.blur();
+  };
+
+  return (
+    <div
+      class={clsx(
+        "flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5",
+        props.disabled && "opacity-40 pointer-events-none",
+        props.class,
+      )}
+    >
+      <span class="text-[10px] font-medium text-editor-text-dim">
+        {props.label}
+      </span>
+      <input
+        ref={inputRef}
+        type="text"
+        value={editing() ? draft() : `${Math.round(draft())}`}
+        onFocus={() => {
+          if (props.disabled) return;
+          setEditing(true);
+          inputRef?.select();
+        }}
+        onInput={(e) => {
+          if (!editing()) return;
+          const raw = e.currentTarget.value;
+          const parsed = parseFloat(raw);
+          if (!isNaN(parsed)) setDraft(parsed);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); commit(); }
+          if (e.key === "Escape") { e.preventDefault(); revert(); }
+        }}
+        onBlur={commit}
+        class="w-full min-w-0 bg-transparent text-[11px] text-editor-text outline-none"
+      />
+      <Show when={props.suffix}>
+        <span class="text-[10px] text-editor-text-dim">{props.suffix}</span>
+      </Show>
     </div>
   );
 }

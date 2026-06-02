@@ -1,8 +1,58 @@
 # AI History — Photrez
 
+---
+## [2026-06-02] FEATURE — OptionBar Crop Section Rewrite [COMPLETE]
+
+### Kategori: FEATURE / CROP / OPTION BAR / UI
+
+**Deskripsi:** Replace old display-only crop section in OptionBar.tsx (W/H display fields + APPLY CROP button) with full interactive controls matching Photoshop-style crop tools.
+
+**Perubahan:**
+- Mode dropdown (Free / Ratio / Size) wiring ke `cropMode` signal dari EditorContext
+- Free mode: display-only W/H fields showing current `cropRect` dimensions
+- Ratio mode: editable aspect ratio W:H fields via `EditableNumField`, updates `cropAspect` signal
+- Size mode: editable target W/H with `px` suffix via `EditableNumField`, updates `cropSizeTarget` signal
+- Swap W/H button (`↔`) — swaps cropRect, cropAspect, and cropSizeTarget simultaneously
+- Guide overlay dropdown (None / Thirds / Grid / Diagonal / Golden) wiring ke `cropGuideMode`
+- Delete cropped pixels toggle via `ToggleBtn` + `cropDeletePixels` signal
+- Reset button — resets cropRect to full document bounds
+- Cancel button — clears cropRect + switches to move tool
+- APPLY button — commits history, calls `engine.cropCanvas`, clears cropRect, switches to move
+
+**Files Changed:**
+- `apps/desktop/src/components/editor/OptionBar.tsx`: expanded `useEditor()` destructuring with 6 crop signals; replaced old crop fields + apply button with interactive mode/guide/delete/swap/reset/cancel/apply controls
+
+**Verifikasi:**
+- ✅ `pnpm.cmd run build`: PASS (TypeScript + Vite)
+- ✅ `npx vitest run`: 182 PASS (17 files)
+- ✅ `cargo test -p photrez-core`: 85/85 PASS (via pre-commit hook)
+
 > Dokumen ini mencatat SEMUA perubahan signifikan yang dibuat oleh AI.
 > Urutan: terbaru di atas. Jangan hapus entri lama — hanya tambahkan di atas.
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_CURRENT_TASK.md` (status), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
+
+---
+## [2026-06-02] FEATURE — CropOverlay Full Rewrite [COMPLETE]
+
+### Kategori: FEATURE / CROP / UI
+
+**Deskripsi:** Full rewrite of CropOverlay.tsx from 34-line placeholder to interactive SVG crop overlay.
+
+**Perubahan:**
+- SVG mask-based shield cutout (50% opacity outside crop rect) via `<mask id="crop-shield">`
+- 8 resize handles (4 corners + 4 edges) with hover/active state colors (white/amber `#E15A17`/gray)
+- Corner bracket extensions (12px L-shapes outside corners, non-scaling stroke)
+- Guide lines for all 5 modes: thirds, grid (auto-calculated cell count), diagonal, golden (phi 0.382/0.618)
+- Interactive resize via pointer events captured on `<g>` root element (following SelectionTransformOverlay pattern)
+- Corner handles: proportional (maintain aspect), shift=free resize, edge handles: single-axis, alt=center anchor
+- Move inside crop rect via pointer drag
+- Dimension tooltip via SVG `<text>` near cursor during drag (fades 1.5s after drag end)
+- Uses pure math helpers from `cropGeometry.ts`: `clampCropRect`, `applyCropResizeHandle`, `applyCropMove`
+- Pointer event strategy: `createEffect` + `addEventListener` on `<g>` ref (not JSX `onPointerDown`), avoids SolidJS re-render pointer capture issues
+
+**Verifikasi:**
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `npx vitest run`: 182 PASS (17 files)
 
 ---
 ## [2026-06-02] FEATURE — CanvasViewport Crop Wiring [COMPLETE]

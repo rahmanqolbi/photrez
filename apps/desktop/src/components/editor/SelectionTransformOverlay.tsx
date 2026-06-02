@@ -26,16 +26,21 @@ interface SelectionTransformOverlayProps {
     snapActive: boolean;
   } | null) => void;
   onComputeSnap?: (rect: SnapRect) => SnapResult;
+  onSnapClear?: () => void;
   onScreenToDoc?: (clientX: number, clientY: number) => { x: number; y: number };
   snapActive?: boolean;
+  moveSnapEnabled?: boolean;
 }
 
 const HANDLE_SIZE = 8;
 const HANDLE_HIT = 20;
 const ROTATE_OUTER = 24;
+const HANDLE_TYPES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 
 export function SelectionTransformOverlay(props: SelectionTransformOverlayProps = {}) {
-  const { workspace, activeLayerId, layers, zoom, scheduler, setHoverHandle } = useEditor();
+  const { workspace, activeLayerId, layers, zoom, scheduler, setHoverHandle, moveSnapEnabled } = useEditor();
+
+  let overlaySvgRef: SVGSVGElement | undefined;
 
   const activeLayer = createMemo(() => {
     const id = activeLayerId();
@@ -48,6 +53,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
     startX: number;
     startY: number;
     startTransform: Transform2D;
+    pointerId: number;
   } | null>(null);
 
   const getLayer = () => {
@@ -117,8 +123,12 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
     const layer = getLayer();
     if (!engine || !history || !layer) return;
 
-    const target = e.currentTarget as HTMLElement;
-    target.setPointerCapture(e.pointerId);
+    // Capture on stable root SVG — handle elements can be replaced during
+    // re-render (triggered by transformLayer → syncState), which would lose
+    // the pointer capture and prevent subsequent pointermove/pointerup events.
+    if (overlaySvgRef) {
+      overlaySvgRef.setPointerCapture(e.pointerId);
+    }
 
     history.commit(engine.snapshot());
 
@@ -127,12 +137,13 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
       startX: e.clientX,
       startY: e.clientY,
       startTransform: { ...layer.transform },
+      pointerId: e.pointerId,
     });
   };
 
   const handlePointerMove = (e: PointerEvent) => {
     const drag = dragState();
-    if (!drag) return;
+    if (!drag || e.pointerId !== drag.pointerId) return;
 
     const engine = workspace.getActiveEngine();
     const layer = getLayer();
@@ -148,7 +159,8 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
       let nextX = drag.startTransform.x + dx;
       let nextY = drag.startTransform.y + dy;
       let snapActive = false;
-      if (props.onComputeSnap) {
+      const snapEnabled = props.moveSnapEnabled ?? moveSnapEnabled();
+      if (!e.altKey && snapEnabled && props.onComputeSnap) {
         const aabb = getLayerAabb(drag.startTransform, layer.width, layer.height);
         const baseX = aabb.x;
         const baseY = aabb.y;
@@ -161,6 +173,8 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
         nextX += snap.dx;
         nextY += snap.dy;
         snapActive = snap.lines.length > 0;
+      } else {
+        props.onSnapClear?.();
       }
       engine.transformLayer(layer.id, { x: nextX, y: nextY });
       props.onHudUpdate?.({
@@ -219,9 +233,30 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
 
   const handlePointerUp = (e: PointerEvent) => {
     const drag = dragState();
-    if (!drag) return;
-    const target = e.currentTarget as HTMLElement;
-    target.releasePointerCapture(e.pointerId);
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    if (overlaySvgRef) {
+      try { overlaySvgRef.releasePointerCapture(e.pointerId); } catch {}
+    }
+    props.onSnapClear?.();
+    props.onHudUpdate?.(null);
+    setDragState(null);
+  };
+
+  const handlePointerCancel = (e: PointerEvent) => {
+    const drag = dragState();
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    if (overlaySvgRef) {
+      try { overlaySvgRef.releasePointerCapture(e.pointerId); } catch {}
+    }
+    props.onSnapClear?.();
+    props.onHudUpdate?.(null);
+    setDragState(null);
+  };
+
+  const handleLostPointerCapture = (e: PointerEvent) => {
+    const drag = dragState();
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    props.onSnapClear?.();
     props.onHudUpdate?.(null);
     setDragState(null);
   };
@@ -236,6 +271,10 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
           engine.transformLayer(layer.id, drag.startTransform);
           scheduler.requestRender();
         }
+        if (overlaySvgRef) {
+          try { overlaySvgRef.releasePointerCapture(drag.pointerId); } catch {}
+        }
+        props.onSnapClear?.();
         props.onHudUpdate?.(null);
         setDragState(null);
       }
@@ -250,6 +289,12 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
     <Show when={getLayer()}>
       {(layer) => (
         <svg
+          ref={overlaySvgRef}
+          data-overlay-svg
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+          onLostPointerCapture={handleLostPointerCapture}
           style={{
             position: "absolute",
             inset: "0",
@@ -297,43 +342,37 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
                 height={effH()}
                 fill="transparent"
                 style={{ cursor: "move", "pointer-events": "all" }}
+                data-move
                 onPointerDown={(e) => handlePointerDown(e, "move")}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
                 onPointerEnter={() => setHoverHandle("move")}
                 onPointerLeave={() => setHoverHandle(null)}
               />
 
               {/* 8 handles at unrotated edges, in layer-local coords */}
-              <For each={[
-              { type: "nw", x: layerX(), y: layerY() },
-              { type: "n", x: layerX() + effW() / 2, y: layerY() },
-              { type: "ne", x: layerX() + effW(), y: layerY() },
-              { type: "e", x: layerX() + effW(), y: layerY() + effH() / 2 },
-              { type: "se", x: layerX() + effW(), y: layerY() + effH() },
-              { type: "s", x: layerX() + effW() / 2, y: layerY() + effH() },
-              { type: "sw", x: layerX(), y: layerY() + effH() },
-              { type: "w", x: layerX(), y: layerY() + effH() / 2 },
-            ]}>
-              {(h) => {
-                const cursor = getCursorForHandle(h.type, rotation(), scaleX(), scaleY());
+              <For each={HANDLE_TYPES}>
+              {(type) => {
+                const hx = () => type === "nw" || type === "sw" || type === "w" ? layerX()
+                          : type === "ne" || type === "se" || type === "e" ? layerX() + effW()
+                          : layerX() + effW() / 2;
+                const hy = () => type === "nw" || type === "n" || type === "ne" ? layerY()
+                          : type === "sw" || type === "s" || type === "se" ? layerY() + effH()
+                          : layerY() + effH() / 2;
+                const cursor = () => getCursorForHandle(type, rotation(), scaleX(), scaleY());
                 return (
                   <g>
                     {/* Corner rotate zone ring (only for corners) */}
-                    <Show when={["nw", "ne", "se", "sw"].includes(h.type)}>
+                    <Show when={["nw", "ne", "se", "sw"].includes(type)}>
                       <path
-                        d={`M ${h.x} ${h.y - ro()} 
-                            A ${ro()} ${ro()} 0 1 1 ${h.x} ${h.y + ro()} 
-                            A ${ro()} ${ro()} 0 1 1 ${h.x} ${h.y - ro()} Z
-                            M ${h.x} ${h.y - ht()} 
-                            A ${ht()} ${ht()} 0 1 0 ${h.x} ${h.y + ht()} 
-                            A ${ht()} ${ht()} 0 1 0 ${h.x} ${h.y - ht()} Z`}
+                        d={`M ${hx()} ${hy() - ro()} 
+                            A ${ro()} ${ro()} 0 1 1 ${hx()} ${hy() + ro()} 
+                            A ${ro()} ${ro()} 0 1 1 ${hx()} ${hy() - ro()} Z
+                            M ${hx()} ${hy() - ht()} 
+                            A ${ht()} ${ht()} 0 1 0 ${hx()} ${hy() + ht()} 
+                            A ${ht()} ${ht()} 0 1 0 ${hx()} ${hy() - ht()} Z`}
                         fill="transparent"
                         fill-rule="evenodd"
                         style={{ cursor: "crosshair", "pointer-events": "all" }}
                         onPointerDown={(e) => handlePointerDown(e, "rotate")}
-                        onPointerMove={handlePointerMove}
-                        onPointerUp={handlePointerUp}
                         onPointerEnter={() => setHoverHandle("rotate")}
                         onPointerLeave={() => setHoverHandle(null)}
                       />
@@ -341,23 +380,22 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
 
                     {/* Transparent hit zone for resize */}
                     <rect
-                      x={h.x - ht() / 2}
-                      y={h.y - ht() / 2}
+                      x={hx() - ht() / 2}
+                      y={hy() - ht() / 2}
                       width={ht()}
                       height={ht()}
                       fill="transparent"
-                      style={{ cursor, "pointer-events": "all" }}
-                      onPointerDown={(e) => handlePointerDown(e, h.type)}
-                      onPointerMove={handlePointerMove}
-                      onPointerUp={handlePointerUp}
-                      onPointerEnter={() => setHoverHandle(h.type)}
+                      style={{ cursor: cursor(), "pointer-events": "all" }}
+                      data-handle={type}
+                      onPointerDown={(e) => handlePointerDown(e, type)}
+                      onPointerEnter={() => setHoverHandle(type)}
                       onPointerLeave={() => setHoverHandle(null)}
                     />
 
                     {/* Visual handle square */}
                     <rect
-                      x={h.x - hs() / 2}
-                      y={h.y - hs() / 2}
+                      x={hx() - hs() / 2}
+                      y={hy() - hs() / 2}
                       width={hs()}
                       height={hs()}
                       fill="white"

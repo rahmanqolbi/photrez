@@ -1,4 +1,15 @@
 import { describe, it, expect } from 'vitest';
+import { VERTEX_SHADER_SOURCE } from '../renderer/shaders';
+
+describe('Shader invariants', () => {
+  it('should NOT double-flip texture Y — view matrix already flips Y', () => {
+    // computeViewMatrix sets m[5] = -2.0 / docH, which flips document Y so pos.y=0 is TOP.
+    // With UNPACK_FLIP_Y_WEBGL=false (default), texel v=0 = first uploaded row = top of image.
+    // So v_texCoord.y must equal pos.y — adding 1.0-pos.y creates a double flip.
+    expect(VERTEX_SHADER_SOURCE).toContain('v_texCoord = vec2(pos.x, pos.y)');
+    expect(VERTEX_SHADER_SOURCE).not.toContain('1.0 - pos');
+  });
+});
 
 describe('Renderer integration', () => {
   it('should have correct Z-index for layer overlays', () => {

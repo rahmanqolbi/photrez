@@ -152,11 +152,15 @@ describe("detectHandle", () => {
 });
 
 describe("applyResizeHandle", () => {
-  it("resizes from SE handle preserving aspect ratio by default", () => {
+  it("resizes from SE handle along handle-axis projection", () => {
     const start = { ...BASE_TRANSFORM, scaleX: 1, scaleY: 1, x: 100, y: 100 };
+    // dx=50, dy=0 → projected onto SE handle axis (1,1) = 50
+    // sumWH = 200+100 = 300 → factor = 1 + 50/300 ≈ 1.1667
     const result = applyResizeHandle(start, LAYER_W, LAYER_H, "se", 50, 0, false, false);
-    expect(result.scaleX).toBeCloseTo(1.25);
-    expect(result.scaleY).toBeCloseTo(1.25);
+    expect(result.scaleX).toBeCloseTo(1.1667, 4);
+    expect(result.scaleY).toBeCloseTo(1.1667, 4);
+    expect(result.x).toBeCloseTo(100, 4);
+    expect(result.y).toBeCloseTo(100, 4);
   });
 
   it("allows free scaling with Shift", () => {
@@ -166,11 +170,42 @@ describe("applyResizeHandle", () => {
     expect(result.scaleY).toBe(1);
   });
 
-  it("scales from center with Alt", () => {
+  it("scales from center with Alt using handle-axis projection", () => {
     const start = { ...BASE_TRANSFORM, scaleX: 1, scaleY: 1, x: 100, y: 100 };
+    // alt doubles dx to 100 → projected onto (1,1) = 100
+    // sumWH = 300 → factor = 1 + 100/300 = 1.3333
     const result = applyResizeHandle(start, LAYER_W, LAYER_H, "se", 50, 0, false, true);
-    expect(result.scaleX).toBeCloseTo(1.5);
-    expect(result.x).toBeCloseTo(50);
+    expect(result.scaleX).toBeCloseTo(1.3333, 4);
+    expect(result.scaleY).toBeCloseTo(1.3333, 4);
+    expect(result.x).toBeCloseTo(66.6667, 4);
+    expect(result.y).toBeCloseTo(83.3333, 4);
+  });
+
+  it("ignores 45° NE/SW gesture on SE handle (regression: photoshop-style handle-axis)", () => {
+    // User drags at 45° across the handle (e.g. NE/SW direction on SE handle)
+    // → no size change because movement is perpendicular to SE handle axis (1,1)
+    const start = { ...BASE_TRANSFORM, scaleX: 1, scaleY: 1, x: 100, y: 100 };
+    const result = applyResizeHandle(start, LAYER_W, LAYER_H, "se", 20, -20, false, false);
+    expect(result.scaleX).toBeCloseTo(1, 4);
+    expect(result.scaleY).toBeCloseTo(1, 4);
+    expect(result.x).toBeCloseTo(100, 4);
+    expect(result.y).toBeCloseTo(100, 4);
+  });
+
+  it.each([
+    // Handle-axis perpendicular: SE=(1,1) → perp (1,-1); NE=(1,-1) → perp (1,1);
+    // SW=(-1,1) → perp (-1,-1); NW=(-1,-1) → perp (-1,1)
+    ["se", 20, -20, 100, 100],
+    ["ne", 20, 20, 100, 100],
+    ["sw", -20, -20, 100, 100],
+    ["nw", -20, 20, 100, 100],
+  ])("ignores perpendicular drag for proportional %s corner resize", (handle, dx, dy, ex, ey) => {
+    const start = { ...BASE_TRANSFORM, scaleX: 1, scaleY: 1, x: 100, y: 100 };
+    const result = applyResizeHandle(start, LAYER_W, LAYER_H, handle, dx, dy, false, false);
+    expect(result.scaleX).toBeCloseTo(1, 4);
+    expect(result.scaleY).toBeCloseTo(1, 4);
+    expect(result.x).toBeCloseTo(ex, 4);
+    expect(result.y).toBeCloseTo(ey, 4);
   });
 });
 

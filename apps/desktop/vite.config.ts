@@ -4,7 +4,7 @@ import solidPlugin from "vite-plugin-solid";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  plugins: [solidPlugin(), tailwindcss()],
+  plugins: [solidPlugin(process.env.VITEST ? { hot: false } : undefined), tailwindcss()],
 
   resolve: {
     tsconfigPaths: true,

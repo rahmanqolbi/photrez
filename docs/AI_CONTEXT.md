@@ -3,7 +3,8 @@
 > **DOKUMEN INI BERISI ATURAN MUTLAK UNTUK AI.**
 > Pelanggaran terhadap aturan di sini akan menyebabkan regresi, bug, dan penolakan PR.
 >
-> Stack: **Tauri 2 (Rust backend)**, **SolidJS + TypeScript (Frontend)**, **wgpu (Renderer)**, **Tailwind CSS v4**
+> **Stack (MVP runtime):** **Tauri 2 (shell)**, **SolidJS + TypeScript (Frontend)**, **TypeScript DocumentEngine (Core)**, **WebGL2 (Renderer)**, **Tailwind CSS v4**
+> **Future target:** **Rust Core (photrez-core)** + **wgpu (photrez-render)** — not active in MVP hot-path
 > Always use Context7 when I need library API documentation, code generation, setup or configuration steps without me having to explicitly ask.
 
 ---
@@ -57,9 +58,12 @@ Sebelum memodifikasi file apapun, AI WAJIB melakukan:
    - **BUG BARU**: Bug yang baru ditemukan atau dilaporkan (tanpa/sebelum perbaikan).
    - **BUG FIX**: Perbaikan untuk bug yang sudah ada/ditemukan. **WAJIB** mencatat: **Akar Masalah (Root Cause)** dan **Logika Perbaikan (Fix Rationale)**.
 3. **Perbarui Feature Status**: Setelah fitur selesai, update `docs/FEATURES.md` dengan status terbaru.
-4. **Verifikasi Eksistensi & Penjelajahan Kode**: Gunakan `codegraph` (MCP tool) secara proaktif sebagai instrumen utama untuk penjelajahan kode, melacak relasi panggilan (callers/callees), dan memahami arsitektur. Gunakan pula tools pencarian pembantu (`grep_search` / `list_dir`) untuk memastikan path fisik benar-benar ada. **JANGAN MENEBAK.**
+4. **Verifikasi Eksistensi & Penjelajahan Kode**: Gunakan CodeGraph via CLI (`npx @colbymchenry/codegraph` / `codegraph`) secara proaktif sebagai instrumen utama untuk penjelajahan kode, melacak simbol/import, dan memahami arsitektur. Gunakan pula tools pencarian pembantu (`grep` / `glob`) untuk memastikan path fisik benar-benar ada. **JANGAN MENEBAK.**
 5. **Analisis Dampak (Blast Radius)**: Pahami apakah komponen atau tipe yang diubah digunakan di tempat lain menggunakan bantuan pelacakan dampak CodeGraph.
-6. **Riset API Eksternal & Library (Context7)**: Untuk setiap pencarian dokumentasi API library eksternal (seperti Tauri, SolidJS, WebGL2, Tailwind v4, wgpu), AI **WAJIB** menggunakan `Context7` (MCP tool `resolve-library-id` dan `query-docs`). Jangan pernah menebak signature API atau bersandar pada training data bawaan.
+   - **CodeGraph Index Status**: ✅ Index siap — 103 files, 61 nodes, 224 edges (v0.9.7, 2026-06-02). Re-index via `codegraph index` setelah ada perubahan struktural besar.
+6. **Riset API Eksternal & Library (Context7)**: Untuk setiap pencarian dokumentasi API library eksternal (seperti Tauri, SolidJS, WebGL2, Tailwind v4, wgpu), AI **WAJIB** menggunakan Context7 (MCP tool `resolve-library-id` dan `query-docs`). Jangan pernah menebak signature API atau bersandar pada training data bawaan.
+   - **Status**: ✅ Context7 v0.4.4 terkonfigurasi via MCP remote (`https://mcp.context7.com/mcp`) + API key, 2026-06-02.
+   - **Keep Updated**: Library docs berubah cepat. Selalu gunakan Context7 meskipun merasa tahu — training data bisa usang. Jika hasil Context7 tidak memuaskan, coba nama alternatif (e.g., "next.js" bukan "nextjs") atau tanyakan ulang dengan kata kunci berbeda.
 7. **Integritas Dokumentasi (ANTI-TRUNCATE)**: JANGAN PERNAH menghapus riwayat lama di `AI_HISTORY.md` atau `AI_CURRENT_TASK.md`. Gunakan `replace_file_content` untuk menambahkan entri baru. Penggunaan `write_to_file` dengan `Overwrite: true` pada file dokumentasi besar sangat dilarang kecuali untuk inisialisasi awal.
    - **WAJIB UTF-8**: Semua file dokumentasi (`*.md`) harus disimpan sebagai **UTF-8** (disarankan tanpa BOM). DILARANG menulis dokumen dengan UTF-16/`Unicode` karena akan menyebabkan mojibake/karakter rusak.
    - **LARANGAN POWERSHELL ENCODING BERISIKO**: DILARANG menggunakan `Set-Content -Encoding Unicode` untuk file markdown. Jika perlu write via script, gunakan UTF-8 eksplisit (mis. `[System.IO.File]::WriteAllText(path, text, [System.Text.UTF8Encoding]::new($false))`).
@@ -306,15 +310,24 @@ Proyek ini menggunakan **Tailwind CSS v4** (bukan v3). Konfigurasi via CSS `@the
 
 ---
 
-## 6. WGPU RENDERER — ATURAN RENDERING
+## 6. RENDERER — ATURAN RENDERING (MVP + Future)
 
-`photrez-render` crate menggunakan **wgpu** untuk GPU rendering.
+### MVP Runtime (saat ini)
 
-### Ownership Boundary
+Frontend-owned **WebGL2 backend** (`apps/desktop/src/renderer/webgl2.ts`) untuk rendering canvas. Document state di TypeScript `DocumentEngine` (`apps/desktop/src/engine/document.ts`).
 
 - Renderer **HANYA** owns: frame rendering, texture upload, compositing previews, viewport transforms.
 - Renderer **TIDAK** owns: persistence logic, document state, product-level rules.
-- Document state SELALU di `photrez-core` (Rust) — renderer HANYA consume snapshots.
+- Document state saat ini di **TypeScript DocumentEngine** — renderer consume state via `getRenderState()`.
+- WebGL2 shaders di `apps/desktop/src/renderer/shaders.ts` (GLSL ES 3.0).
+
+### Future Target (Rust wgpu)
+
+`photrez-render` crate (crates/render/) — **belum aktif** di MVP hot-path. Akan diaktifkan saat migrasi runtime ke WASM/WebGPU/wgpu native.
+
+- wgpu resource lifecycle (adapter → device → surface → texture → pipeline)
+- Rust ownership boundary: renderer **HANYA** consume snapshot dari Rust core
+- Renderer tests pre-existing `STATUS_ENTRYPOINT_NOT_FOUND` — tidak blocking MVP
 
 ### Pattern GPU Resources
 
@@ -373,7 +386,7 @@ fn add_layer(name: String, state: tauri::State<'_, EditorState>) -> Result<Value
 
 1. **DILARANG** menggunakan pola React (useState, useEffect, React.FC, key prop) di SolidJS.
 2. **DILARANG** mengubah response envelope contract tanpa update `docs/15-command-contract-spec.md` dan ADR.
-3. **DILARANG** menaruh image business logic di shell/frontend layer — semua harus di Rust Core.
+3. **DILARANG** menaruh image business logic di shell/frontend layer — semua harus di Rust Core. **Pengecualian MVP:** editing hot-path (move, transform, brush, selection) boleh di TypeScript `DocumentEngine` selama didampingi test coverage. Migrasi ke Rust Core dilakukan saat task eksplisit runtime migration.
 4. **DILARANG** akses Node.js API (fs, path, child_process) — ini Tauri, BUKAN Electron.
 5. **DILARANG** blokir UI thread dengan komputasi berat — gunakan Web Worker atau async di Rust.
 6. **DILARANG** berasumsi pekerjaan selesai tanpa menjalankan build verification.
@@ -456,6 +469,24 @@ Protokol pengukuran detail: **`docs/16-performance-measurement-protocol.md`**
 - Crop + resize image/canvas
 - Brush + eraser
 - Export JPG/PNG/WebP
+
+---
+## Move Tool Runtime Assumptions
+
+Aturan khusus untuk komponen Move Tool:
+
+- **Dua drag path**: Move Tool memiliki dua path interaksi terpisah. Canvas path (`input-handler.ts`) melayani auto-select dan fallback move. Overlay path (`SelectionTransformOverlay.tsx`) melayani selected-layer move/resize/rotate handles. Setiap fix atau perubahan harus diverifikasi di kedua path.
+- **Layer stack**: `engine.getLayers()` mengembalikan urutan top-first (`layers[0]` = visual paling atas). `hitTestLayers()` mengembalikan layer visible pertama yang match.
+- **Transform geometry**: Move math menggunakan visual rect top-left (`transform.x/y`), positive `scaleX/scaleY` magnitude. Orientation (`flipH/flipV`) hanya memengaruhi texture di shader, bukan geometry.
+- **Rotation convention**: Positive degrees = clockwise (Photoshop-like). Wajib konsisten di transform geometry, renderer shader, cursor resolver, dan SVG overlay.
+- **Snapping**: Menggunakan transformed AABB (axis-aligned bounding box), bukan true rotated-edge snapping. Canvas edges/centers punya priority lebih tinggi (3 dan 2) daripada layer-to-layer (1).
+- **Transient states** terpisah dan harus dibersihkan eksplisit: `snapLines` signal, HUD (`hudInfo`), `dragState`, `hoverHandle`. Membersihkan satu tidak membersihkan yang lain.
+- **Alt behavior** context-dependent: canvas move path disable snapping, overlay resize scale from center, brush/eraser switch to eyedropper.
+- **Overlay Alt snap**: Overlay move path sudah konsisten dengan canvas path — Alt disable snapping (`!e.altKey` guard).
+- **Keyboard nudge** (`Arrow/Shift+Arrow`): bypass snapping dan HUD, commit history hanya sekali per non-repeat burst.
+- **Viewport rotation** (`ViewportState.rotation`) eksis di type tapi belum didukung Move Tool math. Jika diaktifkan, screen-to-document, cursor, dan transform geometry perlu revisi.
+
+---
 
 ### ❌ Out of Scope (MVP v1) — JANGAN IMPLEMENTASI
 

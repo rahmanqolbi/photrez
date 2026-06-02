@@ -7,7 +7,10 @@
 
 ## Gambaran Umum
 
-Photrez adalah lightweight desktop image editor yang dibangun sebagai alternatif Photoshop praktis untuk workflow digital dan print. Dibangun di atas arsitektur **hybrid modular**: Tauri 2 (shell) + Rust (core) + wgpu (renderer), dengan frontend SolidJS + TypeScript.
+Photrez adalah lightweight desktop image editor yang dibangun sebagai alternatif Photoshop praktis untuk workflow digital dan print. 
+
+**MVP Runtime:** Tauri 2 (shell) + SolidJS/TypeScript (frontend) + **TypeScript DocumentEngine** (core) + **WebGL2** (renderer).
+**Future target:** Rust (photrez-core) + wgpu (photrez-render) — lihat `docs/AI_CURRENT_TASK.md:1054` Architecture Migration v2.
 
 ---
 
@@ -15,9 +18,9 @@ Photrez adalah lightweight desktop image editor yang dibangun sebagai alternatif
 
 - **Phase**: Usable MVP recovery gate (2026-05-29). Multi-document workspace implemented.
 - **Core Crate**: Document model, layer management, bitmap buffers, selection, transform, brush/eraser, import decode, export encode, and workspace management exist. Core tests pass (`cargo test -p photrez-core`: 85 tests).
-- **Render Crate**: wgpu renderer code exists, but render crate tests currently fail with `STATUS_ENTRYPOINT_NOT_FOUND`; workspace test gate is not green.
+- **Render Crate**: wgpu renderer code exists (future target), but render crate tests currently fail with `STATUS_ENTRYPOINT_NOT_FOUND`; workspace test gate is not green. MVP rendering via **WebGL2** (`apps/desktop/src/renderer/webgl2.ts`).
 - **Frontend**: Full UI shell with multi-document workspace, document tabs, empty state, drag/drop, and all core editing interactions. Artboard renders via IPC base64 pipeline.
-- **Testing**: Frontend build and tests pass (`pnpm.cmd run build`; `pnpm.cmd --filter photrez-desktop test`: 162 tests). Core tests pass (85 tests).
+- **Testing**: Frontend build and tests pass (`pnpm.cmd run build`; `pnpm.cmd --filter photrez-desktop test`: 168 tests). Core tests pass (85 tests).
 - **Recovery Reference**: `docs/38-usable-mvp-recovery-plan.md`.
 
 ---
@@ -30,8 +33,10 @@ Photrez adalah lightweight desktop image editor yang dibangun sebagai alternatif
 | Frontend         | SolidJS + TypeScript (TSX)                             |
 | Build Tool       | Vite 8                                                 |
 | Styling          | Tailwind CSS v4 (`@theme` based tokens)                |
-| Core Engine      | Rust (crate: `photrez-core`)                           |
-| GPU Renderer     | wgpu (crate: `photrez-render`)                         |
+| Core Engine (MVP) | TypeScript `DocumentEngine` (`apps/desktop/src/engine/document.ts`) |
+| Core Engine (future) | Rust `photrez-core` (crates/core/) — reference/tests |
+| GPU Renderer (MVP) | WebGL2 (`apps/desktop/src/renderer/webgl2.ts`)          |
+| GPU Renderer (future) | wgpu `photrez-render` (crates/render/) — deferred   |
 | State (Backend)  | `tauri::State<'_, T>` + `Mutex` (Rust managed state)  |
 | State (Frontend) | SolidJS `createSignal` / `createStore`                 |
 | Package Manager  | pnpm (monorepo workspace)                              |
@@ -262,9 +267,10 @@ image-studio/
 
 ### Source of Truth
 
-- **Document state**: HANYA di Rust Core (`photrez-core`), diakses via `EditorState`.
+- **Document state (MVP)**: Di TypeScript `DocumentEngine` (`apps/desktop/src/engine/document.ts`). Rust `photrez-core` mempertahankan model domain sebagai reference + test coverage.
+- **Document state (future)**: Akan migrasi ke Rust Core saat task eksplisit runtime migration.
 - **UI state**: Di SolidJS signals (tool selection, zoom level, panel visibility).
-- **Pixel data**: Akan di Rust Core (bitmap buffers), di-render oleh wgpu.
+- **Pixel data (MVP)**: `ImageBitmap` per layer di `DocumentEngine`, di-render oleh WebGL2. Rust crates tidak memiliki bitmap untuk MVP hot-path.
 - **TIDAK PERNAH** duplikasi document state di frontend sebagai mutable source.
 
 ---

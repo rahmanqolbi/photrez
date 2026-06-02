@@ -154,32 +154,46 @@ export function applyResizeHandle(
   let localDx = altKey ? dx * 2 : dx;
   let localDy = altKey ? dy * 2 : dy;
 
-  if (handle.includes("e")) vw = Math.max(1, vw + localDx);
-  if (handle.includes("w")) {
-    const dw = Math.min(vw - 1, -localDx);
-    vx -= dw;
-    vw += dw;
-  }
-  if (handle.includes("s")) vh = Math.max(1, vh + localDy);
-  if (handle.includes("n")) {
-    const dh = Math.min(vh - 1, -localDy);
-    vy -= dh;
-    vh += dh;
-  }
-
   const corner = ["nw", "ne", "se", "sw"].includes(handle);
   const shouldKeepAspect = corner && !shiftKey;
 
-  if (shouldKeepAspect && vw > 0 && vh > 0) {
-    const aspect = (layerW * absSX) / (layerH * absSY);
-    if (Math.abs(localDx) > Math.abs(localDy)) {
-      const oldVH = vh;
-      vh = vw / aspect;
-      if (handle.includes("n")) vy -= vh - oldVH;
-    } else {
-      const oldVW = vw;
-      vw = vh * aspect;
-      if (handle.includes("w")) vx -= vw - oldVW;
+  if (shouldKeepAspect) {
+    // Photoshop-style proportional corner resize:
+    // project mouse delta onto the handle-axis diagonal (cursor direction at 45°).
+    // Movement along the handle axis drives proportional scale;
+    // movement perpendicular to the handle axis is ignored.
+    const oldW = layerW * absSX;
+    const oldH = layerH * absSY;
+
+    // Handle-axis: SE=(1,1), NE=(1,-1), SW=(-1,1), NW=(-1,-1)
+    const hx = handle === "se" || handle === "ne" ? 1 : -1;
+    const hy = handle === "se" || handle === "sw" ? 1 : -1;
+    const sumWH = oldW + oldH;
+
+    if (sumWH > 0) {
+      const projected = localDx * hx + localDy * hy;
+      const minFactor = Math.max(1 / oldW, 1 / oldH);
+      const factor = Math.max(minFactor, 1 + projected / sumWH);
+
+      vw = oldW * factor;
+      vh = oldH * factor;
+
+      if (handle.includes("w")) vx = transform.x + oldW - vw;
+      if (handle.includes("n")) vy = transform.y + oldH - vh;
+    }
+  } else {
+    // Non-corner or Shift-free: independent axis delta
+    if (handle.includes("e")) vw = Math.max(1, vw + localDx);
+    if (handle.includes("w")) {
+      const dw = Math.min(vw - 1, -localDx);
+      vx -= dw;
+      vw += dw;
+    }
+    if (handle.includes("s")) vh = Math.max(1, vh + localDy);
+    if (handle.includes("n")) {
+      const dh = Math.min(vh - 1, -localDy);
+      vy -= dh;
+      vh += dh;
     }
   }
 

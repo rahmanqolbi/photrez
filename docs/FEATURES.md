@@ -55,6 +55,7 @@
 | ✅ DONE      | Resize image/canvas                        |
 | ⬜ TODO      | Aspect ratio lock toggle                   |
 | ✅ DONE      | Crop overlay/guide UI                      |
+| ✅ DONE      | Interactive crop option bar (mode dropdown, editable ratio/size, guide overlay selector, delete toggle, swap W/H, reset/apply/cancel) |
 
 ---
 
