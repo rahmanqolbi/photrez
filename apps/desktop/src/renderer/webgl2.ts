@@ -21,6 +21,9 @@ export class WebGL2Backend implements RenderBackend {
   private layerUniforms: {
     viewProj: WebGLUniformLocation;
     layerRect: WebGLUniformLocation;
+    layerCenter: WebGLUniformLocation;
+    layerRotation: WebGLUniformLocation;
+    flipSign: WebGLUniformLocation;
     texture: WebGLUniformLocation;
     opacity: WebGLUniformLocation;
   } | null = null;
@@ -74,6 +77,9 @@ export class WebGL2Backend implements RenderBackend {
     this.layerUniforms = {
       viewProj: gl.getUniformLocation(this.layerProgram, "u_viewProj")!,
       layerRect: gl.getUniformLocation(this.layerProgram, "u_layerRect")!,
+      layerCenter: gl.getUniformLocation(this.layerProgram, "u_layerCenter")!,
+      layerRotation: gl.getUniformLocation(this.layerProgram, "u_layerRotation")!,
+      flipSign: gl.getUniformLocation(this.layerProgram, "u_flipSign")!,
       texture: gl.getUniformLocation(this.layerProgram, "u_texture")!,
       opacity: gl.getUniformLocation(this.layerProgram, "u_opacity")!
     };
@@ -191,15 +197,21 @@ export class WebGL2Backend implements RenderBackend {
         gl.uniform1i(this.layerUniforms.texture, 0);
         gl.uniform1f(this.layerUniforms.opacity, renderLayer.opacity);
 
-        // Compute layer boundaries incorporating scale and rotation in vertex shader rect
-        // Rect: x, y, width, height in document coordinates
+        const t = renderLayer.transform;
+        const effW = renderLayer.width * Math.abs(t.scaleX);
+        const effH = renderLayer.height * Math.abs(t.scaleY);
+        const cx = t.x + effW / 2;
+        const cy = t.y + effH / 2;
+        const flipX = Math.sign(t.scaleX) * (t.flipH ? -1 : 1);
+        const flipY = Math.sign(t.scaleY) * (t.flipV ? -1 : 1);
+
         gl.uniform4f(
           this.layerUniforms.layerRect,
-          renderLayer.transform.x,
-          renderLayer.transform.y,
-          renderLayer.width * renderLayer.transform.scaleX,
-          renderLayer.height * renderLayer.transform.scaleY
+          t.x, t.y, effW, effH
         );
+        gl.uniform2f(this.layerUniforms.layerCenter, cx, cy);
+        gl.uniform1f(this.layerUniforms.layerRotation, t.rotation || 0);
+        gl.uniform2f(this.layerUniforms.flipSign, flipX, flipY);
 
         gl.drawArrays(gl.TRIANGLES, 0, 6);
       }

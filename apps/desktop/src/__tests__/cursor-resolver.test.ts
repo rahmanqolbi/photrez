@@ -76,38 +76,50 @@ describe('resolveCursor', () => {
       expect(resolveCursor(ctx)).toBe('move');
     });
 
-    it('returns nwse-resize for tl handle', () => {
+    it('returns nwse-resize for nw handle', () => {
       const ctx: CursorContext = {
         ...base,
         activeTool: 'move',
-        hoverHandle: 'tl',
+        hoverHandle: 'nw',
+        layerRotation: 0,
+        layerScaleX: 1,
+        layerScaleY: 1,
       };
       expect(resolveCursor(ctx)).toBe('nwse-resize');
     });
 
-    it('returns nesw-resize for br handle', () => {
+    it('returns nwse-resize for se handle (45° base angle)', () => {
       const ctx: CursorContext = {
         ...base,
         activeTool: 'move',
-        hoverHandle: 'br',
+        hoverHandle: 'se',
+        layerRotation: 0,
+        layerScaleX: 1,
+        layerScaleY: 1,
       };
-      expect(resolveCursor(ctx)).toBe('nesw-resize');
+      expect(resolveCursor(ctx)).toBe('nwse-resize');
     });
 
-    it('returns ns-resize for t handle', () => {
+    it('returns ns-resize for n handle', () => {
       const ctx: CursorContext = {
         ...base,
         activeTool: 'move',
-        hoverHandle: 't',
+        hoverHandle: 'n',
+        layerRotation: 0,
+        layerScaleX: 1,
+        layerScaleY: 1,
       };
       expect(resolveCursor(ctx)).toBe('ns-resize');
     });
 
-    it('returns ew-resize for l handle', () => {
+    it('returns ew-resize for e handle', () => {
       const ctx: CursorContext = {
         ...base,
         activeTool: 'move',
-        hoverHandle: 'l',
+        hoverHandle: 'e',
+        layerRotation: 0,
+        layerScaleX: 1,
+        layerScaleY: 1,
       };
       expect(resolveCursor(ctx)).toBe('ew-resize');
     });

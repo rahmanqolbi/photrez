@@ -1,27 +1,47 @@
 // Vertex shader: Fullscreen quad with view projection matrix transforms
+// Handles center-anchored scale, flipH/flipV, and rotation.
+// u_layerRect.zw = effective pixel dimensions (layerWidth * |scaleX|, layerHeight * |scaleY|)
+// u_flipSign = (±1, ±1) — sign mirrors when scaleX<0 XOR flipH (same for Y)
 export const VERTEX_SHADER_SOURCE = `#version 300 es
 precision highp float;
 
 uniform mat4 u_viewProj;
-uniform vec4 u_layerRect;  // x, y, width, height in document space
+uniform vec4 u_layerRect;   // x, y, effWidth, effHeight
+uniform vec2 u_layerCenter; // center of layer (rotation/flip pivot)
+uniform float u_layerRotation; // degrees, CW (Photoshop convention)
+uniform vec2 u_flipSign;    // (±1, ±1) — mirrored when negative
 
 out vec2 v_texCoord;
 
 void main() {
-  // Generate fullscreen quad vertices (0,1,2,3,4,5 -> 2 triangles)
   vec2 positions[6] = vec2[6](
     vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(0.0, 1.0),
     vec2(1.0, 0.0), vec2(1.0, 1.0), vec2(0.0, 1.0)
   );
 
   vec2 pos = positions[gl_VertexID];
-  v_texCoord = vec2(pos.x, pos.y); // Y-axis already handled by view matrix flip
+  v_texCoord = vec2(pos.x, 1.0 - pos.y);
 
-  // Map to layer position in document coordinates
-  vec2 docPos = u_layerRect.xy + pos * u_layerRect.zw;
+  // Map to layer-local in effective pixel dimensions
+  vec2 localPos = pos * u_layerRect.zw;
 
-  // Apply view-projection matrix (pan/zoom)
-  gl_Position = u_viewProj * vec4(docPos, 0.0, 1.0);
+  // Apply mirror (flip) in local space
+  localPos *= u_flipSign;
+
+  // Offset to center for rotation pivot
+  vec2 centered = localPos - u_layerRect.zw * 0.5;
+
+  // Rotation — negate for CW (Photoshop convention)
+  float rad = -radians(u_layerRotation);
+  float c = cos(rad);
+  float s = sin(rad);
+  vec2 rotated = vec2(
+    centered.x * c - centered.y * s,
+    centered.x * s + centered.y * c
+  );
+
+  // Translate to document position
+  gl_Position = u_viewProj * vec4(rotated + u_layerCenter, 0.0, 1.0);
 }`;
 
 // Fragment shader: Texture sampling with opacity

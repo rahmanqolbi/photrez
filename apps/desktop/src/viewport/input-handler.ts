@@ -1,6 +1,7 @@
 import type { DocumentEngine } from "../engine/document";
 import type { CommandHistory } from "../engine/history";
 import type { SnapLine, SnapRect, SnapResult } from "./smartGuides";
+import { getLayerAabb } from "./transformGeometry";
 
 export type ToolType = "move" | "selection" | "crop" | "eyedropper" | "brush" | "eraser";
 
@@ -105,11 +106,12 @@ export function handlePointerMove(
       let nextX = newX;
       let nextY = newY;
       if (!context.isAltPressed && context.onComputeSnap) {
+        const baseAabb = getLayerAabb(layer.transform, layer.width, layer.height);
         const snap = context.onComputeSnap({
-          x: newX,
-          y: newY,
-          w: layer.width * layer.transform.scaleX,
-          h: layer.height * layer.transform.scaleY,
+          x: baseAabb.x + (newX - layer.transform.x),
+          y: baseAabb.y + (newY - layer.transform.y),
+          w: baseAabb.width,
+          h: baseAabb.height,
         });
         nextX += snap.dx;
         nextY += snap.dy;
