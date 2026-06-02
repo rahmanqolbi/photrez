@@ -10,6 +10,9 @@ import {
 import { resolveCursor } from "@/viewport/cursorResolver";
 import { computeSnapAdjustment } from "@/viewport/smartGuides";
 import type { SnapRect } from "@/viewport/smartGuides";
+import { getLayerAabb } from "@/viewport/transformGeometry";
+import { hitTestLayers } from "@/viewport/layerHitTest";
+import type { LayerInfo } from "@/viewport/layerHitTest";
 import type { DocumentEngine } from "@/engine/document";
 import { useEditor } from "./EditorContext";
 import { SelectionTransformOverlay } from "./SelectionTransformOverlay";
@@ -139,6 +142,27 @@ export function CanvasViewport() {
     momentumRafId = requestAnimationFrame(step);
   }
 
+  const layerRotation = createMemo(() => {
+    const id = activeLayerId();
+    if (!id) return 0;
+    const l = layers().find((l) => l.id === id);
+    return l ? l.transform.rotation : 0;
+  });
+
+  const layerScaleX = createMemo(() => {
+    const id = activeLayerId();
+    if (!id) return 1;
+    const l = layers().find((l) => l.id === id);
+    return l ? l.transform.scaleX : 1;
+  });
+
+  const layerScaleY = createMemo(() => {
+    const id = activeLayerId();
+    if (!id) return 1;
+    const l = layers().find((l) => l.id === id);
+    return l ? l.transform.scaleY : 1;
+  });
+
   const cursorClass = createMemo(() => resolveCursor({
     isSpacePressed: isSpacePressed(),
     isPanning: isPanning(),
@@ -147,6 +171,9 @@ export function CanvasViewport() {
     hoverHandle: hoverHandle(),
     isLayerLocked: isLayerLocked(),
     eyedropperTarget: null,
+    layerRotation: layerRotation(),
+    layerScaleX: layerScaleX(),
+    layerScaleY: layerScaleY(),
   }));
 
   // Viewport container cursor: grab/grabbing when Space held, default otherwise
@@ -187,12 +214,10 @@ export function CanvasViewport() {
     const layerTargets: SnapRect[] = activeEngineForTargets
       ? activeEngineForTargets.getLayers()
         .filter((l) => l.visible && l.id !== movingId)
-        .map((l) => ({
-          x: l.transform.x,
-          y: l.transform.y,
-          w: l.width * l.transform.scaleX,
-          h: l.height * l.transform.scaleY,
-        }))
+        .map((l) => {
+          const aabb = getLayerAabb(l.transform, l.width, l.height);
+          return { x: aabb.x, y: aabb.y, w: aabb.width, h: aabb.height };
+        })
       : [];
     const snapTargets: SnapRect[] = [
       ...layerTargets,
@@ -600,6 +625,17 @@ export function CanvasViewport() {
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (!engine || !history) return;
+
+    // Auto-select layer under cursor for Move Tool
+    if (activeTool() === "move") {
+      const coords = getDocCoords(e);
+      const allLayers = [...engine.getLayers()];
+      const hit = hitTestLayers(coords, allLayers as LayerInfo[]);
+      if (hit && hit.id !== engine.getActiveLayerId()) {
+        engine.setActiveLayer(hit.id);
+        scheduler.requestRender();
+      }
+    }
 
     prepareToolContext();
     setSnapLines([]);
