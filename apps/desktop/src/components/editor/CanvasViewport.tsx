@@ -250,10 +250,10 @@ export function CanvasViewport() {
         })
       : [];
     const snapTargets: SnapRect[] = [
+      { x: 0, y: 0, w: docW, h: docH, snapThreshold: 12, snapPriority: 3 },
+      { x: docW / 2, y: -Infinity, w: 0, h: Infinity, snapThreshold: 6, snapPriority: 2 },
+      { x: -Infinity, y: docH / 2, w: Infinity, h: 0, snapThreshold: 6, snapPriority: 2 },
       ...layerTargets,
-      { x: 0, y: 0, w: docW, h: docH },
-      { x: docW / 2, y: -Infinity, w: 0, h: Infinity },
-      { x: -Infinity, y: docH / 2, w: Infinity, h: 0 },
     ];
     interactiveState.onComputeSnap = (rect: SnapRect) => {
       if (!activeEngineForTargets) {
@@ -895,10 +895,10 @@ export function CanvasViewport() {
                     return { x: aabb.x, y: aabb.y, w: aabb.width, h: aabb.height };
                   });
                 const snapTargets: SnapRect[] = [
+                  { x: 0, y: 0, w: docW, h: docH, snapThreshold: 12, snapPriority: 3 },
+                  { x: docW / 2, y: -Infinity, w: 0, h: Infinity, snapThreshold: 6, snapPriority: 2 },
+                  { x: -Infinity, y: docH / 2, w: Infinity, h: 0, snapThreshold: 6, snapPriority: 2 },
                   ...layerTargets,
-                  { x: 0, y: 0, w: docW, h: docH },
-                  { x: docW / 2, y: -Infinity, w: 0, h: Infinity },
-                  { x: -Infinity, y: docH / 2, w: Infinity, h: 0 },
                 ];
                 const result = computeSnapAdjustment(rect, snapTargets);
                 setSnapLines(result.lines);
