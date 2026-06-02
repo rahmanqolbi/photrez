@@ -64,6 +64,15 @@ export function CanvasViewport() {
     hoverHandle,
     setHoverHandle,
     syncViewport,
+    moveAutoSelect,
+    moveSnapEnabled,
+    setActiveTool,
+    cropRect, setCropRect,
+    cropMode, setCropMode,
+    cropGuideMode, setCropGuideMode,
+    cropDeletePixels, setCropDeletePixels,
+    cropAspect, setCropAspect,
+    cropSizeTarget, setCropSizeTarget,
   } = useEditor();
 
   let canvasContainerRef!: HTMLDivElement;
@@ -77,9 +86,12 @@ export function CanvasViewport() {
     h: number;
   } | null>(null);
 
-  // Crop overlay state
-  const [cropRect, setCropRect] = createSignal<{ x: number; y: number; w: number; h: number } | null>(null);
-  const [cropGuideMode, setCropGuideMode] = createSignal<"none" | "thirds" | "grid" | "diagonal" | "golden">("none");
+  // Crop drag state for overlay interaction
+  const [cropDragState, setCropDragState] = createSignal<{
+    handle: string | null;
+    startRect: { x: number; y: number; w: number; h: number };
+    startPointer: { x: number; y: number };
+  } | null>(null);
 
   // Spacebar and Middle-click panning states
   const [isSpacePressed, setIsSpacePressed] = createSignal(false);
@@ -236,6 +248,9 @@ export function CanvasViewport() {
     interactiveState.onSelectionCreated = (x, y, w, h) => {
       setSelectionBox({ x, y, w, h });
     };
+    interactiveState.onCropCreated = (x, y, w, h) => {
+      setCropRect({ x, y, w, h });
+    };
     interactiveState.onHoverHandle = setHoverHandle;
     const activeEngineForTargets = workspace.getActiveEngine();
     const movingId = activeEngineForTargets ? activeEngineForTargets.getActiveLayerId() : null;
@@ -255,13 +270,18 @@ export function CanvasViewport() {
       { x: -Infinity, y: docH / 2, w: Infinity, h: 0, snapThreshold: 6, snapPriority: 2 },
       ...layerTargets,
     ];
-    interactiveState.onComputeSnap = (rect: SnapRect) => {
-      if (!activeEngineForTargets) {
-        setSnapLines([]);
-        return { dx: 0, dy: 0, lines: [] };
-      }
-      return computeSnapAdjustment(rect, snapTargets);
-    };
+    if (moveSnapEnabled()) {
+      interactiveState.onComputeSnap = (rect: SnapRect) => {
+        if (!activeEngineForTargets) {
+          setSnapLines([]);
+          return { dx: 0, dy: 0, lines: [] };
+        }
+        return computeSnapAdjustment(rect, snapTargets);
+      };
+    } else {
+      interactiveState.onComputeSnap = undefined;
+      setSnapLines([]);
+    }
     interactiveState.onSnapLines = (lines) => setSnapLines(lines);
     interactiveState.onPaintStroke = onPaintStroke;
   }
@@ -403,6 +423,30 @@ export function CanvasViewport() {
 
       const history = workspace.getActiveHistory();
       if (!history) return;
+
+      // Crop tool keyboard shortcuts
+      if (activeTool() === "crop") {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const rect = cropRect();
+          const engine2 = workspace.getActiveEngine();
+          if (rect && engine2) {
+            const history = workspace.getActiveHistory();
+            history?.commit(engine2.snapshot());
+            engine2.cropCanvas(rect.x, rect.y, rect.w, rect.h);
+            scheduler.requestRender();
+            setCropRect(null);
+            setActiveTool("move");
+          }
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setCropRect(null);
+          setActiveTool("move");
+          return;
+        }
+      }
 
       const key = e.key.toLowerCase();
       const ctrl = e.ctrlKey || e.metaKey;
@@ -683,7 +727,7 @@ export function CanvasViewport() {
     if (!engine || !history) return;
 
     // Auto-select layer under cursor for Move Tool
-    if (activeTool() === "move") {
+    if (activeTool() === "move" && moveAutoSelect()) {
       const coords = getDocCoords(e);
       const allLayers = [...engine.getLayers()];
       const hit = hitTestLayers(coords, allLayers as LayerInfo[]);
@@ -854,6 +898,10 @@ export function CanvasViewport() {
               guideMode={cropGuideMode()}
               canvasWidth={docWidth()}
               canvasHeight={docHeight()}
+              zoom={zoom()}
+              cropMode={cropMode()}
+              cropAspect={cropAspect()}
+              onCropRectChange={(rect) => setCropRect(rect)}
             />
             <Show when={hudInfo()}>
               {(h) => (
@@ -904,6 +952,7 @@ export function CanvasViewport() {
                 setSnapLines(result.lines);
                 return result;
               }}
+              onSnapClear={() => setSnapLines([])}
               onScreenToDoc={(cx, cy) => {
                 const rect = canvasContainerRef?.getBoundingClientRect();
                 const engine = workspace.getActiveEngine();

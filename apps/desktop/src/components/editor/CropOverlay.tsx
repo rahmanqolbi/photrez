@@ -5,6 +5,10 @@ interface CropOverlayProps {
   guideMode: "none" | "thirds" | "grid" | "diagonal" | "golden";
   canvasWidth: number;
   canvasHeight: number;
+  zoom: number;
+  cropMode: "free" | "ratio" | "size";
+  cropAspect: { w: number; h: number } | null;
+  onCropRectChange: (rect: { x: number; y: number; w: number; h: number }) => void;
 }
 
 export function CropOverlay(props: CropOverlayProps) {

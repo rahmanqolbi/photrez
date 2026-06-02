@@ -2,6 +2,188 @@
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
+---
+
+## Current Task — CanvasViewport Crop Wiring [COMPLETE]
+
+**Date:** 2026-06-02
+
+### Perubahan
+
+1. **Removed local `cropRect`/`cropGuideMode` signals** — now consumed from EditorContext
+2. **Added `cropDragState` signal** — for overlay drag interaction tracking
+3. **Expanded `useEditor()` destructuring** — `setActiveTool`, `cropRect`, `cropMode`, `cropGuideMode`, `cropDeletePixels`, `cropAspect`, `cropSizeTarget`
+4. **Wired `onCropCreated` in `prepareToolContext`** — calls `setCropRect()` when crop is created via input handler
+5. **Added keyboard handler for Enter/Esc** — Enter applies crop (commits history, calls `engine.cropCanvas`, switches to move); Esc cancels and switches to move
+6. **Updated `<CropOverlay>` props** — added `zoom`, `cropMode`, `cropAspect`, `onCropRectChange`; updated CropOverlay component interface
+
+### Verifikasi
+
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `npx vitest run`: 182 PASS (17 files, +14 from previous)
+
+### Files Changed
+
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` — crop signal refactor, prepareToolContext wiring, keyboard handler, CropOverlay props
+- `apps/desktop/src/components/editor/CropOverlay.tsx` — extend props interface with zoom/cropMode/cropAspect/onCropRectChange
+
+---
+
+## Current Task — Option Bar Locked Layer Clarity [COMPLETE]
+
+**Date:** 2026-06-02
+
+### Root Cause
+
+X/Y/R option bar fields seolah "tidak update transform" ketika selected layer ***locked***. Dua masalah:
+
+1. **Tidak ada visual indikasi locked** — field X/Y/R tampak editable (focusable, ketik angka OK), tapi `handlePositionField` dan `handleRotateField` sudah punya `if (!layer || layer.locked) return;` yang silently ignore submit. User melihat angka berubah di field, tapi visual canvas tidak bergerak — confusing.
+2. **Flip H/V dan Reset tidak punya locked guard** — `handleFlip` dan `handleResetTransform` langsung jalan tanpa cek `layer.locked`, sehingga layer locked tetap bisa di-flip/reset oleh user.
+
+### Perbaikan
+
+1. `activeLayerSafe()` helper — baca langsung dari `engine.getLayer(id)` untuk fresh state (bukan dari `layers()` signal yang mungkin stale)
+2. `isLocked()` derived signal — `activeLayerSafe()?.locked ?? false`
+3. Locked guard di `handleFlip` dan `handleResetTransform` — `if (isLocked()) return;`
+4. **"Locked" pill indicator** — muncul di option bar saat locked (`<Show when={isLocked()}>`), menampilkan lock icon + "Locked" label dengan amber border/tint. Muncul di antara Divider dan X/Y/W/H fields, menggantikan area yang sebelumnya kosong.
+5. **Flip buttons** — wrapper div mendapat `opacity-30 pointer-events-none` saat locked
+6. **Reset button** — `disabled` attribute + `text-editor-text-dim/30 cursor-default` class saat locked
+7. **X/Y/R fields** — sudah support `disabled` prop via `EditableNumField`, sekarang di-pass `isLocked()`
+
+### Verifikasi
+
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `npx vitest run`: 168 PASS (16 files)
+
+### Files Changed
+
+- `apps/desktop/src/components/editor/OptionBar.tsx`: +activeLayerSafe/isLocked helpers, locked guards di flip/reset, "Locked" pill, disabled styles
+
+---
+
+## Current Task — Move Tool Option Bar Hybrid [ACTIVE]
+
+**Date:** 2026-06-02
+
+### Scope
+
+Move Tool option bar: Auto Select toggle, Snap toggle, editable X/Y/Rotate, display-only W/H, Flip H/V, Reset.
+
+### Files Touched
+
+- `EditorContext.tsx` — +moveAutoSelect, moveSnapEnabled signals
+- `primitives.tsx` — +EditableNumField component
+- `OptionBar.tsx` — full rewrite of Move/Selection section
+- `CanvasViewport.tsx` — wire toggles to auto-select + snap guards
+- `SelectionTransformOverlay.tsx` — wire moveSnapEnabled guard
+- `__tests__/` — +regression tests
+- `docs/` — AI_CURRENT_TASK, AI_HISTORY, FEATURES, ARCHITECTURE
+
+### Verifikasi
+
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `npx vitest run`: 168 PASS (16 files, +1)
+- ✅ `cargo test -p photrez-core`: 85/85 PASS
+
+---
+
+## Current Task — Overlay Move Tool Alt Snap Disable + Guardrail Docs [COMPLETE]
+
+Date: 2026-06-02
+
+### Root Cause
+
+Overlay move path (`SelectionTransformOverlay.tsx`) tidak honor Alt key untuk disable snapping, sementara canvas move path (`input-handler.ts:108`) sudah: `if (!context.isAltPressed && context.onComputeSnap)`. User yang hold Alt saat drag melalui overlay tetap mendapat snap behavior.
+
+### Perbaikan
+
+1. **`SelectionTransformOverlay.tsx:161`** — Tambah guard `!e.altKey` sebelum `props.onComputeSnap`. Saat Alt ditekan, panggil `props.onSnapClear?.()` untuk konsistensi.
+2. **`docs/AI_CONTEXT.md`** — Tambah section **Move Tool Runtime Assumptions** (9 aturan) untuk guidance AI berikutnya.
+3. **`docs/ARCHITECTURE.md`** — Test count 162 → 167.
+4. **Tests** — +1 regression test: Alt key disables snapping selama overlay move drag.
+5. **`docs/FEATURES.md`** — Test count 166 → 167.
+
+### Verifikasi
+
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `npx vitest run`: 167 PASS (16 files, +1)
+- ✅ `cargo test -p photrez-core`: 85/85 PASS
+
+### Files Changed
+
+- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: +!e.altKey guard, +else onSnapClear
+- `apps/desktop/src/components/editor/__tests__/SelectionTransformOverlay.test.ts`: +1 regression test
+- `docs/AI_CONTEXT.md`: +Move Tool Runtime Assumptions section
+- `docs/ARCHITECTURE.md`: test count 162→167
+- `docs/FEATURES.md`: test count 166→167
+- `docs/AI_HISTORY.md`: entry ini
+- `docs/AI_CURRENT_TASK.md`: entry ini
+
+---
+
+## Current Task — Fix: Stuck Snap Indicators on Overlay Move Drag End [COMPLETE]
+
+Date: 2026-06-02
+
+### Root Cause
+
+Overlay move path (`SelectionTransformOverlay.tsx`) tidak pernah membersihkan snap lines saat drag berakhir — pointerup/pointercancel/lostpointercapture/Escape handler hanya membersihkan HUD dan drag state, tapi `snapLines` signal di `CanvasViewport.tsx` tetap berisi guide lines terakhir. Indikator baru hilang saat pointer move berikutnya memanggil `setSnapLines(result.lines)` (dengan result kosong = overwrite state lama).
+
+Sebaliknya canvas move path (`input-handler.ts`) sudah benar: panggil `onSnapLines?.([])` di `handlePointerUp`.
+
+### Perbaikan
+
+1. **`SelectionTransformOverlay.tsx`** — Tambah `onSnapClear?: () => void` di props. Panggil `props.onSnapClear?.()` di:
+   - `handlePointerUp`
+   - `handlePointerCancel`
+   - `handleLostPointerCapture`
+   - Escape `handleKeyDown`
+2. **`CanvasViewport.tsx`** — Wire `onSnapClear={() => setSnapLines([])}` ke `<SelectionTransformOverlay>`
+3. **Tests** — +4 regression tests (pointerup, pointercancel, lostpointercapture, Escape) di `SelectionTransformOverlay.test.ts`
+
+### Verifikasi
+
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `npx vitest run`: 166 PASS (16 files, +4)
+- ✅ `cargo test -p photrez-core`: 85/85 PASS
+
+### Files Changed
+
+- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: +1 prop, +4 onSnapClear calls
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`: +1 line (onSnapClear wiring)
+- `apps/desktop/src/components/editor/__tests__/SelectionTransformOverlay.test.ts`: +4 regression tests
+- `docs/AI_HISTORY.md`: entry ini
+- `docs/AI_CURRENT_TASK.md`: entry ini
+- `docs/FEATURES.md`: test count 162→166
+
+---
+
+## Current Task — Docs Sync: MVP Runtime Architecture v2 [COMPLETE]
+
+Date: 2026-06-02
+
+### Deskripsi
+
+Menyinkronkan dokumentasi arsitektur dengan realitas runtime MVP saat ini: TypeScript DocumentEngine + WebGL2 hot-path, bukan Rust Core + wgpu. Dokumen-dokumen berikut diperbarui tanpa menghapus history:
+
+### Perubahan
+
+1. **`docs/AI_CONTEXT.md`** — Stack line updated: MVP runtime = TS DocumentEngine + WebGL2; future target = Rust + wgpu. Section 6 (WGPU RENDERER) → Section 6 (RENDERER — MVP + Future) dengan dual ownership. Rule #3 mendapat pengecualian MVP untuk TS editing hot-path.
+2. **`docs/ARCHITECTURE.md`** — Gambaran Umum, Status Proyek, Stack table, dan Source of Truth section diperbarui untuk mencerminkan dual MVP/future stack.
+3. **`docs/02-architecture.md`** — Ditambahkan Section 11 (MVP Runtime Reality) yang mendeskripsikan current stack, data flow, ownership differences, dan migration path. Catatan di header bahwa sections 1-10 adalah target architecture.
+4. **`docs/03-trd.md`** — Runtime Stack, Scalability Requirements, dan Maintainability Requirements diperbarui dengan dual MVP/future wording.
+5. **`docs/01-id-decision-log.md`** — Baris Arsitektur di-split menjadi "future target" (Rust + wgpu) dan "MVP runtime" (TS + WebGL2).
+6. **`docs/FEATURES.md`** — "wgpu canvas" → "WebGL2 canvas".
+7. **`docs/AI_CURRENT_TASK.md`** — Entry ini.
+8. **`docs/AI_HISTORY.md`** — Entry baru.
+
+### Verifikasi
+
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `npx vitest run`: 162 PASS
+
+---
+
 ## Current Task — Canvas Edge Snap Boost [COMPLETE]
 
 Date: 2026-06-02

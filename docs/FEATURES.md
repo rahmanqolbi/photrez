@@ -39,6 +39,7 @@
 | ✅ DONE      | Move tool snapping — layer edges/centers + canvas edges/centers (5px threshold, nearest-wins per axis) |
 | ✅ DONE      | Canvas edge snap boost — 12px threshold, priority 3 for canvas edges; 6px priority 2 for center lines; layer-to-layer stays 5px priority 1 |
 | ✅ DONE      | Move tool Alt-key hold to disable snap       |
+| ✅ DONE      | Move tool option bar — Auto Select + Snap toggles, editable X/Y/Rotate, display W/H, Flip, Reset |
 | ✅ DONE      | Keyboard nudge (Arrow=1px, Shift+Arrow=10px) |
 | ✅ DONE      | Canvas auto-select (click-to-select visible layer under cursor) |
 | ✅ DONE      | Transform HUD (ΔX/ΔY, W/H/%, angle near cursor) |
@@ -103,7 +104,7 @@
 | ✅ DONE      | Zoom via scroll wheel (Ctrl+scroll)        |
 | ✅ DONE      | Pan canvas (Space+drag)                    |
 | ✅ DONE      | Fit to screen (Ctrl+0)                     |
-| ✅ DONE      | Pixel-level canvas rendering (wgpu canvas) |
+| ✅ DONE      | Pixel-level canvas rendering (WebGL2 canvas) |
 | ✅ DONE      | On-demand rendering (dirty flag system)    |
 | ✅ DONE      | CSS transform viewport (GPU-accelerated)  |
 | ✅ DONE      | Hover highlight (purple outline)           |
@@ -195,7 +196,7 @@
 | ⬜ TODO      | CI pipeline (GitHub Actions)               |
 | ✅ DONE      | Unit tests (core crate) — 69 tests         |
 | ✅ DONE      | Contract tests (IPC commands) — 13 tests   |
-| ✅ DONE      | Frontend tests — 162 passing tests (16 files) |
+| ✅ DONE      | Frontend tests — 182 passing tests (17 files) |
 | ✅ DONE      | M6 Perf Gate (all metrics PASS)            |
 | ✅ DONE      | Native Vite tsconfig paths (removed `vite-tsconfig-paths` plugin) |
 | ✅ DONE      | Release candidate (MSI + NSIS installers)  |
