@@ -2,6 +2,262 @@
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
+## Current Task — Canvas Edge Snap Boost [COMPLETE]
+
+Date: 2026-06-02
+
+### Deskripsi
+
+Meningkatkan UX snapping: canvas edges lebih magnetik dengan threshold 12px dan priority 3 (menang atas target lain). Canvas center lines threshold 6px priority 2. Layer-to-layer tetap default (5px, priority 1).
+
+### Perubahan
+
+1. **`SnapRect` interface** — tambah optional `snapThreshold` dan `snapPriority` fields.
+2. **`computeSnapAdjustment`** — priority-aware: higher priority wins regardless of distance; same priority picks closest.
+3. **`CanvasViewport.tsx`** — tag canvas edge target dengan `snapThreshold: 12, snapPriority: 3`, center lines dengan `snapThreshold: 6, snapPriority: 2`.
+4. **Tests** — +7 regression tests (threshold boundary, priority override, center lines, backward compat).
+
+### Verifikasi
+
+- ✅ `vitest run`: 162 PASS (16 files, +7)
+- ✅ `pnpm run build`: PASS
+
+### Files Changed
+
+- `apps/desktop/src/viewport/smartGuides.ts`
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- `apps/desktop/src/__tests__/snap-adjustment.test.ts`
+- `docs/FEATURES.md`, `docs/ARCHITECTURE.md`, `docs/AI_HISTORY.md`, `docs/AI_CURRENT_TASK.md`
+- `docs/superpowers/specs/2026-06-02-canvas-edge-snap-boost-design.md`
+- `docs/superpowers/plans/2026-06-02-canvas-edge-snap-boost.md`
+
+---
+
+## Current Task — Handle-Axis Projection for Corner Resize (Fix: Corrected Perpendicular Axis) [COMPLETE]
+
+Date: 2026-06-02
+
+### Deskripsi
+
+Fix sebelumnya menggunakan aspect-ratio diagonal object sebagai projection axis untuk proportional corner resize. User melaporkan gerakan NE/SW pada SE handle tetap mengubah ukuran ("masih nggak ada bedanya"). Root cause: axis yang benar adalah handle/cursor diagonal (45°), bukan object-aspect diagonal.
+
+### Root Cause
+
+Fix sebelumnya (`docs/AI_HISTORY.md`: BUG FIX — Photoshop-Style Diagonal Projection):
+```ts
+const diagX = handle === "se" || handle === "ne" ? oldW : -oldW;
+const diagY = handle === "se" || handle === "sw" ? oldH : -oldH;
+```
+Ini memproyeksikan mouse delta ke diagonal object (mis. SE = (200, 100) untuk layer 200×100). Gerakan NE/SW (20, -20) masih punya dot product non-zero dengan (200, 100), jadi resize tetap terjadi.
+
+### Fix
+
+Ganti projection axis dari object-aspect diagonal ke **handle/cursor diagonal** (arah 45° cursor di screen space):
+
+```ts
+const hx = handle === "se" || handle === "ne" ? 1 : -1;
+const hy = handle === "se" || handle === "sw" ? 1 : -1;
+const projected = localDx * hx + localDy * hy;
+const factor = 1 + projected / (oldW + oldH);
+```
+
+Untuk SE handle (hx=1, hy=1), gerakan (20, -20): projected = 20×1 + (-20)×1 = 0 → factor = 1 → no resize ✓
+
+### Verifikasi
+
+- ✅ `vitest run`: 155 PASS (16 test files, +1 regression test)
+
+### Files Changed
+
+- `apps/desktop/src/viewport/transformGeometry.ts`: projection axis dari aspect-diagonal ke handle-axis
+- `apps/desktop/src/__tests__/transform-geometry.test.ts`: update expectations, fix perpendicular test vectors, +1 regression test
+- `docs/AI_HISTORY.md`: root cause + fix rationale entry
+- `docs/AI_CURRENT_TASK.md`: entry ini
+- `docs/FEATURES.md`: test count 154→155
+
+---
+
+## Current Task — Fix Remaining Vertical Flip (Shader UV Double Y-Flip Regression) [COMPLETE]
+
+Date: 2026-06-02
+
+### Deskripsi
+
+User melaporkan layer gambar masih vertikal terbalik ("masih ke flip vertikal") setelah bugfix campaign sebelumnya. Root cause: shader vertex masih memiliki `v_texCoord = vec2(pos.x, 1.0 - pos.y)` yang melakukan double Y-flip karena `computeViewMatrix()` di webgl2.ts sudah melakukan Y-flip via `m[5] = -2.0 / docH`.
+
+### Root Cause
+
+**Akar masalah:** Commit `2fa63a0` (fix: P0 center-anchored flip) secara tidak sengaja meregresi shader UV coordinate. Commit sebelumnya (`6ad3d70`) sudah benar mengubah `v_texCoord = vec2(pos.x, pos.y)` dengan komentar "Y-axis already handled by view matrix flip", karena:
+
+1. `computeViewMatrix()` di `webgl2.ts:293` set `m[5] = -2.0 / docH` — membalik sumbu Y document ke NDC
+2. `pos.y = 0` berarti visual TOP (setelah view matrix flip), `pos.y = 1` berarti visual BOTTOM
+3. Image di-upload dengan `UNPACK_FLIP_Y_WEBGL = false` (default) → row 0 = top of image
+4. `v_texCoord = vec2(pos.x, pos.y)` → visual TOP (pos.y=0) → texture v=0 → top of image ✓
+
+Dengan `v_texCoord = vec2(pos.x, 1.0 - pos.y)`:
+- visual TOP (pos.y=0) → texture v=1 → bottom of image ✗ (vertical flip)
+
+### Perbaikan
+
+1. **[DONE]** Ubah `shaders.ts:23` — `v_texCoord = vec2(pos.x, 1.0 - pos.y)` → `v_texCoord = vec2(pos.x, pos.y)`
+2. **[DONE]** Tambah regression test: assert shader source menggunakan `pos.y` (bukan `1.0 - pos.y`)
+3. **[DONE]** Verification: build + 147/147 tests + Rust 85/85
+
+### Verifikasi
+
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `npx vitest run`: 150 PASS (16 test files, +3 regression tests)
+- ✅ `cargo test -p photrez-core`: 85/85 PASS
+
+### Files Changed
+
+- `apps/desktop/src/renderer/shaders.ts`: hapus `1.0 - pos.y` → `pos.y` + komentar why no UV flip
+- `apps/desktop/src/__tests__/renderer.test.ts`: +1 regression test untuk shader UV invariant
+- `docs/AI_HISTORY.md`: root cause + fix rationale entry
+- `docs/AI_CURRENT_TASK.md`: entry ini
+
+---
+
+## Current Task — Fix Resize Handle Pointer Capture (Lost/Stuck During Fast Drag) [COMPLETE]
+
+Date: 2026-06-02
+
+### Deskripsi
+
+Resize handle pointer capture bisa "lost" saat resize terlalu cepat. Root cause: `setPointerCapture()` dipanggil pada elemen SVG handle individual yang bisa diganti DOM node-nya selama Solid re-render (triggered oleh `engine.transformLayer()` → `syncState()`), menyebabkan pointer capture hilang dan `dragState` tidak pernah di-clear.
+
+### Root Cause
+
+**Akar masalah:** Di `SelectionTransformOverlay.tsx:120-121`, `handlePointerDown` menggunakan `e.currentTarget.setPointerCapture(e.pointerId)` yang men-capture ke elemen handle SVG (mis. `<rect>` di dalam `<For>` loop). Saat `handlePointerMove` memanggil `engine.transformLayer()`, Solid me-render ulang overlay dengan props baru, DOM node handle bisa terganti, dan pointer capture hilang — sehingga `pointermove`/`pointerup` selanjutnya tidak pernah diterima dan `dragState` stuck selamanya.
+
+### Perbaikan
+
+1. **[DONE]** Capture pointer ke root `<svg>` (`overlaySvgRef`) bukan ke handle element — root SVG stabil karena tidak direplace selama re-render
+2. **[DONE]** Simpan `pointerId` di `dragState` — filter event hanya untuk captured pointer
+3. **[DONE]** Pindah `onPointerMove`/`onPointerUp`/`onPointerCancel`/`onLostPointerCapture` ke root `<svg>`
+4. **[DONE]** Hapus `onPointerMove`/`onPointerUp` dari individual handle elements (move rect, rotate path, resize rects)
+5. **[DONE]** Tambah `handlePointerCancel` + `handleLostPointerCapture` untuk cleanup jika browser melepas capture secara external
+6. **[DONE]** Escape handler juga me-release pointer capture sebelum cleanup
+7. **[DONE]** Gunakan `const HANDLE_TYPES` stable array (vs array object baru per render) untuk mengurangi re-render churn
+8. **[DONE]** Accessibility: `data-overlay-svg` + `data-handle={type}` untuk testability
+9. **[DONE]** +3 regression tests: capture di root SVG, release di root SVG, ignore non-captured pointer
+
+### Verifikasi
+
+- ✅ `npx vitest run`: 150 PASS (16 test files, +3 regression tests)
+- ✅ `cargo test -p photrez-core`: 85/85 PASS
+
+### Files Changed
+
+- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: pointer capture ke root SVG, pointerId filter, stable HANDLE_TYPES, root SVG event handlers
+- `apps/desktop/src/components/editor/__tests__/SelectionTransformOverlay.test.ts`: +3 regression tests
+- `apps/desktop/vite.config.ts`: Solid Plugin hot:false di VITEST mode (fix @solid-refresh error di test)
+- `docs/AI_CURRENT_TASK.md`: entry ini
+- `docs/AI_HISTORY.md`: root cause + fix rationale
+
+---
+
+## Current Task — Photoshop-Style Diagonal Projection for Corner Resize (Fix Perpendicular Drift) [COMPLETE]
+
+Date: 2026-06-02
+
+### Deskripsi
+
+Saat resize dari corner handle dengan mode proportional, gerakan mouse yang tegak lurus terhadap diagonal resize (mis. gerakan NE/SW saat handle SE ditarik) tetap mengubah ukuran gambar. Di Photoshop, gerakan perpendicular tidak menyebabkan perubahan ukuran — hanya gerakan yang sejajar diagonal resize yang memengaruhi.
+
+### Root Cause
+
+`applyResizeHandle()` di `transformGeometry.ts:170-184` menggunakan **axis dominance** untuk proportional resize:
+
+```ts
+if (Math.abs(localDx) > Math.abs(localDy)) {
+  vh = vw / aspect;
+} else {
+  vw = vh * aspect;
+}
+```
+
+Pendekatan ini memilih axis dengan delta absolut terbesar lalu menyesuaikan axis satunya. Akibatnya, mouse yang bergerak di arah mana pun tetap mengubah width ATAU height, lalu axis lain dikompromikan — termasuk gerakan perpendicular yang seharusnya tidak mengubah ukuran sama sekali.
+
+### Fix
+
+Ganti axis dominance dengan **vector projection onto diagonal** untuk corner proportional resize:
+
+1. Hitung visual rect awal (`oldW`, `oldH`)
+2. Tentukan vektor diagonal dari opposite anchor ke dragged corner (sesuai handle type)
+3. Project local mouse delta ke unit vector diagonal:
+   ```
+   projected = localDx * ux + localDy * uy
+   factor = 1 + projected / diagonalLength
+   ```
+4. Hitung vw/vh baru dari `oldW * factor`, `oldH * factor`
+5. Reposition anchor: SE (top-left tetap), NE (bottom-left), SW (top-right), NW (bottom-right)
+6. Clamp `factor` supaya width/height ≥ 1px
+
+Non-corner handles dan Shift-free scaling tetap pakai independent axis delta.
+
+### Verifikasi
+
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `npx vitest run`: 154 PASS (16 test files, +4 regression tests)
+- ✅ `cargo test -p photrez-core`: 85/85 PASS
+
+### Files Changed
+
+- `apps/desktop/src/viewport/transformGeometry.ts`: `applyResizeHandle()` — replace axis-dominance with diagonal projection
+- `apps/desktop/src/__tests__/transform-geometry.test.ts`: +4 perpendicular regression tests (all 4 corners), update 2 existing test expectations
+- `docs/AI_CURRENT_TASK.md`: entry ini
+- `docs/AI_HISTORY.md`: root cause + fix rationale
+
+---
+
+## Bugfix Campaign — Center-Anchored Flip, Overlay Reactivity, Snap+HUD Unification, Rotation Drag Fix [COMPLETE]
+
+Date: 2026-06-02
+
+### Deskripsi
+
+Bugfix campaign setelah Photoshop-like Free Transform implementation. Memperbaiki 7 kategori bugs yang ditemukan selama audit P0/P1:
+
+1. **[COMPLETE]** Repo state repair (Task 0): HEAD buildable from clean checkout — removed stale vite-tsconfig-paths references, committed all pending spec/plan/test files
+2. **[COMPLETE]** Transform semantics fix (Task 2): Shader center-anchored flip (`center → flip`, not `flip → center`). Geometry helpers decouple flip from scale magnitude. CW rotation unified (positive deg = CW) across shader, geometry, SVG overlay, and tests.
+3. **[COMPLETE]** Overlay reactivity fix (Task 3): `EditorContext.syncState()` deep-clones layer objects for Solid reactivity graph
+4. **[COMPLETE]** Overlay pointer layering fix (Task 4): Move hit zone before handles (SVG z-order). Escape key clears HUD.
+5. **[COMPLETE]** Move drag snap+HUD unification (Task 5): Overlay move path calls `computeSnapAdjustment`. HUD snap label from actual snap lines.
+6. **[COMPLETE]** HUD position fix (Task 6): CanvasViewport uses `screenToDocument()` for HUD coords. Rotation drag uses proper document-space points.
+7. **[COMPLETE]** Docs update (Task 7): All test counts synced across docs.
+
+### Verifikasi Final
+
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `npx vitest run`: 146/146 PASS (15 test files)
+- ✅ `cargo test -p photrez-core`: 85/85 PASS
+
+### Files Changed
+
+- `apps/desktop/src/viewport/transformGeometry.ts`: geometry helpers — no sxSign, positive scaleX
+- `apps/desktop/src/__tests__/transform-geometry.test.ts`: +4 flip-semantics tests
+- `apps/desktop/src/renderer/shaders.ts`: vertex shader — center-anchored flip + CW rotation
+- `apps/desktop/src/renderer/webgl2.ts`: uniforms — flipSign from booleans only
+- `apps/desktop/src/components/editor/EditorContext.tsx`: syncState deep-clones layer objects
+- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: move zone before handles, Escape clears HUD, onComputeSnap, onScreenToDoc
+- `apps/desktop/src/components/editor/TransformHud.tsx`: uses raw clientX/clientY (document-space)
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`: HUD conversion, onComputeSnap/onScreenToDoc wiring
+- `apps/desktop/src/viewport/input-handler.ts`: AABB-based snap with getLayerAabb
+- `apps/desktop/src/viewport/cursorResolver.ts`: rotation-aware cursors via getCursorForHandle
+- `docs/FEATURES.md`: test count 146
+- `docs/ARCHITECTURE.md`: test count 146
+
+### Catatan
+
+- Center-anchored flip: shader does `localPos → center → flip → rotate → center`, not flip → center
+- ScaleX/ScaleY always positive magnitude; flipH/flipV booleans carry orientation
+- Rotation: positive deg = CW — unified across shader, geometry, SVG overlay, and tests
+- Overlay reactivity: Solid `createMemo` recomputes on transform changes because `syncState` now deep-clones
+- All P0/P1 bugs fixed and committed across 4 commits + 5 Precision Move Pack commits
+
+---
+
 ## Current Task — Precision Move Pack [COMPLETE]
 
 Date: 2026-06-02

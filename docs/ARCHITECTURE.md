@@ -17,7 +17,7 @@ Photrez adalah lightweight desktop image editor yang dibangun sebagai alternatif
 - **Core Crate**: Document model, layer management, bitmap buffers, selection, transform, brush/eraser, import decode, export encode, and workspace management exist. Core tests pass (`cargo test -p photrez-core`: 85 tests).
 - **Render Crate**: wgpu renderer code exists, but render crate tests currently fail with `STATUS_ENTRYPOINT_NOT_FOUND`; workspace test gate is not green.
 - **Frontend**: Full UI shell with multi-document workspace, document tabs, empty state, drag/drop, and all core editing interactions. Artboard renders via IPC base64 pipeline.
-- **Testing**: Frontend build and tests pass (`pnpm.cmd run build`; `pnpm.cmd --filter photrez-desktop test`: 45 tests). Core tests pass (85 tests).
+- **Testing**: Frontend build and tests pass (`pnpm.cmd run build`; `pnpm.cmd --filter photrez-desktop test`: 162 tests). Core tests pass (85 tests).
 - **Recovery Reference**: `docs/38-usable-mvp-recovery-plan.md`.
 
 ---
