@@ -4,6 +4,7 @@ import fjord from "@/assets/fjord.jpg";
 import { Icon } from "./icons";
 import { useEditor } from "./EditorContext";
 import { LayerNode } from "@/engine/types";
+import type { DocumentModel } from "@/engine/types";
 import { Navigator } from "./Navigator";
 import { LayerItem } from "./LayerItem";
 import { useLayerDragReorder } from "./useLayerDragReorder";
@@ -22,6 +23,8 @@ export function LayersPanel() {
   } = useEditor();
 
   const [showOpacitySlider, setShowOpacitySlider] = createSignal(false);
+  const [opacityHistorySnapshot, setOpacityHistorySnapshot] = createSignal<DocumentModel | null>(null);
+  const [activePanel, setActivePanel] = createSignal<"layers" | "history">("layers");
 
   const [editingLayerId, setEditingLayerId] = createSignal<string | null>(null);
   const [editName, setEditName] = createSignal("");
@@ -57,19 +60,114 @@ export function LayersPanel() {
     setLayerListRef,
   } = useLayerDragReorder();
 
+  const historyStats = () => {
+    activeDocumentId();
+    layers();
+    const history = workspace.getActiveHistory();
+    return {
+      undo: history?.getUndoCount() ?? 0,
+      redo: history?.getRedoCount() ?? 0,
+      canUndo: history?.canUndo() ?? false,
+      canRedo: history?.canRedo() ?? false,
+    };
+  };
+
+  const uploadCurrentLayerTextures = () => {
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+    for (const layer of engine.getLayers()) {
+      if (layer.imageBitmap) {
+        renderer.uploadImage(layer.id, layer.imageBitmap);
+      }
+    }
+  };
+
+  const handleHistoryUndo = () => {
+    const engine = workspace.getActiveEngine();
+    const history = workspace.getActiveHistory();
+    if (!engine || !history || !history.canUndo()) return;
+    const previous = history.undo(engine.snapshot());
+    if (!previous) return;
+    engine.restore(previous);
+    uploadCurrentLayerTextures();
+    scheduler.requestRender();
+  };
+
+  const handleHistoryRedo = () => {
+    const engine = workspace.getActiveEngine();
+    const history = workspace.getActiveHistory();
+    if (!engine || !history || !history.canRedo()) return;
+    const next = history.redo(engine.snapshot());
+    if (!next) return;
+    engine.restore(next);
+    uploadCurrentLayerTextures();
+    scheduler.requestRender();
+  };
+
 
 
   return (
     <section class="flex flex-1 shrink-0 flex-col overflow-hidden bg-editor-panel">
       <div class="flex h-[46px] shrink-0 border-b border-editor-divider">
-        <button class="relative flex h-full items-center px-6 text-[12px] font-medium text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[2px] after:bg-editor-text-dim">
+        <button
+          onClick={() => setActivePanel("layers")}
+          class={clsx(
+            "relative flex h-full items-center px-6 text-[12px] font-medium transition-colors",
+            activePanel() === "layers"
+              ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[2px] after:bg-editor-text-dim"
+              : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
+          )}
+        >
           Layers
         </button>
-        <button class="flex h-full items-center px-6 text-[12px] font-medium text-editor-text-dim transition-colors hover:text-editor-text hover:bg-white/[0.02]">
+        <button
+          onClick={() => setActivePanel("history")}
+          class={clsx(
+            "relative flex h-full items-center px-6 text-[12px] font-medium transition-colors",
+            activePanel() === "history"
+              ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[2px] after:bg-editor-text-dim"
+              : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
+          )}
+        >
           History
         </button>
       </div>
 
+      <Show when={activePanel() === "history"}>
+        <div class={clsx("flex flex-1 flex-col overflow-hidden", !activeDocumentId() && "opacity-50 pointer-events-none")}>
+          <div class="grid grid-cols-2 gap-2 border-b border-editor-divider px-3.5 py-3">
+            <div class="rounded-[4px] border border-editor-divider/70 bg-editor-field px-3 py-2">
+              <div class="text-[11px] uppercase tracking-wide text-editor-text-dim">Undo steps</div>
+              <div class="mt-1 font-mono text-[18px] text-editor-text">{historyStats().undo}</div>
+            </div>
+            <div class="rounded-[4px] border border-editor-divider/70 bg-editor-field px-3 py-2">
+              <div class="text-[11px] uppercase tracking-wide text-editor-text-dim">Redo steps</div>
+              <div class="mt-1 font-mono text-[18px] text-editor-text">{historyStats().redo}</div>
+            </div>
+          </div>
+          <div class="flex gap-2 border-b border-editor-divider px-3.5 py-3">
+            <button
+              disabled={!historyStats().canUndo}
+              onClick={handleHistoryUndo}
+              class="h-[28px] flex-1 rounded-[4px] border border-editor-field-border bg-editor-field text-[12px] text-editor-text hover:bg-white/[0.045] disabled:opacity-40"
+            >
+              Undo
+            </button>
+            <button
+              disabled={!historyStats().canRedo}
+              onClick={handleHistoryRedo}
+              class="h-[28px] flex-1 rounded-[4px] border border-editor-field-border bg-editor-field text-[12px] text-editor-text hover:bg-white/[0.045] disabled:opacity-40"
+            >
+              Redo
+            </button>
+          </div>
+          <div class="flex flex-1 items-center justify-center px-4 text-center text-[12px] leading-snug text-editor-text-dim">
+            Snapshot history is available for layer edits and canvas operations.
+          </div>
+        </div>
+      </Show>
+
+      <Show when={activePanel() === "layers"}>
       <div class={clsx("flex items-center gap-2 px-3.5 pt-3 relative", !activeDocumentId() && "opacity-50 pointer-events-none")}>
         <select
           disabled={!activeLayer() || activeLayer()!.locked}
@@ -102,6 +200,7 @@ export function LayersPanel() {
 
         <div class="relative ml-auto flex items-center">
           <button
+            data-layer-opacity-toggle
             disabled={!activeLayer()}
             onClick={() => setShowOpacitySlider(!showOpacitySlider())}
             class="flex items-center gap-1 hover:text-editor-text transition-colors text-editor-text-dim disabled:opacity-50"
@@ -123,6 +222,7 @@ export function LayersPanel() {
                 </span>
               </div>
               <input
+                data-layer-opacity
                 type="range"
                 min="0"
                 max="100"
@@ -132,16 +232,19 @@ export function LayersPanel() {
                   const engine = workspace.getActiveEngine();
                   const id = activeLayerId();
                   if (engine && id) {
+                    if (!opacityHistorySnapshot()) {
+                      setOpacityHistorySnapshot(engine.snapshot());
+                    }
                     engine.setLayerOpacity(id, parseInt(e.target.value) / 100);
                     scheduler.requestRender();
                   }
                 }}
-                onChange={(e) => {
-                  const engine = workspace.getActiveEngine();
-                  const id = activeLayerId();
-                  if (engine && id) {
-                    const history = workspace.getActiveHistory();
-                    history?.commit(engine.snapshot());
+                onChange={() => {
+                  const history = workspace.getActiveHistory();
+                  const snapshot = opacityHistorySnapshot();
+                  if (history && snapshot) {
+                    history.commit(snapshot);
+                    setOpacityHistorySnapshot(null);
                   }
                 }}
                 class="h-[3px] w-full accent-editor-accent bg-editor-field-border rounded-full appearance-none cursor-pointer"
@@ -358,7 +461,7 @@ export function LayersPanel() {
           <span class="text-[12px] text-editor-text min-w-[36px] text-right">{Math.round(zoom() * 100)}%</span>
         </div>
       </div>
+      </Show>
     </section>
   );
 }
-

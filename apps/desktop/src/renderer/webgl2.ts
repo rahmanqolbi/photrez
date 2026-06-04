@@ -25,7 +25,12 @@ export class WebGL2Backend implements RenderBackend {
     layerRotation: WebGLUniformLocation;
     flipSign: WebGLUniformLocation;
     texture: WebGLUniformLocation;
+    backdrop: WebGLUniformLocation;
     opacity: WebGLUniformLocation;
+    blendMode: WebGLUniformLocation;
+    useBackdrop: WebGLUniformLocation;
+    flipTexY: WebGLUniformLocation;
+    resolution: WebGLUniformLocation;
   } | null = null;
 
   private checkerboardUniforms: {
@@ -40,6 +45,12 @@ export class WebGL2Backend implements RenderBackend {
 
   // Textures map
   private textures: Map<string, TextureRef> = new Map();
+
+  // Ping-pong Framebuffers & Textures
+  private pingPongFbos: [WebGLFramebuffer | null, WebGLFramebuffer | null] = [null, null];
+  private pingPongTextures: [WebGLTexture | null, WebGLTexture | null] = [null, null];
+  private currentWidth = 0;
+  private currentHeight = 0;
 
   constructor() {
     this.capabilities = {
@@ -81,7 +92,12 @@ export class WebGL2Backend implements RenderBackend {
       layerRotation: gl.getUniformLocation(this.layerProgram, "u_layerRotation")!,
       flipSign: gl.getUniformLocation(this.layerProgram, "u_flipSign")!,
       texture: gl.getUniformLocation(this.layerProgram, "u_texture")!,
-      opacity: gl.getUniformLocation(this.layerProgram, "u_opacity")!
+      backdrop: gl.getUniformLocation(this.layerProgram, "u_backdrop")!,
+      opacity: gl.getUniformLocation(this.layerProgram, "u_opacity")!,
+      blendMode: gl.getUniformLocation(this.layerProgram, "u_blendMode")!,
+      useBackdrop: gl.getUniformLocation(this.layerProgram, "u_useBackdrop")!,
+      flipTexY: gl.getUniformLocation(this.layerProgram, "u_flipTexY")!,
+      resolution: gl.getUniformLocation(this.layerProgram, "u_resolution")!
     };
 
     this.checkerboardUniforms = {
@@ -147,7 +163,140 @@ export class WebGL2Backend implements RenderBackend {
     const canvas = this.canvas;
     if (!gl || !canvas) return;
 
-    // Resize viewport matching drawing buffers
+    // Ensure ping-pong FBOs exist and are sized properly
+    const docW = state.documentSize.width;
+    const docH = state.documentSize.height;
+    const viewProj = this.computeViewMatrix(docW, docH);
+
+    // Filter visible layers with textures
+    const visibleLayers = [];
+    for (let i = state.layers.length - 1; i >= 0; i--) {
+      const renderLayer = state.layers[i];
+      if (renderLayer.visible && this.textures.has(renderLayer.id)) {
+        visibleLayers.push(renderLayer);
+      }
+    }
+
+    let activeFboIndex = 0;
+
+    if (visibleLayers.length > 0 && this.layerProgram && this.layerUniforms) {
+      gl.useProgram(this.layerProgram);
+      gl.bindVertexArray(this.vao);
+      
+      // Clear both FBOs
+      for (let i = 0; i < 2; i++) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.pingPongFbos[i]);
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+      }
+
+      let firstDraw = true;
+      let prevFboIndex = 0;
+      let currFboIndex = 1;
+
+      for (const renderLayer of visibleLayers) {
+        const ref = this.textures.get(renderLayer.id)!;
+
+        if (firstDraw) {
+          // Render directly into FBO 0
+          gl.bindFramebuffer(gl.FRAMEBUFFER, this.pingPongFbos[0]);
+          gl.viewport(0, 0, canvas.width, canvas.height);
+
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, ref.texture);
+          gl.uniform1i(this.layerUniforms.texture, 0);
+
+          gl.uniformMatrix4fv(this.layerUniforms.viewProj, false, viewProj);
+          gl.uniform1f(this.layerUniforms.opacity, renderLayer.opacity);
+          gl.uniform1i(this.layerUniforms.blendMode, 0); // Normal
+          gl.uniform1i(this.layerUniforms.useBackdrop, 0); // No backdrop
+          gl.uniform1i(this.layerUniforms.flipTexY, 0); // Raw texture, no flip
+
+          const t = renderLayer.transform;
+          const effW = renderLayer.width * Math.abs(t.scaleX);
+          const effH = renderLayer.height * Math.abs(t.scaleY);
+          const cx = t.x + effW / 2;
+          const cy = t.y + effH / 2;
+          const flipX = t.flipH ? -1 : 1;
+          const flipY = t.flipV ? -1 : 1;
+
+          gl.uniform4f(this.layerUniforms.layerRect, t.x, t.y, effW, effH);
+          gl.uniform2f(this.layerUniforms.layerCenter, cx, cy);
+          gl.uniform1f(this.layerUniforms.layerRotation, t.rotation || 0);
+          gl.uniform2f(this.layerUniforms.flipSign, flipX, flipY);
+
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+          firstDraw = false;
+          activeFboIndex = 0;
+        } else {
+          // Bind FBO currFboIndex as target
+          gl.bindFramebuffer(gl.FRAMEBUFFER, this.pingPongFbos[currFboIndex]);
+          gl.viewport(0, 0, canvas.width, canvas.height);
+
+          // 1. Copy prevFboIndex texture to currFboIndex
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, this.pingPongTextures[prevFboIndex]);
+          gl.uniform1i(this.layerUniforms.texture, 0);
+
+          gl.uniformMatrix4fv(this.layerUniforms.viewProj, false, viewProj);
+          gl.uniform1f(this.layerUniforms.opacity, 1.0);
+          gl.uniform1i(this.layerUniforms.blendMode, 0);
+          gl.uniform1i(this.layerUniforms.useBackdrop, 0);
+          gl.uniform1i(this.layerUniforms.flipTexY, 1); // FBO texture, flip Y
+
+          // Fullscreen quad in document coords
+          gl.uniform4f(this.layerUniforms.layerRect, 0, 0, docW, docH);
+          gl.uniform2f(this.layerUniforms.layerCenter, docW / 2, docH / 2);
+          gl.uniform1f(this.layerUniforms.layerRotation, 0);
+          gl.uniform2f(this.layerUniforms.flipSign, 1.0, 1.0);
+
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+          // 2. Composite new layer onto currFboIndex using prevFboIndex texture as backdrop
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, ref.texture);
+          gl.uniform1i(this.layerUniforms.texture, 0);
+
+          gl.activeTexture(gl.TEXTURE1);
+          gl.bindTexture(gl.TEXTURE_2D, this.pingPongTextures[prevFboIndex]);
+          gl.uniform1i(this.layerUniforms.backdrop, 1);
+
+          gl.uniformMatrix4fv(this.layerUniforms.viewProj, false, viewProj);
+          gl.uniform1f(this.layerUniforms.opacity, renderLayer.opacity);
+          
+          // Map blend mode string to ID
+          const modeId = this.getBlendModeId(renderLayer.blendMode || "normal");
+          gl.uniform1i(this.layerUniforms.blendMode, modeId);
+          gl.uniform1i(this.layerUniforms.useBackdrop, 1);
+          gl.uniform1i(this.layerUniforms.flipTexY, 0); // Raw layer texture, no flip
+          gl.uniform2f(this.layerUniforms.resolution, canvas.width, canvas.height);
+
+          const t = renderLayer.transform;
+          const effW = renderLayer.width * Math.abs(t.scaleX);
+          const effH = renderLayer.height * Math.abs(t.scaleY);
+          const cx = t.x + effW / 2;
+          const cy = t.y + effH / 2;
+          const flipX = t.flipH ? -1 : 1;
+          const flipY = t.flipV ? -1 : 1;
+
+          gl.uniform4f(this.layerUniforms.layerRect, t.x, t.y, effW, effH);
+          gl.uniform2f(this.layerUniforms.layerCenter, cx, cy);
+          gl.uniform1f(this.layerUniforms.layerRotation, t.rotation || 0);
+          gl.uniform2f(this.layerUniforms.flipSign, flipX, flipY);
+
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+          activeFboIndex = currFboIndex;
+          prevFboIndex = currFboIndex;
+          currFboIndex = 1 - currFboIndex;
+        }
+      }
+    }
+
+    // Now render to main screen
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, canvas.width, canvas.height);
 
     // Clear background
@@ -156,11 +305,6 @@ export class WebGL2Backend implements RenderBackend {
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     gl.bindVertexArray(this.vao);
-
-    // Compute document Viewport projection matrix
-    const docW = state.documentSize.width;
-    const docH = state.documentSize.height;
-    const viewProj = this.computeViewMatrix(docW, docH);
 
     // 1. Render Checkerboard if requested
     if (state.checkerboard && this.checkerboardProgram) {
@@ -180,51 +324,114 @@ export class WebGL2Backend implements RenderBackend {
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
-    // 2. Render Layers (bottom-to-top)
-    if (this.layerProgram && this.layerUniforms) {
+    // 2. Render final FBO onto the checkerboard
+    if (visibleLayers.length > 0 && this.layerProgram && this.layerUniforms) {
       gl.useProgram(this.layerProgram);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, this.pingPongTextures[activeFboIndex]);
+      gl.uniform1i(this.layerUniforms.texture, 0);
+
       gl.uniformMatrix4fv(this.layerUniforms.viewProj, false, viewProj);
+      gl.uniform1f(this.layerUniforms.opacity, 1.0);
+      gl.uniform1i(this.layerUniforms.blendMode, 0); // Normal
+      gl.uniform1i(this.layerUniforms.useBackdrop, 0); // No backdrop
+      gl.uniform1i(this.layerUniforms.flipTexY, 1); // FBO texture, flip Y
 
-      // We traverse in reverse direction: layers stack is top-to-bottom, so bottom is at end
-      for (let i = state.layers.length - 1; i >= 0; i--) {
-        const renderLayer = state.layers[i];
-        if (!renderLayer.visible) continue;
+      // Fullscreen quad in document coords
+      gl.uniform4f(this.layerUniforms.layerRect, 0, 0, docW, docH);
+      gl.uniform2f(this.layerUniforms.layerCenter, docW / 2, docH / 2);
+      gl.uniform1f(this.layerUniforms.layerRotation, 0);
+      gl.uniform2f(this.layerUniforms.flipSign, 1.0, 1.0);
 
-        const ref = this.textures.get(renderLayer.id);
-        if (!ref) continue;
-
-        gl.bindTexture(gl.TEXTURE_2D, ref.texture);
-        gl.uniform1i(this.layerUniforms.texture, 0);
-        gl.uniform1f(this.layerUniforms.opacity, renderLayer.opacity);
-
-        const t = renderLayer.transform;
-        const effW = renderLayer.width * Math.abs(t.scaleX);
-        const effH = renderLayer.height * Math.abs(t.scaleY);
-        const cx = t.x + effW / 2;
-        const cy = t.y + effH / 2;
-        const flipX = t.flipH ? -1 : 1;
-        const flipY = t.flipV ? -1 : 1;
-
-        gl.uniform4f(
-          this.layerUniforms.layerRect,
-          t.x, t.y, effW, effH
-        );
-        gl.uniform2f(this.layerUniforms.layerCenter, cx, cy);
-        gl.uniform1f(this.layerUniforms.layerRotation, t.rotation || 0);
-        gl.uniform2f(this.layerUniforms.flipSign, flipX, flipY);
-
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
-      }
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
     gl.bindVertexArray(null);
   }
 
+  private getBlendModeId(mode: string): number {
+    switch (mode) {
+      case "normal": return 0;
+      case "multiply": return 1;
+      case "screen": return 2;
+      case "overlay": return 3;
+      case "darken": return 4;
+      case "lighten": return 5;
+      case "color-dodge": return 6;
+      case "color-burn": return 7;
+      case "hard-light": return 8;
+      case "soft-light": return 9;
+      case "difference": return 10;
+      case "exclusion": return 11;
+      default: return 0;
+    }
+  }
+
   resize(docWidth: number, docHeight: number, zoom: number, dpr: number): void {
+    const w = Math.round(docWidth * zoom * dpr);
+    const h = Math.round(docHeight * zoom * dpr);
+
     if (this.canvas) {
       // Scale pixel buffer by zoom × dpr so visual area = device pixel area (sharp on HiDPI)
-      this.canvas.width = Math.round(docWidth * zoom * dpr);
-      this.canvas.height = Math.round(docHeight * zoom * dpr);
+      this.canvas.width = w;
+      this.canvas.height = h;
+    }
+
+    const gl = this.gl;
+    if (!gl) return;
+
+    if (w !== this.currentWidth || h !== this.currentHeight) {
+      this.currentWidth = w;
+      this.currentHeight = h;
+
+      // Delete existing ping-pong buffers
+      for (let i = 0; i < 2; i++) {
+        if (this.pingPongFbos[i]) {
+          gl.deleteFramebuffer(this.pingPongFbos[i]);
+          this.pingPongFbos[i] = null;
+        }
+        if (this.pingPongTextures[i]) {
+          gl.deleteTexture(this.pingPongTextures[i]);
+          this.pingPongTextures[i] = null;
+        }
+      }
+
+      // Recreate them
+      for (let i = 0; i < 2; i++) {
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA,
+          w,
+          h,
+          0,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          null
+        );
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        const fbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferTexture2D(
+          gl.FRAMEBUFFER,
+          gl.COLOR_ATTACHMENT0,
+          gl.TEXTURE_2D,
+          texture,
+          0
+        );
+
+        this.pingPongTextures[i] = texture;
+        this.pingPongFbos[i] = fbo;
+      }
+
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
   }
 
@@ -243,6 +450,13 @@ export class WebGL2Backend implements RenderBackend {
         this.gl.deleteTexture(ref.texture);
       }
       this.textures.clear();
+
+      for (let i = 0; i < 2; i++) {
+        if (this.pingPongFbos[i]) this.gl.deleteFramebuffer(this.pingPongFbos[i]);
+        if (this.pingPongTextures[i]) this.gl.deleteTexture(this.pingPongTextures[i]);
+      }
+      this.pingPongFbos = [null, null];
+      this.pingPongTextures = [null, null];
 
       if (this.vao) this.gl.deleteVertexArray(this.vao);
       if (this.layerProgram) this.gl.deleteProgram(this.layerProgram);

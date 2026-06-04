@@ -20,6 +20,7 @@ export function useBrushOverlay() {
 
     const layer = activeEngine.getLayer(activeId);
     if (!layer || layer.locked || !layer.visible) return;
+    if (isEraser && layer.lockTransparency) return;
 
     if (!overlayCanvasRef) return;
     if (!overlayCtx) {
@@ -56,6 +57,13 @@ export function useBrushOverlay() {
       overlayCtx.lineTo(points[i].x, points[i].y);
     }
     overlayCtx.stroke();
+
+    if (layer.lockTransparency && layer.imageBitmap && !isEraser) {
+      overlayCtx.globalCompositeOperation = "destination-in";
+      overlayCtx.drawImage(layer.imageBitmap, 0, 0);
+      overlayCtx.globalCompositeOperation = "source-over";
+      overlayCtx.strokeStyle = fgColor();
+    }
 
     prevStrokePointCount = points.length;
   }

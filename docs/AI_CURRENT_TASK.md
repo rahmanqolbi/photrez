@@ -2,6 +2,131 @@
 
 ---
 
+## Current Task - Move Option Bar Visual & UX Improvements [COMPLETE]
+
+**Date:** 2026-06-04
+
+### Scope
+Improve the Move Tool Option Bar visual design and UX:
+1. Revamp ToggleBtn active state to use high-contrast Photon Amber tint background, borders, and bold text.
+2. Implement dynamic Auto-Select hover target readout in MoveOptionBar.
+3. Add direct Canvas Alignment buttons (Left/Center-H/Right/Top/Center-V/Bottom) in MoveOptionBar.
+
+### Files Expected To Change
+- `apps/desktop/src/components/editor/OptionBarShared.tsx`
+- `apps/desktop/src/components/editor/icons.tsx`
+- `apps/desktop/src/components/editor/MoveOptionBar.tsx`
+- `docs/plans/task.md`
+
+### Verification Plan
+- ✅ `pnpm run build`: PASS
+- ✅ `pnpm --filter photrez-desktop test`: PASS (283/283 tests passing)
+- ✅ `cargo test --workspace`: PASS (85/85 tests passing)
+
+---
+
+## Current Task - Layer Tab Functionality Fixes [COMPLETE]
+
+**Date:** 2026-06-04
+
+### Scope
+Fix Layer tab behaviors found during audit:
+1. Merge Down and Flatten must upload generated bitmap textures to WebGL.
+2. Layer visibility, lock, rename, and opacity controls must commit undo history correctly.
+3. Layer tab should gain focused regression coverage for these UI actions.
+4. History tab should switch to a functional history status/action view.
+
+### Files Expected To Change
+
+- `apps/desktop/src/components/editor/useLayerActions.ts`
+- `apps/desktop/src/components/editor/LayersPanel.tsx`
+- `apps/desktop/src/components/editor/LayerItem.tsx`
+- `apps/desktop/src/components/editor/__tests__/LayersPanel.test.tsx`
+- `docs/AI_HISTORY.md`
+- `docs/FEATURES.md`
+
+### Verification Plan
+
+- ✅ `pnpm.cmd --filter photrez-desktop test -- --run apps/desktop/src/components/editor/__tests__/LayersPanel.test.tsx`: PASS (281/281 via vitest run)
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `pnpm.cmd --filter photrez-desktop test`: PASS (281/281)
+
+---
+
+## Current Task - Layer Merge Keyboard Shortcuts [COMPLETE]
+
+**Date:** 2026-06-04
+
+### Scope
+Add desktop-editor layer merge shortcuts:
+1. `Ctrl+E` merges the active layer down.
+2. `Ctrl+Shift+E` flattens all layers.
+3. Shortcut actions must share the same history and WebGL texture sync behavior as the Layer panel buttons.
+
+### Files Expected To Change
+
+- `apps/desktop/src/components/editor/useCanvasKeyboard.ts`
+- `apps/desktop/src/components/editor/useLayerActions.ts`
+- `apps/desktop/src/components/editor/layerOperations.ts`
+- `apps/desktop/src/components/editor/__tests__/CanvasKeyboardLayerShortcuts.test.tsx`
+- `docs/AI_HISTORY.md`
+- `docs/FEATURES.md`
+
+### Verification Plan
+
+- ✅ `pnpm.cmd --filter photrez-desktop test -- --run apps/desktop/src/components/editor/__tests__/CanvasKeyboardLayerShortcuts.test.tsx`: PASS (283/283 via vitest run)
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `pnpm.cmd --filter photrez-desktop test -- --pool=threads --maxWorkers=1`: PASS (283/283)
+- ⚠️ `pnpm.cmd --filter photrez-desktop test`: default Vitest fork mode failed to start 4 workers after a long run (`Timeout waiting for worker to respond`); serial/threads rerun passed all tests.
+
+---
+
+## Current Task - Navigator Relative Drag UX [COMPLETE]
+
+**Date:** 2026-06-04
+
+### Scope
+Improve Navigator panning UX so it feels precise and desktop-native:
+1. Keep click-on-thumbnail behavior as center-to-point.
+2. Change drag started inside the visible viewport frame into relative panning.
+3. Prevent Navigator drag from feeling slippery by avoiding continuous recenter-to-pointer during frame drags.
+4. Add regression coverage for the interaction model.
+
+### Files Expected To Change
+
+- `apps/desktop/src/components/editor/Navigator.tsx`
+- `apps/desktop/src/components/editor/__tests__/Navigator.test.tsx`
+
+### Verification Plan
+
+- ✅ `pnpm.cmd --filter photrez-desktop test -- --run apps/desktop/src/components/editor/__tests__/Navigator.test.tsx`: PASS (275/275 via vitest run)
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `pnpm.cmd --filter photrez-desktop test`: PASS (275/275)
+
+---
+
+## Current Task — Scalability and Maintainability Refactor (Waves 3 - 10) [COMPLETE]
+
+**Date:** 2026-06-04
+
+### Scope
+Pemisahan concern (Separation of Concerns) pada file viewport, crop overlay, option bar, dan state provider ke dalam hooks dan sub-komponen modular.
+- Wave 3: CanvasViewport Shell
+- Wave 4: CropOverlay Modularization
+- Wave 5: OptionBar Per-Tool Split
+- Wave 6: Transform Overlay Cleanup
+- Wave 7: EditorContext Split
+- Wave 8: Rust Core/Render Reference Organization
+- Wave 9: CSS/Primitives & Icon Audit
+- Wave 10: Final Verification & Closure
+
+### Verification Results
+- ✅ `pnpm run build`: PASS (Vite + TypeScript compiler)
+- ✅ `pnpm --filter photrez-desktop test`: 271/271 PASS (vitest)
+- ✅ `cargo test --workspace`: 85/85 PASS
+
+---
+
 ## Current Task — Separation of Concerns Refactoring (File Splitting) [COMPLETE]
 
 **Date:** 2026-06-04
@@ -275,6 +400,25 @@ Allow the crop box to extend outside document boundaries, enabling canvas expans
 ---
 
 > **Older completed entries archived to:** `docs/archive/AI_CURRENT_TASK_ARCHIVE.md`
+
+
+---
+
+## Current Task — WebGL GPU Layer Blend Modes Rendering [COMPLETE]
+
+**Date:** 2026-06-04
+
+### Scope
+Implement full GPU-accelerated compositing for layer Blend Modes (Multiply, Screen, Overlay, Darken, Lighten, Color Dodge, Color Burn, Hard Light, Soft Light, Difference, Exclusion) in WebGL2 using a ping-pong framebuffer pipeline.
+
+### Files Changed
+- `apps/desktop/src/renderer/shaders.ts`
+- `apps/desktop/src/renderer/webgl2.ts`
+
+### Verification Results
+- ✅ `pnpm run build`: PASS
+- ✅ `pnpm --filter photrez-desktop test`: 271/271 PASS (vitest)
+- ✅ `cargo test --workspace`: 85/85 PASS
 
 ---
 

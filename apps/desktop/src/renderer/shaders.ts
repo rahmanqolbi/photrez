@@ -47,19 +47,105 @@ void main() {
   gl_Position = u_viewProj * vec4(rotated + u_layerCenter, 0.0, 1.0);
 }`;
 
-// Fragment shader: Texture sampling with opacity
+// Fragment shader: Texture sampling with opacity and FBO blend modes
 export const FRAGMENT_SHADER_SOURCE = `#version 300 es
 precision highp float;
 
 uniform sampler2D u_texture;
+uniform sampler2D u_backdrop;
 uniform float u_opacity;
+uniform int u_blendMode;
+uniform bool u_useBackdrop;
+uniform bool u_flipTexY;
+uniform vec2 u_resolution;
 
 in vec2 v_texCoord;
 out vec4 fragColor;
 
+vec3 blendColors(int mode, vec3 b, vec3 s) {
+  if (mode == 0) { // Normal
+    return s;
+  } else if (mode == 1) { // Multiply
+    return b * s;
+  } else if (mode == 2) { // Screen
+    return b + s - b * s;
+  } else if (mode == 3) { // Overlay
+    vec3 result;
+    for (int i = 0; i < 3; i++) {
+      result[i] = b[i] < 0.5 ? (2.0 * b[i] * s[i]) : (1.0 - 2.0 * (1.0 - b[i]) * (1.0 - s[i]));
+    }
+    return result;
+  } else if (mode == 4) { // Darken
+    return min(b, s);
+  } else if (mode == 5) { // Lighten
+    return max(b, s);
+  } else if (mode == 6) { // Color Dodge
+    vec3 result;
+    for (int i = 0; i < 3; i++) {
+      result[i] = s[i] == 1.0 ? 1.0 : min(1.0, b[i] / (1.0 - s[i]));
+    }
+    return result;
+  } else if (mode == 7) { // Color Burn
+    vec3 result;
+    for (int i = 0; i < 3; i++) {
+      result[i] = s[i] == 0.0 ? 0.0 : max(0.0, 1.0 - (1.0 - b[i]) / s[i]);
+    }
+    return result;
+  } else if (mode == 8) { // Hard Light
+    vec3 result;
+    for (int i = 0; i < 3; i++) {
+      result[i] = s[i] < 0.5 ? (2.0 * b[i] * s[i]) : (1.0 - 2.0 * (1.0 - b[i]) * (1.0 - s[i]));
+    }
+    return result;
+  } else if (mode == 9) { // Soft Light
+    vec3 result;
+    for (int i = 0; i < 3; i++) {
+      if (s[i] <= 0.5) {
+        result[i] = b[i] - (1.0 - 2.0 * s[i]) * b[i] * (1.0 - b[i]);
+      } else {
+        float d = (b[i] <= 0.25) ? (((16.0 * b[i] - 12.0) * b[i] + 4.0) * b[i]) : sqrt(b[i]);
+        result[i] = b[i] + (2.0 * s[i] - 1.0) * (d - b[i]);
+      }
+    }
+    return result;
+  } else if (mode == 10) { // Difference
+    return abs(b - s);
+  } else if (mode == 11) { // Exclusion
+    return b + s - 2.0 * b * s;
+  }
+  return s;
+}
+
 void main() {
-  vec4 color = texture(u_texture, v_texCoord);
-  fragColor = vec4(color.rgb, color.a * u_opacity);
+  vec2 texCoord = v_texCoord;
+  if (u_flipTexY) {
+    texCoord.y = 1.0 - texCoord.y;
+  }
+  vec4 src = texture(u_texture, texCoord);
+  src.a *= u_opacity;
+
+  if (!u_useBackdrop) {
+    fragColor = src;
+    return;
+  }
+
+  vec2 uv = gl_FragCoord.xy / u_resolution;
+  vec4 dst = texture(u_backdrop, uv);
+
+  if (src.a == 0.0) {
+    fragColor = dst;
+    return;
+  }
+  if (dst.a == 0.0) {
+    fragColor = src;
+    return;
+  }
+
+  vec3 blended = blendColors(u_blendMode, dst.rgb, src.rgb);
+  float outAlpha = src.a + dst.a * (1.0 - src.a);
+  vec3 outColor = (src.a * blended + dst.a * (1.0 - src.a) * dst.rgb) / outAlpha;
+
+  fragColor = vec4(outColor, outAlpha);
 }`;
 
 // Checkerboard fragment shader

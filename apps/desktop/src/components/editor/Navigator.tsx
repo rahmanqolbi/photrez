@@ -1,7 +1,27 @@
 import { createEffect, createSignal, Show, onMount, onCleanup } from "solid-js";
-import { clsx } from "clsx";
 import { useEditor } from "./EditorContext";
 import { Icon } from "./icons";
+
+interface NavigatorPoint {
+  x: number;
+  y: number;
+}
+
+interface NavigatorFrame {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+interface NavigatorDragState {
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  startPanX: number;
+  startPanY: number;
+  zoom: number;
+}
 
 export function Navigator() {
   const {
@@ -17,26 +37,102 @@ export function Navigator() {
     activeDocumentId,
     layers,
     syncViewport,
-    scheduler
+    scheduler,
   } = useEditor();
 
-  let canvasRef: HTMLCanvasElement | undefined;
-  let containerRef: HTMLDivElement | undefined;
+  let canvasRef!: HTMLCanvasElement;
+  let containerRef!: HTMLDivElement;
 
-  // Render variables
   const [scale, setScale] = createSignal(1);
   const [offsetX, setOffsetX] = createSignal(0);
   const [offsetY, setOffsetY] = createSignal(0);
   const [thumbW, setThumbW] = createSignal(0);
   const [thumbH, setThumbH] = createSignal(0);
+  const [isDraggingFrame, setIsDraggingFrame] = createSignal(false);
 
-  // Re-calculate thumbnail size and scale whenever document bounds change
+  const drawNavigatorPreview = () => {
+    const hasDocument = activeDocumentId();
+    const dw = docWidth();
+    const dh = docHeight();
+    const currentZoom = zoom();
+    const currentPan = pan();
+    const vw = viewportWidth();
+    const vh = viewportHeight();
+    const s = scale();
+    const ox = offsetX();
+    const oy = offsetY();
+    const tw = thumbW();
+    const th = thumbH();
+
+    if (!canvasRef || !hasDocument || dw <= 0 || dh <= 0) return;
+
+    const ctx = canvasRef.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, 208, 88);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(ox, oy, tw, th);
+    ctx.clip();
+
+    for (let y = 0; y < th; y += 4) {
+      for (let x = 0; x < tw; x += 4) {
+        ctx.fillStyle = (x + y) % 8 === 0 ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.15)";
+        ctx.fillRect(ox + x, oy + y, 4, 4);
+      }
+    }
+    ctx.restore();
+
+    const allLayers = [...layers()].reverse();
+    for (const layer of allLayers) {
+      if (!layer.visible || !layer.imageBitmap) continue;
+
+      ctx.save();
+      ctx.translate(ox, oy);
+      ctx.scale(s, s);
+      ctx.globalAlpha = layer.opacity;
+
+      const lw = layer.width;
+      const lh = layer.height;
+      const sx = layer.transform.scaleX;
+      const sy = layer.transform.scaleY;
+      const cx = layer.transform.x + (lw * Math.abs(sx)) / 2;
+      const cy = layer.transform.y + (lh * Math.abs(sy)) / 2;
+
+      ctx.translate(cx, cy);
+      if (layer.transform.rotation) {
+        ctx.rotate((layer.transform.rotation * Math.PI) / 180);
+      }
+      const flipX = layer.transform.flipH ? -1 : 1;
+      const flipY = layer.transform.flipV ? -1 : 1;
+      ctx.scale(sx * flipX, sy * flipY);
+      ctx.drawImage(layer.imageBitmap, -lw / 2, -lh / 2);
+      ctx.restore();
+    }
+
+    const frame = getViewportFrame({
+      currentPan,
+      currentZoom,
+      viewportW: vw,
+      viewportH: vh,
+      scaleValue: s,
+      offsetLeft: ox,
+      offsetTop: oy,
+    });
+
+    ctx.strokeStyle = "#E15A17";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(frame.left, frame.top, frame.width, frame.height);
+    ctx.fillStyle = "rgba(225, 90, 23, 0.08)";
+    ctx.fillRect(frame.left, frame.top, frame.width, frame.height);
+  };
+
   createEffect(() => {
     const dw = docWidth();
     const dh = docHeight();
     if (dw <= 0 || dh <= 0) return;
 
-    // Available Navigator container size is 208px width, 88px height (240px minus padding)
     const containerW = 208;
     const containerH = 88;
 
@@ -52,118 +148,71 @@ export function Navigator() {
     setOffsetY((containerH - h) / 2);
   });
 
-  // Render loop for composite image + Red Box overlay
-  createEffect(() => {
-    if (!canvasRef || !activeDocumentId()) return;
-    const ctx = canvasRef.getContext("2d");
-    if (!ctx) return;
+  createEffect(drawNavigatorPreview);
+  onMount(drawNavigatorPreview);
 
-    const dw = docWidth();
-    const dh = docHeight();
-    const s = scale();
-    const ox = offsetX();
-    const oy = offsetY();
-    const tw = thumbW();
-    const th = thumbH();
-
-    // Clear canvas
-    ctx.clearRect(0, 0, 208, 88);
-
-    // Draw background grid checkerboard inside document bounds
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(ox, oy, tw, th);
-    ctx.clip();
-
-    for (let y = 0; y < th; y += 4) {
-      for (let x = 0; x < tw; x += 4) {
-        ctx.fillStyle = (x + y) % 8 === 0 ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.15)";
-        ctx.fillRect(ox + x, oy + y, 4, 4);
-      }
-    }
-    ctx.restore();
-
-    // Draw layers from bottom to top
-    const allLayers = [...layers()].reverse();
-    for (const layer of allLayers) {
-      if (!layer.visible || !layer.imageBitmap) continue;
-
-      ctx.save();
-      // Translate and scale to navigator space
-      ctx.translate(ox, oy);
-      ctx.scale(s, s);
-
-      // Apply opacity
-      ctx.globalAlpha = layer.opacity;
-
-      // Layer specific transformations
-      const lw = layer.width;
-      const lh = layer.height;
-      const sx = layer.transform.scaleX;
-      const sy = layer.transform.scaleY;
-      const cx = layer.transform.x + (lw * Math.abs(sx)) / 2;
-      const cy = layer.transform.y + (lh * Math.abs(sy)) / 2;
-
-      ctx.translate(cx, cy);
-      if (layer.transform.rotation) {
-        ctx.rotate((layer.transform.rotation * Math.PI) / 180);
-      }
-      const flipX = layer.transform.flipH ? -1 : 1;
-      const flipY = layer.transform.flipV ? -1 : 1;
-      ctx.scale(sx * flipX, sy * flipY);
-
-      // Draw it
-      ctx.drawImage(layer.imageBitmap, -lw / 2, -lh / 2);
-      ctx.restore();
-    }
-
-    // ─── Draw Viewport Box (Red Box) ───
-    const currentZoom = zoom();
-    const currentPan = pan();
-    const vw = viewportWidth();
-    const vh = viewportHeight();
-
-    // Map viewport frame coordinates from main workspace space into navigator canvas space
-    // mainViewportLeftInDocSpace = -panX / zoom
-    const vLeft = -currentPan.x / currentZoom;
-    const vTop = -currentPan.y / currentZoom;
-    const vWidth = vw / currentZoom;
-    const vHeight = vh / currentZoom;
-
-    // Convert doc space coordinates to navigator thumbnail coordinates
-    const navLeft = ox + vLeft * s;
-    const navTop = oy + vTop * s;
-    const navWidth = vWidth * s;
-    const navHeight = vHeight * s;
-
-    // Draw border
-    ctx.strokeStyle = "#E15A17"; // Photon Amber
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(navLeft, navTop, navWidth, navHeight);
-
-    // Optional semi-transparent mask outside viewport
-    ctx.fillStyle = "rgba(225, 90, 23, 0.08)";
-    ctx.fillRect(navLeft, navTop, navWidth, navHeight);
-  });
-
-  // Pan to a target Navigator canvas relative coordinate
-  const panToNavigatorCoord = (clientX: number, clientY: number) => {
-    const engine = workspace.getActiveEngine();
-    if (!engine || !canvasRef) return;
+  const getNavigatorPoint = (clientX: number, clientY: number): NavigatorPoint | null => {
+    if (!canvasRef) return null;
 
     const rect = canvasRef.getBoundingClientRect();
-    const mouseX = clientX - rect.left;
-    const mouseY = clientY - rect.top;
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+  };
 
-    // Convert navigator coordinate to document space coordinate
+  const getCurrentViewportFrame = (): NavigatorFrame => {
+    return getViewportFrame({
+      currentPan: pan(),
+      currentZoom: zoom(),
+      viewportW: viewportWidth(),
+      viewportH: viewportHeight(),
+      scaleValue: scale(),
+      offsetLeft: offsetX(),
+      offsetTop: offsetY(),
+    });
+  };
+
+  const isPointInViewportFrame = (point: NavigatorPoint) => {
+    const frame = getCurrentViewportFrame();
+    return (
+      point.x >= frame.left &&
+      point.x <= frame.left + frame.width &&
+      point.y >= frame.top &&
+      point.y <= frame.top + frame.height
+    );
+  };
+
+  const isPointInThumbnail = (point: NavigatorPoint) => {
+    const ox = offsetX();
+    const oy = offsetY();
+    return (
+      point.x >= ox &&
+      point.x <= ox + thumbW() &&
+      point.y >= oy &&
+      point.y <= oy + thumbH()
+    );
+  };
+
+  const setViewportPan = (panX: number, panY: number) => {
+    const engine = workspace.getActiveEngine();
+    if (!engine) return null;
+
+    engine.setViewport({ panX, panY });
+    setPan({ x: panX, y: panY });
+    scheduler.requestRender();
+    return { x: panX, y: panY };
+  };
+
+  const panToNavigatorPoint = (point: NavigatorPoint) => {
     const ox = offsetX();
     const oy = offsetY();
     const s = scale();
+    if (s <= 0) return null;
 
-    const docX = (mouseX - ox) / s;
-    const docY = (mouseY - oy) / s;
+    const docX = (point.x - ox) / s;
+    const docY = (point.y - oy) / s;
 
-    // Update pan so that the center of the main viewport lines up with docX and docY
     const vw = viewportWidth();
     const vh = viewportHeight();
     const currentZoom = zoom();
@@ -171,31 +220,59 @@ export function Navigator() {
     const panX = vw / 2 - docX * currentZoom;
     const panY = vh / 2 - docY * currentZoom;
 
-    engine.setViewport({ panX, panY });
-    setPan({ x: panX, y: panY });
-    scheduler.requestRender();
+    return setViewportPan(panX, panY);
   };
 
-  // Pointer dragging states for the Red Box navigation
-  let isDragging = false;
+  const panByNavigatorDelta = (drag: NavigatorDragState, clientX: number, clientY: number) => {
+    const s = scale();
+    if (s <= 0) return;
+
+    const deltaX = clientX - drag.startClientX;
+    const deltaY = clientY - drag.startClientY;
+    const panX = drag.startPanX - (deltaX / s) * drag.zoom;
+    const panY = drag.startPanY - (deltaY / s) * drag.zoom;
+    setViewportPan(panX, panY);
+  };
+
+  let dragState: NavigatorDragState | null = null;
 
   const handlePointerDown = (e: PointerEvent) => {
-    const target = e.target as HTMLElement;
+    const point = getNavigatorPoint(e.clientX, e.clientY);
+    if (!point) return;
+    if (!isPointInThumbnail(point)) return;
+
+    const target = e.currentTarget as HTMLElement;
     target.setPointerCapture(e.pointerId);
-    isDragging = true;
-    panToNavigatorCoord(e.clientX, e.clientY);
+    setIsDraggingFrame(true);
+
+    let startPan = pan();
+    if (!isPointInViewportFrame(point)) {
+      startPan = panToNavigatorPoint(point) ?? startPan;
+    }
+
+    dragState = {
+      pointerId: e.pointerId,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startPanX: startPan.x,
+      startPanY: startPan.y,
+      zoom: zoom(),
+    };
   };
 
   const handlePointerMove = (e: PointerEvent) => {
-    if (!isDragging) return;
-    panToNavigatorCoord(e.clientX, e.clientY);
+    if (!dragState || e.pointerId !== dragState.pointerId) return;
+    panByNavigatorDelta(dragState, e.clientX, e.clientY);
   };
 
-  const handlePointerUp = (e: PointerEvent) => {
-    if (!isDragging) return;
-    const target = e.target as HTMLElement;
-    target.releasePointerCapture(e.pointerId);
-    isDragging = false;
+  const finishDrag = (e: PointerEvent) => {
+    if (!dragState || e.pointerId !== dragState.pointerId) return;
+    const target = e.currentTarget as HTMLElement;
+    if (!target.hasPointerCapture || target.hasPointerCapture(e.pointerId)) {
+      target.releasePointerCapture(e.pointerId);
+    }
+    dragState = null;
+    setIsDraggingFrame(false);
   };
 
   return (
@@ -209,11 +286,16 @@ export function Navigator() {
           </div>
         }
       >
-        <div 
-          class="relative h-[88px] w-full rounded-[3px] border border-editor-divider bg-editor-panel overflow-hidden flex items-center justify-center cursor-crosshair"
+        <div
+          class="relative h-[88px] w-full rounded-[3px] border border-editor-divider bg-editor-panel overflow-hidden flex items-center justify-center"
+          classList={{
+            "cursor-grabbing": isDraggingFrame(),
+            "cursor-crosshair": !isDraggingFrame(),
+          }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
+          onPointerUp={finishDrag}
+          onPointerCancel={finishDrag}
         >
           <canvas
             ref={canvasRef}
@@ -225,4 +307,26 @@ export function Navigator() {
       </Show>
     </div>
   );
+}
+
+function getViewportFrame(params: {
+  currentPan: { x: number; y: number };
+  currentZoom: number;
+  viewportW: number;
+  viewportH: number;
+  scaleValue: number;
+  offsetLeft: number;
+  offsetTop: number;
+}): NavigatorFrame {
+  const vLeft = -params.currentPan.x / params.currentZoom;
+  const vTop = -params.currentPan.y / params.currentZoom;
+  const vWidth = params.viewportW / params.currentZoom;
+  const vHeight = params.viewportH / params.currentZoom;
+
+  return {
+    left: params.offsetLeft + vLeft * params.scaleValue,
+    top: params.offsetTop + vTop * params.scaleValue,
+    width: vWidth * params.scaleValue,
+    height: vHeight * params.scaleValue,
+  };
 }

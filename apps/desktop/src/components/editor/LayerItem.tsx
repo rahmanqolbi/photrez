@@ -27,6 +27,23 @@ interface LayerItemProps {
 }
 
 export function LayerItem(props: LayerItemProps) {
+  const commitRename = () => {
+    const nextName = props.editName.trim();
+    if (!nextName || nextName === props.layer.name) {
+      props.setEditingLayerId(null);
+      return;
+    }
+
+    const engine = props.workspace.getActiveEngine();
+    if (engine) {
+      const history = props.workspace.getActiveHistory();
+      history?.commit(engine.snapshot());
+      engine.setLayerName(props.layer.id, nextName);
+      props.scheduler.requestRender();
+    }
+    props.setEditingLayerId(null);
+  };
+
   return (
     <div
       data-layer-idx={props.idx}
@@ -42,8 +59,10 @@ export function LayerItem(props: LayerItemProps) {
     >
       {/* Eye toggle button */}
       <button
+        data-layer-visibility
         onClick={(e) => props.onToggleVisibility(e, props.layer.id)}
         class="text-editor-icon hover:text-editor-text size-6 flex items-center justify-center z-10"
+        title={props.layer.visible ? "Hide Layer" : "Show Layer"}
       >
         <Icon
           name="eye"
@@ -100,25 +119,13 @@ export function LayerItem(props: LayerItemProps) {
           onInput={(e) => props.setEditName(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
-              const engine = props.workspace.getActiveEngine();
-              if (engine) {
-                engine.setLayerName(props.layer.id, props.editName.trim());
-                props.scheduler.requestRender();
-              }
-              props.setEditingLayerId(null);
+              commitRename();
             } else if (e.key === "Escape") {
               props.setEditingLayerId(null);
             }
           }}
           onClick={(e) => e.stopPropagation()}
-          onBlur={() => {
-            const engine = props.workspace.getActiveEngine();
-            if (engine) {
-              engine.setLayerName(props.layer.id, props.editName.trim());
-              props.scheduler.requestRender();
-            }
-            props.setEditingLayerId(null);
-          }}
+          onBlur={commitRename}
           class="flex-1 text-[12.5px] text-editor-text bg-editor-field border border-editor-field-border rounded px-1.5 focus:outline-none focus:border-editor-accent h-[22px] min-w-0"
           ref={(el) => setTimeout(() => el?.focus(), 10)}
         />

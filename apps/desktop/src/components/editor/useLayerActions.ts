@@ -1,4 +1,5 @@
 import { useEditor } from "./EditorContext";
+import { flattenAllLayers, mergeActiveLayerDown } from "./layerOperations";
 
 export function useLayerActions() {
   const {
@@ -28,9 +29,9 @@ export function useLayerActions() {
     const history = workspace.getActiveHistory();
     const activeId = activeLayerId();
     if (engine && history && activeId) {
-      history.commit(engine.snapshot());
-      engine.mergeDown(activeId);
-      scheduler.requestRender();
+      if (mergeActiveLayerDown(engine, history, renderer, activeId)) {
+        scheduler.requestRender();
+      }
     }
   };
 
@@ -38,9 +39,9 @@ export function useLayerActions() {
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (engine && history) {
-      history.commit(engine.snapshot());
-      engine.flattenLayers();
-      scheduler.requestRender();
+      if (flattenAllLayers(engine, history, renderer)) {
+        scheduler.requestRender();
+      }
     }
   };
 
@@ -54,6 +55,8 @@ export function useLayerActions() {
     const engine = workspace.getActiveEngine();
     const layer = engine?.getLayer(id);
     if (engine && layer) {
+      const history = workspace.getActiveHistory();
+      history?.commit(engine.snapshot());
       engine.setLayerVisibility(id, !layer.visible);
       scheduler.requestRender();
     }
@@ -64,6 +67,8 @@ export function useLayerActions() {
     const engine = workspace.getActiveEngine();
     const layer = engine?.getLayer(id);
     if (engine && layer) {
+      const history = workspace.getActiveHistory();
+      history?.commit(engine.snapshot());
       engine.setLayerLocked(id, !layer.locked);
       scheduler.requestRender();
     }

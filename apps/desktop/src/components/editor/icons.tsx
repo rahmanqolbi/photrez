@@ -2,6 +2,10 @@ import type { LucideIcon, LucideProps } from "lucide-solid";
 import {
   AlignCenterHorizontal,
   AlignCenterVertical,
+  AlignStartHorizontal,
+  AlignEndHorizontal,
+  AlignStartVertical,
+  AlignEndVertical,
   Aperture,
   Box,
   Brush,
@@ -74,6 +78,10 @@ export type IconName =
   | "link"
   | "align-v"
   | "align-h"
+  | "align-left"
+  | "align-right"
+  | "align-top"
+  | "align-bottom"
   | "stretch-h"
   | "flip-h"
   | "flip-v"
@@ -140,6 +148,10 @@ const ICONS: Record<IconName, LucideIcon> = {
   link: Link,
   "align-v": AlignCenterVertical,
   "align-h": AlignCenterHorizontal,
+  "align-left": AlignStartHorizontal,
+  "align-right": AlignEndHorizontal,
+  "align-top": AlignStartVertical,
+  "align-bottom": AlignEndVertical,
   "stretch-h": StretchHorizontal,
   "flip-h": FlipHorizontal,
   "flip-v": FlipVertical,

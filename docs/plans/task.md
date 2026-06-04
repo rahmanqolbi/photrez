@@ -130,17 +130,27 @@
 | Task 130 | [Wave 1] Remove debug logging from hot engine paths | [x] Completed |
 | Task 131 | [Wave 2] Extract crop presets and unit conversion | [x] Completed |
 | Task 132 | [Wave 2] Extract crop aspect ratio auto-fit calculation | [x] Completed |
-| Task 133 | [Wave 3] Extract renderer lifecycle from CanvasViewport | [ ] Not Started |
-| Task 134 | [Wave 3] Extract canvas pointer interactions from CanvasViewport | [ ] Not Started |
-| Task 135 | [Wave 3] Extract active layer and crop derived state | [ ] Not Started |
-| Task 136 | [Wave 4] Extract crop overlay drag and rotate interaction | [ ] Not Started |
-| Task 137 | [Wave 4] Extract crop handles, guides, and tooltip rendering | [ ] Not Started |
-| Task 138 | [Wave 5] Extract move and selection option bars | [ ] Not Started |
-| Task 139 | [Wave 5] Extract crop and brush option bars | [ ] Not Started |
-| Task 140 | [Wave 6] Extract selection transform drag interaction | [ ] Not Started |
-| Task 141 | [Wave 6] Remove or merge legacy TransformationHUD | [ ] Not Started |
-| Task 142 | [Wave 7] Extract editor state setup and crop mini history | [ ] Not Started |
-| Task 143 | [Wave 7] Extract workspace sync and open image flow | [ ] Not Started |
-| Task 144 | [Wave 8] Assess and organize Rust reference core/render crates | [ ] Not Started |
-| Task 145 | [Wave 9] Audit CSS ownership, shared primitives, and icons | [ ] Not Started |
-| Task 146 | [Wave 10] Run final verification pipeline and close documentation | [ ] Not Started |
+| Task 133 | [Wave 3] Extract renderer lifecycle from CanvasViewport | [x] Completed |
+| Task 134 | [Wave 3] Extract canvas pointer interactions from CanvasViewport | [x] Completed |
+| Task 135 | [Wave 3] Extract active layer and crop derived state | [x] Completed |
+| Task 136 | [Wave 4] Extract crop overlay drag and rotate interaction | [x] Completed |
+| Task 137 | [Wave 4] Extract crop handles, guides, and tooltip rendering | [x] Completed |
+| Task 138 | [Wave 5] Extract move and selection option bars | [x] Completed |
+| Task 139 | [Wave 5] Extract crop and brush option bars | [x] Completed |
+| Task 140 | [Wave 6] Extract selection transform drag interaction | [x] Completed |
+| Task 141 | [Wave 6] Remove or merge legacy TransformationHUD | [x] Completed |
+| Task 142 | [Wave 7] Extract editor state setup and crop mini history | [x] Completed |
+| Task 143 | [Wave 7] Extract workspace sync and open image flow | [x] Completed |
+| Task 144 | [Wave 8] Assess and organize Rust reference core/render crates | [x] Completed |
+| Task 145 | [Wave 9] Audit CSS ownership, shared primitives, and icons | [x] Completed |
+| Task 146 | [Wave 10] Run final verification pipeline and close documentation | [x] Completed |
+| Task 147 | [WebGL] Compile FBO composition shaders with blend equations in shaders.ts | [x] Completed |
+| Task 148 | [WebGL] Setup ping-pong textures and framebuffers matching screen resolution in webgl2.ts | [x] Completed |
+| Task 149 | [WebGL] Implement sequential FBO rendering with layer blend modes in webgl2.ts | [x] Completed |
+| Task 150 | [WebGL] Render final composited texture to main screen on top of checkerboard | [x] Completed |
+| Task 151 | [WebGL] Run all Vitest unit tests and verify build compile | [x] Completed |
+| Task 152 | [OptionBar] Update ToggleBtn Active Styles | [x] Completed |
+| Task 153 | [OptionBar] Add Dynamic Hover Target Readout | [x] Completed |
+| Task 154 | [OptionBar] Import and Register Alignment Icons | [x] Completed |
+| Task 155 | [OptionBar] Implement Direct Canvas Alignment Actions | [x] Completed |
+| Task 156 | [OptionBar] Final Verification & compilation | [x] Completed |

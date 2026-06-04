@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { VERTEX_SHADER_SOURCE } from '../renderer/shaders';
+import { VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE } from '../renderer/shaders';
 
 describe('Shader invariants', () => {
   it('should NOT double-flip texture Y — view matrix already flips Y', () => {
@@ -27,6 +27,11 @@ describe('Shader invariants', () => {
     expect(flipLine).toBeGreaterThan(-1);
     expect(rotateLine).toBeGreaterThan(-1);
     expect(rotateLine).toBeGreaterThan(flipLine); // flip before rotate
+  });
+
+  it('should compile u_flipTexY uniform in fragment shader to handle FBO rendering coordinate corrections', () => {
+    expect(FRAGMENT_SHADER_SOURCE).toContain('uniform bool u_flipTexY;');
+    expect(FRAGMENT_SHADER_SOURCE).toContain('texCoord.y = 1.0 - texCoord.y;');
   });
 });
 

@@ -2,6 +2,7 @@ import { onMount, onCleanup } from "solid-js";
 import { constrainCropRectToDocument } from "@/viewport/cropGeometry";
 import type { ToolType } from "@/viewport/input-handler";
 import { useEditor } from "./EditorContext";
+import { flattenAllLayers, mergeActiveLayerDown } from "./layerOperations";
 
 interface CanvasKeyboardOptions {
   isSpacePressed: () => boolean;
@@ -118,6 +119,24 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
 
       const key = e.key.toLowerCase();
       const ctrl = e.ctrlKey || e.metaKey;
+
+      if (ctrl && key === "e") {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const actionApplied = e.shiftKey
+          ? flattenAllLayers(engine, history, renderer)
+          : (() => {
+              const activeId = engine.getActiveLayerId();
+              return activeId ? mergeActiveLayerDown(engine, history, renderer, activeId) : false;
+            })();
+
+        if (actionApplied) {
+          scheduler.requestRender();
+        }
+
+        return;
+      }
 
       if (ctrl && key === "j") {
         e.preventDefault();

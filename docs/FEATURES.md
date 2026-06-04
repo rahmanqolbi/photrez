@@ -56,6 +56,9 @@
 | ✅ DONE      | Rotate broad hit area (outside-core + expanded bounds matching reference) |
 | ✅ DONE      | Continuous hover tracking via detectHandle (updates every pointer move) |
 | ✅ DONE      | Rotation normalization ([-180, 180] range matching reference) |
+| ✅ DONE      | Move tool option bar visual polish (high-contrast active state for toggles) |
+| ✅ DONE      | Auto-Select hovered target indicator readout badge |
+| ✅ DONE      | Quick Canvas Alignment actions in Option Bar (Align left/center/right/top/middle/bottom) |
 
 ---
 

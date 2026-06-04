@@ -1,5 +1,244 @@
 # AI History — Photrez
 
+## [2026-06-04] FEATURE — Move Tool Option Bar Visual & UX Improvements [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND / MOVE / OPTION BAR / UX
+
+**Deskripsi:** Memperbaiki visual Option Bar (kontras tinggi toggle Auto & Snap), menambahkan pembacaan hover target secara dinamis ketika Auto-Select aktif, dan mengimplementasikan tombol perataan langsung ke Canvas (Align Left/Center/Right/Top/Middle/Bottom) pada Move Tool.
+
+**Rincian Perubahan:**
+1. **Toggle Button Polish (`OptionBarShared.tsx`)**: Desain ulang visual state `ToggleBtn` agar aktif memakai warna aksen Photon Amber semi-transparan `bg-editor-accent/10`, border `border-editor-accent/40`, teks putih tebal `text-editor-text`, dan bayangan inset halus.
+2. **Auto-Select target readout (`MoveOptionBar.tsx`)**: Mengambil data `hoveredLayerId()` dari editor context dan menampilkan indikator dinamis `Target: [Layer Name]` di sebelah tombol Snap saat mouse di-hover di atas layer canvas.
+3. **Canvas alignment controls (`icons.tsx`, `MoveOptionBar.tsx`)**:
+   - Mendaftarkan ikon baru `AlignStartHorizontal` (Align Left), `AlignEndHorizontal` (Align Right), `AlignStartVertical` (Align Top), `AlignEndVertical` (Align Bottom).
+   - Menghitung koordinat perataan active layer berdasarkan dimensinya (`width * scaleX`) dan resolusi dokumen (`docWidth()` / `docHeight()`).
+   - Menyimpan status undo history dan memanggil `engine.transformLayer` untuk meratakan layer ke tepi/tengah canvas secara instan.
+
+**Files Changed/Added:**
+- [MODIFY] `apps/desktop/src/components/editor/OptionBarShared.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/icons.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/MoveOptionBar.tsx`
+- [MODIFY] `docs/plans/task.md`
+- [NEW] `docs/plans/2026-06-04-move-option-bar-improvements.md`
+- [NEW] `docs/plans/2026-06-04-move-option-bar-ux-design.md`
+
+**Verifikasi:**
+- ✅ `pnpm run build`: PASS
+- ✅ `pnpm --filter photrez-desktop test`: PASS (283/283 tests passing)
+- ✅ `cargo test --workspace`: PASS (85/85 tests passing)
+
+---
+
+## [2026-06-04] FEATURE — Layer Merge Keyboard Shortcuts [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND / LAYERS / KEYBOARD / WEBGL / HISTORY
+
+**Deskripsi:** Menambahkan shortcut desktop-editor untuk operasi layer stack:
+- `Ctrl+E` = Merge Down active layer.
+- `Ctrl+Shift+E` = Flatten All layers.
+
+**Root Cause:** Sebelumnya `useCanvasKeyboard` hanya menangani `Ctrl+J` untuk duplicate layer. Operasi Merge Down dan Flatten All sudah tersedia di Layer panel, tetapi belum punya binding keyboard.
+
+**Fix Rationale:**
+1. Mengekstrak logika merge/flatten ke `layerOperations.ts` agar tombol Layer panel dan shortcut keyboard memakai satu implementasi yang sama.
+2. Helper bersama melakukan `history.commit(engine.snapshot())`, menghancurkan texture layer lama, mengunggah bitmap hasil merge/flatten ke WebGL renderer, dan hanya mengembalikan `true` bila operasi valid.
+3. `useCanvasKeyboard` sekarang menangani `Ctrl+E` dan `Ctrl+Shift+E`, lalu request render hanya saat state benar-benar berubah.
+4. Menambahkan regression test komponen hook keyboard untuk memastikan shortcut memutasi layer stack, menyimpan undo history, dan mengunggah texture baru.
+
+**Files Changed/Added:**
+- [NEW] `apps/desktop/src/components/editor/layerOperations.ts`
+- [NEW] `apps/desktop/src/components/editor/__tests__/CanvasKeyboardLayerShortcuts.test.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasKeyboard.ts`
+- [MODIFY] `apps/desktop/src/components/editor/useLayerActions.ts`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/FEATURES.md`
+
+**Verifikasi:**
+- ✅ `pnpm.cmd --filter photrez-desktop test -- --run apps/desktop/src/components/editor/__tests__/CanvasKeyboardLayerShortcuts.test.tsx`: PASS (283/283 via vitest run)
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `pnpm.cmd --filter photrez-desktop test -- --pool=threads --maxWorkers=1`: PASS (283/283)
+- ⚠️ `pnpm.cmd --filter photrez-desktop test`: gagal start beberapa Vitest fork worker (`Timeout waiting for worker to respond`) pada mode default, bukan assertion failure; rerun serial/threads pass penuh.
+
+---
+
+## [2026-06-04] BUG FIX — Layer Tab Actions and Undo Wiring [COMPLETE]
+
+### Kategori: BUG FIX / UI / FRONTEND / LAYERS / WEBGL / HISTORY
+
+**Deskripsi:** Memperbaiki beberapa kontrol Layer tab yang terlihat aktif tetapi belum sepenuhnya berfungsi benar: Merge Down, Flatten All, undo untuk properti layer, tab History, dan Lock Transparency saat brush/eraser.
+
+**Root Cause:**
+1. `mergeDown()` dan `flattenLayers()` membuat layer baru dengan `ImageBitmap`, tetapi `useLayerActions` tidak mengunggah bitmap baru tersebut ke WebGL renderer. Renderer hanya menggambar layer yang memiliki texture terdaftar, sehingga hasil merge/flatten bisa tidak terlihat di viewport.
+2. Beberapa handler Layer tab tidak melakukan `history.commit(engine.snapshot())` sebelum mutasi. Visibility dan lock utama tidak commit sama sekali; rename juga langsung memutasi nama; opacity commit dilakukan setelah nilai sudah berubah.
+3. `lockTransparency` hanya disimpan sebagai flag layer dan ditampilkan di UI, tetapi belum dipakai oleh brush/eraser path.
+4. Tombol `History` di header Layer panel tidak memiliki state tab atau konten history; tombol hanya static text.
+
+**Fix Rationale:**
+1. Setelah Merge Down dan Flatten All, texture layer lama dihancurkan melalui `renderer.destroyTexture()`, lalu bitmap layer hasil baru di-upload dengan `renderer.uploadImage()`.
+2. Visibility, lock utama, rename, dan opacity sekarang commit snapshot sebelum mutasi agar undo mengembalikan state sebelumnya.
+3. Opacity slider menyimpan snapshot pre-drag dan commit satu kali saat perubahan selesai.
+4. Lock Transparency sekarang membatasi brush ke alpha bitmap layer yang sudah ada dan mencegah eraser mengubah layer saat transparency lock aktif.
+5. Tab History sekarang menampilkan jumlah undo/redo serta tombol Undo/Redo yang restore snapshot dan upload ulang texture layer aktif.
+6. Menambahkan regression test komponen `LayersPanel` untuk merge upload, flatten upload, rename history, visibility history, opacity history, dan switching tab History.
+
+**Files Changed/Added:**
+- [MODIFY] `apps/desktop/src/components/editor/useLayerActions.ts`
+- [MODIFY] `apps/desktop/src/components/editor/LayersPanel.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/LayerItem.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/useBrushOverlay.ts`
+- [NEW] `apps/desktop/src/components/editor/__tests__/LayersPanel.test.tsx`
+
+**Verifikasi:**
+- ✅ `pnpm.cmd --filter photrez-desktop test -- --run apps/desktop/src/components/editor/__tests__/LayersPanel.test.tsx`: PASS
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `pnpm.cmd --filter photrez-desktop test`: PASS (281/281)
+
+---
+
+## [2026-06-04] BUG FIX — Navigator Drag UX Terasa Licin [COMPLETE]
+
+### Kategori: BUG FIX / UI / FRONTEND / NAVIGATOR / VIEWPORT / UX
+
+**Deskripsi:** Memperbaiki UX Navigator agar drag viewport frame terasa presisi dan tidak lagi seperti meluncur/terlalu sensitif.
+
+**Root Cause:**
+Navigator sebelumnya memakai model `panToNavigatorCoord()` untuk semua pointer move. Setiap gerakan pointer langsung diperlakukan sebagai titik pusat viewport baru. Karena thumbnail Navigator hanya `208x88px`, gerakan kecil pada minimap dikonversi menjadi perpindahan dokumen besar, sehingga terasa licin. Pointerdown di dalam frame juga langsung melakukan recenter, bukan memulai drag relatif.
+
+**Fix Rationale:**
+1. Menambahkan state drag eksplisit yang menyimpan pointer awal, pan awal, dan zoom awal.
+2. Jika pointerdown dimulai di dalam visible viewport frame, Navigator tidak langsung mengubah pan; pointermove baru menggeser pan secara relatif berdasarkan delta pointer.
+3. Jika pointerdown dimulai di area thumbnail tetapi di luar frame, Navigator tetap center ke titik tersebut sekali, lalu drag berikutnya tetap relatif.
+4. Menambahkan guard agar klik pada area letterbox kosong di Navigator tidak menggeser dokumen.
+5. Menambahkan cleanup `pointercancel` agar drag state tidak tertahan saat event pointer dibatalkan oleh WebView/OS.
+
+**Files Changed:**
+- [MODIFY] `apps/desktop/src/components/editor/Navigator.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/__tests__/Navigator.test.tsx`
+
+**Verifikasi:**
+- ✅ `pnpm.cmd --filter photrez-desktop test -- --run apps/desktop/src/components/editor/__tests__/Navigator.test.tsx`: PASS
+- ✅ `pnpm.cmd run build`: PASS
+- ✅ `pnpm.cmd --filter photrez-desktop test`: PASS (275/275)
+
+---
+
+## [2026-06-04] BUG FIX — Layer Terbalik Secara Vertikal pada WebGL FBO Pipeline [COMPLETE]
+
+### Kategori: BUG FIX / RENDERER / WEBGL / TEXTURE / FLIP
+
+**Deskripsi:** Saat mengaktifkan compositing FBO WebGL2, layer gambar dirender terbalik secara vertikal pada viewport.
+
+**Root Cause:**
+WebGL framebuffer (FBO) merekam hasil gambar dengan titik asal koordinat (Y=0) di pojok kiri bawah. Saat tekstur hasil rendering FBO ini digambar kembali ke layar atau disalin ke FBO ping-pong lain menggunakan koordinat tekstur standard (`v_texCoord`), hal ini menyebabkan gambar terbalik vertikal (Y-flip) karena perbedaan orientasi orientasi origin antara tekstur bawaan gambar biasa (V=0 di atas) dan tekstur FBO (V=0 di bawah).
+
+**Logika Perbaikan (Fix Rationale):**
+1. Menambahkan uniform boolean `u_flipTexY` pada fragment shader (`shaders.ts`). Jika bernilai `true`, shader akan membalik koordinat tekstur Y (`1.0 - texCoord.y`) sebelum mengambil warna pixel dengan `texture(u_texture, texCoord)`.
+2. Di dalam WebGL backend (`webgl2.ts`):
+   - Mendaftarkan uniform `u_flipTexY`.
+   - Mengatur `u_flipTexY = 0` (tanpa flip) saat menggambar tekstur gambar layer mentah asli.
+   - Mengatur `u_flipTexY = 1` (balik Y) saat menyalin tekstur FBO ke FBO lain atau menggambar FBO hasil compositing akhir ke viewport layar.
+
+**Files Changed:**
+- [MODIFY] [shaders.ts](file:///d:/Project/image-studio/apps/desktop/src/renderer/shaders.ts)
+- [MODIFY] [webgl2.ts](file:///d:/Project/image-studio/apps/desktop/src/renderer/webgl2.ts)
+
+**Verifikasi:**
+- ✅ `pnpm run build`: PASS
+- ✅ `pnpm --filter photrez-desktop test`: 271/271 PASS (vitest)
+- ✅ Layer gambar terbuka kembali dengan arah tegak normal yang benar.
+
+---
+
+## [2026-06-04] FEATURE — WebGL GPU Layer Blend Modes Rendering [COMPLETE]
+
+### Kategori: FEATURE / RENDERER / WEBGL / LAYERS / BLEND MODES
+
+**Deskripsi:** Implementasi penuh rendering Blend Modes (Normal, Multiply, Screen, Overlay, Darken, Lighten, Color Dodge, Color Burn, Hard Light, Soft Light, Difference, Exclusion) yang berjalan secara hardware-accelerated di GPU menggunakan WebGL2 ping-pong framebuffer pipeline.
+
+**Rincian Perubahan:**
+1. **Shaders Compilation (`shaders.ts`)**:
+   - Menambahkan uniform `u_backdrop` (texture accumulator), `u_blendMode` (mode blend integer), `u_useBackdrop` (flag status blend), dan `u_resolution` (dimensi render).
+   - Menulis formula matematika blend modes di fragment shader: Multiply, Screen, Overlay, Darken, Lighten, Color Dodge, Color Burn, Hard Light, Soft Light, Difference, dan Exclusion.
+   - Mengimplementasikan Porter-Duff alpha-corrected compositing formula untuk blending warna semi-transparan yang presisi secara matematis.
+2. **Ping-Pong Pipeline (`webgl2.ts`)**:
+   - Membuat sepasang Framebuffer Objects (FBO) dan WebGLTextures ping-pong.
+   - Mengatur rekondisi/resize otomatis ping-pong textures di fungsi `resize()` sesuai resolusi target canvas viewport (`canvas.width` × `canvas.height`).
+   - Menyempurnakan alur `render()` agar secara berurutan menggambar layer terbawah secara normal ke FBO 0, dan layer-layer di atasnya menggunakan shader blend modes dengan membaca isi texture FBO sebelumnya sebagai backdrop.
+   - Menggambar hasil compositing akhir FBO ke viewport utama layar di atas pola checkerboard transparency grid.
+3. **Resource Cleanup (`webgl2.ts`)**:
+   - Memastikan penghapusan/disposal texture FBO secara aman pada `dispose()`.
+
+**Files Changed/Added:**
+- [MODIFY] [shaders.ts](file:///d:/Project/image-studio/apps/desktop/src/renderer/shaders.ts)
+- [MODIFY] [webgl2.ts](file:///d:/Project/image-studio/apps/desktop/src/renderer/webgl2.ts)
+
+**Verifikasi:**
+- ✅ `pnpm run build`: PASS
+- ✅ `pnpm --filter photrez-desktop test`: 271/271 PASS (vitest)
+- ✅ `cargo test --workspace`: 85/85 PASS
+
+---
+
+## [2026-06-04] REFACTOR — Scalability and Maintainability Refactor (Waves 3 - 10) [COMPLETE]
+
+### Kategori: REFACTOR / FRONTEND / SOLIDJS / TYPESCRIPT / ARCHITECTURE
+
+**Deskripsi:** Melanjutkan program restrukturisasi maintainability. Pemisahan fungsionalitas dan concern (Separation of Concerns) pada file viewport, crop overlay, option bar, dan state provider ke dalam hooks dan sub-komponen modular. Semua fungsionalitas tetap berjalan identik dengan cakupan test yang lulus penuh.
+
+**Rincian Perubahan:**
+1. **Wave 3 (CanvasViewport Shell) [COMPLETE]**:
+   - Mengekstrak inisialisasi, resize, fit-to-screen, dan sinkronisasi renderer WebGL2 ke custom hook [useViewportRenderer.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/useViewportRenderer.ts).
+   - Mengekstrak koordinasi pointer (down/move/up/double-click), target panduan magnetik (snapping), marquee selection, dan HUD koordinat ke custom hook [useCanvasPointerTools.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/useCanvasPointerTools.ts).
+   - Mengekstrak state reaktif turunan (layer lock, transform, bounding box, crop auto-init) ke [useCanvasDerivedState.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/useCanvasDerivedState.ts).
+   - Memangkas `CanvasViewport.tsx` menjadi file presenter ringkas yang menyusun hook-hook di atas.
+2. **Wave 4 (CropOverlay Modularization) [COMPLETE]**:
+   - Mengekstrak state machine interaksi drag/resize/rotate, snapping, pergeseran viewport penyeimbang, dan commit history ke [useCropOverlayDrag.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/useCropOverlayDrag.ts).
+   - Mengekstrak visual guides SVG ke [CropOverlayGuides.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/CropOverlayGuides.tsx).
+   - Mengekstrak visual handles dan rotate path hit-zones ke [CropOverlayHandles.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/CropOverlayHandles.tsx).
+   - Mengekstrak tooltip dimensi/derajat ke [CropOverlayTooltip.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/CropOverlayTooltip.tsx).
+3. **Wave 5 (OptionBar Per-Tool Split) [COMPLETE]**:
+   - Membagi option bar raksasa `OptionBar.tsx` menjadi panel khusus tool: [MoveOptionBar.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/MoveOptionBar.tsx), [CropOptionBar.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/CropOptionBar.tsx), dan [BrushOptionBar.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/BrushOptionBar.tsx).
+   - Mengekstrak tombol toggle dan divider bersama ke [OptionBarShared.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/OptionBarShared.tsx).
+   - Menyederhanakan `OptionBar.tsx` menjadi presenter router berbasis tool aktif.
+4. **Wave 6 (Transform Overlay Cleanup) [COMPLETE]**:
+   - Mengekstrak drag interaction, hit-testing handle, dan input keyboard Escape pembatalan dari `SelectionTransformOverlay.tsx` ke hook [useSelectionTransformDrag.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/useSelectionTransformDrag.ts).
+5. **Wave 7 (EditorContext Split) [COMPLETE]**:
+   - Memecah signal provider di `EditorContext.tsx` ke modul-modul independen: [editorState.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/editorState.ts) (general UI state), [cropState.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/cropState.ts) (crop signals & mini undo stack), [workspaceSync.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/workspaceSync.ts) (Tauri & engine document session sync), dan [editorOpenImage.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/editorOpenImage.ts) (dialog dialog load image native/fallback).
+6. **Wave 8 (Rust Core/Render Reference Organization) [COMPLETE]**:
+   - Memverifikasi integrasi model Rust core workspace dan document session. Memastikan 85 unit test Rust Rust core lulus penuh (`cargo test --workspace`).
+7. **Wave 9 (CSS/Primitives & Icon Audit) [COMPLETE]**:
+   - Mengaudit `primitives.tsx` and `icons.tsx` untuk memastikan konsistensi token visual Photon Amber.
+
+**Files Changed/Added:**
+- [NEW] [useViewportRenderer.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/useViewportRenderer.ts)
+- [NEW] [useCanvasPointerTools.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/useCanvasPointerTools.ts)
+- [NEW] [useCanvasDerivedState.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/useCanvasDerivedState.ts)
+- [NEW] [useCropOverlayDrag.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/useCropOverlayDrag.ts)
+- [NEW] [CropOverlayGuides.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/CropOverlayGuides.tsx)
+- [NEW] [CropOverlayHandles.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/CropOverlayHandles.tsx)
+- [NEW] [CropOverlayTooltip.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/CropOverlayTooltip.tsx)
+- [NEW] [OptionBarShared.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/OptionBarShared.tsx)
+- [NEW] [MoveOptionBar.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/MoveOptionBar.tsx)
+- [NEW] [CropOptionBar.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/CropOptionBar.tsx)
+- [NEW] [BrushOptionBar.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/BrushOptionBar.tsx)
+- [NEW] [useSelectionTransformDrag.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/useSelectionTransformDrag.ts)
+- [NEW] [editorState.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/editorState.ts)
+- [NEW] [cropState.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/cropState.ts)
+- [NEW] [workspaceSync.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/workspaceSync.ts)
+- [NEW] [editorOpenImage.ts](file:///d:/Project/image-studio/apps/desktop/src/components/editor/editorOpenImage.ts)
+- [MODIFY] [CanvasViewport.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/CanvasViewport.tsx)
+- [MODIFY] [CropOverlay.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/CropOverlay.tsx)
+- [MODIFY] [OptionBar.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/OptionBar.tsx)
+- [MODIFY] [SelectionTransformOverlay.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/SelectionTransformOverlay.tsx)
+- [MODIFY] [EditorContext.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/EditorContext.tsx)
+
+**Verifikasi:**
+- ✅ `pnpm run build`: PASS (Vite + TypeScript compiler)
+- ✅ `pnpm --filter photrez-desktop test`: 271/271 PASS (vitest)
+- ✅ `cargo test --workspace`: 85/85 PASS
+
+---
+
 ## [2026-06-04] REFACTOR — Separation of Concerns Refactoring (File Splitting) [COMPLETE]
 
 ### Kategori: REFACTOR / FRONTEND / SOLIDJS / TYPESCRIPT / ARCHITECTURE
