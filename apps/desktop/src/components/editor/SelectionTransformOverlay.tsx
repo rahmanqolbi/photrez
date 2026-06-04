@@ -9,7 +9,10 @@ import {
   getCursorForHandle,
   applyResizeHandle,
   applyRotationDrag,
+  detectHandle,
+  getNearestRotateCorner,
 } from "@/viewport/transformGeometry";
+import { getRotateCursorByPos } from "@/viewport/cursorRotate";
 
 interface SelectionTransformOverlayProps {
   isNavigationMode?: boolean;
@@ -34,11 +37,11 @@ interface SelectionTransformOverlayProps {
 
 const HANDLE_SIZE = 8;
 const HANDLE_HIT = 20;
-const ROTATE_OUTER = 24;
+const ROTATE_OUTER = 44;
 const HANDLE_TYPES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 
 export function SelectionTransformOverlay(props: SelectionTransformOverlayProps = {}) {
-  const { workspace, activeLayerId, layers, zoom, scheduler, setHoverHandle, moveSnapEnabled } = useEditor();
+  const { workspace, activeLayerId, layers, zoom, pan, scheduler, activeTool, hoverHandle, setHoverHandle, moveSnapEnabled, setHoverPos, hoverPos } = useEditor();
 
   let overlaySvgRef: SVGSVGElement | undefined;
 
@@ -115,6 +118,49 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
     return layer ? layer.height * Math.abs(scaleY()) : 0;
   });
 
+  const rotateCursor = createMemo(() => {
+    const hp = hoverPos();
+    if (!hp) return "crosshair";
+    const z = zoom();
+    const p = pan();
+    const bb = {
+      x: layerX() * z + p.x,
+      y: layerY() * z + p.y,
+      w: effW() * z,
+      h: effH() * z,
+    };
+    return getRotateCursorByPos(hp, bb);
+  });
+
+  const resolvedCursor = createMemo(() => {
+    const handle = hoverHandle();
+    const layer = getLayer();
+    if (!handle || !layer) return "default";
+    if (handle.startsWith("rotate")) return rotateCursor();
+    if (handle === "move") return "move";
+    return getCursorForHandle(handle, rotation(), scaleX(), scaleY());
+  });
+
+  const handlePointerMoveUpdateHover = (e: PointerEvent) => {
+    if (dragState()) return;
+    const layer = getLayer();
+    if (!layer) return;
+    const toDoc = props.onScreenToDoc ?? ((cx: number, cy: number) => ({ x: cx / zoom(), y: cy / zoom() }));
+    const docPos = toDoc(e.clientX, e.clientY);
+    const hit = detectHandle(docPos, layer.transform, layer.width, layer.height, zoom());
+    if (hit) {
+      setHoverHandle(hit);
+      if (hit === "rotate") {
+        const corner = getNearestRotateCorner(docPos, layer.transform, layer.width, layer.height);
+        setHoverHandle(`rotate-${corner}`);
+      }
+      setHoverPos({ x: e.clientX, y: e.clientY });
+    } else {
+      setHoverHandle(null);
+      setHoverPos(null);
+    }
+  };
+
   const handlePointerDown = (e: PointerEvent, type: string) => {
     if (props.isNavigationMode) return;
     e.stopPropagation();
@@ -123,9 +169,6 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
     const layer = getLayer();
     if (!engine || !history || !layer) return;
 
-    // Capture on stable root SVG — handle elements can be replaced during
-    // re-render (triggered by transformLayer → syncState), which would lose
-    // the pointer capture and prevent subsequent pointermove/pointerup events.
     if (overlaySvgRef) {
       overlaySvgRef.setPointerCapture(e.pointerId);
     }
@@ -143,7 +186,10 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
 
   const handlePointerMove = (e: PointerEvent) => {
     const drag = dragState();
-    if (!drag || e.pointerId !== drag.pointerId) return;
+    if (!drag || e.pointerId !== drag.pointerId) {
+      handlePointerMoveUpdateHover(e);
+      return;
+    }
 
     const engine = workspace.getActiveEngine();
     const layer = getLayer();
@@ -197,6 +243,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
         e.shiftKey
       );
       engine.transformLayer(layer.id, { rotation: newRot });
+      setHoverPos({ x: e.clientX, y: e.clientY });
       props.onHudUpdate?.({
         mode: "rotate",
         clientX: e.clientX,
@@ -239,6 +286,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
     }
     props.onSnapClear?.();
     props.onHudUpdate?.(null);
+    if (drag.type === "rotate") setHoverPos(null);
     setDragState(null);
   };
 
@@ -250,6 +298,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
     }
     props.onSnapClear?.();
     props.onHudUpdate?.(null);
+    if (drag.type === "rotate") setHoverPos(null);
     setDragState(null);
   };
 
@@ -258,6 +307,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
     if (!drag || e.pointerId !== drag.pointerId) return;
     props.onSnapClear?.();
     props.onHudUpdate?.(null);
+    if (drag.type === "rotate") setHoverPos(null);
     setDragState(null);
   };
 
@@ -276,6 +326,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
         }
         props.onSnapClear?.();
         props.onHudUpdate?.(null);
+        if (drag.type === "rotate") setHoverPos(null);
         setDragState(null);
       }
     };
@@ -301,116 +352,116 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
             width: "100%",
             height: "100%",
             overflow: "visible",
-            "pointer-events": props.isNavigationMode ? "none" : "auto",
+            "pointer-events": props.isNavigationMode || activeTool() === "crop" ? "none" : "auto",
             "z-index": 40,
+            cursor: resolvedCursor(),
           }}
         >
-          {/* Axis-aligned bounding box stroke (outside rotated group) */}
-          <Show when={aabb()}>
-            {(box) => (
-              <rect
-                x={box().x}
-                y={box().y}
-                width={box().width}
-                height={box().height}
-                fill="none"
-                stroke="#E15A17"
-                stroke-width={1 / z()}
-                vector-effect="non-scaling-stroke"
-                style={{ "pointer-events": "none" }}
-              />
-            )}
-          </Show>
+          {/* Rotated group for handles and interactions */}
+          <g transform={`rotate(${rotation()} ${center().x} ${center().y})`}>
+            {/* Rotated bounding box outline */}
+            <rect
+              x={layerX()}
+              y={layerY()}
+              width={effW()}
+              height={effH()}
+              fill="none"
+              stroke="#E15A17"
+              stroke-width={1 / z()}
+              vector-effect="non-scaling-stroke"
+              style={{ "pointer-events": "none" }}
+            />
+            {/* Center pivot dot */}
+            <circle
+              cx={center().x}
+              cy={center().y}
+              r={3 / z()}
+              fill="#E15A17"
+              vector-effect="non-scaling-stroke"
+              style={{ "pointer-events": "none" }}
+            />
 
-            {/* Rotated group for handles and interactions */}
-            <g transform={`rotate(${rotation()} ${center().x} ${center().y})`}>
-              {/* Center pivot dot */}
-              <circle
-                cx={center().x}
-                cy={center().y}
-                r={3 / z()}
-                fill="#E15A17"
-                vector-effect="non-scaling-stroke"
-                style={{ "pointer-events": "none" }}
-              />
+            {/* Move hit zone — rendered before handles so handles are on top */}
+            <rect
+              x={layerX()}
+              y={layerY()}
+              width={effW()}
+              height={effH()}
+              fill="transparent"
+              style={{ "pointer-events": "all" }}
+              data-move
+              onPointerDown={(e) => handlePointerDown(e, "move")}
+              onPointerEnter={() => setHoverHandle("move")}
+              onPointerLeave={() => setHoverHandle(null)}
+            />
 
-              {/* Move hit zone — rendered before handles so handles are on top */}
-              <rect
-                x={layerX()}
-                y={layerY()}
-                width={effW()}
-                height={effH()}
-                fill="transparent"
-                style={{ cursor: "move", "pointer-events": "all" }}
-                data-move
-                onPointerDown={(e) => handlePointerDown(e, "move")}
-                onPointerEnter={() => setHoverHandle("move")}
-                onPointerLeave={() => setHoverHandle(null)}
-              />
-
-              {/* 8 handles at unrotated edges, in layer-local coords */}
-              <For each={HANDLE_TYPES}>
-              {(type) => {
-                const hx = () => type === "nw" || type === "sw" || type === "w" ? layerX()
-                          : type === "ne" || type === "se" || type === "e" ? layerX() + effW()
-                          : layerX() + effW() / 2;
-                const hy = () => type === "nw" || type === "n" || type === "ne" ? layerY()
-                          : type === "sw" || type === "s" || type === "se" ? layerY() + effH()
-                          : layerY() + effH() / 2;
-                const cursor = () => getCursorForHandle(type, rotation(), scaleX(), scaleY());
-                return (
-                  <g>
-                    {/* Corner rotate zone ring (only for corners) */}
-                    <Show when={["nw", "ne", "se", "sw"].includes(type)}>
-                      <path
-                        d={`M ${hx()} ${hy() - ro()} 
-                            A ${ro()} ${ro()} 0 1 1 ${hx()} ${hy() + ro()} 
-                            A ${ro()} ${ro()} 0 1 1 ${hx()} ${hy() - ro()} Z
-                            M ${hx()} ${hy() - ht()} 
-                            A ${ht()} ${ht()} 0 1 0 ${hx()} ${hy() + ht()} 
-                            A ${ht()} ${ht()} 0 1 0 ${hx()} ${hy() - ht()} Z`}
-                        fill="transparent"
-                        fill-rule="evenodd"
-                        style={{ cursor: "crosshair", "pointer-events": "all" }}
-                        onPointerDown={(e) => handlePointerDown(e, "rotate")}
-                        onPointerEnter={() => setHoverHandle("rotate")}
-                        onPointerLeave={() => setHoverHandle(null)}
-                      />
-                    </Show>
-
-                    {/* Transparent hit zone for resize */}
-                    <rect
-                      x={hx() - ht() / 2}
-                      y={hy() - ht() / 2}
-                      width={ht()}
-                      height={ht()}
+            {/* 8 handles at unrotated edges, in layer-local coords */}
+            <For each={HANDLE_TYPES}>
+            {(type) => {
+              const hx = () => type === "nw" || type === "sw" || type === "w" ? layerX()
+                        : type === "ne" || type === "se" || type === "e" ? layerX() + effW()
+                        : layerX() + effW() / 2;
+              const hy = () => type === "nw" || type === "n" || type === "ne" ? layerY()
+                        : type === "sw" || type === "s" || type === "se" ? layerY() + effH()
+                        : layerY() + effH() / 2;
+              const cursor = () => getCursorForHandle(type, rotation(), scaleX(), scaleY());
+              return (
+                <g>
+                  {/* Corner rotate zone ring (only for corners) */}
+                  <Show when={["nw", "ne", "se", "sw"].includes(type)}>
+                    <path
+                      d={`M ${hx()} ${hy() - ro()} 
+                          A ${ro()} ${ro()} 0 1 1 ${hx()} ${hy() + ro()} 
+                          A ${ro()} ${ro()} 0 1 1 ${hx()} ${hy() - ro()} Z
+                          M ${hx()} ${hy() - ht()} 
+                          A ${ht()} ${ht()} 0 1 0 ${hx()} ${hy() + ht()} 
+                          A ${ht()} ${ht()} 0 1 0 ${hx()} ${hy() - ht()} Z`}
                       fill="transparent"
-                      style={{ cursor: cursor(), "pointer-events": "all" }}
-                      data-handle={type}
-                      onPointerDown={(e) => handlePointerDown(e, type)}
-                      onPointerEnter={() => setHoverHandle(type)}
-                      onPointerLeave={() => setHoverHandle(null)}
+                      fill-rule="evenodd"
+                      style={{ "pointer-events": "all" }}
+                      onPointerDown={(e) => handlePointerDown(e, "rotate")}
+                      onPointerEnter={(e) => {
+                        setHoverPos({ x: e.clientX, y: e.clientY });
+                      }}
+                      onPointerLeave={() => {
+                        setHoverPos(null);
+                      }}
                     />
+                  </Show>
 
-                    {/* Visual handle square */}
-                    <rect
-                      x={hx() - hs() / 2}
-                      y={hy() - hs() / 2}
-                      width={hs()}
-                      height={hs()}
-                      fill="white"
-                      stroke="#E15A17"
-                      stroke-width={1 / z()}
-                      vector-effect="non-scaling-stroke"
-                      style={{ "pointer-events": "none" }}
-                    />
-                  </g>
-                );
-              }}
-            </For>
-          </g>
-        </svg>
-      )}
-    </Show>
-  );
+                  {/* Transparent hit zone for resize */}
+                  <rect
+                    x={hx() - ht() / 2}
+                    y={hy() - ht() / 2}
+                    width={ht()}
+                    height={ht()}
+                    fill="transparent"
+                    style={{ "pointer-events": "all" }}
+                    data-handle={type}
+                    onPointerDown={(e) => handlePointerDown(e, type)}
+                    onPointerEnter={() => setHoverHandle(type)}
+                    onPointerLeave={() => setHoverHandle(null)}
+                  />
+
+                  {/* Visual handle square */}
+                  <rect
+                    x={hx() - hs() / 2}
+                    y={hy() - hs() / 2}
+                    width={hs()}
+                    height={hs()}
+                    fill="white"
+                    stroke="#E15A17"
+                    stroke-width={1 / z()}
+                    vector-effect="non-scaling-stroke"
+                    style={{ "pointer-events": "none" }}
+                  />
+                </g>
+              );
+            }}
+          </For>
+        </g>
+      </svg>
+    )}
+  </Show>
+);
 }

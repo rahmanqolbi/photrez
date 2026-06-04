@@ -7,8 +7,8 @@ const HANDLE_HIT = 16;
 const ROTATE_THRESHOLD = 250;
 
 function rotatePoint(point: Point, center: Point, deg: number): Point {
-  // Negative: positive deg = CW rotation (Photoshop convention)
-  const rad = -deg * DEG;
+  // Positive deg = CW rotation in screen space (Y-down)
+  const rad = deg * DEG;
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
   const dx = point.x - center.x;
@@ -61,6 +61,25 @@ export function pointToLayerLocal(point: Point, transform: Transform2D, w: numbe
   return rotatePoint(point, center, -transform.rotation);
 }
 
+export function getNearestRotateCorner(
+  point: Point,
+  transform: Transform2D,
+  w: number,
+  h: number
+): "nw" | "ne" | "se" | "sw" {
+  const center = getLayerCenter(transform, w, h);
+  const local = rotatePoint(point, center, -transform.rotation);
+  const effW = w * Math.abs(transform.scaleX);
+  const effH = h * Math.abs(transform.scaleY);
+  const cx = transform.x + effW / 2;
+  const cy = transform.y + effH / 2;
+
+  if (local.x <= cx && local.y <= cy) return "nw";
+  if (local.x > cx && local.y <= cy) return "ne";
+  if (local.x > cx && local.y > cy) return "se";
+  return "sw";
+}
+
 export function detectHandle(
   point: Point,
   transform: Transform2D,
@@ -109,19 +128,27 @@ export function detectHandle(
 
   if (insideCore) return "move";
 
-  const expanded = {
-    x: rX - rotateThresh,
-    y: rY - rotateThresh,
-    w: effW + rotateThresh * 2,
-    h: effH + rotateThresh * 2,
-  };
-  if (
-    local.x >= expanded.x &&
-    local.x <= expanded.x + expanded.w &&
-    local.y >= expanded.y &&
-    local.y <= expanded.y + expanded.h
-  ) {
-    return "rotate";
+  const isOutside =
+    local.x < rX ||
+    local.x > rX + effW ||
+    local.y < rY ||
+    local.y > rY + effH;
+
+  if (isOutside) {
+    const expanded = {
+      x: rX - rotateThresh,
+      y: rY - rotateThresh,
+      w: effW + rotateThresh * 2,
+      h: effH + rotateThresh * 2,
+    };
+    if (
+      local.x >= expanded.x &&
+      local.x <= expanded.x + expanded.w &&
+      local.y >= expanded.y &&
+      local.y <= expanded.y + expanded.h
+    ) {
+      return "rotate";
+    }
   }
 
   return null;
@@ -219,6 +246,13 @@ export function applyResizeHandle(
   };
 }
 
+export function normalizeRotation(angleDeg: number): number {
+  let angle = angleDeg % 360;
+  if (angle > 180) angle -= 360;
+  if (angle < -180) angle += 360;
+  return angle;
+}
+
 export function applyRotationDrag(
   center: Point,
   startPoint: Point,
@@ -233,7 +267,7 @@ export function applyRotationDrag(
   if (shiftKey) {
     result = Math.round(result / 15) * 15;
   }
-  return result;
+  return normalizeRotation(result);
 }
 
 const HANDLE_BASE_ANGLES: Record<string, number> = {

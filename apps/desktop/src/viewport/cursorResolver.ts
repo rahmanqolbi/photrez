@@ -1,5 +1,6 @@
 export type ToolType = "move" | "selection" | "crop" | "eyedropper" | "brush" | "eraser";
 import { getCursorForHandle } from "./transformGeometry";
+import { getRotateCursorByPos, getRotateCursorForHandle } from "./cursorRotate";
 
 export interface CursorContext {
   isSpacePressed: boolean;
@@ -15,6 +16,10 @@ export interface CursorContext {
   layerScaleX?: number;
   /** For rotation-aware cursor: the selected layer's current scaleY */
   layerScaleY?: number;
+  /** Current mouse position (screen-space) for dynamic rotate cursor */
+  hoverPos?: { x: number; y: number } | null;
+  /** Layer bounding box (document-space) for dynamic rotate cursor */
+  layerBoundingBox?: { x: number; y: number; w: number; h: number } | null;
 }
 
 export function resolveCursor(ctx: CursorContext): string {
@@ -27,10 +32,25 @@ export function resolveCursor(ctx: CursorContext): string {
     return getCursorForHandle(ctx.hoverHandle, ctx.layerRotation ?? 0, ctx.layerScaleX ?? 1, ctx.layerScaleY ?? 1);
   }
 
-  if (ctx.activeTool === "move" && ctx.hoverHandle === "rotate") return "crosshair";
+  if (ctx.activeTool === "move" && ctx.hoverHandle === "rotate") {
+    if (ctx.hoverPos && ctx.layerBoundingBox) {
+      return getRotateCursorByPos(ctx.hoverPos, ctx.layerBoundingBox);
+    }
+    return getRotateCursorForHandle(
+      "se",
+      ctx.layerRotation ?? 0,
+      ctx.layerScaleX ?? 1,
+      ctx.layerScaleY ?? 1
+    );
+  }
   if (ctx.activeTool === "move" && ctx.hoverHandle === "move") return "move";
 
   if (ctx.activeTool === "selection") return "crosshair";
+
+  if (ctx.activeTool === "crop" && ctx.hoverHandle && ctx.hoverHandle !== "move") {
+    return getCursorForHandle(ctx.hoverHandle, 0, 1, 1);
+  }
+  if (ctx.activeTool === "crop" && ctx.hoverHandle === "move") return "move";
   if (ctx.activeTool === "crop") return "crosshair";
   if (ctx.activeTool === "brush" || ctx.activeTool === "eraser") return "none";
   if (ctx.activeTool === "eyedropper") return "copy";

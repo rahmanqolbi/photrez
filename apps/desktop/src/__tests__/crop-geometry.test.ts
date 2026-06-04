@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   clampCropRect,
+  constrainCropRectToDocument,
   applyCropResizeHandle,
   applyCropMove,
   constrainCropAspect,
@@ -9,42 +10,52 @@ import {
 
 const RECT = { x: 10, y: 10, w: 200, h: 100 };
 
-describe("clampCropRect", () => {
-  it("clamps negative left/top", () => {
-    const result = clampCropRect({ x: -50, y: -30, w: 200, h: 100 }, 500, 500);
-    expect(result).toEqual({ x: 0, y: 0, w: 150, h: 70 });
+describe("constrainCropRectToDocument", () => {
+  it("allows coordinates outside document boundaries", () => {
+    const result = constrainCropRectToDocument({ x: -50, y: -30, w: 200, h: 100 }, 500, 500);
+    expect(result).toEqual({ x: -50, y: -30, w: 200, h: 100 });
   });
 
-  it("clamps right/bottom overflow", () => {
-    const result = clampCropRect({ x: 400, y: 450, w: 200, h: 100 }, 500, 500);
-    expect(result).toEqual({ x: 400, y: 450, w: 100, h: 50 });
+  it("does not slide rect inward when right/bottom would overflow", () => {
+    const result = constrainCropRectToDocument({ x: 400, y: 450, w: 200, h: 100 }, 500, 500);
+    expect(result).toEqual({ x: 400, y: 450, w: 200, h: 100 });
   });
 
-  it("passes through rect inside bounds", () => {
-    const result = clampCropRect({ x: 50, y: 50, w: 200, h: 100 }, 500, 500);
+  it("passes through rect already inside bounds", () => {
+    const result = constrainCropRectToDocument({ x: 50, y: 50, w: 200, h: 100 }, 500, 500);
     expect(result).toEqual({ x: 50, y: 50, w: 200, h: 100 });
+  });
+
+  it("enforces minimum size of 1x1", () => {
+    const result = constrainCropRectToDocument({ x: 10, y: 10, w: -50, h: 0 }, 500, 500);
+    expect(result).toEqual({ x: 10, y: 10, w: 1, h: 1 });
+  });
+
+  it("clampCropRect alias matches constrainCropRectToDocument", () => {
+    const rect = { x: 10, y: 20, w: 300, h: 200 };
+    expect(clampCropRect(rect, 500, 500)).toEqual(constrainCropRectToDocument(rect, 500, 500));
   });
 });
 
-describe("applyCropResizeHandle", () => {
-  it("SE corner increases w/h proportionally (no aspect, no shift)", () => {
-    const result = applyCropResizeHandle(RECT, "se", 30, 0, null);
+describe("applyCropResizeHandle — Free mode", () => {
+  it("SE corner does free resize (dx→w, dy→h) by default in Free mode", () => {
+    const result = applyCropResizeHandle(RECT, "se", 30, 0);
+    expect(result.x).toBe(10);
+    expect(result.y).toBe(10);
+    expect(result.w).toBe(230);
+    expect(result.h).toBe(100);
+  });
+
+  it("SE corner with Shift lock does proportional resize", () => {
+    const result = applyCropResizeHandle(RECT, "se", 30, 0, { shift: true });
     expect(result.x).toBe(10);
     expect(result.y).toBe(10);
     expect(result.w).toBeCloseTo(220, 4);
     expect(result.h).toBeCloseTo(110, 4);
   });
 
-  it("SE corner with Shift does free resize (dx→w, dy→h)", () => {
-    const result = applyCropResizeHandle(RECT, "se", 30, 10, null, true);
-    expect(result.x).toBe(10);
-    expect(result.y).toBe(10);
-    expect(result.w).toBe(230);
-    expect(result.h).toBe(110);
-  });
-
   it("S edge only changes height", () => {
-    const result = applyCropResizeHandle(RECT, "s", 0, 20, null);
+    const result = applyCropResizeHandle(RECT, "s", 0, 20);
     expect(result.x).toBe(10);
     expect(result.y).toBe(10);
     expect(result.w).toBe(200);
@@ -52,20 +63,73 @@ describe("applyCropResizeHandle", () => {
   });
 
   it("NW corner with Alt resizes from center", () => {
-    const result = applyCropResizeHandle(RECT, "nw", 10, 10, null, false, true);
-    expect(result.x).toBeCloseTo(23.33, 2);
-    expect(result.y).toBeCloseTo(16.67, 2);
+    const result = applyCropResizeHandle(RECT, "nw", 10, 10, { alt: true });
+    expect(result.x).toBe(20);
+    expect(result.y).toBe(20);
+    expect(result.w).toBe(180);
+    expect(result.h).toBe(80);
+  });
+
+  it("NW corner Shift+Alt: proportional from center", () => {
+    const result = applyCropResizeHandle(RECT, "nw", 10, 10, { shift: true, alt: true });
     expect(result.w).toBeCloseTo(173.33, 2);
     expect(result.h).toBeCloseTo(86.67, 2);
   });
+});
 
-  it("corner with aspect ratio lock maintains ratio", () => {
-    const result = applyCropResizeHandle(RECT, "se", 30, 0, { w: 16, h: 9 });
+describe("applyCropResizeHandle — Ratio mode", () => {
+  it("SE corner maintains aspect ratio", () => {
+    const result = applyCropResizeHandle(RECT, "se", 30, 0, {
+      constraint: "ratio", aspect: { w: 16, h: 9 },
+    });
     expect(result.x).toBe(10);
     expect(result.y).toBe(10);
-    expect(result.w).toBeCloseTo(230, 4);
+    expect(result.w).toBe(230);
     expect(result.h).toBeCloseTo(129.375, 4);
     expect(result.w / result.h).toBeCloseTo(16 / 9, 4);
+  });
+
+  it("SE corner with Shift does free resize in Ratio mode", () => {
+    const result = applyCropResizeHandle(RECT, "se", 30, 10, {
+      constraint: "ratio", aspect: { w: 16, h: 9 }, shift: true,
+    });
+    expect(result.x).toBe(10);
+    expect(result.y).toBe(10);
+    expect(result.w).toBe(230);
+    expect(result.h).toBe(110);
+  });
+
+  it("N edge maintains aspect ratio by centering", () => {
+    const result = applyCropResizeHandle(RECT, "n", 0, 20, {
+      constraint: "ratio", aspect: { w: 1, h: 1 },
+    });
+    expect(result.h).toBe(80);
+    expect(result.w).toBe(80);
+    expect(result.x).toBe(70);
+    expect(result.y).toBe(30);
+  });
+});
+
+describe("applyCropResizeHandle — Size mode (uses aspect ratio for constraint)", () => {
+  it("SE corner maintains target aspect ratio", () => {
+    const result = applyCropResizeHandle(RECT, "se", 30, 0, {
+      constraint: "size", aspect: { w: 4, h: 3 },
+    });
+    expect(result.x).toBe(10);
+    expect(result.y).toBe(10);
+    expect(result.w).toBe(230);
+    expect(result.h).toBeCloseTo(172.5, 4);
+    expect(result.w / result.h).toBeCloseTo(4 / 3, 4);
+  });
+
+  it("SE corner with Shift does free resize in Size mode", () => {
+    const result = applyCropResizeHandle(RECT, "se", 30, 10, {
+      constraint: "size", aspect: { w: 4, h: 3 }, shift: true,
+    });
+    expect(result.x).toBe(10);
+    expect(result.y).toBe(10);
+    expect(result.w).toBe(230);
+    expect(result.h).toBe(110);
   });
 });
 
@@ -75,14 +139,14 @@ describe("applyCropMove", () => {
     expect(result).toEqual({ x: 60, y: 40, w: 200, h: 100 });
   });
 
-  it("clamps left edge", () => {
+  it("does not clamp left edge", () => {
     const result = applyCropMove(RECT, -50, 0, 500, 500);
-    expect(result.x).toBe(0);
+    expect(result.x).toBe(-40);
   });
 
-  it("clamps right edge", () => {
+  it("does not clamp right edge", () => {
     const result = applyCropMove(RECT, 400, 0, 500, 500);
-    expect(result.x).toBe(300);
+    expect(result.x).toBe(410);
   });
 });
 

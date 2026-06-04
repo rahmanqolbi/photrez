@@ -97,31 +97,3 @@ rtk proxy <cmd>         # Run command without filtering (for debugging)
 ```
 
 <!-- /rtk-instructions -->
-
----
-
-# Identitas Proyek: Photrez
-
-- **Platform**: Tauri (Shell) + Rust (Core) + wgpu (Renderer)
-
-## Aturan Wajib (Project Mandates)
-
-### 🔴 DILARANG
-1. **Mengubah shell layer** untuk menempatkan business logic pengeditan gambar.
-2. **Melanggar batasan MVP** (tanpa PSD workflow, print checker, plugin runtime, atau AI features).
-3. **Melompati validasi input** pada file impor.
-4. **Melampaui budget performa**:
-   - Installer `< 80 MB`
-   - Idle RAM `< 250 MB`
-   - Startup `< 2s`
-
-### 🟢 WAJIB
-1. **Gunakan deterministic command envelopes** untuk semua komunikasi frontend/core.
-2. **Ikuti alur baca dokumen** sebelum memulai tugas:
-   1. `docs/00-vision-and-strategy.md`
-   2. `docs/00-product-scope.md`
-   3. `docs/01-prd.md`
-   4. `docs/02-architecture.md`
-   5. `docs/03-trd.md`
-   6. `docs/01-id-decision-log.md`
-3. **Simpan sinkronisasi keputusan** di `docs/01-id-decision-log.md`.

@@ -11,10 +11,15 @@ import { resolveCursor } from "@/viewport/cursorResolver";
 import { computeSnapAdjustment } from "@/viewport/smartGuides";
 import type { SnapRect } from "@/viewport/smartGuides";
 import { getLayerAabb } from "@/viewport/transformGeometry";
+import { buildCropSnapTargets } from "@/viewport/cropSnap";
+import { constrainCropRectToDocument } from "@/viewport/cropGeometry";
 import { hitTestLayers } from "@/viewport/layerHitTest";
 import type { LayerInfo } from "@/viewport/layerHitTest";
 import type { DocumentEngine } from "@/engine/document";
 import { useEditor } from "./EditorContext";
+import { useCanvasKeyboard } from "./useCanvasKeyboard";
+import { useBrushOverlay } from "./useBrushOverlay";
+import { usePanNavigation } from "./usePanNavigation";
 import { SelectionTransformOverlay } from "./SelectionTransformOverlay";
 import { HoverHighlight } from "./HoverHighlight";
 import { SmartGuides } from "./SmartGuides";
@@ -24,11 +29,6 @@ import { CropModeIndicator } from "./CropModeIndicator";
 import { TransformHud } from "./TransformHud";
 import type { HudMode } from "./TransformHud";
 
-// Overlay canvas for real-time brush stroke preview — sync 2D drawing, no createImageBitmap per move
-let overlayCanvasRef!: HTMLCanvasElement;
-let overlayCtx: CanvasRenderingContext2D | null = null;
-let prevStrokePointCount = 0;
-let strokeGen = 0;
 
 const interactiveState: ToolContext = {
   fgColor: "",
@@ -73,7 +73,19 @@ export function CanvasViewport() {
     cropDeletePixels, setCropDeletePixels,
     cropAspect, setCropAspect,
     cropSizeTarget, setCropSizeTarget,
+    cropRotation, setCropRotation,
+    hoverPos,
+    setHoverPos,
+    setViewportWidth,
+    setViewportHeight,
   } = useEditor();
+
+  const {
+    onPaintStroke,
+    commitBrushStroke,
+    setOverlayCanvasRef,
+    getOverlayCanvasRef,
+  } = useBrushOverlay();
 
   let canvasContainerRef!: HTMLDivElement;
   let canvasRef!: HTMLCanvasElement;
@@ -86,20 +98,27 @@ export function CanvasViewport() {
     h: number;
   } | null>(null);
 
-  // Crop drag state for overlay interaction
-  const [cropDragState, setCropDragState] = createSignal<{
-    handle: string | null;
-    startRect: { x: number; y: number; w: number; h: number };
-    startPointer: { x: number; y: number };
-  } | null>(null);
-
-  // Spacebar and Middle-click panning states
-  const [isSpacePressed, setIsSpacePressed] = createSignal(false);
-  const [isPanning, setIsPanning] = createSignal(false);
-  let panDragStart = { clientX: 0, clientY: 0, panX: 0, panY: 0 };
+  const {
+    isSpacePressed,
+    setIsSpacePressed,
+    isPanning,
+    setIsPanning,
+    stopMomentum,
+    startMomentumDeceleration,
+    handleWheel,
+    onViewportPointerDown,
+    onViewportPointerMove,
+    onViewportPointerUp,
+  } = usePanNavigation({
+    getCanvasContainerRef: () => canvasContainerRef,
+    fitToScreenAndRender,
+  });
 
   // Alt key state for eyedropper shortcut (Alt+Brush/Eraser)
   const [isAltPressed, setIsAltPressed] = createSignal(false);
+
+  // Active crop handle drag state
+  const [isCropDragging, setIsCropDragging] = createSignal(false);
 
   // Fit transition state — gates CSS transition OFF during fitToScreen for snap-to-fit feel
   const [isFitTransition, setIsFitTransition] = createSignal(false);
@@ -148,62 +167,20 @@ export function CanvasViewport() {
     const engine = workspace.getActiveEngine();
     if (!engine) return;
     const rect = cropRect();
-    if (
-      rect &&
-      rect.x >= 0 &&
-      rect.y >= 0 &&
-      rect.w <= engine.getWidth() &&
-      rect.h <= engine.getHeight()
-    )
-      return;
-    setCropRect({ x: 0, y: 0, w: engine.getWidth(), h: engine.getHeight() });
+    if (rect && rect.w > 0 && rect.h > 0) return;
+    const docW = engine.getWidth();
+    const docH = engine.getHeight();
+    setCropRect({ x: 0, y: 0, w: docW, h: docH });
   };
 
   createEffect(() => {
-    if (activeTool() !== "crop") return;
+    if (activeTool() !== "crop") {
+      setCropRotation(0);
+      return;
+    }
     ensureCropRect();
   });
 
-  // Kinetic momentum scroll physics
-  let lastPointerPositions: { time: number; x: number; y: number }[] = [];
-  let momentumVelocity = { x: 0, y: 0 };
-  let momentumRafId = 0;
-
-  function stopMomentum() {
-    if (momentumRafId) {
-      cancelAnimationFrame(momentumRafId);
-      momentumRafId = 0;
-    }
-  }
-
-  function startMomentumDeceleration() {
-    stopMomentum();
-
-    const engine = workspace.getActiveEngine();
-    if (!engine) return;
-
-    const friction = 0.92; // Natural friction damping factor
-    const step = () => {
-      momentumVelocity.x *= friction;
-      momentumVelocity.y *= friction;
-
-      if (
-        Math.abs(momentumVelocity.x) < 0.1 &&
-        Math.abs(momentumVelocity.y) < 0.1
-      ) {
-        momentumVelocity = { x: 0, y: 0 };
-        return;
-      }
-
-      engine.pan(momentumVelocity.x, momentumVelocity.y);
-      syncViewport();
-      scheduler.requestRender();
-
-      momentumRafId = requestAnimationFrame(step);
-    };
-
-    momentumRafId = requestAnimationFrame(step);
-  }
 
   const layerRotation = createMemo(() => {
     const id = activeLayerId();
@@ -226,6 +203,29 @@ export function CanvasViewport() {
     return l ? l.transform.scaleY : 1;
   });
 
+  const layerBoundingBox = createMemo(() => {
+    const id = activeLayerId();
+    if (!id) return null;
+    const l = layers().find((l) => l.id === id);
+    if (!l) return null;
+    const aabb = getLayerAabb(l.transform, l.width, l.height);
+    return { x: aabb.x, y: aabb.y, w: aabb.width, h: aabb.height };
+  });
+
+  const cropSnapTargets = createMemo(() => {
+    const engine = workspace.getActiveEngine();
+    if (!engine) return { x: [], y: [] };
+    const docW = docWidth();
+    const docH = docHeight();
+    const layerTargets = layers()
+      .filter((l) => l.visible)
+      .map((l) => {
+        const aabb = getLayerAabb(l.transform, l.width, l.height);
+        return { x: aabb.x, y: aabb.y, w: aabb.width, h: aabb.height };
+      });
+    return buildCropSnapTargets(docW, docH, layerTargets);
+  });
+
   const cursorClass = createMemo(() => resolveCursor({
     isSpacePressed: isSpacePressed(),
     isPanning: isPanning(),
@@ -237,6 +237,8 @@ export function CanvasViewport() {
     layerRotation: layerRotation(),
     layerScaleX: layerScaleX(),
     layerScaleY: layerScaleY(),
+    hoverPos: hoverPos(),
+    layerBoundingBox: layerBoundingBox(),
   }));
 
   // Viewport container cursor: grab/grabbing when Space held, default otherwise
@@ -253,6 +255,17 @@ export function CanvasViewport() {
   createEffect(() => {
     const c = cursorClass();
     if (canvasRef) canvasRef.style.cursor = c;
+  });
+
+  // Clear hover state when tool is not move
+  createEffect(() => {
+    if (activeTool() !== "move") {
+      setHoverPos(null);
+      const h = hoverHandle();
+      if (h && h.startsWith("rotate")) {
+        setHoverHandle(null);
+      }
+    }
   });
 
   // ─── Stable tool context wiring ───
@@ -313,6 +326,11 @@ export function CanvasViewport() {
     if (!engine) return;
     const rect = canvasContainerRef?.getBoundingClientRect();
     if (!rect) return;
+    
+    // Update global viewport dimensions in EditorContext
+    setViewportWidth(rect.width);
+    setViewportHeight(rect.height);
+
     // Disable CSS transition for snap-to-fit feel, then re-enable after 200ms
     if (fitTransitionTimeoutId) clearTimeout(fitTransitionTimeoutId);
     setIsFitTransition(true);
@@ -331,82 +349,20 @@ export function CanvasViewport() {
     renderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr);
   }
 
-  function onPaintStroke(
-    points: { x: number; y: number }[],
-    isEraser: boolean,
-  ) {
-    const activeEngine = workspace.getActiveEngine();
-    if (!activeEngine) return;
-    const activeId = activeEngine.getActiveLayerId();
-    if (!activeId) return;
-
-    const layer = activeEngine.getLayer(activeId);
-    if (!layer || layer.locked || !layer.visible) return;
-
-    if (!overlayCtx) return;
-
-    // Lazy resize overlay canvas to match layer dimensions
-    if (overlayCanvasRef.width !== layer.width || overlayCanvasRef.height !== layer.height) {
-      overlayCanvasRef.width = layer.width;
-      overlayCanvasRef.height = layer.height;
-    }
-
-    // Seed overlay with current layer image at start of a new stroke
-    if (prevStrokePointCount === 0) {
-      if (layer.imageBitmap) {
-        overlayCtx.drawImage(layer.imageBitmap, 0, 0);
-      } else {
-        overlayCtx.clearRect(0, 0, layer.width, layer.height);
-      }
-      overlayCtx.globalAlpha = 1.0;
-      overlayCtx.lineWidth = 20;
-      overlayCtx.lineCap = "round";
-      overlayCtx.lineJoin = "round";
-      overlayCtx.globalCompositeOperation = isEraser ? "destination-out" : "source-over";
-      overlayCtx.strokeStyle = isEraser ? "rgba(0,0,0,1.0)" : fgColor();
-    }
-
-    // Draw only the delta segment since the last call
-    const startIdx = prevStrokePointCount > 0 ? prevStrokePointCount - 1 : 0;
-    overlayCtx.beginPath();
-    overlayCtx.moveTo(points[startIdx].x, points[startIdx].y);
-    for (let i = Math.max(1, prevStrokePointCount); i < points.length; i++) {
-      overlayCtx.lineTo(points[i].x, points[i].y);
-    }
-    overlayCtx.stroke();
-
-    prevStrokePointCount = points.length;
-  }
-
-  async function commitBrushStroke(engine: DocumentEngine, layerId: string) {
-    if (prevStrokePointCount === 0) return;
-    const w = overlayCanvasRef.width;
-    const h = overlayCanvasRef.height;
-    if (w === 0 || h === 0 || !overlayCtx) return;
-
-    // Sync snapshot — captures current overlay pixels before any async gap
-    const snapshot = new OffscreenCanvas(w, h);
-    const sCtx = snapshot.getContext("2d")!;
-    sCtx.drawImage(overlayCanvasRef, 0, 0);
-
-    try {
-      const gen = ++strokeGen;
-      const newBitmap = await createImageBitmap(snapshot);
-      if (gen !== strokeGen) {
-        newBitmap.close();
-        return;
-      }
-      engine.setLayerImageBitmap(layerId, newBitmap);
-      renderer.uploadImage(layerId, newBitmap);
-      scheduler.requestRender();
-      overlayCtx.clearRect(0, 0, w, h);
-      prevStrokePointCount = 0;
-    } catch (err) {
-      console.error("Stroke commit failed:", err);
-    }
-  }
-
   // ─── One-time setup (renderer, overlay, observers, listeners) ───
+  useCanvasKeyboard({
+    isSpacePressed,
+    setIsSpacePressed,
+    isAltPressed,
+    setIsAltPressed,
+    isPanning,
+    setIsPanning,
+    stopMomentum,
+    fitToScreenAndRender,
+    syncViewport,
+    getCanvasContainerRef: () => canvasContainerRef,
+  });
+
   onMount(() => {
     try {
       renderer.initialize(canvasRef);
@@ -414,175 +370,19 @@ export function CanvasViewport() {
       console.error("Renderer init failed:", err);
     }
 
-    if (overlayCanvasRef) {
-      overlayCanvasRef.width = docWidth();
-      overlayCanvasRef.height = docHeight();
-      overlayCtx = overlayCanvasRef.getContext("2d");
-    }
-
     // ─── ResizeObserver — always active ───
-    const resizeObserver = new ResizeObserver(() => {
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setViewportWidth(entry.contentRect.width);
+        setViewportHeight(entry.contentRect.height);
+      }
       fitToScreenAndRender();
     });
     resizeObserver.observe(canvasContainerRef);
 
-    // 3. Register global keyboard listeners for premium Photoshop Navigation
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const active = document.activeElement;
-      if (
-        active &&
-        (active.tagName === "INPUT" ||
-          active.tagName === "TEXTAREA" ||
-          (active as HTMLElement).isContentEditable)
-      )
-        return;
-
-      stopMomentum();
-
-      const engine = workspace.getActiveEngine();
-      if (!engine) return;
-
-      const history = workspace.getActiveHistory();
-      if (!history) return;
-
-      // Crop tool keyboard shortcuts
-      if (activeTool() === "crop") {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          const rect = cropRect();
-          const engine2 = workspace.getActiveEngine();
-          if (rect && engine2) {
-            const history = workspace.getActiveHistory();
-            history?.commit(engine2.snapshot());
-            engine2.cropCanvas(rect.x, rect.y, rect.w, rect.h);
-            scheduler.requestRender();
-            setCropRect(null);
-            setActiveTool("move");
-          }
-          return;
-        }
-        if (e.key === "Escape") {
-          e.preventDefault();
-          setCropRect(null);
-          setActiveTool("move");
-          return;
-        }
-      }
-
-      const key = e.key.toLowerCase();
-      const ctrl = e.ctrlKey || e.metaKey;
-
-      // Alt key tracking for eyedropper shortcut
-      if (e.key === "Alt") {
-        setIsAltPressed(true);
-      }
-
-      // Spacebar panning toggle
-      if (e.code === "Space") {
-        e.preventDefault();
-        stopMomentum();
-        if (!isSpacePressed()) {
-          setIsSpacePressed(true);
-        }
-        return;
-      }
-
-      // Keyboard nudge for Move Tool: Arrow = 1px, Shift+Arrow = 10px
-      if (activeTool() === "move" && (e.key.startsWith("Arrow"))) {
-        const activeId = engine.getActiveLayerId();
-        if (!activeId) return;
-        const layer = engine.getLayer(activeId);
-        if (!layer || layer.locked) return;
-
-        e.preventDefault();
-        const step = e.shiftKey ? 10 : 1;
-        let dx = 0, dy = 0;
-        if (e.key === "ArrowUp") dy = -step;
-        else if (e.key === "ArrowDown") dy = step;
-        else if (e.key === "ArrowLeft") dx = -step;
-        else if (e.key === "ArrowRight") dx = step;
-
-        if (!e.repeat) {
-          history.commit(engine.snapshot());
-        }
-        engine.moveLayer(activeId, layer.transform.x + dx, layer.transform.y + dy);
-        scheduler.requestRender();
-        return;
-      }
-
-      // Zoom Shortcuts: Ctrl + Plus / Equal
-      if (
-        ctrl &&
-        (key === "=" ||
-          key === "+" ||
-          e.code === "Equal" ||
-          e.code === "NumpadAdd")
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        stopMomentum();
-
-        const rect = canvasContainerRef.getBoundingClientRect();
-        engine.zoom(1.2, rect.width / 2, rect.height / 2);
-        syncViewport();
-        scheduler.requestRender();
-        return;
-      }
-
-      // Zoom Shortcuts: Ctrl + Minus
-      if (
-        ctrl &&
-        (key === "-" || e.code === "Minus" || e.code === "NumpadSubtract")
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        stopMomentum();
-
-        const rect = canvasContainerRef.getBoundingClientRect();
-        engine.zoom(0.8, rect.width / 2, rect.height / 2);
-        syncViewport();
-        scheduler.requestRender();
-        return;
-      }
-
-      // Fit Screen Shortcuts: Ctrl + 0
-      if (
-        ctrl &&
-        (key === "0" || e.code === "Digit0" || e.code === "Numpad0")
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        stopMomentum();
-        fitToScreenAndRender();
-        return;
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === "Space") {
-        setIsSpacePressed(false);
-      }
-      if (e.key === "Alt") {
-        setIsAltPressed(false);
-      }
-    };
-
-    const handleWindowBlur = () => {
-      setIsSpacePressed(false);
-      setIsPanning(false);
-      setIsAltPressed(false);
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-    window.addEventListener("blur", handleWindowBlur);
-
     onCleanup(() => {
       resizeObserver.disconnect();
       renderer.dispose();
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-      window.removeEventListener("blur", handleWindowBlur);
       stopMomentum();
     });
   });
@@ -600,11 +400,13 @@ export function CanvasViewport() {
     } else {
       setCropRect(null);
     }
+    setCropRotation(0);
 
     try {
-      if (overlayCanvasRef) {
-        overlayCanvasRef.width = engine.getWidth();
-        overlayCanvasRef.height = engine.getHeight();
+      const overlayCanvas = getOverlayCanvasRef();
+      if (overlayCanvas) {
+        overlayCanvas.width = engine.getWidth();
+        overlayCanvas.height = engine.getHeight();
       }
 
       resizeRenderer();
@@ -621,34 +423,6 @@ export function CanvasViewport() {
     }
   });
 
-  // Wheel zoom (Ctrl+scroll or Alt+scroll) and Shift+Scroll horizontal panning
-  const handleWheel = (e: WheelEvent) => {
-    const engine = workspace.getActiveEngine();
-    if (!engine) return;
-
-    stopMomentum();
-
-    if (e.ctrlKey || e.altKey) {
-      e.preventDefault();
-      const factor = e.deltaY < 0 ? 1.15 : 0.85;
-
-      // Zoom centered at cursor position (container-relative coordinates)
-      const containerRect = canvasContainerRef.getBoundingClientRect();
-      engine.zoom(factor, e.clientX - containerRect.left, e.clientY - containerRect.top);
-      syncViewport();
-      scheduler.requestRender();
-    } else {
-      e.preventDefault();
-      // Holding Shift scrolls horizontal, normal scrolls vertical
-      if (e.shiftKey) {
-        engine.pan(-e.deltaY, 0);
-      } else {
-        engine.pan(-e.deltaX, -e.deltaY);
-      }
-      syncViewport();
-      scheduler.requestRender();
-    }
-  };
 
   // Double Click empty background to fit screen
   const handleDoubleClick = (e: MouseEvent) => {
@@ -670,78 +444,6 @@ export function CanvasViewport() {
     );
   };
 
-  // ─── Viewport container handlers: panning only ───
-  const onViewportPointerDown = (e: PointerEvent) => {
-    // Only handle panning (Space held or middle mouse click)
-    if (!isSpacePressed() && e.button !== 1) return;
-
-    stopMomentum();
-    const engine = workspace.getActiveEngine();
-    if (!engine) return;
-
-    canvasContainerRef.setPointerCapture(e.pointerId);
-    setIsPanning(true);
-    panDragStart = {
-      clientX: e.clientX,
-      clientY: e.clientY,
-      panX: engine.getViewport().panX,
-      panY: engine.getViewport().panY,
-    };
-    lastPointerPositions = [{ time: Date.now(), x: e.clientX, y: e.clientY }];
-  };
-
-  const onViewportPointerMove = (e: PointerEvent) => {
-    if (!isPanning()) return;
-
-    const engine = workspace.getActiveEngine();
-    if (!engine) return;
-
-    const dx = e.clientX - panDragStart.clientX;
-    const dy = e.clientY - panDragStart.clientY;
-    engine.setViewport({
-      panX: panDragStart.panX + dx,
-      panY: panDragStart.panY + dy,
-    });
-    syncViewport();
-    scheduler.requestRender();
-
-    const now = Date.now();
-    lastPointerPositions.push({ time: now, x: e.clientX, y: e.clientY });
-    lastPointerPositions = lastPointerPositions.filter(
-      (p) => now - p.time < 100,
-    );
-  };
-
-  const onViewportPointerUp = (e: PointerEvent) => {
-    if (!isPanning()) return;
-
-    canvasContainerRef.releasePointerCapture(e.pointerId);
-    setIsPanning(false);
-
-    const now = Date.now();
-    lastPointerPositions = lastPointerPositions.filter(
-      (p) => now - p.time < 100,
-    );
-
-    if (lastPointerPositions.length > 1) {
-      const oldest = lastPointerPositions[0];
-      const newest = lastPointerPositions[lastPointerPositions.length - 1];
-      const dt = newest.time - oldest.time;
-      if (dt > 10) {
-        const frameMs = 16.67;
-        const vx = ((newest.x - oldest.x) / dt) * frameMs;
-        const vy = ((newest.y - oldest.y) / dt) * frameMs;
-
-        const maxSpeed = 80;
-        const speed = Math.sqrt(vx * vx + vy * vy);
-        if (speed > 1) {
-          const scale = Math.min(speed, maxSpeed) / speed;
-          momentumVelocity = { x: vx * scale, y: vy * scale };
-          startMomentumDeceleration();
-        }
-      }
-    }
-  };
 
   // ─── Canvas element handlers: tool interactions only ───
   const onCanvasPointerDown = (e: PointerEvent) => {
@@ -834,6 +536,7 @@ export function CanvasViewport() {
   return (
     <div
       ref={canvasContainerRef}
+      id="canvas-container"
       data-viewport-container
       class="flex-1 relative overflow-hidden bg-editor-canvas"
       onWheel={handleWheel}
@@ -848,8 +551,8 @@ export function CanvasViewport() {
           style={{
             transform: `translate3d(${pan().x}px, ${pan().y}px, 0) scale(${zoom()})`,
             "transform-origin": "0 0",
-            transition: isPanning() || isFitTransition() ? "none" : "transform 0.15s cubic-bezier(0.2, 0, 0, 1)",
-            "will-change": isPanning() ? "transform" : "auto",
+            transition: isPanning() || isFitTransition() || isCropDragging() ? "none" : "transform 0.15s cubic-bezier(0.2, 0, 0, 1)",
+            "will-change": isPanning() || isCropDragging() ? "transform" : "auto",
             position: "absolute",
             width: `${docWidth()}px`,
             height: `${docHeight()}px`,
@@ -866,12 +569,14 @@ export function CanvasViewport() {
               inset: 0,
               width: "100%",
               height: "100%",
+              transform: activeTool() === "crop" && cropRect() && cropRotation() !== 0 ? `rotate(${-cropRotation()}deg)` : "none",
+              "transform-origin": activeTool() === "crop" && cropRect() ? `${cropRect()!.x + cropRect()!.w / 2}px ${cropRect()!.y + cropRect()!.h / 2}px` : "center center",
             }}
           />
 
           {/* Overlay canvas — sync 2D brush preview, no createImageBitmap per move */}
           <canvas
-            ref={overlayCanvasRef}
+            ref={setOverlayCanvasRef}
             style={{
               position: "absolute",
               inset: 0,
@@ -886,6 +591,8 @@ export function CanvasViewport() {
             class="absolute inset-0 pointer-events-none border border-white/10"
             style={{
               "box-shadow": "0 0 0 1px rgba(0, 0, 0, 0.6), 0 8px 32px rgba(0, 0, 0, 0.7)",
+              transform: activeTool() === "crop" && cropRect() && cropRotation() !== 0 ? `rotate(${-cropRotation()}deg)` : "none",
+              "transform-origin": activeTool() === "crop" && cropRect() ? `${cropRect()!.x + cropRect()!.w / 2}px ${cropRect()!.y + cropRect()!.h / 2}px` : "center center",
             }}
           />
 
@@ -939,9 +646,6 @@ export function CanvasViewport() {
             </Show>
           </svg>
 
-          {/* Crop mode indicator bar */}
-          <CropModeIndicator isActive={activeTool() === "crop"} />
-
           {/* SelectionTransformOverlay — document-space coordinates */}
           <Show when={activeTool() === "move"}>
             <SelectionTransformOverlay
@@ -980,32 +684,30 @@ export function CanvasViewport() {
             />
           </Show>
 
-          {/* Crop Overlay — own SVG layer (parent shared SVG has pointer-events: none) */}
+          {/* Crop Overlay — self-contained SVG with pointer capture */}
           <Show when={activeTool() === "crop" && cropRect()}>
-            <svg
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                overflow: "visible",
-                "pointer-events": "auto",
-                "z-index": 35,
-              }}
-            >
-              <CropOverlay
-                cropRect={cropRect()}
-                guideMode={cropGuideMode()}
-                canvasWidth={docWidth()}
-                canvasHeight={docHeight()}
-                zoom={zoom()}
-                cropMode={cropMode()}
-                cropAspect={cropAspect()}
-                onCropRectChange={(rect) => setCropRect(rect)}
-              />
-            </svg>
+            <CropOverlay
+              cropRect={cropRect()}
+              guideMode={cropGuideMode()}
+              canvasWidth={docWidth()}
+              canvasHeight={docHeight()}
+              zoom={zoom()}
+              cropMode={cropMode()}
+              cropAspect={cropAspect()}
+              cropRotation={cropRotation()}
+              onCropRectChange={(rect) => setCropRect(rect)}
+              onCropRotationChange={setCropRotation}
+              onHoverHandleChange={setHoverHandle}
+              snapTargets={cropSnapTargets()}
+              snapEnabled={moveSnapEnabled()}
+              onSnapLines={setSnapLines}
+              onDragStateChange={setIsCropDragging}
+            />
           </Show>
         </div>
+
+        {/* Crop mode indicator bar — placed outside pan/zoom div so it stays fixed on screen */}
+        <CropModeIndicator isActive={activeTool() === "crop"} />
       </Show>
     </div>
   );

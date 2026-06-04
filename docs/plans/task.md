@@ -98,4 +98,34 @@
 | Task 98 | [Viewport] Implement Shift+Scroll Horizontal Panning and Double-click background to Fit Screen | [x] Completed |
 | Task 99 | [Viewport] Implement Ctrl/Alt scroll zooming and Ctrl+Equal/Minus/Zero keyboard shortcuts | [x] Completed |
 | Task 100 | [Verify] Run Vitest tests, TypeScript compiler checks, cargo core tests, and Git commits | [x] Completed |
+| Task 101 | Fix Crop Box Integration & Typing | [x] Completed |
+| Task 102 | Allow Crop Box to Exceed Canvas Bounds (Photoshop-style Canvas Expansion) | [x] Completed |
+| Task 103 | [Core] Add drawLayerToContext helper and duplicate/merge/flatten methods to DocumentEngine | [x] Completed |
+| Task 104 | [Core] Add unit tests for engine duplication, merging, and flattening | [x] Completed |
+| Task 105 | [UI] Implement interactive Opacity slider popover and Blend Mode select dropdown in LayersPanel | [x] Completed |
+| Task 106 | [UI] Implement inline renaming (double-click to input) and live canvas thumbnails in LayersPanel | [x] Completed |
+| Task 107 | [UI] Implement HTML5 drag-and-drop layer reordering list with Photon Amber drop position indicator | [x] Completed |
+| Task 108 | [Viewport] Implement Ctrl+J keyboard shortcut to duplicate active layer | [x] Completed |
+| Task 109 | [Verify] Run all Vitest and workspace tests, and run build checks | [x] Completed |
+| Task 110 | [Core] Add specific lock properties to LayerNode types.ts and update snapshot/restore logic in document.ts | [x] Completed |
+| Task 111 | [Core] Add engine setters for specific locks and guard transformation/movement functions | [x] Completed |
+| Task 112 | [UI] Make Paint Bucket, Maximize, and Rotate icons interactive buttons linked to specific layer locks | [x] Completed |
+| Task 113 | [Verify] Verify all Vitest unit tests pass and compilation succeeds | [x] Completed |
+| Task 114 | [UI] Extract Navigator widget from LayersPanel.tsx into a dedicated Navigator.tsx component | [x] Completed |
+| Task 115 | [UI] Implement dynamic canvas renderer drawing composited background/layers in Navigator.tsx | [x] Completed |
+| Task 116 | [UI] Implement interactive viewport frame overlay (Red Box) representing visible artboard boundary | [x] Completed |
+| Task 117 | [UI] Implement pointer-based click-and-drag logic in Navigator.tsx to pan the main viewport canvas | [x] Completed |
+| Task 118 | [UI] Connect and enable interactive zoom slider control with zoom bounds | [x] Completed |
+| Task 119 | [Verify] Verify compilation and run test suites to ensure everything works correctly | [x] Completed |
+| Task 120 | [Refactor] Extract `useCanvasKeyboard.ts` from `CanvasViewport.tsx` (P0) | [x] Completed |
+| Task 121 | [Refactor] Extract `LayerItem.tsx` from `LayersPanel.tsx` (P0) | [x] Completed |
+| Task 122 | [Refactor] Extract `useLayerDragReorder.ts` from `LayersPanel.tsx` (P0) | [x] Completed |
+| Task 123 | [Refactor] Extract `useBrushOverlay.ts` from `CanvasViewport.tsx` (P1) | [x] Completed |
+| Task 124 | [Refactor] Extract `usePanNavigation.ts` from `CanvasViewport.tsx` (P1) | [x] Completed |
+| Task 125 | [Refactor] Extract `useLayerActions.ts` from `LayersPanel.tsx` (P1) | [x] Completed |
+| Task 126 | [Refactor] Move `LayerThumb.tsx` to its own file (P2) | [x] Completed |
+| Task 127 | [Verify] Verify all unit tests and build check passes | [x] Completed |
+
+
+
 

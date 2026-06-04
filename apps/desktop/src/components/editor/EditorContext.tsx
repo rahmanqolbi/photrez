@@ -42,6 +42,10 @@ export interface EditorContextValue {
   setHoverHandle: Setter<string | null>;
   docWidth: Accessor<number>;
   docHeight: Accessor<number>;
+  viewportWidth: Accessor<number>;
+  setViewportWidth: Setter<number>;
+  viewportHeight: Accessor<number>;
+  setViewportHeight: Setter<number>;
 
   // Move Tool options
   moveAutoSelect: Accessor<boolean>;
@@ -62,6 +66,19 @@ export interface EditorContextValue {
   setCropAspect: Setter<{ w: number; h: number } | null>;
   cropSizeTarget: Accessor<{ w: number; h: number } | null>;
   setCropSizeTarget: Setter<{ w: number; h: number } | null>;
+  cropSizeUnit: Accessor<"px" | "cm" | "mm" | "in">;
+  setCropSizeUnit: Setter<"px" | "cm" | "mm" | "in">;
+  cropRotation: Accessor<number>;
+  setCropRotation: Setter<number>;
+  commitCropState: (rect: { x: number; y: number; w: number; h: number }, rotation: number) => void;
+  canCropUndo: Accessor<boolean>;
+  canCropRedo: Accessor<boolean>;
+  undoLastCrop: () => { rect: { x: number; y: number; w: number; h: number }; rotation: number } | null;
+  redoCrop: () => { rect: { x: number; y: number; w: number; h: number }; rotation: number } | null;
+
+  // Rotate cursor hover position (screen-space)
+  hoverPos: Accessor<{ x: number; y: number } | null>;
+  setHoverPos: Setter<{ x: number; y: number } | null>;
 }
 
 const EditorContext = createContext<EditorContextValue>();
@@ -95,6 +112,8 @@ export function EditorProvider(props: {
   const [hoverHandle, setHoverHandle] = createSignal<string | null>(null);
   const [docWidth, setDocWidth] = createSignal(800);
   const [docHeight, setDocHeight] = createSignal(600);
+  const [viewportWidth, setViewportWidth] = createSignal(800);
+  const [viewportHeight, setViewportHeight] = createSignal(600);
 
   const [moveAutoSelect, setMoveAutoSelect] = createSignal(true);
   const [moveSnapEnabled, setMoveSnapEnabled] = createSignal(true);
@@ -105,9 +124,46 @@ export function EditorProvider(props: {
   const [cropDeletePixels, setCropDeletePixels] = createSignal<boolean>(true);
   const [cropAspect, setCropAspect] = createSignal<{ w: number; h: number } | null>(null);
   const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+  const [cropSizeUnit, setCropSizeUnit] = createSignal<"px" | "cm" | "mm" | "in">("px");
+  const [cropRotation, setCropRotation] = createSignal<number>(0);
+
+  // Crop mini undo/redo stack (UI-only; not part of engine DocumentModel)
+  const [cropUndoStack, setCropUndoStack] = createSignal<{ rect: { x: number; y: number; w: number; h: number }; rotation: number }[]>([]);
+  const [cropRedoStack, setCropRedoStack] = createSignal<{ rect: { x: number; y: number; w: number; h: number }; rotation: number }[]>([]);
+  const commitCropState = (rect: { x: number; y: number; w: number; h: number }, rotation: number) => {
+    setCropUndoStack(prev => [...prev, { rect, rotation }]);
+    setCropRedoStack([]);
+  };
+  const canCropUndo = () => cropUndoStack().length > 0;
+  const canCropRedo = () => cropRedoStack().length > 0;
+  const undoLastCrop = () => {
+    const stack = cropUndoStack();
+    if (stack.length === 0) return null;
+    const entry = stack[stack.length - 1];
+    setCropUndoStack(prev => prev.slice(0, -1));
+    setCropRedoStack(prev => [
+      ...prev,
+      { rect: cropRect()!, rotation: cropRotation() }
+    ]);
+    return entry;
+  };
+  const redoCrop = () => {
+    const stack = cropRedoStack();
+    if (stack.length === 0) return null;
+    const entry = stack[stack.length - 1];
+    setCropRedoStack(prev => prev.slice(0, -1));
+    setCropUndoStack(prev => [
+      ...prev,
+      { rect: cropRect()!, rotation: cropRotation() }
+    ]);
+    return entry;
+  };
+
+  const [hoverPos, setHoverPos] = createSignal<{ x: number; y: number } | null>(null);
 
   // Synchronization logic
   const syncState = () => {
+    console.log("[EditorContext] syncState called");
     batch(() => {
       setDocuments(props.workspace.getTabSummaries());
       const activeId = props.workspace.getActiveDocumentId();
@@ -115,11 +171,14 @@ export function EditorProvider(props: {
 
       const engine = props.workspace.getActiveEngine();
       if (engine) {
+        const layerNames = engine.getLayers().map(l => l.name);
+        console.log("[EditorContext] setting layers:", layerNames);
         setLayers(engine.getLayers().map(l => ({ ...l, transform: { ...l.transform } })));
         setActiveLayerId(engine.getActiveLayerId());
         setDocWidth(engine.getWidth());
         setDocHeight(engine.getHeight());
       } else {
+        console.log("[EditorContext] no engine, setting empty layers");
         setLayers([]);
         setActiveLayerId(null);
       }
@@ -135,7 +194,10 @@ export function EditorProvider(props: {
     }
   };
 
-  props.workspace.onChange(syncState);
+  props.workspace.onChange(() => {
+    syncState();
+    syncViewport();
+  });
   props.workspace.onVisualChange(() => {
     props.scheduler.requestRender();
   });
@@ -280,6 +342,10 @@ export function EditorProvider(props: {
     setHoverHandle,
     docWidth,
     docHeight,
+    viewportWidth,
+    setViewportWidth,
+    viewportHeight,
+    setViewportHeight,
     moveAutoSelect,
     setMoveAutoSelect,
     moveSnapEnabled,
@@ -295,7 +361,18 @@ export function EditorProvider(props: {
     cropAspect,
     setCropAspect,
     cropSizeTarget,
-    setCropSizeTarget
+    setCropSizeTarget,
+    cropSizeUnit,
+    setCropSizeUnit,
+    cropRotation,
+    setCropRotation,
+    commitCropState,
+    canCropUndo,
+    canCropRedo,
+    undoLastCrop,
+    redoCrop,
+    hoverPos,
+    setHoverPos
   };
 
   return (

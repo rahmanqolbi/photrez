@@ -34,8 +34,8 @@ void main() {
   // Mirror (flip) around center — order: center first, then flip
   centered *= u_flipSign;
 
-  // Rotation — negate for CW (Photoshop convention)
-  float rad = -radians(u_layerRotation);
+  // Rotation — positive angle = CW in screen space
+  float rad = radians(u_layerRotation);
   float c = cos(rad);
   float s = sin(rad);
   vec2 rotated = vec2(

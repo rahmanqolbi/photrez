@@ -102,6 +102,11 @@ body {
   -webkit-user-select: none;
 }
 
+[draggable="true"] {
+  -webkit-user-drag: element;
+  user-select: none;
+}
+
 button {
   font-family: inherit;
   cursor: default;

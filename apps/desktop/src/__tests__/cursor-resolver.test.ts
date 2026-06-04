@@ -142,12 +142,30 @@ describe('resolveCursor', () => {
     expect(resolveCursor(ctx)).toBe('crosshair');
   });
 
-  it('returns crosshair for crop tool', () => {
+  it('returns crosshair for crop tool when not over a handle', () => {
     const ctx: CursorContext = {
       ...base,
       activeTool: 'crop',
     };
     expect(resolveCursor(ctx)).toBe('crosshair');
+  });
+
+  it('returns resize cursor for crop tool when hovering a handle', () => {
+    const ctx: CursorContext = {
+      ...base,
+      activeTool: 'crop',
+      hoverHandle: 'se',
+    };
+    expect(resolveCursor(ctx)).toBe('nwse-resize');
+  });
+
+  it('returns move cursor for crop tool when hovering inside crop box', () => {
+    const ctx: CursorContext = {
+      ...base,
+      activeTool: 'crop',
+      hoverHandle: 'move',
+    };
+    expect(resolveCursor(ctx)).toBe('move');
   });
 
   it('returns none for brush tool', () => {
@@ -180,5 +198,95 @@ describe('resolveCursor', () => {
       activeTool: 'unknown' as any,
     };
     expect(resolveCursor(ctx)).toBe('default');
+  });
+
+  describe('rotate handle cursor', () => {
+    it('returns SVG rotate cursor for rotate handle with hoverPos', () => {
+      const ctx: CursorContext = {
+        ...base,
+        activeTool: 'move',
+        hoverHandle: 'rotate',
+        hoverPos: { x: 300, y: 150 },
+        layerBoundingBox: { x: 100, y: 100, w: 200, h: 100 },
+        layerRotation: 0,
+        layerScaleX: 1,
+        layerScaleY: 1,
+      };
+      const cursor = resolveCursor(ctx);
+      expect(cursor).toContain('data:image/svg+xml');
+    });
+
+    it('returns static rotate cursor for rotate handle without hoverPos', () => {
+      const ctx: CursorContext = {
+        ...base,
+        activeTool: 'move',
+        hoverHandle: 'rotate',
+        hoverPos: null,
+        layerBoundingBox: { x: 100, y: 100, w: 200, h: 100 },
+        layerRotation: 0,
+        layerScaleX: 1,
+        layerScaleY: 1,
+      };
+      const cursor = resolveCursor(ctx);
+      expect(cursor).toContain('data:image/svg+xml');
+    });
+  });
+
+  describe('resize handle cursors', () => {
+    it('returns ew-resize for e handle with no rotation', () => {
+      const ctx: CursorContext = {
+        ...base,
+        activeTool: 'move',
+        hoverHandle: 'e',
+        layerRotation: 0,
+        layerScaleX: 1,
+        layerScaleY: 1,
+      };
+      expect(resolveCursor(ctx)).toBe('ew-resize');
+    });
+
+    it('returns ns-resize for n handle with no rotation', () => {
+      const ctx: CursorContext = {
+        ...base,
+        activeTool: 'move',
+        hoverHandle: 'n',
+        layerRotation: 0,
+        layerScaleX: 1,
+        layerScaleY: 1,
+      };
+      expect(resolveCursor(ctx)).toBe('ns-resize');
+    });
+
+    it('returns nwse-resize for nw handle with negative scaleX', () => {
+      const ctx: CursorContext = {
+        ...base,
+        activeTool: 'move',
+        hoverHandle: 'nw',
+        layerRotation: 0,
+        layerScaleX: -1,
+        layerScaleY: 1,
+      };
+      expect(resolveCursor(ctx)).toBe('nwse-resize');
+    });
+  });
+
+  describe('tool switching clears hover', () => {
+    it('returns default when switching from move to brush', () => {
+      const ctx: CursorContext = {
+        ...base,
+        activeTool: 'brush',
+        hoverHandle: 'move',
+      };
+      expect(resolveCursor(ctx)).toBe('none');
+    });
+
+    it('returns default when switching from move to selection', () => {
+      const ctx: CursorContext = {
+        ...base,
+        activeTool: 'selection',
+        hoverHandle: 'move',
+      };
+      expect(resolveCursor(ctx)).toBe('crosshair');
+    });
   });
 });

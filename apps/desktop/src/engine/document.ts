@@ -5,6 +5,38 @@ import type {
 } from "./types";
 import { MAX_LAYERS, MAX_PIXEL_BUDGET } from "./types";
 
+function normalizeRotation(angleDeg: number): number {
+  let angle = angleDeg % 360;
+  if (angle > 180) angle -= 360;
+  if (angle < -180) angle += 360;
+  return angle;
+}
+
+export function drawLayerToContext(ctx: OffscreenCanvasRenderingContext2D, layer: LayerNode): void {
+  if (!layer.visible || layer.opacity <= 0 || !layer.imageBitmap) return;
+
+  ctx.save();
+  ctx.globalAlpha = layer.opacity;
+  ctx.globalCompositeOperation = layer.blendMode === "normal" ? "source-over" : (layer.blendMode || "source-over");
+
+  const lw = layer.width;
+  const lh = layer.height;
+  const sx = layer.transform.scaleX;
+  const sy = layer.transform.scaleY;
+  const cx = layer.transform.x + (lw * Math.abs(sx)) / 2;
+  const cy = layer.transform.y + (lh * Math.abs(sy)) / 2;
+
+  ctx.translate(cx, cy);
+  if (layer.transform.rotation) {
+    ctx.rotate((layer.transform.rotation * Math.PI) / 180);
+  }
+  const flipX = layer.transform.flipH ? -1 : 1;
+  const flipY = layer.transform.flipV ? -1 : 1;
+  ctx.scale(sx * flipX, sy * flipY);
+  ctx.drawImage(layer.imageBitmap, -lw / 2, -lh / 2);
+  ctx.restore();
+}
+
 export class DocumentEngine {
   private model: DocumentModel;
   private textureHandles: Map<LayerId, TextureHandle>;
@@ -113,14 +145,200 @@ export class DocumentEngine {
       imageBitmap: null
     };
 
-    // Insert at front of array (visually top of layer stack)
-    this.model.layers = [newLayer, ...this.model.layers];
+    // Insert directly above active layer if selected, else at front (top) of stack
+    const activeId = this.model.activeLayerId;
+    const activeIndex = activeId ? this.model.layers.findIndex(l => l.id === activeId) : -1;
+    if (activeIndex !== -1) {
+      this.model.layers = [
+        ...this.model.layers.slice(0, activeIndex),
+        newLayer,
+        ...this.model.layers.slice(activeIndex)
+      ];
+    } else {
+      this.model.layers = [newLayer, ...this.model.layers];
+    }
     this.model.activeLayerId = newLayer.id;
     this.model.dirty = true;
     this.markLayerDirty(newLayer.id);
     this.notifyChange();
 
     return newLayer;
+  }
+
+  duplicateLayer(id: LayerId): LayerNode {
+    if (this.model.layers.length >= MAX_LAYERS) {
+      throw new Error(`Maximum layer limit of ${MAX_LAYERS} reached`);
+    }
+
+    const layer = this.getLayer(id);
+    if (!layer) {
+      throw new Error(`Layer with ID ${id} not found`);
+    }
+
+    if (!this.canAddLayer(layer.width, layer.height)) {
+      throw new Error("E_RESOURCE_LIMIT: Duplicating this layer exceeds maximum pixel memory budget.");
+    }
+
+    let clonedBitmap: ImageBitmap | null = null;
+    if (layer.imageBitmap) {
+      const offscreen = new OffscreenCanvas(layer.width, layer.height);
+      const ctx = offscreen.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(layer.imageBitmap, 0, 0);
+        clonedBitmap = offscreen.transferToImageBitmap();
+      }
+    }
+
+    const duplicated: LayerNode = {
+      id: `layer-${crypto.randomUUID()}`,
+      name: `${layer.name} copy`,
+      type: layer.type,
+      visible: layer.visible,
+      opacity: layer.opacity,
+      locked: false,
+      blendMode: layer.blendMode,
+      transform: { ...layer.transform },
+      width: layer.width,
+      height: layer.height,
+      imageBitmap: clonedBitmap
+    };
+
+    const index = this.model.layers.findIndex(l => l.id === id);
+    if (index !== -1) {
+      const updated = [...this.model.layers];
+      updated.splice(index, 0, duplicated);
+      this.model.layers = updated;
+    } else {
+      this.model.layers = [duplicated, ...this.model.layers];
+    }
+
+    this.model.activeLayerId = duplicated.id;
+    this.model.dirty = true;
+    this.markLayerDirty(duplicated.id);
+    this.notifyChange();
+
+    return duplicated;
+  }
+
+  mergeDown(id: LayerId): void {
+    const index = this.model.layers.findIndex(l => l.id === id);
+    if (index === -1 || index >= this.model.layers.length - 1) {
+      return;
+    }
+
+    const top = this.model.layers[index];
+    const bottom = this.model.layers[index + 1];
+
+    const mergedW = this.model.width;
+    const mergedH = this.model.height;
+
+    let mergedBitmap: ImageBitmap | null = null;
+    try {
+      if (typeof OffscreenCanvas !== "undefined") {
+        const offscreen = new OffscreenCanvas(mergedW, mergedH);
+        const ctx = offscreen.getContext("2d");
+        if (ctx) {
+          drawLayerToContext(ctx, bottom);
+          drawLayerToContext(ctx, top);
+          mergedBitmap = offscreen.transferToImageBitmap();
+        }
+      }
+    } catch (err) {
+      console.error("Failed to merge layers:", err);
+    }
+
+    const mergedLayer: LayerNode = {
+      id: `layer-${crypto.randomUUID()}`,
+      name: `${top.name} + ${bottom.name}`,
+      type: "raster",
+      visible: true,
+      opacity: 1.0,
+      locked: bottom.locked || top.locked,
+      blendMode: bottom.blendMode,
+      transform: {
+        x: 0,
+        y: 0,
+        scaleX: 1.0,
+        scaleY: 1.0,
+        rotation: 0,
+        flipH: false,
+        flipV: false
+      },
+      width: mergedW,
+      height: mergedH,
+      imageBitmap: mergedBitmap
+    };
+
+    // Clean up WebGL textures for merged layers
+    this.dirtyLayerIds.delete(top.id);
+    this.textureHandles.delete(top.id);
+    this.dirtyLayerIds.delete(bottom.id);
+    this.textureHandles.delete(bottom.id);
+
+    const updated = [...this.model.layers];
+    updated.splice(index, 2, mergedLayer);
+    this.model.layers = updated;
+
+    this.model.activeLayerId = mergedLayer.id;
+    this.model.dirty = true;
+    this.markLayerDirty(mergedLayer.id);
+    this.notifyChange();
+  }
+
+  flattenLayers(): void {
+    if (this.model.layers.length <= 1) return;
+
+    const mergedW = this.model.width;
+    const mergedH = this.model.height;
+
+    let mergedBitmap: ImageBitmap | null = null;
+    try {
+      if (typeof OffscreenCanvas !== "undefined") {
+        const offscreen = new OffscreenCanvas(mergedW, mergedH);
+        const ctx = offscreen.getContext("2d");
+        if (ctx) {
+          for (let i = this.model.layers.length - 1; i >= 0; i--) {
+            drawLayerToContext(ctx, this.model.layers[i]);
+          }
+          mergedBitmap = offscreen.transferToImageBitmap();
+        }
+      }
+    } catch (err) {
+      console.error("Failed to flatten layers:", err);
+    }
+
+    const flattenedLayer: LayerNode = {
+      id: `layer-${crypto.randomUUID()}`,
+      name: "Background",
+      type: "raster",
+      visible: true,
+      opacity: 1.0,
+      locked: false,
+      blendMode: "normal",
+      transform: {
+        x: 0,
+        y: 0,
+        scaleX: 1.0,
+        scaleY: 1.0,
+        rotation: 0,
+        flipH: false,
+        flipV: false
+      },
+      width: mergedW,
+      height: mergedH,
+      imageBitmap: mergedBitmap
+    };
+
+    for (const layer of this.model.layers) {
+      this.dirtyLayerIds.delete(layer.id);
+      this.textureHandles.delete(layer.id);
+    }
+
+    this.model.layers = [flattenedLayer];
+    this.model.activeLayerId = flattenedLayer.id;
+    this.model.dirty = true;
+    this.markLayerDirty(flattenedLayer.id);
+    this.notifyChange();
   }
 
   deleteLayer(id: LayerId): void {
@@ -146,8 +364,10 @@ export class DocumentEngine {
   }
 
   reorderLayer(fromIndex: number, toIndex: number): void {
+    console.log("[DocumentEngine] reorderLayer called from:", fromIndex, "to:", toIndex, "layers:", this.model.layers.length);
     if (fromIndex < 0 || fromIndex >= this.model.layers.length ||
         toIndex < 0 || toIndex >= this.model.layers.length) {
+      console.log("[DocumentEngine] reorderLayer OUT OF BOUNDS, returning");
       return;
     }
 
@@ -156,6 +376,7 @@ export class DocumentEngine {
     updated.splice(toIndex, 0, moved);
 
     this.model.layers = updated;
+    console.log("[DocumentEngine] after reorder, layers:", this.model.layers.map(l => l.name));
     this.model.dirty = true;
     this.notifyChange();
   }
@@ -195,6 +416,33 @@ export class DocumentEngine {
     }
   }
 
+  setLayerLockTransparency(id: LayerId, locked: boolean): void {
+    const layer = this.getLayer(id);
+    if (layer) {
+      layer.lockTransparency = locked;
+      this.model.dirty = true;
+      this.notifyChange();
+    }
+  }
+
+  setLayerLockPosition(id: LayerId, locked: boolean): void {
+    const layer = this.getLayer(id);
+    if (layer) {
+      layer.lockPosition = locked;
+      this.model.dirty = true;
+      this.notifyChange();
+    }
+  }
+
+  setLayerLockRotation(id: LayerId, locked: boolean): void {
+    const layer = this.getLayer(id);
+    if (layer) {
+      layer.lockRotation = locked;
+      this.model.dirty = true;
+      this.notifyChange();
+    }
+  }
+
   setLayerName(id: LayerId, name: string): void {
     const layer = this.getLayer(id);
     if (layer) {
@@ -216,7 +464,7 @@ export class DocumentEngine {
   // ─── Layer Transform ───
   moveLayer(id: LayerId, x: number, y: number): void {
     const layer = this.getLayer(id);
-    if (layer && !layer.locked) {
+    if (layer && !layer.locked && !layer.lockPosition) {
       layer.transform.x = x;
       layer.transform.y = y;
       this.model.dirty = true;
@@ -227,10 +475,26 @@ export class DocumentEngine {
   transformLayer(id: LayerId, transform: Partial<Transform2D>): void {
     const layer = this.getLayer(id);
     if (layer && !layer.locked) {
-      layer.transform = {
-        ...layer.transform,
-        ...transform
-      };
+      const updatedTransform = { ...layer.transform };
+
+      // Apply positional changes only if position lock is false
+      if (!layer.lockPosition) {
+        if (transform.x !== undefined) updatedTransform.x = transform.x;
+        if (transform.y !== undefined) updatedTransform.y = transform.y;
+      }
+
+      // Apply rotational changes only if rotation lock is false
+      if (!layer.lockRotation) {
+        if (transform.rotation !== undefined) updatedTransform.rotation = transform.rotation;
+      }
+
+      // Scale, flips, etc. are always applied (or add more locks if needed in the future)
+      if (transform.scaleX !== undefined) updatedTransform.scaleX = transform.scaleX;
+      if (transform.scaleY !== undefined) updatedTransform.scaleY = transform.scaleY;
+      if (transform.flipH !== undefined) updatedTransform.flipH = transform.flipH;
+      if (transform.flipV !== undefined) updatedTransform.flipV = transform.flipV;
+
+      layer.transform = updatedTransform;
       this.model.dirty = true;
       this.notifyChange();
     }
@@ -329,6 +593,121 @@ export class DocumentEngine {
     }
 
     this.model.selection = null; // Reset selection on crop
+    this.model.dirty = true;
+    this.notifyChange();
+  }
+
+  applyCrop(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    options?: {
+      deleteCroppedPixels?: boolean;
+      targetSize?: { w: number; h: number } | null;
+      rotation?: number;
+    },
+  ): void {
+    if (width <= 0 || height <= 0) return;
+
+    const deleteCropped = options?.deleteCroppedPixels ?? false;
+    const targetSize = options?.targetSize ?? null;
+    const cropRotation = options?.rotation ?? 0;
+
+    const cropCenterX = x + width / 2;
+    const cropCenterY = y + height / 2;
+
+    const rad = (-cropRotation * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    const exportScale = targetSize ? targetSize.w / width : 1;
+    const finalW = targetSize ? targetSize.w : width;
+    const finalH = targetSize ? targetSize.h : height;
+
+    for (const layer of this.model.layers) {
+      if (layer.locked) continue;
+
+      const lw = layer.width;
+      const lh = layer.height;
+      const lsx = layer.transform.scaleX;
+      const lsy = layer.transform.scaleY;
+
+      // Calculate center in document space
+      const lcx = layer.transform.x + (lw * Math.abs(lsx)) / 2;
+      const lcy = layer.transform.y + (lh * Math.abs(lsy)) / 2;
+
+      // Vector from crop center to layer center
+      const vx = lcx - cropCenterX;
+      const vy = lcy - cropCenterY;
+
+      // Rotate vector
+      const rvx = vx * cos - vy * sin;
+      const rvy = vx * sin + vy * cos;
+
+      // New center in crop space
+      const nlcx = width / 2 + rvx;
+      const nlcy = height / 2 + rvy;
+
+      // Scale center to target size
+      const finalCX = nlcx * exportScale;
+      const finalCY = nlcy * exportScale;
+
+      const finalScaleX = lsx * exportScale;
+      const finalScaleY = lsy * exportScale;
+      const finalRotation = normalizeRotation(layer.transform.rotation - cropRotation);
+
+      if (deleteCropped && layer.imageBitmap) {
+        try {
+          const offscreen = new OffscreenCanvas(finalW, finalH);
+          const ctx = offscreen.getContext("2d");
+          if (ctx) {
+            ctx.save();
+            ctx.translate(finalCX, finalCY);
+            ctx.rotate((finalRotation * Math.PI) / 180);
+            const flipX = layer.transform.flipH ? -1 : 1;
+            const flipY = layer.transform.flipV ? -1 : 1;
+            ctx.scale(finalScaleX * flipX, finalScaleY * flipY);
+            ctx.drawImage(layer.imageBitmap, -lw / 2, -lh / 2);
+            ctx.restore();
+
+            const newBitmap = offscreen.transferToImageBitmap();
+            if (layer.imageBitmap && layer.imageBitmap !== newBitmap) {
+              layer.imageBitmap.close();
+            }
+            layer.imageBitmap = newBitmap;
+            layer.width = finalW;
+            layer.height = finalH;
+          }
+        } catch (err) {
+          console.error("Failed to crop layer bitmap:", err);
+        }
+        // Baked layer sits at (0, 0) with scale=1, rotation=0, flips=false
+        layer.transform.x = 0;
+        layer.transform.y = 0;
+        layer.transform.scaleX = 1;
+        layer.transform.scaleY = 1;
+        layer.transform.rotation = 0;
+        layer.transform.flipH = false;
+        layer.transform.flipV = false;
+      } else {
+        // Non-destructive path or no bitmap (adjustment/group layers)
+        const newX = finalCX - (lw * Math.abs(finalScaleX)) / 2;
+        const newY = finalCY - (lh * Math.abs(finalScaleY)) / 2;
+
+        layer.transform.x = newX;
+        layer.transform.y = newY;
+        layer.transform.scaleX = finalScaleX;
+        layer.transform.scaleY = finalScaleY;
+        layer.transform.rotation = finalRotation;
+        // flipH and flipV remain unchanged
+      }
+    }
+
+    this.model.width = finalW;
+    this.model.height = finalH;
+
+    this.model.selection = null;
     this.model.dirty = true;
     this.notifyChange();
   }
@@ -447,6 +826,9 @@ export class DocumentEngine {
         visible: l.visible,
         opacity: l.opacity,
         locked: l.locked,
+        lockTransparency: l.lockTransparency,
+        lockPosition: l.lockPosition,
+        lockRotation: l.lockRotation,
         blendMode: l.blendMode,
         transform: { ...l.transform },
         width: l.width,
@@ -473,6 +855,9 @@ export class DocumentEngine {
         visible: l.visible,
         opacity: l.opacity,
         locked: l.locked,
+        lockTransparency: l.lockTransparency,
+        lockPosition: l.lockPosition,
+        lockRotation: l.lockRotation,
         blendMode: l.blendMode,
         transform: { ...l.transform },
         width: l.width,

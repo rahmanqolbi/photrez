@@ -10,5 +10,8 @@ declare module "solid-js" {
     interface CanvasHTMLAttributes<T> {
       [key: `style:${string}`]: string | number | undefined;
     }
+    interface SvgSVGAttributes<T> {
+      [key: `style:${string}`]: string | number | undefined;
+    }
   }
 }

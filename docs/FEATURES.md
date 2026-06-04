@@ -21,6 +21,14 @@
 | ✅ DONE      | Bitmap data per layer (pixel buffer)       |
 | ✅ DONE      | MAX_PIXEL_BUDGET (256MB) memory limits    |
 | ✅ DONE      | Layer reordering controls in UI (ChevronUp/Down) |
+| ✅ DONE      | Duplicate layer (Deep-cloning, Ctrl+J support) |
+| ✅ DONE      | Merge Down layer (Document space composite) |
+| ✅ DONE      | Flatten All layers (Collapses layer stack)  |
+| ✅ DONE      | Contextual layer creation (inserts above active) |
+| ✅ DONE      | HTML5 Drag & Drop layer list reordering    |
+| ✅ DONE      | Photoshop-style Opacity Popover Slider     |
+| ✅ DONE      | Inline double-click renaming input         |
+| ✅ DONE      | Live Canvas Row Thumbnails (checkerboard background) |
 
 ---
 
@@ -44,6 +52,10 @@
 | ✅ DONE      | Canvas auto-select (click-to-select visible layer under cursor) |
 | ✅ DONE      | Transform HUD (ΔX/ΔY, W/H/%, angle near cursor) |
 | ✅ DONE      | HUD "snap" label when snap lines active       |
+| ✅ DONE      | Dynamic rotate cursor (SVG data-URI, angle-based, cached per degree) |
+| ✅ DONE      | Rotate broad hit area (outside-core + expanded bounds matching reference) |
+| ✅ DONE      | Continuous hover tracking via detectHandle (updates every pointer move) |
+| ✅ DONE      | Rotation normalization ([-180, 180] range matching reference) |
 
 ---
 
@@ -56,6 +68,16 @@
 | ⬜ TODO      | Aspect ratio lock toggle                   |
 | ✅ DONE      | Crop overlay/guide UI                      |
 | ✅ DONE      | Interactive crop option bar (mode dropdown, editable ratio/size, guide overlay selector, delete toggle, swap W/H, reset/apply/cancel) |
+| ✅ DONE      | Crop box resize reactivity (overlay updates live during drag) |
+| ✅ DONE      | Crop snapping — canvas edges/centers + layer edges (Smart Guides, Alt disables) |
+| ✅ DONE      | Crop rotation — rotatable crop boundaries with screen-aligned visual box (canvas rotates behind), dynamic cursor, snap to 15° with Shift, angle readout, and layer offset/rotation update |
+| ✅ DONE      | Photoshop-style crop moving & panning — crop box remains stationary while canvas pans behind (move & resize), aligning with reference app |
+| ✅ DONE      | Draw new crop box from scratch by click-dragging outside the current crop box |
+| ✅ DONE      | Arrow-key crop nudge (1px, 10px with Shift) with viewport pan compensation |
+| ✅ DONE      | Crop intermediate undo/redo — dedicated mini undo stack for crop rect |
+| ✅ DONE      | Aspect ratio preset dropdown (12 common ratios + custom, auto-fit on select) |
+| ✅ DONE      | Size mode unit conversion (px/cm/mm/in at 96 PPI) |
+| ✅ DONE      | Rotate 90° buttons (↺ CCW / ↻ CW) in crop option bar |
 
 ---
 
@@ -124,6 +146,11 @@
 | ✅ DONE      | Cursor imperative sync (createEffect for guaranteed reactivity in canvas) |
 | ✅ DONE      | SelectionTransformOverlay navigation mode (pointer-events-none + cursor pass-through when Space held) |
 | ✅ DONE      | Unit test: getRenderState returns documentSize matching model |
+| ✅ DONE      | Live composition preview canvas in Navigator panel (scaled layer composite render) |
+| ✅ DONE      | Interactive viewport frame (Red Box) representing visible artboard boundary |
+| ✅ DONE      | Pointer-based drag-to-pan in Navigator (drag red box/click thumbnail to pan) |
+| ✅ DONE      | Interactive Zoom Slider control in Navigator panel (with custom min/max bounds and quick +/- buttons) |
+| ✅ DONE      | Navigator header 'maximize' button connected to Fit Screen action |
 
 ---
 
@@ -178,6 +205,12 @@
 | ✅ DONE      | photrez High-Fidelity Reference Slice (static SolidJS shell, exact 5x3 grid, fjord image viewport) |
 | ✅ DONE      | Style Guide & Design Tokens Synchronization (Tailwind v4, OKLCH, double-dock layout, custom sliders) |
 | ✅ DONE      | UI/UX Polish: Diagonal Swatches, Tab Typography & LeftToolRail layout |
+| ✅ DONE      | Crop overlay dengan mask shield + 8 handles + corner brackets + interactive resize/move (+ guide lines: thirds/grid/diagonal/golden) |
+| ✅ DONE      | Crop mode Free (corner free by default, Shift = lock aspect) |
+| ✅ DONE      | Crop mode Ratio (aspect-locked corner, Shift = free) + editable aspect W/H |
+| ✅ DONE      | Crop mode Size (target W/H constraint, Shift = free) + editable target W/H + Apply resizes canvas |
+| ✅ DONE      | Delete Cropped Pixels toggle (ON = destructive bitmap crop, OFF = offset-based) |
+| ✅ DONE      | Crop Enter/Esc keyboard shortcuts |
 | ⬜ TODO      | Context menu                               |
 | ⬜ TODO      | Tooltip system                             |
 | ⬜ TODO      | Dialog system (modal)                      |
@@ -197,7 +230,7 @@
 | ⬜ TODO      | CI pipeline (GitHub Actions)               |
 | ✅ DONE      | Unit tests (core crate) — 69 tests         |
 | ✅ DONE      | Contract tests (IPC commands) — 13 tests   |
-| ✅ DONE      | Frontend tests — 182 passing tests (17 files) |
+| ✅ DONE      | Frontend tests — 267 passing tests (21 files) |
 | ✅ DONE      | M6 Perf Gate (all metrics PASS)            |
 | ✅ DONE      | Native Vite tsconfig paths (removed `vite-tsconfig-paths` plugin) |
 | ✅ DONE      | Release candidate (MSI + NSIS installers)  |

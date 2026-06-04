@@ -1,18 +1,30 @@
-import { For, Show } from "solid-js";
+import { For, Show, createSignal, createEffect } from "solid-js";
 import { clsx } from "clsx";
 import fjord from "@/assets/fjord.jpg";
 import { Icon } from "./icons";
 import { useEditor } from "./EditorContext";
+import { LayerNode } from "@/engine/types";
+import { Navigator } from "./Navigator";
+import { LayerItem } from "./LayerItem";
+import { useLayerDragReorder } from "./useLayerDragReorder";
+import { useLayerActions } from "./useLayerActions";
 
 export function LayersPanel() {
   const {
     workspace,
+    renderer,
     layers,
     activeLayerId,
     scheduler,
     zoom,
-    activeDocumentId
+    activeDocumentId,
+    syncViewport
   } = useEditor();
+
+  const [showOpacitySlider, setShowOpacitySlider] = createSignal(false);
+
+  const [editingLayerId, setEditingLayerId] = createSignal<string | null>(null);
+  const [editName, setEditName] = createSignal("");
 
   const activeLayer = () => {
     const id = activeLayerId();
@@ -20,78 +32,32 @@ export function LayersPanel() {
     return layers().find(l => l.id === id) || null;
   };
 
-  const handleSelectLayer = (id: string) => {
-    const engine = workspace.getActiveEngine();
-    engine?.setActiveLayer(id);
-  };
+  const {
+    handleDuplicateActiveLayer,
+    handleMergeActiveLayerDown,
+    handleFlattenAllLayers,
+    handleSelectLayer,
+    handleToggleVisibility,
+    handleToggleLock,
+    handleToggleLockTransparency,
+    handleToggleLockPosition,
+    handleToggleLockRotation,
+    handleMoveUp,
+    handleMoveDown,
+    handleAddLayer,
+    handleDeleteActiveLayer,
+  } = useLayerActions();
 
-  const handleToggleVisibility = (e: MouseEvent, id: string) => {
-    e.stopPropagation();
-    const engine = workspace.getActiveEngine();
-    const layer = engine?.getLayer(id);
-    if (engine && layer) {
-      engine.setLayerVisibility(id, !layer.visible);
-      scheduler.requestRender();
-    }
-  };
+  // ─── Pointer-based Drag Reorder (replaces HTML5 DnD for Tauri compatibility) ───
+  const {
+    draggedIndex,
+    dragOverIndex,
+    dropPosition,
+    handlePointerDragStart,
+    setLayerListRef,
+  } = useLayerDragReorder();
 
-  const handleToggleLock = (e: MouseEvent, id: string) => {
-    e.stopPropagation();
-    const engine = workspace.getActiveEngine();
-    const layer = engine?.getLayer(id);
-    if (engine && layer) {
-      engine.setLayerLocked(id, !layer.locked);
-      scheduler.requestRender();
-    }
-  };
 
-  const handleMoveUp = (e: MouseEvent, index: number) => {
-    e.stopPropagation();
-    if (index > 0) {
-      const engine = workspace.getActiveEngine();
-      const history = workspace.getActiveHistory();
-      if (engine && history) {
-        history.commit(engine.snapshot());
-        engine.reorderLayer(index, index - 1);
-        scheduler.requestRender();
-      }
-    }
-  };
-
-  const handleMoveDown = (e: MouseEvent, index: number) => {
-    e.stopPropagation();
-    if (index < layers().length - 1) {
-      const engine = workspace.getActiveEngine();
-      const history = workspace.getActiveHistory();
-      if (engine && history) {
-        history.commit(engine.snapshot());
-        engine.reorderLayer(index, index + 1);
-        scheduler.requestRender();
-      }
-    }
-  };
-
-  const handleAddLayer = () => {
-    const engine = workspace.getActiveEngine();
-    const history = workspace.getActiveHistory();
-    if (engine && history) {
-      history.commit(engine.snapshot());
-      engine.addLayer(`Layer ${engine.getLayers().length + 1}`);
-      scheduler.requestRender();
-    }
-  };
-
-  const handleDeleteActiveLayer = () => {
-    const engine = workspace.getActiveEngine();
-    const history = workspace.getActiveHistory();
-    const activeId = activeLayerId();
-    if (engine && history && activeId) {
-      if (engine.getLayers().length <= 1) return; // prevent last
-      history.commit(engine.snapshot());
-      engine.deleteLayer(activeId);
-      scheduler.requestRender();
-    }
-  };
 
   return (
     <section class="flex flex-1 shrink-0 flex-col overflow-hidden bg-editor-panel">
@@ -104,30 +70,139 @@ export function LayersPanel() {
         </button>
       </div>
 
-      <div class={clsx("flex items-center gap-2 px-3.5 pt-3", !activeDocumentId() && "opacity-50 pointer-events-none")}>
-        <div class="flex h-[26px] w-[120px] items-center justify-between rounded-[4px] border border-editor-field-border bg-editor-field px-2.5">
-          <span class="text-[12px] text-editor-text">Normal</span>
-          <Icon name="chevron-down" class="size-3.5 text-editor-text-dim" strokeWidth={1.75} />
+      <div class={clsx("flex items-center gap-2 px-3.5 pt-3 relative", !activeDocumentId() && "opacity-50 pointer-events-none")}>
+        <select
+          disabled={!activeLayer() || activeLayer()!.locked}
+          value={activeLayer()?.blendMode || "normal"}
+          onChange={(e) => {
+            const engine = workspace.getActiveEngine();
+            const id = activeLayerId();
+            if (engine && id) {
+              const history = workspace.getActiveHistory();
+              history?.commit(engine.snapshot());
+              engine.setLayerBlendMode(id, e.target.value as any);
+              scheduler.requestRender();
+            }
+          }}
+          class="h-[26px] w-[120px] rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[12px] text-editor-text focus:outline-none focus:border-editor-accent"
+        >
+          <option value="normal">Normal</option>
+          <option value="multiply">Multiply</option>
+          <option value="screen">Screen</option>
+          <option value="overlay">Overlay</option>
+          <option value="darken">Darken</option>
+          <option value="lighten">Lighten</option>
+          <option value="color-dodge">Color Dodge</option>
+          <option value="color-burn">Color Burn</option>
+          <option value="hard-light">Hard Light</option>
+          <option value="soft-light">Soft Light</option>
+          <option value="difference">Difference</option>
+          <option value="exclusion">Exclusion</option>
+        </select>
+
+        <div class="relative ml-auto flex items-center">
+          <button
+            disabled={!activeLayer()}
+            onClick={() => setShowOpacitySlider(!showOpacitySlider())}
+            class="flex items-center gap-1 hover:text-editor-text transition-colors text-editor-text-dim disabled:opacity-50"
+          >
+            <span class="text-[12px]">Opacity</span>
+            <span class="text-[12px] font-medium text-editor-text">
+              {activeLayer() ? Math.round(activeLayer()!.opacity * 100) : 100}%
+            </span>
+            <Icon name="chevron-down" class="size-3.5" strokeWidth={1.75} />
+          </button>
+
+          <Show when={showOpacitySlider()}>
+            <div class="fixed inset-0 z-40" onClick={() => setShowOpacitySlider(false)} />
+            <div class="absolute right-0 top-[30px] z-50 flex w-[150px] flex-col gap-2 rounded-[6px] border border-editor-divider bg-editor-panel p-3 shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+              <div class="flex items-center justify-between text-[11px] text-editor-text-dim">
+                <span>Opacity</span>
+                <span class="font-mono text-editor-text">
+                  {activeLayer() ? Math.round(activeLayer()!.opacity * 100) : 100}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                disabled={activeLayer()?.locked}
+                value={activeLayer() ? Math.round(activeLayer()!.opacity * 100) : 100}
+                onInput={(e) => {
+                  const engine = workspace.getActiveEngine();
+                  const id = activeLayerId();
+                  if (engine && id) {
+                    engine.setLayerOpacity(id, parseInt(e.target.value) / 100);
+                    scheduler.requestRender();
+                  }
+                }}
+                onChange={(e) => {
+                  const engine = workspace.getActiveEngine();
+                  const id = activeLayerId();
+                  if (engine && id) {
+                    const history = workspace.getActiveHistory();
+                    history?.commit(engine.snapshot());
+                  }
+                }}
+                class="h-[3px] w-full accent-editor-accent bg-editor-field-border rounded-full appearance-none cursor-pointer"
+              />
+            </div>
+          </Show>
         </div>
-        <span class="ml-auto text-[12px] text-editor-text-dim">Opacity</span>
-        <span class="text-[12px] text-editor-text">
-          {activeLayer() ? Math.round(activeLayer()!.opacity * 100) : 100}%
-        </span>
-        <Icon name="chevron-down" class="size-3.5 text-editor-text-dim" strokeWidth={1.75} />
       </div>
 
       <div class={clsx("flex items-center gap-4 px-3.5 py-3", !activeDocumentId() && "opacity-50 pointer-events-none")}>
         <span class="text-[12px] text-editor-text-dim">Lock:</span>
         <div class="flex items-center gap-4 text-editor-icon">
-          <Icon name="unlock" class="size-[15px]" strokeWidth={1.75} />
-          <Icon name="paint-bucket" class="size-[15px]" strokeWidth={1.75} />
-          <Icon name="maximize" class="size-[15px]" strokeWidth={1.75} />
-          <Icon name="rotate" class="size-[15px]" strokeWidth={1.75} />
+          <button
+            disabled={!activeLayer()}
+            onClick={(e) => activeLayer() && handleToggleLock(e, activeLayer()!.id)}
+            class={clsx(
+              "hover:text-editor-text transition-colors flex items-center justify-center size-4",
+              activeLayer()?.locked ? "text-editor-accent" : "text-editor-text-dim"
+            )}
+            title={activeLayer()?.locked ? "Unlock layer" : "Lock layer"}
+          >
+            <Icon name={activeLayer()?.locked ? "lock" : "unlock"} class="size-[15px]" strokeWidth={1.75} />
+          </button>
+          <button
+            disabled={!activeLayer() || activeLayer()?.locked}
+            onClick={(e) => activeLayer() && handleToggleLockTransparency(e, activeLayer()!.id)}
+            class={clsx(
+              "hover:text-editor-text transition-colors flex items-center justify-center size-4 disabled:opacity-30",
+              activeLayer()?.lockTransparency ? "text-editor-accent" : "text-editor-text-dim"
+            )}
+            title={activeLayer()?.lockTransparency ? "Unlock Transparency" : "Lock Transparency"}
+          >
+            <Icon name="paint-bucket" class="size-[15px]" strokeWidth={1.75} />
+          </button>
+          <button
+            disabled={!activeLayer() || activeLayer()?.locked}
+            onClick={(e) => activeLayer() && handleToggleLockPosition(e, activeLayer()!.id)}
+            class={clsx(
+              "hover:text-editor-text transition-colors flex items-center justify-center size-4 disabled:opacity-30",
+              activeLayer()?.lockPosition ? "text-editor-accent" : "text-editor-text-dim"
+            )}
+            title={activeLayer()?.lockPosition ? "Unlock Position" : "Lock Position"}
+          >
+            <Icon name="maximize" class="size-[15px]" strokeWidth={1.75} />
+          </button>
+          <button
+            disabled={!activeLayer() || activeLayer()?.locked}
+            onClick={(e) => activeLayer() && handleToggleLockRotation(e, activeLayer()!.id)}
+            class={clsx(
+              "hover:text-editor-text transition-colors flex items-center justify-center size-4 disabled:opacity-30",
+              activeLayer()?.lockRotation ? "text-editor-accent" : "text-editor-text-dim"
+            )}
+            title={activeLayer()?.lockRotation ? "Unlock Rotation" : "Lock Rotation"}
+          >
+            <Icon name="rotate" class="size-[15px]" strokeWidth={1.75} />
+          </button>
         </div>
       </div>
 
       {/* Dynamic Layer Stack List */}
-      <div class="flex-1 overflow-y-auto border-y border-editor-divider">
+      <div ref={setLayerListRef} class="flex-1 overflow-y-auto border-y border-editor-divider touch-auto">
         <Show
           when={activeDocumentId()}
           fallback={
@@ -143,104 +218,29 @@ export function LayersPanel() {
           }
         >
           <For each={layers()}>
-            {(layer, idx) => {
-              return (
-                <div
-                  onClick={() => handleSelectLayer(layer.id)}
-                  class={clsx(
-                    "flex h-[50px] items-center gap-2.5 px-3.5 cursor-pointer select-none group border-b border-editor-divider/10",
-                    activeLayerId() === layer.id ? "bg-editor-row-active" : "hover:bg-white/[0.03]",
-                  )}
-                >
-                  {/* Eye toggle button */}
-                  <button
-                    onClick={(e) => handleToggleVisibility(e, layer.id)}
-                    class="text-editor-icon hover:text-editor-text size-6 flex items-center justify-center"
-                  >
-                    <Icon
-                      name="eye"
-                      class={clsx("size-4 shrink-0", !layer.visible && "opacity-30")}
-                      strokeWidth={1.75}
-                    />
-                  </button>
-
-                  {/* Layer Thumbnail */}
-                  <Show
-                    when={layer.type === "adjustment"}
-                    fallback={
-                      <div
-                        class="size-[34px] shrink-0 rounded-[3px] border border-black/40 bg-cover"
-                        style={{
-                          "background-image": layer.imageBitmap ? "none" : `url(${fjord})`,
-                          "background-color": layer.imageBitmap ? "rgba(255,255,255,0.05)" : "transparent",
-                          "background-position": "center"
-                        }}
-                      >
-                        {layer.imageBitmap && (
-                          <div class="w-full h-full flex items-center justify-center text-[10px] text-editor-accent/80 font-bold bg-editor-accent/10">
-                            IMG
-                          </div>
-                        )}
-                      </div>
-                    }
-                  >
-                    {/* Adjustment Layer: Standard Black-and-White circular icon */}
-                    <div class="size-[34px] shrink-0 rounded-[3px] border border-black/40 bg-black flex items-center justify-center">
-                      <div
-                        class="size-[20px] rounded-full border border-white/20"
-                        style={{
-                          background: "conic-gradient(#fff 180deg, #222 180deg)",
-                          transform: "rotate(-45deg)"
-                        }}
-                      />
-                    </div>
-                  </Show>
-
-                  {/* Optional Layer Mask Thumbnail for Mountain layer (Matching high-fidelity mockup) */}
-                  <Show when={layer.name === "Mountain"}>
-                    <div class="size-[34px] shrink-0 rounded-[3px] border border-black/40 bg-black flex items-center justify-center relative overflow-hidden">
-                      <div class="absolute inset-[6px] bg-white rounded-full blur-[1px]" />
-                    </div>
-                  </Show>
-
-                  <span class="flex-1 text-[12.5px] text-editor-text truncate">
-                    {layer.name}
-                  </span>
-
-                  {/* Up and Down Chevrons for Reordering */}
-                  <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pr-1">
-                    <button
-                      disabled={idx() === 0}
-                      onClick={(e) => handleMoveUp(e, idx())}
-                      class="size-[22px] flex items-center justify-center hover:bg-white/10 rounded disabled:opacity-20 disabled:hover:bg-transparent"
-                      title="Move Layer Up"
-                    >
-                      <Icon name="chevron-up" class="size-3.5" />
-                    </button>
-                    <button
-                      disabled={idx() === layers().length - 1}
-                      onClick={(e) => handleMoveDown(e, idx())}
-                      class="size-[22px] flex items-center justify-center hover:bg-white/10 rounded disabled:opacity-20 disabled:hover:bg-transparent"
-                      title="Move Layer Down"
-                    >
-                      <Icon name="chevron-down" class="size-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Lock Indicator */}
-                  <button
-                    onClick={(e) => handleToggleLock(e, layer.id)}
-                    class="text-editor-icon hover:text-editor-text size-6 flex items-center justify-center"
-                  >
-                    <Icon
-                      name={layer.locked ? "lock" : "unlock"}
-                      class="size-3.5 shrink-0"
-                      strokeWidth={1.75}
-                    />
-                  </button>
-                </div>
-              );
-            }}
+            {(layer, idx) => (
+              <LayerItem
+                layer={layer}
+                idx={idx()}
+                isActive={activeLayerId() === layer.id}
+                isDragged={draggedIndex() === idx()}
+                isDragOver={dragOverIndex() === idx()}
+                dropPosition={dropPosition()}
+                isEditing={editingLayerId() === layer.id}
+                editName={editName()}
+                setEditingLayerId={setEditingLayerId}
+                setEditName={setEditName}
+                onSelect={handleSelectLayer}
+                onPointerDragStart={handlePointerDragStart}
+                onToggleVisibility={handleToggleVisibility}
+                onToggleLock={handleToggleLock}
+                onMoveUp={handleMoveUp}
+                onMoveDown={handleMoveDown}
+                layersLength={layers().length}
+                workspace={workspace}
+                scheduler={scheduler}
+              />
+            )}
           </For>
         </Show>
       </div>
@@ -250,9 +250,30 @@ export function LayersPanel() {
         <button onClick={handleAddLayer} class="hover:text-editor-text" title="New Layer">
           <Icon name="plus" class="size-[17px]" strokeWidth={1.75} />
         </button>
-        <Icon name="folder-plus" class="size-[17px]" strokeWidth={1.75} />
-        <Icon name="copy" class="size-[17px]" strokeWidth={1.75} />
-        <Icon name="square-dashed" class="size-[17px]" strokeWidth={1.75} />
+        <button
+          onClick={handleDuplicateActiveLayer}
+          disabled={!activeLayer()}
+          class="hover:text-editor-text disabled:opacity-30"
+          title="Duplicate Layer"
+        >
+          <Icon name="copy" class="size-[17px]" strokeWidth={1.75} />
+        </button>
+        <button
+          onClick={handleMergeActiveLayerDown}
+          disabled={!activeLayer() || layers().indexOf(activeLayer()!) === layers().length - 1}
+          class="hover:text-editor-text disabled:opacity-30"
+          title="Merge Down"
+        >
+          <Icon name="chevron-down" class="size-[17px]" strokeWidth={1.75} />
+        </button>
+        <button
+          onClick={handleFlattenAllLayers}
+          disabled={layers().length <= 1}
+          class="hover:text-editor-text disabled:opacity-30"
+          title="Flatten All Layers"
+        >
+          <Icon name="square-dashed" class="size-[17px]" strokeWidth={1.75} />
+        </button>
         <button
           disabled={layers().length <= 1}
           onClick={handleDeleteActiveLayer}
@@ -267,40 +288,77 @@ export function LayersPanel() {
       <div class="shrink-0 border-t border-editor-divider bg-editor-panel">
         <div class="flex h-[46px] items-center justify-between border-b border-editor-divider px-4">
           <h3 class="text-[13px] font-medium text-editor-text">Navigator</h3>
-          <Icon name="maximize" class="size-3.5 text-editor-text-dim hover:text-editor-text" strokeWidth={1.75} />
-        </div>
-        <div class="px-4 pt-4">
-          <Show
-            when={activeDocumentId()}
-            fallback={
-              <div class="flex h-[88px] flex-col items-center justify-center gap-2 rounded-[3px] border border-dashed border-editor-divider/50 text-center">
-                <Icon name="crop" class="size-5 text-editor-text-dim opacity-50" strokeWidth={1.5} />
-                <span class="text-[12px] text-editor-text-dim">No image open</span>
-              </div>
-            }
+          <button
+            onClick={() => {
+              const engine = workspace.getActiveEngine();
+              if (engine) {
+                // Find main canvas container element to get container dimensions
+                const container = document.getElementById("canvas-container");
+                const rect = container?.getBoundingClientRect();
+                if (rect) {
+                  engine.fitToScreen(rect.width, rect.height);
+                  syncViewport();
+                  const dpr = window.devicePixelRatio || 1;
+                  renderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr);
+                  scheduler.requestRender();
+                }
+              }
+            }}
+            class="text-editor-text-dim hover:text-editor-text transition-colors p-1 rounded hover:bg-white/5"
+            title="Fit Screen"
           >
-            <div class="overflow-hidden rounded-[3px] border border-editor-divider">
-              <img
-                src={fjord}
-                alt="Navigator preview"
-                width={1920}
-                height={1080}
-                class="h-[88px] w-full object-cover"
-              />
-            </div>
-          </Show>
+            <Icon name="maximize" class="size-3.5" strokeWidth={1.75} />
+          </button>
         </div>
+        
+        <Navigator />
+
         <div class={clsx("flex items-center gap-2.5 px-4 py-3", !activeDocumentId() && "opacity-50 pointer-events-none")}>
-          <span class="text-[14px] text-editor-text-dim">▴</span>
-          <div class="relative h-[3px] flex-1 rounded-full bg-editor-field-border">
-            <div
-              class="absolute top-1/2 size-[11px] -translate-y-1/2 rounded-full border border-black/40 bg-editor-text"
-              style={{ left: `${Math.round(zoom() * 100 / 2)}%` }}
-            />
-          </div>
-          <span class="text-[12px] text-editor-text">{Math.round(zoom() * 100)}%</span>
+          <button 
+            onClick={() => {
+              const engine = workspace.getActiveEngine();
+              if (engine) {
+                engine.setViewport({ zoom: Math.max(0.05, zoom() - 0.1) });
+                syncViewport();
+                scheduler.requestRender();
+              }
+            }}
+            class="text-[12px] text-editor-text-dim hover:text-editor-text px-1"
+          >
+            -
+          </button>
+          <input
+            type="range"
+            min="5"
+            max="400"
+            value={Math.round(zoom() * 100)}
+            onInput={(e) => {
+              const engine = workspace.getActiveEngine();
+              if (engine) {
+                engine.setViewport({ zoom: parseInt(e.target.value) / 100 });
+                syncViewport();
+                scheduler.requestRender();
+              }
+            }}
+            class="h-[3px] w-full accent-editor-accent bg-editor-field-border rounded-full appearance-none cursor-pointer"
+          />
+          <button 
+            onClick={() => {
+              const engine = workspace.getActiveEngine();
+              if (engine) {
+                engine.setViewport({ zoom: Math.min(4.0, zoom() + 0.1) });
+                syncViewport();
+                scheduler.requestRender();
+              }
+            }}
+            class="text-[12px] text-editor-text-dim hover:text-editor-text px-1"
+          >
+            +
+          </button>
+          <span class="text-[12px] text-editor-text min-w-[36px] text-right">{Math.round(zoom() * 100)}%</span>
         </div>
       </div>
     </section>
   );
 }
+

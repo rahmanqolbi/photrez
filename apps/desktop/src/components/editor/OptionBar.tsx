@@ -1,8 +1,36 @@
-import { Show } from "solid-js";
+import { Show, For, createMemo } from "solid-js";
 import { Icon } from "./icons";
 import { NumField, EditableNumField } from "./primitives";
 import { clsx } from "clsx";
 import { useEditor } from "./EditorContext";
+
+const PPI = 96;
+const UNIT_TO_PX: Record<string, number> = {
+  px: 1,
+  cm: PPI / 2.54,
+  mm: PPI / 25.4,
+  in: PPI,
+};
+
+function toUnit(px: number, unit: string): number {
+  const factor = UNIT_TO_PX[unit] ?? 1;
+  return +(px / factor).toFixed(2);
+}
+
+function fromUnit(val: number, unit: string): number {
+  const factor = UNIT_TO_PX[unit] ?? 1;
+  return Math.round(val * factor);
+}
+
+const CROP_PRESETS = [
+  { label: "1:1", value: "1:1", aspect: { w: 1, h: 1 } },
+  { label: "4:5", value: "4:5", aspect: { w: 4, h: 5 } },
+  { label: "5:4", value: "5:4", aspect: { w: 5, h: 4 } },
+  { label: "2:3", value: "2:3", aspect: { w: 2, h: 3 } },
+  { label: "3:2", value: "3:2", aspect: { w: 3, h: 2 } },
+  { label: "9:16", value: "9:16", aspect: { w: 9, h: 16 } },
+  { label: "16:9", value: "16:9", aspect: { w: 16, h: 9 } },
+] as const;
 
 export function OptionBar() {
   const {
@@ -22,6 +50,8 @@ export function OptionBar() {
     cropDeletePixels, setCropDeletePixels,
     cropAspect, setCropAspect,
     cropSizeTarget, setCropSizeTarget,
+    cropSizeUnit, setCropSizeUnit,
+    cropRotation, setCropRotation,
   } = useEditor();
 
   const activeLayer = () => {
@@ -42,6 +72,39 @@ export function OptionBar() {
   const isLocked = () => {
     const l = activeLayerSafe();
     return l ? l.locked : false;
+  };
+
+  const activePreset = createMemo(() => {
+    if (cropMode() !== "ratio") return undefined;
+    const a = cropAspect();
+    if (!a) return undefined;
+    for (const p of CROP_PRESETS) {
+      if (p.aspect.w === a.w && p.aspect.h === a.h) return p.value;
+    }
+    return "custom";
+  });
+
+  const handlePresetChange = (value: string) => {
+    if (value === "custom") {
+      setCropMode("ratio");
+      if (!cropAspect()) setCropAspect({ w: 16, h: 9 });
+      return;
+    }
+    const preset = CROP_PRESETS.find(p => p.value === value);
+    if (preset) {
+      setCropMode("ratio");
+      setCropAspect({ w: preset.aspect.w, h: preset.aspect.h });
+      // Auto-fit crop rect to match aspect ratio
+      const rect = cropRect();
+      if (rect) {
+        const ratio = preset.aspect.w / preset.aspect.h;
+        const currentRatio = rect.w / rect.h;
+        if (Math.abs(currentRatio - ratio) > 0.001) {
+          const newH = rect.w / ratio;
+          setCropRect({ x: rect.x, y: rect.y - (newH - rect.h) / 2, w: rect.w, h: newH });
+        }
+      }
+    }
   };
 
   const handleFlip = (axis: "h" | "v") => {
@@ -228,19 +291,70 @@ export function OptionBar() {
         </Show>
 
         <Show when={cropMode() === "ratio"}>
-          <div class="flex shrink-0 items-center gap-1">
-            <EditableNumField label="W" value={cropAspect()?.w ?? 1} onSubmit={(v) => setCropAspect({ w: v, h: cropAspect()?.h ?? 1 })} class="w-[62px]" />
-            <span class="text-[11px] text-editor-text-dim">:</span>
-            <EditableNumField label="H" value={cropAspect()?.h ?? 1} onSubmit={(v) => setCropAspect({ w: cropAspect()?.w ?? 1, h: v })} class="w-[62px]" />
+          {/* Aspect ratio preset dropdown */}
+          <div class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
+            <select
+              value={activePreset()}
+              onChange={(e) => handlePresetChange(e.currentTarget.value)}
+              class="bg-transparent text-[11px] text-editor-text outline-none"
+            >
+              <For each={CROP_PRESETS}>
+                {(p) => <option value={p.value}>{p.label}</option>}
+              </For>
+              <option value="custom">Custom</option>
+            </select>
           </div>
+          <Show when={activePreset() === "custom"}>
+            <div class="flex shrink-0 items-center gap-1">
+              <EditableNumField label="W" value={cropAspect()?.w ?? 1} onSubmit={(v) => setCropAspect({ w: v, h: cropAspect()?.h ?? 1 })} class="w-[62px]" />
+              <span class="text-[11px] text-editor-text-dim">:</span>
+              <EditableNumField label="H" value={cropAspect()?.h ?? 1} onSubmit={(v) => setCropAspect({ w: cropAspect()?.w ?? 1, h: v })} class="w-[62px]" />
+            </div>
+          </Show>
         </Show>
 
         <Show when={cropMode() === "size"}>
           <div class="flex shrink-0 items-center gap-1">
-            <EditableNumField label="W" value={cropSizeTarget()?.w ?? 800} suffix="px" onSubmit={(v) => setCropSizeTarget({ w: v, h: cropSizeTarget()?.h ?? 600 })} class="w-[70px]" />
-            <EditableNumField label="H" value={cropSizeTarget()?.h ?? 600} suffix="px" onSubmit={(v) => setCropSizeTarget({ w: cropSizeTarget()?.w ?? 800, h: v })} class="w-[70px]" />
+            <EditableNumField label="W" value={toUnit(cropSizeTarget()?.w ?? 800, cropSizeUnit())} onSubmit={(v) => setCropSizeTarget({ w: fromUnit(v, cropSizeUnit()), h: cropSizeTarget()?.h ?? 600 })} class="w-[60px]" />
+            <EditableNumField label="H" value={toUnit(cropSizeTarget()?.h ?? 600, cropSizeUnit())} onSubmit={(v) => setCropSizeTarget({ w: cropSizeTarget()?.w ?? 800, h: fromUnit(v, cropSizeUnit()) })} class="w-[60px]" />
+            <div class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
+              <select
+                value={cropSizeUnit()}
+                onChange={(e) => setCropSizeUnit(e.currentTarget.value as any)}
+                class="bg-transparent text-[11px] text-editor-text outline-none"
+              >
+                <option value="px">px</option>
+                <option value="cm">cm</option>
+                <option value="mm">mm</option>
+                <option value="in">in</option>
+              </select>
+            </div>
           </div>
         </Show>
+
+        <EditableNumField
+          label="Angle"
+          value={cropRotation()}
+          suffix="°"
+          onSubmit={setCropRotation}
+          class="w-[58px]"
+        />
+
+        {/* Rotate 90° buttons */}
+        <button
+          onClick={() => setCropRotation(cropRotation() - 90)}
+          class="flex h-[24px] shrink-0 items-center rounded-[3px] border border-transparent px-1 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
+          aria-label="Rotate 90 degrees counter-clockwise"
+        >
+          ↺
+        </button>
+        <button
+          onClick={() => setCropRotation(cropRotation() + 90)}
+          class="flex h-[24px] shrink-0 items-center rounded-[3px] border border-transparent px-1 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
+          aria-label="Rotate 90 degrees clockwise"
+        >
+          ↻
+        </button>
 
         {/* Swap button */}
         <button
@@ -297,6 +411,7 @@ export function OptionBar() {
             const engine = workspace.getActiveEngine();
             if (engine) {
               setCropRect({ x: 0, y: 0, w: engine.getWidth(), h: engine.getHeight() });
+              setCropRotation(0);
             }
           }}
           class="flex h-[24px] shrink-0 items-center rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
@@ -323,7 +438,11 @@ export function OptionBar() {
             if (engine && rect) {
               const history = workspace.getActiveHistory();
               history?.commit(engine.snapshot());
-              engine.cropCanvas(rect.x, rect.y, rect.w, rect.h);
+              engine.applyCrop(rect.x, rect.y, rect.w, rect.h, {
+                deleteCroppedPixels: cropDeletePixels(),
+                targetSize: cropMode() === "size" ? cropSizeTarget() : null,
+                rotation: cropRotation(),
+              });
               scheduler.requestRender();
               setCropRect(null);
               setActiveTool("move");

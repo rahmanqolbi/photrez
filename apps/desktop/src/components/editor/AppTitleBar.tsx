@@ -12,7 +12,7 @@ type AppTitleBarProps = {
 };
 
 export function AppTitleBar(props: AppTitleBarProps) {
-  const { workspace, renderer, scheduler, activeDocumentId, documents } = useEditor();
+  const { workspace, renderer, scheduler, activeDocumentId, documents, activeTool, undoLastCrop, canCropUndo, redoCrop, canCropRedo, setCropRect, setCropRotation } = useEditor();
 
   const activeDocName = () => {
     const id = activeDocumentId();
@@ -21,6 +21,16 @@ export function AppTitleBar(props: AppTitleBarProps) {
   };
 
   const handleUndo = () => {
+    // Crop mode: use crop undo stack instead of document undo
+    if (activeTool() === "crop" && canCropUndo()) {
+      const state = undoLastCrop();
+      if (state) {
+        setCropRect(state.rect);
+        setCropRotation(state.rotation);
+        return;
+      }
+    }
+    // Fall through to document undo for non-crop or empty crop stack
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (engine && history && history.canUndo()) {
@@ -39,6 +49,16 @@ export function AppTitleBar(props: AppTitleBarProps) {
   };
 
   const handleRedo = () => {
+    // Crop mode: use crop redo stack instead of document redo
+    if (activeTool() === "crop" && canCropRedo()) {
+      const state = redoCrop();
+      if (state) {
+        setCropRect(state.rect);
+        setCropRotation(state.rotation);
+        return;
+      }
+    }
+    // Fall through to document redo for non-crop or empty crop stack
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (engine && history && history.canRedo()) {

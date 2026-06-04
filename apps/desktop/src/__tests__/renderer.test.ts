@@ -3,11 +3,30 @@ import { VERTEX_SHADER_SOURCE } from '../renderer/shaders';
 
 describe('Shader invariants', () => {
   it('should NOT double-flip texture Y — view matrix already flips Y', () => {
-    // computeViewMatrix sets m[5] = -2.0 / docH, which flips document Y so pos.y=0 is TOP.
-    // With UNPACK_FLIP_Y_WEBGL=false (default), texel v=0 = first uploaded row = top of image.
-    // So v_texCoord.y must equal pos.y — adding 1.0-pos.y creates a double flip.
     expect(VERTEX_SHADER_SOURCE).toContain('v_texCoord = vec2(pos.x, pos.y)');
     expect(VERTEX_SHADER_SOURCE).not.toContain('1.0 - pos');
+  });
+
+  it('should rotate CW for positive angle (no negation)', () => {
+    // Positive u_layerRotation = CW in screen space.
+    // The shader must not negate the angle — use radians(), not -radians().
+    expect(VERTEX_SHADER_SOURCE).toContain('float rad = radians(u_layerRotation)');
+    expect(VERTEX_SHADER_SOURCE).not.toContain('-radians(u_layerRotation)');
+  });
+
+  it('should use standard CCW rotation formula in math coords', () => {
+    // x*cos - y*sin  and  x*sin + y*cos = standard rotation matrix.
+    // In screen coords (Y-down), this produces CW rotation for positive angle.
+    expect(VERTEX_SHADER_SOURCE).toContain('centered.x * c - centered.y * s');
+    expect(VERTEX_SHADER_SOURCE).toContain('centered.x * s + centered.y * c');
+  });
+
+  it('should apply flip before rotation (center-anchored flip)', () => {
+    const flipLine = VERTEX_SHADER_SOURCE.split('\n').findIndex(l => l.includes('centered *= u_flipSign'));
+    const rotateLine = VERTEX_SHADER_SOURCE.split('\n').findIndex(l => l.includes('vec2 rotated'));
+    expect(flipLine).toBeGreaterThan(-1);
+    expect(rotateLine).toBeGreaterThan(-1);
+    expect(rotateLine).toBeGreaterThan(flipLine); // flip before rotate
   });
 });
 

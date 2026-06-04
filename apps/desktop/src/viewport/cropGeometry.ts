@@ -5,29 +5,90 @@ export interface CropRect {
   h: number;
 }
 
+export interface CropResizeOptions {
+  constraint?: "free" | "ratio" | "size";
+  aspect?: { w: number; h: number } | null;
+  shift?: boolean;
+  alt?: boolean;
+}
+
 function minSize(n: number): number {
   return Math.max(1, n);
 }
 
+/** Constrain the crop rect size to at least 1x1, allowing bounds to extend outside the canvas. */
+export function constrainCropRectToDocument(rect: CropRect, docW: number, docH: number): CropRect {
+  const w = Math.max(1, rect.w);
+  const h = Math.max(1, rect.h);
+  return { x: rect.x, y: rect.y, w, h };
+}
+
+/** @deprecated Use constrainCropRectToDocument — kept as alias for existing imports. */
 export function clampCropRect(rect: CropRect, docW: number, docH: number): CropRect {
+  return constrainCropRectToDocument(rect, docW, docH);
+}
+
+function applyFreeCornerResize(
+  rect: CropRect,
+  handle: string,
+  effDx: number,
+  effDy: number,
+): CropRect {
   let { x, y, w, h } = rect;
+  if (handle.includes("e")) w += effDx;
+  if (handle.includes("w")) { w -= effDx; x += effDx; }
+  if (handle.includes("s")) h += effDy;
+  if (handle.includes("n")) { h -= effDy; y += effDy; }
+  return { x, y, w: minSize(w), h: minSize(h) };
+}
 
-  if (x < 0) {
-    w = minSize(w + x);
-    x = 0;
-  }
-  if (y < 0) {
-    h = minSize(h + y);
-    y = 0;
-  }
-  if (x + w > docW) {
-    w = minSize(docW - x);
-  }
-  if (y + h > docH) {
-    h = minSize(docH - y);
-  }
+function applyProportionalCornerResize(
+  rect: CropRect,
+  handle: string,
+  effDx: number,
+  effDy: number,
+): CropRect {
+  const oldW = rect.w;
+  const oldH = rect.h;
+  const hx = handle === "se" || handle === "ne" ? 1 : -1;
+  const hy = handle === "se" || handle === "sw" ? 1 : -1;
+  const sumWH = oldW + oldH;
+  let { x, y } = rect;
+  let w = oldW;
+  let h = oldH;
 
-  return { x, y, w, h };
+  if (sumWH > 0) {
+    const projected = effDx * hx + effDy * hy;
+    const factor = Math.max(Math.max(1 / oldW, 1 / oldH), 1 + projected / sumWH);
+    w = oldW * factor;
+    h = oldH * factor;
+    if (handle.includes("w")) x = rect.x + oldW - w;
+    if (handle.includes("n")) y = rect.y + oldH - h;
+  }
+  return { x, y, w: minSize(w), h: minSize(h) };
+}
+
+function applyAspectCornerResize(
+  rect: CropRect,
+  handle: string,
+  effDx: number,
+  effDy: number,
+  targetRatio: number,
+): CropRect {
+  const oldW = rect.w;
+  const oldH = rect.h;
+  let { x, y } = rect;
+  let w = minSize(handle.includes("e") ? oldW + effDx : oldW - effDx);
+  let h = w / targetRatio;
+  if (handle.includes("w")) x = rect.x + oldW - w;
+  if (handle.includes("n")) y = rect.y + oldH - h;
+  return { x, y, w: minSize(w), h: minSize(h) };
+}
+
+function applyCenterResize(rect: CropRect, w: number, h: number): CropRect {
+  const cx = rect.x + rect.w / 2;
+  const cy = rect.y + rect.h / 2;
+  return { x: cx - w / 2, y: cy - h / 2, w: minSize(w), h: minSize(h) };
 }
 
 export function applyCropResizeHandle(
@@ -35,86 +96,81 @@ export function applyCropResizeHandle(
   handle: string,
   dx: number,
   dy: number,
-  aspect: { w: number; h: number } | null,
-  shift?: boolean,
-  alt?: boolean,
+  options?: CropResizeOptions,
 ): CropRect {
-  const _shift = shift ?? false;
-  const _alt = alt ?? false;
+  const _constraint = options?.constraint ?? "free";
+  const _aspect = options?.aspect ?? null;
+  const _shift = options?.shift ?? false;
+  const _alt = options?.alt ?? false;
+
   const isCorner = ["nw", "ne", "se", "sw"].includes(handle);
   const effDx = _alt ? dx * 2 : dx;
   const effDy = _alt ? dy * 2 : dy;
 
-  let { x, y, w, h } = rect;
+  let result: CropRect;
 
-  if (isCorner && !_shift && aspect === null) {
-    // Proportional corner — handle-axis projection, maintain current rect aspect
-    const oldW = w;
-    const oldH = h;
-    const hx = handle === "se" || handle === "ne" ? 1 : -1;
-    const hy = handle === "se" || handle === "sw" ? 1 : -1;
-    const sumWH = oldW + oldH;
-
-    if (sumWH > 0) {
-      const projected = effDx * hx + effDy * hy;
-      const factor = Math.max(Math.max(1 / oldW, 1 / oldH), 1 + projected / sumWH);
-
-      w = oldW * factor;
-      h = oldH * factor;
-
-      if (handle.includes("w")) x = rect.x + oldW - w;
-      if (handle.includes("n")) y = rect.y + oldH - h;
-    }
-  } else if (aspect) {
-    // Aspect-ratio-constrained resize (any handle)
-    const targetRatio = aspect.w / aspect.h;
-
-    if (handle === "s" || handle === "n") {
-      const newH = minSize(rect.h + (handle === "s" ? effDy : -effDy));
-      const newW = newH * targetRatio;
-      x = rect.x + (rect.w - newW) / 2;
-      y = handle === "n" ? rect.y + rect.h - newH : rect.y;
-      w = newW;
-      h = newH;
-    } else if (handle === "e" || handle === "w") {
-      const newW = minSize(rect.w + (handle === "e" ? effDx : -effDx));
-      const newH = newW / targetRatio;
-      x = handle === "w" ? rect.x + rect.w - newW : rect.x;
-      y = rect.y + (rect.h - newH) / 2;
-      w = newW;
-      h = newH;
+  if (isCorner) {
+    if (_constraint === "free") {
+      if (_shift) {
+        result = applyProportionalCornerResize(rect, handle, effDx, effDy);
+      } else {
+        result = applyFreeCornerResize(rect, handle, effDx, effDy);
+      }
+    } else if (_constraint === "ratio" && _aspect) {
+      const targetRatio = _aspect.w / _aspect.h;
+      if (_shift) {
+        result = applyFreeCornerResize(rect, handle, effDx, effDy);
+      } else {
+        result = applyAspectCornerResize(rect, handle, effDx, effDy, targetRatio);
+      }
+    } else if (_constraint === "size" && _aspect) {
+      const targetRatio = _aspect.w / _aspect.h;
+      if (_shift) {
+        result = applyFreeCornerResize(rect, handle, effDx, effDy);
+      } else {
+        result = applyAspectCornerResize(rect, handle, effDx, effDy, targetRatio);
+      }
     } else {
-      // Corner with aspect lock — width drives, opposite corner fixed
-      const oldW = rect.w;
-      const oldH = rect.h;
-      w = minSize(handle.includes("e") ? oldW + effDx : oldW - effDx);
-      h = w / targetRatio;
-      if (handle.includes("w")) x = rect.x + oldW - w;
-      if (handle.includes("n")) y = rect.y + oldH - h;
+      result = applyFreeCornerResize(rect, handle, effDx, effDy);
     }
   } else {
-    // Free resize (edges, or corners with shift)
-    if (handle.includes("e")) w += effDx;
-    if (handle.includes("w")) {
-      w -= effDx;
-      x += effDx;
-    }
-    if (handle.includes("s")) h += effDy;
-    if (handle.includes("n")) {
-      h -= effDy;
-      y += effDy;
+    // Edge handles — always free resize
+    if (_constraint === "ratio" && _aspect) {
+      const targetRatio = _aspect.w / _aspect.h;
+      if (handle === "s" || handle === "n") {
+        const newH = minSize(rect.h + (handle === "s" ? effDy : -effDy));
+        const newW = newH * targetRatio;
+        result = {
+          x: rect.x + (rect.w - newW) / 2,
+          y: handle === "n" ? rect.y + rect.h - newH : rect.y,
+          w: newW,
+          h: newH,
+        };
+      } else {
+        const newW = minSize(rect.w + (handle === "e" ? effDx : -effDx));
+        const newH = newW / targetRatio;
+        result = {
+          x: handle === "w" ? rect.x + rect.w - newW : rect.x,
+          y: rect.y + (rect.h - newH) / 2,
+          w: newW,
+          h: newH,
+        };
+      }
+    } else {
+      let { x, y, w, h } = rect;
+      if (handle.includes("e")) w += effDx;
+      if (handle.includes("w")) { w -= effDx; x += effDx; }
+      if (handle.includes("s")) h += effDy;
+      if (handle.includes("n")) { h -= effDy; y += effDy; }
+      result = { x, y, w: minSize(w), h: minSize(h) };
     }
   }
 
-  // Alt: re-center to keep original center
   if (_alt) {
-    const cx = rect.x + rect.w / 2;
-    const cy = rect.y + rect.h / 2;
-    x = cx - w / 2;
-    y = cy - h / 2;
+    result = applyCenterResize(rect, result.w, result.h);
   }
 
-  return { x, y, w: minSize(w), h: minSize(h) };
+  return result;
 }
 
 export function applyCropMove(
@@ -124,9 +180,11 @@ export function applyCropMove(
   docW: number,
   docH: number,
 ): CropRect {
-  const x = Math.max(0, Math.min(docW - rect.w, rect.x + dx));
-  const y = Math.max(0, Math.min(docH - rect.h, rect.y + dy));
-  return { x, y, w: rect.w, h: rect.h };
+  return constrainCropRectToDocument(
+    { x: rect.x + dx, y: rect.y + dy, w: rect.w, h: rect.h },
+    docW,
+    docH,
+  );
 }
 
 export function constrainCropAspect(

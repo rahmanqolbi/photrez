@@ -49,7 +49,7 @@ UI message format follows `docs/28-ui-copy-guidelines.md`.
 | Selection bounds exceed canvas | `E_VALIDATION` | `Selection extends beyond canvas bounds.` | `selection_bounds: {rect}` |
 | Transform with zero dimension | `E_VALIDATION` | `Transform dimensions must be greater than zero.` | `transform_zero: {dimension}` |
 | Crop bounds invalid | `E_VALIDATION` | `Crop area is invalid. Adjust the crop bounds.` | `crop_invalid: {rect}` |
-| Crop bounds exceed canvas | `E_VALIDATION` | `Crop area extends beyond the canvas.` | `crop_overflow: {rect}` |
+| Crop bounds exceed canvas | — | Allowed for canvas expansion (Photoshop-style) | crop_overflow: {rect} (Deprecated) |
 | Resize dimensions invalid | `E_VALIDATION` | `Resize dimensions must be between 1 and 16384.` | `resize_invalid: {w}x{h}` |
 
 ## 6) Brush/Eraser Operations

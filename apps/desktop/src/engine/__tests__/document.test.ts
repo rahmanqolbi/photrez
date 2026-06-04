@@ -171,4 +171,162 @@ describe('DocumentEngine', () => {
       expect(state.viewport.zoom).toBe(1.5);
     });
   });
+
+  describe('applyCrop', () => {
+    it('offsets layers and resizes document (non-destructive)', () => {
+      const engine = new DocumentEngine('doc-crop', 'Crop', 800, 600);
+      const layer = engine.addLayer('Layer 1');
+      layer.transform.x = 100;
+      layer.transform.y = 50;
+
+      engine.applyCrop(50, 30, 400, 300);
+
+      expect(engine.getWidth()).toBe(400);
+      expect(engine.getHeight()).toBe(300);
+      expect(layer.transform.x).toBe(50);
+      expect(layer.transform.y).toBe(20);
+    });
+
+    it('does nothing with zero dimensions', () => {
+      const engine = new DocumentEngine('doc-crop-zero', 'Crop', 800, 600);
+      engine.addLayer('Layer 1');
+
+      engine.applyCrop(0, 0, 0, 0);
+
+      expect(engine.getWidth()).toBe(800);
+      expect(engine.getHeight()).toBe(600);
+    });
+
+    it('applies targetSize scaling', () => {
+      const engine = new DocumentEngine('doc-crop-size', 'Crop Size', 800, 600);
+      const layer = engine.addLayer('Layer 1');
+      layer.transform.x = 200;
+      layer.transform.y = 100;
+
+      engine.applyCrop(100, 50, 400, 300, { targetSize: { w: 800, h: 600 } });
+
+      expect(engine.getWidth()).toBe(800);
+      expect(engine.getHeight()).toBe(600);
+      // Layer transform scaled by 800/400 = 2x, 600/300 = 2x
+      expect(layer.transform.x).toBeCloseTo(200, 0);
+      expect(layer.transform.y).toBeCloseTo(100, 0);
+    });
+
+    it('does not move locked layers (non-destructive)', () => {
+      const engine = new DocumentEngine('doc-crop-lock', 'Crop', 800, 600);
+      const layer = engine.addLayer('Layer 1');
+      layer.locked = true;
+      layer.transform.x = 100;
+      layer.transform.y = 50;
+
+      engine.applyCrop(50, 30, 400, 300);
+
+      expect(layer.transform.x).toBe(100);
+      expect(layer.transform.y).toBe(50);
+    });
+
+    it('offsets layers in deleteCroppedPixels mode even without bitmap', () => {
+      const engine = new DocumentEngine('doc-crop-del', 'Crop Del', 200, 200);
+      const layer = engine.addLayer('Layer 1');
+      layer.transform.x = 100;
+      layer.transform.y = 50;
+
+      engine.applyCrop(50, 50, 100, 100, { deleteCroppedPixels: true });
+
+      expect(engine.getWidth()).toBe(100);
+      expect(engine.getHeight()).toBe(100);
+      expect(layer.transform.x).toBe(50);
+      expect(layer.transform.y).toBe(0);
+    });
+
+    it('transforms layers based on crop rotation', () => {
+      const engine = new DocumentEngine('doc-crop-rot', 'Crop Rotation', 800, 600);
+      const layer = engine.addLayer('Layer 1', 100, 100);
+      layer.transform.x = 200;
+      layer.transform.y = 150;
+      layer.transform.rotation = 10;
+
+      engine.applyCrop(200, 150, 400, 300, { rotation: 90 });
+
+      expect(engine.getWidth()).toBe(400);
+      expect(engine.getHeight()).toBe(300);
+      expect(layer.transform.x).toBeCloseTo(50, 4);
+      expect(layer.transform.y).toBeCloseTo(250, 4);
+      expect(layer.transform.rotation).toBeCloseTo(-80, 4);
+    });
+  });
+
+  describe('layer overhaul additions', () => {
+    it('inserts new layer above the active layer', () => {
+      const engine = new DocumentEngine('doc-add', 'Add Contextual', 800, 600);
+      const l1 = engine.addLayer('Layer 1');
+      const l2 = engine.addLayer('Layer 2');
+      const l3 = engine.addLayer('Layer 3');
+      // Visual stack: L3, L2, L1 (indices: 0, 1, 2)
+      expect(engine.getLayers().map(l => l.name)).toEqual(['Layer 3', 'Layer 2', 'Layer 1']);
+
+      // Select Layer 2 (index 1)
+      engine.setActiveLayer(l2.id);
+
+      // Add a new layer
+      const lNew = engine.addLayer('Layer New');
+      // Should be inserted at index 1 (above Layer 2, shifting Layer 2 to index 2)
+      expect(engine.getLayers().map(l => l.name)).toEqual(['Layer 3', 'Layer New', 'Layer 2', 'Layer 1']);
+      expect(engine.getActiveLayerId()).toBe(lNew.id);
+    });
+
+    it('duplicates a layer correctly', () => {
+      const engine = new DocumentEngine('doc-dup', 'Duplicate', 800, 600);
+      const l1 = engine.addLayer('Layer 1');
+      const l2 = engine.addLayer('Layer 2');
+
+      l2.opacity = 0.5;
+      l2.blendMode = 'multiply';
+      l2.transform.x = 20;
+
+      const dup = engine.duplicateLayer(l2.id);
+      
+      expect(dup.name).toBe('Layer 2 copy');
+      expect(dup.opacity).toBe(0.5);
+      expect(dup.blendMode).toBe('multiply');
+      expect(dup.transform.x).toBe(20);
+      
+      // Duplicated layer should be directly above l2
+      const names = engine.getLayers().map(l => l.name);
+      expect(names).toEqual(['Layer 2 copy', 'Layer 2', 'Layer 1']);
+      expect(engine.getActiveLayerId()).toBe(dup.id);
+    });
+
+    it('merges active layer down correctly', () => {
+      const engine = new DocumentEngine('doc-merge', 'Merge Down', 800, 600);
+      const l1 = engine.addLayer('Layer 1');
+      const l2 = engine.addLayer('Layer 2');
+      
+      // Visual stack: L2, L1
+      expect(engine.getLayers().map(l => l.name)).toEqual(['Layer 2', 'Layer 1']);
+      
+      engine.setActiveLayer(l2.id);
+      engine.mergeDown(l2.id);
+      
+      expect(engine.getLayers().length).toBe(1);
+      expect(engine.getLayers()[0].name).toBe('Layer 2 + Layer 1');
+      expect(engine.getActiveLayerId()).toBe(engine.getLayers()[0].id);
+    });
+
+    it('flattens layers list correctly', () => {
+      const engine = new DocumentEngine('doc-flat', 'Flatten', 800, 600);
+      engine.addLayer('Layer 1');
+      engine.addLayer('Layer 2');
+      engine.addLayer('Layer 3');
+
+      expect(engine.getLayers().length).toBe(3);
+
+      engine.flattenLayers();
+
+      expect(engine.getLayers().length).toBe(1);
+      expect(engine.getLayers()[0].name).toBe('Background');
+      expect(engine.getLayers()[0].transform.x).toBe(0);
+      expect(engine.getLayers()[0].transform.scaleX).toBe(1.0);
+    });
+  });
 });

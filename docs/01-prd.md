@@ -67,7 +67,7 @@ Acceptance criteria:
 Acceptance criteria:
 
 - User can draw/adjust crop bounds and apply crop.
-- Crop cannot exceed canvas bounds and invalid bounds are blocked.
+- Crop box can exceed canvas bounds to expand the canvas dimensions (Photoshop-style canvas expansion).
 - User can resize image/canvas by explicit width/height input.
 - Aspect ratio lock toggle is available for resize operation.
 - Resize operation returns visible result and updates document dimensions in UI.
