@@ -128,8 +128,8 @@
 | Task 128 | [Wave 1] Extract layer creation and compositing | [x] Completed |
 | Task 129 | [Wave 1] Extract crop, snapshot, and pixel sampling helpers | [x] Completed |
 | Task 130 | [Wave 1] Remove debug logging from hot engine paths | [x] Completed |
-| Task 131 | [Wave 2] Extract crop presets and unit conversion | [ ] Not Started |
-| Task 132 | [Wave 2] Extract crop aspect ratio auto-fit calculation | [ ] Not Started |
+| Task 131 | [Wave 2] Extract crop presets and unit conversion | [x] Completed |
+| Task 132 | [Wave 2] Extract crop aspect ratio auto-fit calculation | [x] Completed |
 | Task 133 | [Wave 3] Extract renderer lifecycle from CanvasViewport | [ ] Not Started |
 | Task 134 | [Wave 3] Extract canvas pointer interactions from CanvasViewport | [ ] Not Started |
 | Task 135 | [Wave 3] Extract active layer and crop derived state | [ ] Not Started |

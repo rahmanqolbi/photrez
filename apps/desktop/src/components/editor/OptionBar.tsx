@@ -4,33 +4,9 @@ import { NumField, EditableNumField } from "./primitives";
 import { clsx } from "clsx";
 import { useEditor } from "./EditorContext";
 
-const PPI = 96;
-const UNIT_TO_PX: Record<string, number> = {
-  px: 1,
-  cm: PPI / 2.54,
-  mm: PPI / 25.4,
-  in: PPI,
-};
-
-function toUnit(px: number, unit: string): number {
-  const factor = UNIT_TO_PX[unit] ?? 1;
-  return +(px / factor).toFixed(2);
-}
-
-function fromUnit(val: number, unit: string): number {
-  const factor = UNIT_TO_PX[unit] ?? 1;
-  return Math.round(val * factor);
-}
-
-const CROP_PRESETS = [
-  { label: "1:1", value: "1:1", aspect: { w: 1, h: 1 } },
-  { label: "4:5", value: "4:5", aspect: { w: 4, h: 5 } },
-  { label: "5:4", value: "5:4", aspect: { w: 5, h: 4 } },
-  { label: "2:3", value: "2:3", aspect: { w: 2, h: 3 } },
-  { label: "3:2", value: "3:2", aspect: { w: 3, h: 2 } },
-  { label: "9:16", value: "9:16", aspect: { w: 9, h: 16 } },
-  { label: "16:9", value: "16:9", aspect: { w: 16, h: 9 } },
-] as const;
+import { CROP_PRESETS } from "@/viewport/cropPresets";
+import { toUnit, fromUnit } from "@/viewport/unitConversion";
+import { fitCropRectToAspect } from "@/viewport/cropAutoFit";
 
 export function OptionBar() {
   const {
@@ -97,12 +73,7 @@ export function OptionBar() {
       // Auto-fit crop rect to match aspect ratio
       const rect = cropRect();
       if (rect) {
-        const ratio = preset.aspect.w / preset.aspect.h;
-        const currentRatio = rect.w / rect.h;
-        if (Math.abs(currentRatio - ratio) > 0.001) {
-          const newH = rect.w / ratio;
-          setCropRect({ x: rect.x, y: rect.y - (newH - rect.h) / 2, w: rect.w, h: newH });
-        }
+        setCropRect(fitCropRectToAspect(rect, preset.aspect));
       }
     }
   };
