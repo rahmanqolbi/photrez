@@ -163,7 +163,6 @@ export function EditorProvider(props: {
 
   // Synchronization logic
   const syncState = () => {
-    console.log("[EditorContext] syncState called");
     batch(() => {
       setDocuments(props.workspace.getTabSummaries());
       const activeId = props.workspace.getActiveDocumentId();
@@ -171,14 +170,11 @@ export function EditorProvider(props: {
 
       const engine = props.workspace.getActiveEngine();
       if (engine) {
-        const layerNames = engine.getLayers().map(l => l.name);
-        console.log("[EditorContext] setting layers:", layerNames);
         setLayers(engine.getLayers().map(l => ({ ...l, transform: { ...l.transform } })));
         setActiveLayerId(engine.getActiveLayerId());
         setDocWidth(engine.getWidth());
         setDocHeight(engine.getHeight());
       } else {
-        console.log("[EditorContext] no engine, setting empty layers");
         setLayers([]);
         setActiveLayerId(null);
       }

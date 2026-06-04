@@ -1031,3 +1031,32 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 | 2026-06-02 | BUG FIX — CropOverlay Pointer Capture + Full Crop MVP [COMPLETE] |
 | 2026-06-03 | CROP IMPROVEMENT — 7 Incremental Tasks [COMPLETE] |
 
+## [2026-06-04] PLAN - Scalability and Maintainability Refactor Plan [PLANNING COMPLETE]
+
+### Kategori: PLAN / REFACTOR / ARCHITECTURE / MAINTAINABILITY
+
+**Deskripsi:** Membuat rencana detail untuk refactor file splitting/merging lintas project agar Photrez lebih scalable dan maintainable tanpa mengubah behavior.
+
+### Artifact
+
+- `docs/plans/2026-06-04-scalability-maintainability-refactor-plan.md`
+
+### Scope Plan
+
+1. `DocumentEngine` TypeScript tetap facade/source of truth MVP, dengan helper internal untuk layer factory, compositing, crop apply, snapshot, dan pixel sampling.
+2. `CanvasViewport.tsx` direncanakan menjadi shell yang mengomposisi hook renderer, pointer tools, dan derived viewport state.
+3. `CropOverlay.tsx` direncanakan dipisah menjadi drag hook, handles, guides, dan tooltip renderer.
+4. `OptionBar.tsx` direncanakan dipisah per active tool.
+5. `SelectionTransformOverlay.tsx` direncanakan memiliki hook interaction terpisah.
+6. `EditorContext.tsx` direncanakan dipisah internalnya tanpa mengubah entry point `useEditor()`.
+7. Rust core/render dicatat sebagai reference/future-target organization, bukan runtime migration.
+
+### Verification
+
+- Planning artifact created.
+- No implementation code changed in this planning step.
+
+### Risiko / Catatan
+
+- Eksekusi refactor harus dilakukan per wave kecil dengan targeted tests.
+- `cargo test --workspace` tetap perlu diperlakukan sesuai catatan existing render/toolchain issue di dokumen project saat implementasi berjalan.

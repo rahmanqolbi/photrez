@@ -275,3 +275,38 @@ Allow the crop box to extend outside document boundaries, enabling canvas expans
 ---
 
 > **Older completed entries archived to:** `docs/archive/AI_CURRENT_TASK_ARCHIVE.md`
+
+---
+
+## Current Task - Scalability and Maintainability Refactor Plan [PLANNING]
+
+**Date:** 2026-06-04
+
+Create a detailed planning artifact for staged file splitting/merging across the project so Photrez remains scalable and maintainable without changing behavior.
+
+### Plan Artifact
+
+- `docs/plans/2026-06-04-scalability-maintainability-refactor-plan.md`
+
+### Planning Scope
+
+1. TypeScript MVP engine facade split (`apps/desktop/src/engine/document.ts` remains public source-of-truth facade).
+2. Frontend editor shell split (`CanvasViewport`, `CropOverlay`, `OptionBar`, `SelectionTransformOverlay`, `EditorContext`).
+3. Pure viewport/domain utility extraction.
+4. Legacy/duplicate HUD cleanup.
+5. Rust core/render organization as later, lower-priority reference/future-target work.
+6. CSS/shared UI audit without splitting small stable files unnecessarily.
+
+### Non-Goals
+
+- No implementation code changes yet.
+- No runtime migration from TypeScript engine to Rust.
+- No new dependencies.
+- No UI redesign or feature scope expansion.
+
+### Verification Plan For Later Execution
+
+- `pnpm.cmd run build`
+- `pnpm.cmd --filter photrez-desktop test`
+- `cargo test -p photrez-core`
+- Run broader mandatory gates per `AGENTS.md` when implementation begins.

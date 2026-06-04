@@ -124,8 +124,23 @@
 | Task 124 | [Refactor] Extract `usePanNavigation.ts` from `CanvasViewport.tsx` (P1) | [x] Completed |
 | Task 125 | [Refactor] Extract `useLayerActions.ts` from `LayersPanel.tsx` (P1) | [x] Completed |
 | Task 126 | [Refactor] Move `LayerThumb.tsx` to its own file (P2) | [x] Completed |
-| Task 127 | [Verify] Verify all unit tests and build check passes | [x] Completed |
-
-
-
-
+| Task 127 | [Refactor] Verify all unit tests and build check passes | [x] Completed |
+| Task 128 | [Wave 1] Extract layer creation and compositing | [x] Completed |
+| Task 129 | [Wave 1] Extract crop, snapshot, and pixel sampling helpers | [x] Completed |
+| Task 130 | [Wave 1] Remove debug logging from hot engine paths | [x] Completed |
+| Task 131 | [Wave 2] Extract crop presets and unit conversion | [ ] Not Started |
+| Task 132 | [Wave 2] Extract crop aspect ratio auto-fit calculation | [ ] Not Started |
+| Task 133 | [Wave 3] Extract renderer lifecycle from CanvasViewport | [ ] Not Started |
+| Task 134 | [Wave 3] Extract canvas pointer interactions from CanvasViewport | [ ] Not Started |
+| Task 135 | [Wave 3] Extract active layer and crop derived state | [ ] Not Started |
+| Task 136 | [Wave 4] Extract crop overlay drag and rotate interaction | [ ] Not Started |
+| Task 137 | [Wave 4] Extract crop handles, guides, and tooltip rendering | [ ] Not Started |
+| Task 138 | [Wave 5] Extract move and selection option bars | [ ] Not Started |
+| Task 139 | [Wave 5] Extract crop and brush option bars | [ ] Not Started |
+| Task 140 | [Wave 6] Extract selection transform drag interaction | [ ] Not Started |
+| Task 141 | [Wave 6] Remove or merge legacy TransformationHUD | [ ] Not Started |
+| Task 142 | [Wave 7] Extract editor state setup and crop mini history | [ ] Not Started |
+| Task 143 | [Wave 7] Extract workspace sync and open image flow | [ ] Not Started |
+| Task 144 | [Wave 8] Assess and organize Rust reference core/render crates | [ ] Not Started |
+| Task 145 | [Wave 9] Audit CSS ownership, shared primitives, and icons | [ ] Not Started |
+| Task 146 | [Wave 10] Run final verification pipeline and close documentation | [ ] Not Started |

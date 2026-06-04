@@ -234,3 +234,10 @@
 | ✅ DONE      | M6 Perf Gate (all metrics PASS)            |
 | ✅ DONE      | Native Vite tsconfig paths (removed `vite-tsconfig-paths` plugin) |
 | ✅ DONE      | Release candidate (MSI + NSIS installers)  |
+---
+
+## Maintenance / Architecture Planning
+
+| Status | Item |
+| ------ | ---- |
+| DONE | Scalability and maintainability refactor plan created: `docs/plans/2026-06-04-scalability-maintainability-refactor-plan.md` |

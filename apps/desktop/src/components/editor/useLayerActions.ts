@@ -107,16 +107,12 @@ export function useLayerActions() {
 
   const handleMoveUp = (e: MouseEvent, index: number) => {
     e.stopPropagation();
-    console.log("[LayersPanel] handleMoveUp called with index:", index);
     if (index > 0) {
       const engine = workspace.getActiveEngine();
       const history = workspace.getActiveHistory();
-      console.log("[LayersPanel] engine:", !!engine, "history:", !!history);
       if (engine && history) {
         history.commit(engine.snapshot());
-        console.log("[LayersPanel] calling reorderLayer(", index, ",", index - 1, ")");
         engine.reorderLayer(index, index - 1);
-        console.log("[LayersPanel] after reorderLayer, layers:", engine.getLayers().map(l => l.name));
         scheduler.requestRender();
       }
     }

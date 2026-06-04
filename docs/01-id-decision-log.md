@@ -59,3 +59,9 @@ Dokumen ini dipakai untuk melacak keputusan inti proyek secara ringkas.
 Tahap perencanaan saat ini dinyatakan selesai secara penuh.
 
 Jika nama final berubah nanti, seluruh dokumen `docs/` harus disinkronkan.
+
+## Tambahan Keputusan 2026-06-04
+
+| Area | Keputusan | Status |
+| ---- | --------- | ------ |
+| Scalability refactor strategy | Refactor maintainability dilakukan bertahap per wave. `DocumentEngine` TypeScript tetap public MVP facade/source of truth; extraction dilakukan ke helper internal dan hook/UI module yang punya ownership jelas. Rust core/render tetap reference/future target sampai ada migration task eksplisit. | Locked 2026-06-04 |
