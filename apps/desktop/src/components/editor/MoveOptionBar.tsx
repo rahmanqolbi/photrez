@@ -231,22 +231,22 @@ export function MoveOptionBar() {
 
       <div class={clsx("flex shrink-0 items-center gap-1 text-editor-icon", isLocked() && "opacity-30 pointer-events-none")}>
         <span class="text-[11px] text-editor-text-dim">Align</span>
-        <button onClick={() => handleAlign("left")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align left">
+        <button onClick={() => handleAlign("left")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align left" title="Align Left">
           <Icon name="align-left" class="size-4" strokeWidth={1.5} />
         </button>
-        <button onClick={() => handleAlign("center-h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center horizontal">
+        <button onClick={() => handleAlign("center-h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center horizontal" title="Align Horizontal Center">
           <Icon name="align-h" class="size-4" strokeWidth={1.5} />
         </button>
-        <button onClick={() => handleAlign("right")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align right">
+        <button onClick={() => handleAlign("right")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align right" title="Align Right">
           <Icon name="align-right" class="size-4" strokeWidth={1.5} />
         </button>
-        <button onClick={() => handleAlign("top")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align top">
+        <button onClick={() => handleAlign("top")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align top" title="Align Top">
           <Icon name="align-top" class="size-4" strokeWidth={1.5} />
         </button>
-        <button onClick={() => handleAlign("center-v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center vertical">
+        <button onClick={() => handleAlign("center-v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center vertical" title="Align Vertical Center">
           <Icon name="align-v" class="size-4" strokeWidth={1.5} />
         </button>
-        <button onClick={() => handleAlign("bottom")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align bottom">
+        <button onClick={() => handleAlign("bottom")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align bottom" title="Align Bottom">
           <Icon name="align-bottom" class="size-4" strokeWidth={1.5} />
         </button>
       </div>
@@ -255,10 +255,10 @@ export function MoveOptionBar() {
 
       <div class={clsx("flex shrink-0 items-center gap-1 text-editor-icon", isLocked() && "opacity-30 pointer-events-none")}>
         <span class="text-[11px] text-editor-text-dim">Flip</span>
-        <button onClick={() => handleFlip("h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip horizontal">
+        <button onClick={() => handleFlip("h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip horizontal" title="Flip Horizontal">
           <Icon name="flip-h" class="size-4" strokeWidth={1.5} />
         </button>
-        <button onClick={() => handleFlip("v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip vertical">
+        <button onClick={() => handleFlip("v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip vertical" title="Flip Vertical">
           <Icon name="flip-v" class="size-4" strokeWidth={1.5} />
         </button>
       </div>
