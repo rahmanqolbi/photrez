@@ -308,6 +308,29 @@ describe("renderPaintStrokeToContext", () => {
     expect(ctx.arc).toHaveBeenCalledTimes(buildStrokeDabs([{ x: 0, y: 0 }, { x: 10, y: 0 }], 10).length);
   });
 
+  it("applies flow multiplier to globalAlpha", () => {
+    const ctx = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      globalCompositeOperation: "",
+      globalAlpha: 1,
+      fillStyle: "",
+      beginPath: vi.fn(),
+      arc: vi.fn(),
+      fill: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+
+    renderPaintStrokeToContext(
+      ctx,
+      [{ x: 50, y: 50 }],
+      { size: 20, hardness: 1, opacity: 1, flow: 0.5, smoothing: 0 },
+      "#ff0000",
+      false,
+    );
+
+    expect(ctx.globalAlpha).toBe(0.5);
+  });
+
   it("restores context after drawing", () => {
     const ctx = {
       save: vi.fn(),
