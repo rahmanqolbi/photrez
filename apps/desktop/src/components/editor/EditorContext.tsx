@@ -90,6 +90,32 @@ export interface EditorContextValue {
   // Transform Session
   layerTransformSession: Accessor<LayerTransformSession | null>;
   setLayerTransformSession: Setter<LayerTransformSession | null>;
+
+  // Paint tool settings
+  brushSize: Accessor<number>;
+  setBrushSize: Setter<number>;
+  brushHardness: Accessor<number>;
+  setBrushHardness: Setter<number>;
+  brushOpacity: Accessor<number>;
+  setBrushOpacity: Setter<number>;
+  eraserSize: Accessor<number>;
+  setEraserSize: Setter<number>;
+  eraserHardness: Accessor<number>;
+  setEraserHardness: Setter<number>;
+  eraserOpacity: Accessor<number>;
+  setEraserOpacity: Setter<number>;
+  brushFlow: Accessor<number>;
+  setBrushFlow: Setter<number>;
+  brushSmoothing: Accessor<number>;
+  setBrushSmoothing: Setter<number>;
+  eraserFlow: Accessor<number>;
+  setEraserFlow: Setter<number>;
+  eraserSmoothing: Accessor<number>;
+  setEraserSmoothing: Setter<number>;
+  brushPresetId: Accessor<string | null>;
+  setBrushPresetId: Setter<string | null>;
+  eraserPresetId: Accessor<string | null>;
+  setEraserPresetId: Setter<string | null>;
 }
 
 

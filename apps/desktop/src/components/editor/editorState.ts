@@ -35,6 +35,19 @@ export function createEditorState() {
   const [hoverPos, setHoverPos] = createSignal<{ x: number; y: number } | null>(null);
   const [layerTransformSession, setLayerTransformSession] = createSignal<LayerTransformSession | null>(null);
 
+  const [brushSize, setBrushSize] = createSignal(20);
+  const [brushHardness, setBrushHardness] = createSignal(0.8);
+  const [brushOpacity, setBrushOpacity] = createSignal(1);
+  const [eraserSize, setEraserSize] = createSignal(32);
+  const [eraserHardness, setEraserHardness] = createSignal(1);
+  const [eraserOpacity, setEraserOpacity] = createSignal(1);
+  const [brushFlow, setBrushFlow] = createSignal(1);
+  const [brushSmoothing, setBrushSmoothing] = createSignal(0);
+  const [eraserFlow, setEraserFlow] = createSignal(1);
+  const [eraserSmoothing, setEraserSmoothing] = createSignal(0);
+  const [brushPresetId, setBrushPresetId] = createSignal<string | null>(null);
+  const [eraserPresetId, setEraserPresetId] = createSignal<string | null>(null);
+
   return {
     activeTool, setActiveTool,
     fgColor, setFgColor,
@@ -55,6 +68,18 @@ export function createEditorState() {
     moveSnapEnabled, setMoveSnapEnabled,
     hoverPos, setHoverPos,
     layerTransformSession, setLayerTransformSession,
+    brushSize, setBrushSize,
+    brushHardness, setBrushHardness,
+    brushOpacity, setBrushOpacity,
+    eraserSize, setEraserSize,
+    eraserHardness, setEraserHardness,
+    eraserOpacity, setEraserOpacity,
+    brushFlow, setBrushFlow,
+    brushSmoothing, setBrushSmoothing,
+    eraserFlow, setEraserFlow,
+    eraserSmoothing, setEraserSmoothing,
+    brushPresetId, setBrushPresetId,
+    eraserPresetId, setEraserPresetId,
   };
 }
 
