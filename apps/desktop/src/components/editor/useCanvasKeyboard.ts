@@ -5,7 +5,7 @@ import { useEditor } from "./EditorContext";
 import { flattenAllLayers, mergeActiveLayerDown } from "./layerOperations";
 import { cancelLayerTransformSession, commitLayerTransformSession } from "./transformSession";
 import { discardCropSession, applyCropPreview } from "./cropToolActions";
-import { PAINT_SIZE_STEP, adjustPaintSize } from "./brushToolState";
+import { PAINT_SIZE_STEP, PAINT_SIZE_STEP_HARDNESS, adjustPaintSize, adjustPaintHardness } from "./brushToolState";
 
 interface CanvasKeyboardOptions {
   isSpacePressed: () => boolean;
@@ -46,6 +46,16 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     setBrushSize,
     eraserSize,
     setEraserSize,
+    brushHardness,
+    setBrushHardness,
+    eraserHardness,
+    setEraserHardness,
+    brushOpacity,
+    brushFlow,
+    brushSmoothing,
+    eraserOpacity,
+    eraserFlow,
+    eraserSmoothing,
   } = useEditor();
 
   onMount(() => {
@@ -212,21 +222,39 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
 
       if (!ctrl && (e.key === "[" || e.key === "]") && (activeTool() === "brush" || activeTool() === "eraser")) {
         e.preventDefault();
-        const delta = e.key === "[" ? -PAINT_SIZE_STEP : PAINT_SIZE_STEP;
-        const next = adjustPaintSize(activeTool(), {
-          brushSize: brushSize(),
-          brushHardness: 1,
-          brushOpacity: 1,
-          brushFlow: 1,
-          brushSmoothing: 0,
-          eraserSize: eraserSize(),
-          eraserHardness: 1,
-          eraserOpacity: 1,
-          eraserFlow: 1,
-          eraserSmoothing: 0,
-        }, delta);
-        setBrushSize(next.brushSize);
-        setEraserSize(next.eraserSize);
+        if (e.shiftKey) {
+          const delta = e.key === "[" ? -PAINT_SIZE_STEP_HARDNESS : PAINT_SIZE_STEP_HARDNESS;
+          const next = adjustPaintHardness(activeTool(), {
+            brushSize: brushSize(),
+            brushHardness: brushHardness(),
+            brushOpacity: brushOpacity(),
+            brushFlow: brushFlow(),
+            brushSmoothing: brushSmoothing(),
+            eraserSize: eraserSize(),
+            eraserHardness: eraserHardness(),
+            eraserOpacity: eraserOpacity(),
+            eraserFlow: eraserFlow(),
+            eraserSmoothing: eraserSmoothing(),
+          }, delta);
+          setBrushHardness(next.brushHardness);
+          setEraserHardness(next.eraserHardness);
+        } else {
+          const delta = e.key === "[" ? -PAINT_SIZE_STEP : PAINT_SIZE_STEP;
+          const next = adjustPaintSize(activeTool(), {
+            brushSize: brushSize(),
+            brushHardness: brushHardness(),
+            brushOpacity: brushOpacity(),
+            brushFlow: brushFlow(),
+            brushSmoothing: brushSmoothing(),
+            eraserSize: eraserSize(),
+            eraserHardness: eraserHardness(),
+            eraserOpacity: eraserOpacity(),
+            eraserFlow: eraserFlow(),
+            eraserSmoothing: eraserSmoothing(),
+          }, delta);
+          setBrushSize(next.brushSize);
+          setEraserSize(next.eraserSize);
+        }
         scheduler.requestRender();
         return;
       }
