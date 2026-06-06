@@ -11,6 +11,7 @@ import {
   type ToolContext,
 } from "@/viewport/input-handler";
 import { getActivePaintToolSettings, getPaintToolBlockReason, type PaintToolSettings } from "./brushToolState";
+import { PaintSmoother } from "./paintSmoothing";
 import { getLayerAabb } from "@/viewport/transformGeometry";
 import { computeSnapAdjustment, type SnapRect } from "@/viewport/smartGuides";
 import type { HudMode } from "./TransformHud";
@@ -67,9 +68,14 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     eraserSize,
     eraserHardness,
     eraserOpacity,
+    brushFlow,
+    brushSmoothing,
+    eraserFlow,
+    eraserSmoothing,
   } = useEditor();
 
   let isPendingCropClick = false;
+  const paintSmoother = new PaintSmoother();
 
   const [snapLines, setSnapLines] = createSignal<{ x1: number; y1: number; x2: number; y2: number }[]>([]);
   const [selectionBox, setSelectionBoxSignal] = createSignal<{
@@ -138,13 +144,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       brushSize: brushSize(),
       brushHardness: brushHardness(),
       brushOpacity: brushOpacity(),
-      brushFlow: 1,
-      brushSmoothing: 0,
+      brushFlow: brushFlow(),
+      brushSmoothing: brushSmoothing(),
       eraserSize: eraserSize(),
       eraserHardness: eraserHardness(),
       eraserOpacity: eraserOpacity(),
-      eraserFlow: 1,
-      eraserSmoothing: 0,
+      eraserFlow: eraserFlow(),
+      eraserSmoothing: eraserSmoothing(),
     });
     interactiveState.brushSize = interactiveState.paintSettings.size;
     interactiveState.brushHardness = interactiveState.paintSettings.hardness;
@@ -211,6 +217,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   };
 
   const onCanvasPointerDown = (e: PointerEvent) => {
+    if (e.button === 2) return;
     if (params.isSpacePressed() || params.isPanning() || e.button === 1) return;
 
     params.stopMomentum();
@@ -251,10 +258,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     if (canvas) canvas.setPointerCapture(e.pointerId);
 
     const coords = getDocCoords(e);
+    paintSmoother.setWindowSize(interactiveState.paintSettings.smoothing);
+    paintSmoother.reset();
+    const smoothed = paintSmoother.addPoint(coords.x, coords.y);
     handlePointerDown(
       activeTool() as ToolType,
-      coords.x,
-      coords.y,
+      smoothed.x,
+      smoothed.y,
       engine,
       history,
       () => scheduler.requestRender(),
@@ -271,10 +281,11 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     interactiveState.isAltPressed = params.isAltPressed();
 
     const coords = getDocCoords(e);
+    const smoothed = paintSmoother.addPoint(coords.x, coords.y);
     handlePointerMove(
       activeTool() as ToolType,
-      coords.x,
-      coords.y,
+      smoothed.x,
+      smoothed.y,
       engine,
       () => scheduler.requestRender(),
       interactiveState,
@@ -290,10 +301,11 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
 
     setSnapLines([]);
     const coords = getDocCoords(e);
+    const smoothed = paintSmoother.addPoint(coords.x, coords.y);
     handlePointerUp(
       activeTool() as ToolType,
-      coords.x,
-      coords.y,
+      smoothed.x,
+      smoothed.y,
       engine,
       history,
       () => scheduler.requestRender(),
@@ -333,6 +345,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   };
 
   const onCanvasPointerCancel = (e: PointerEvent) => {
+    paintSmoother.reset();
     const engine = workspace.getActiveEngine();
     if (!engine) return;
 
@@ -356,6 +369,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   };
 
   const onCanvasLostPointerCapture = (e: PointerEvent) => {
+    paintSmoother.reset();
     // Capture already lost — no releasePointerCapture call needed
     const engine = workspace.getActiveEngine();
     if (!engine) return;
