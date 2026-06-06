@@ -1,4 +1,4 @@
-import { createMemo, createEffect } from "solid-js";
+import { createMemo, createEffect, untrack } from "solid-js";
 import { useEditor } from "./EditorContext";
 import { resolveCursor } from "@/viewport/cursorResolver";
 import { getLayerAabb } from "@/viewport/transformGeometry";
@@ -25,10 +25,12 @@ export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
     setCropRect,
     cropRotation,
     setCropRotation,
+    hiddenCropPreview,
     hoverPos,
     setHoverPos,
     docWidth,
     docHeight,
+    clearCropStacks,
   } = useEditor();
 
   const isLayerLocked = createMemo(() => {
@@ -126,23 +128,21 @@ export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
   });
 
   // ─── Crop tool auto-init ───
-  const ensureCropRect = () => {
-    const engine = workspace.getActiveEngine();
-    if (!engine) return;
-    const rect = cropRect();
-    if (rect && rect.w > 0 && rect.h > 0) return;
-    const docW = engine.getWidth();
-    const docH = engine.getHeight();
-    setCropRect({ x: 0, y: 0, w: docW, h: docH });
-  };
-
   createEffect(() => {
     if (activeTool() !== "crop") {
+      clearCropStacks();
       setCropRotation(0);
       setCropRect(null);
       return;
     }
-    ensureCropRect();
+    const rect = untrack(cropRect);
+    const hidden = untrack(hiddenCropPreview);
+    if (!rect && !hidden) {
+      const engine = workspace.getActiveEngine();
+      if (engine) {
+        setCropRect({ x: 0, y: 0, w: engine.getWidth(), h: engine.getHeight() });
+      }
+    }
   });
 
   return {

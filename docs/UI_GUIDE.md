@@ -22,7 +22,7 @@
 
 | Region | Size | Notes |
 |---|---|---|
-| **AppTitleBar** | H: `46px` | macOS/Figma style. Menu left, title center, window controls right. Logo "pz" 30px |
+| **AppTitleBar** | H: `46px` | Desktop titlebar style. Menu left, title center, window controls right. Logo "pz" 30px |
 | **DocumentTabsBar** | H: `44px` | Active tab: 2px Photon Amber indicator below. Text: `12px font-medium` |
 | **OptionBar** | H: `44px` | Tool-specific parameters (brush size, opacity, blend mode) |
 | **LeftToolRail** | W: `52px` | 6 MVP tools: Move, Rect Select, Crop, Eyedropper, Brush, Eraser. Icon `18px`, button `36px`. Color swatches at bottom via `mt-auto` |
@@ -104,7 +104,7 @@
 
 ### LeftToolRail Color Swatches
 
-- Container: `36px` (flush Photoshop-style)
+- Container: `36px` (flush compact style)
 - Two overlapping `35px` circles with diagonal clip-path
 - Foreground: `polygon(0 0, 100% 0, 0 100%)`, Background: `polygon(100% 100%, 100% 0, 0 100%)`
 - Gap: `1.4px` diagonal via position offset

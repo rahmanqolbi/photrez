@@ -5,7 +5,7 @@ Photrez is a lightweight desktop image editor for practical design work.
 Current direction:
 
 - Familiar editing workflow.
-- Distinct product identity (not a Photoshop clone).
+- Distinct product identity with familiar editing workflows.
 - Performance-first targets for low-end Windows devices.
 
 ## Project Status

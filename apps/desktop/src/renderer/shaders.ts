@@ -8,7 +8,7 @@ precision highp float;
 uniform mat4 u_viewProj;
 uniform vec4 u_layerRect;   // x, y, effWidth, effHeight
 uniform vec2 u_layerCenter; // center of layer (rotation/flip pivot)
-uniform float u_layerRotation; // degrees, CW (Photoshop convention)
+uniform float u_layerRotation; // degrees, clockwise
 uniform vec2 u_flipSign;    // (±1, ±1) — mirrored when negative
 
 out vec2 v_texCoord;

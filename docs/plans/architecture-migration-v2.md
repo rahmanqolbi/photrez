@@ -1185,7 +1185,7 @@ export default function App() {
 4. UI signals update via workspace.onChange callback
 ```
 
-### Code sketch
+### Code outline
 
 ```typescript
 async function handleOpenFile() {

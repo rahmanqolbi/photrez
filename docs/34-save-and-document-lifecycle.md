@@ -136,7 +136,7 @@ Per `docs/04-erd-or-data-model.md` section 7:
 
 ## 7) Open Questions
 
-- [x] **Multiple documents**: MVP recovery uses Photoshop/Affinity-style document tabs. See `docs/superpowers/specs/2026-05-29-multi-document-workspace-design.md`.
+- [x] **Multiple documents**: MVP recovery uses document tabs. See `docs/superpowers/specs/2026-05-29-multi-document-workspace-design.md`.
 - [x] **Recent files list**: Not in MVP. Empty state remains minimal and canvas-centered.
 
 ## 8) Change Control

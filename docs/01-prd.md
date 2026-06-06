@@ -67,7 +67,7 @@ Acceptance criteria:
 Acceptance criteria:
 
 - User can draw/adjust crop bounds and apply crop.
-- Crop box can exceed canvas bounds to expand the canvas dimensions (Photoshop-style canvas expansion).
+- Crop box can exceed canvas bounds to expand the canvas dimensions.
 - User can resize image/canvas by explicit width/height input.
 - Aspect ratio lock toggle is available for resize operation.
 - Resize operation returns visible result and updates document dimensions in UI.
@@ -109,7 +109,7 @@ Acceptance criteria:
 ## 7. UX Principles
 
 - Familiar layout conventions.
-- Distinct visual identity (not Adobe-like branding).
+- Distinct visual identity that avoids third-party product branding.
 - Low-friction defaults for first-time usage.
 
 ## 8. Success Metrics

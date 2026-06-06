@@ -210,7 +210,7 @@ Rules specific to the Move Tool subsystem:
 - **Two drag paths**: Canvas path (`input-handler.ts`) handles auto-select and fallback move. Overlay path (`SelectionTransformOverlay.tsx`) handles selected-layer move/resize/rotate handles. Every fix must be verified in both paths.
 - **Layer stack**: `engine.getLayers()` returns top-first order (`layers[0]` = visually topmost). `hitTestLayers()` returns the first visible matching layer.
 - **Transform geometry**: Move math uses visual rect top-left (`transform.x/y`), positive `scaleX/scaleY` magnitude. Orientation (`flipH/flipV`) only affects texture in shader, not geometry.
-- **Rotation convention**: Positive degrees = clockwise (Photoshop-like). Must be consistent across transform geometry, renderer shader, cursor resolver, and SVG overlay.
+- **Rotation convention**: Positive degrees = clockwise. Must be consistent across transform geometry, renderer shader, cursor resolver, and SVG overlay.
 - **Snapping**: Uses transformed AABB (axis-aligned bounding box), not true rotated-edge snapping. Canvas edges/centers have higher priority (3 and 2) than layer-to-layer (1).
 - **Transient states** are separate and must be cleaned explicitly: `snapLines` signal, HUD (`hudInfo`), `dragState`, `hoverHandle`. Cleaning one does not clean the others.
 - **Alt behavior** is context-dependent: canvas move path disables snapping, overlay resize scales from center, brush/eraser switches to eyedropper.

@@ -6,6 +6,7 @@ import {
   AlignEndHorizontal,
   AlignStartVertical,
   AlignEndVertical,
+  ArrowLeftRight,
   Aperture,
   Box,
   Brush,
@@ -46,6 +47,7 @@ import {
   Plus,
   RectangleHorizontal,
   Redo2,
+  RotateCcw,
   RotateCw,
   Slice,
   Sliders,
@@ -124,6 +126,9 @@ export type IconName =
   | "maximize"
   | "paint-bucket"
   | "rotate"
+  | "rotate-ccw"
+  | "rotate-cw"
+  | "swap"
   | "panel-right-open"
   | "panel-right-close"
   | "image"
@@ -194,6 +199,9 @@ const ICONS: Record<IconName, LucideIcon> = {
   maximize: Maximize2,
   "paint-bucket": PaintBucket,
   rotate: RotateCw,
+  "rotate-ccw": RotateCcw,
+  "rotate-cw": RotateCw,
+  swap: ArrowLeftRight,
   "panel-right-open": PanelRightOpen,
   "panel-right-close": PanelRightClose,
   image: ImageIcon,

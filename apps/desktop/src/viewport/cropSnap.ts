@@ -170,7 +170,7 @@ function snapAxis(
 }
 
 /**
- * Photoshop-style crop snapping: canvas edges/centers + visible layer edges/centers.
+ * Crop snapping against canvas edges/centers and visible layer edges/centers.
  * Handle-aware so resize snaps the dragged edges, not only translation.
  */
 export function snapCropRect(

@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "pnpm --filter photrez-desktop dev",
     "build": "pnpm --filter photrez-desktop build",
+    "test:e2e": "pnpm --filter photrez-desktop test:e2e",
     "tauri": "tauri",
     "prepare": "husky"
   },

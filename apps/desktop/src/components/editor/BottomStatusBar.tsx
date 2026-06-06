@@ -13,7 +13,7 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
 };
 
 export function BottomStatusBar() {
-  const { workspace, activeTool, zoom, docWidth, docHeight, layers, activeLayerId, activeDocumentId } = useEditor();
+  const { workspace, activeTool, zoom, docWidth, docHeight, layers, activeLayerId, activeDocumentId, layerTransformSession } = useEditor();
 
   const activeLayerName = () => {
     const activeId = activeLayerId();
@@ -32,6 +32,12 @@ export function BottomStatusBar() {
       case "eraser": return "Eraser Tool";
       default: return "Select Tool";
     }
+  };
+
+  const statusText = () => {
+    const session = layerTransformSession();
+    if (session) return "Transform preview active. Edit values above, Enter to apply, Esc to cancel.";
+    return TOOL_DESCRIPTIONS[activeTool()] || "";
   };
 
   return (
@@ -65,13 +71,14 @@ export function BottomStatusBar() {
             Active: <strong class="text-editor-text">{getToolDisplayName()}</strong>
           </span>
           <span class="border-l border-editor-divider pl-4">
-            <span class="text-editor-text/60">{TOOL_DESCRIPTIONS[activeTool()] || ""}</span>
+            <span class="text-editor-text/60">{statusText()}</span>
           </span>
           <span class="border-l border-editor-divider pl-4">
             Selected Layer: <strong class="text-editor-text">{activeLayerName()}</strong>
           </span>
         </Show>
       </div>
+
 
       <div class={clsx("flex shrink-0 items-center gap-5", !activeDocumentId() && "opacity-50 pointer-events-none")}>
         <button class="flex items-center gap-1 hover:text-editor-text">

@@ -12,6 +12,7 @@ import {
 import { getLayerAabb } from "@/viewport/transformGeometry";
 import { computeSnapAdjustment, type SnapRect } from "@/viewport/smartGuides";
 import type { HudMode } from "./TransformHud";
+import { resetCropPreviewToCanvas, restoreHiddenCropPreview, createCropRectFromDocumentPoints } from "./cropToolActions";
 
 interface UseCanvasPointerToolsParams {
   getCanvasContainerRef: () => HTMLDivElement | undefined;
@@ -48,12 +49,19 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     setFgColor,
     setBgColor,
     zoom,
+    cropRect,
     setCropRect,
+    cropRotation,
+    setCropRotation,
+    hiddenCropPreview,
+    setHiddenCropPreview,
     setHoverHandle,
     moveAutoSelect,
     moveSnapEnabled,
     setHoverPos,
   } = useEditor();
+
+  let isPendingCropClick = false;
 
   const [snapLines, setSnapLines] = createSignal<{ x1: number; y1: number; x2: number; y2: number }[]>([]);
   const [selectionBox, setSelectionBoxSignal] = createSignal<{
@@ -105,7 +113,15 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       setSelectionBoxSignal({ x, y, w, h });
     };
     interactiveState.onCropCreated = (x, y, w, h) => {
-      setCropRect({ x, y, w, h });
+      const nextRect = createCropRectFromDocumentPoints(
+        interactiveState.dragStart,
+        interactiveState.dragCurrent
+      );
+      if (nextRect) {
+        setHiddenCropPreview(null);
+        setCropRotation(0);
+        setCropRect(nextRect);
+      }
     };
     interactiveState.onHoverHandle = setHoverHandle;
 
@@ -161,6 +177,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   };
 
   const handleDoubleClick = (e: MouseEvent) => {
+    if (activeTool() === "crop") return;
     const container = params.getCanvasContainerRef();
     const canvas = params.getCanvasRef();
     if (e.target === container || e.target === canvas) {
@@ -175,6 +192,12 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (!engine || !history) return;
+
+    if (activeTool() === "crop" && !cropRect() && e.button === 0) {
+      isPendingCropClick = true;
+    } else {
+      isPendingCropClick = false;
+    }
 
     if (activeTool() === "move" && moveAutoSelect()) {
       const coords = getDocCoords(e);
@@ -248,6 +271,26 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     if (tool === "brush" || tool === "eraser") {
       const layerId = engine.getActiveLayerId();
       if (layerId) params.commitBrushStroke(engine, layerId);
+    }
+
+    if (tool === "crop" && isPendingCropClick) {
+      const dx = Math.abs(coords.x - interactiveState.dragStart.x);
+      const dy = Math.abs(coords.y - interactiveState.dragStart.y);
+      if (dx <= 2 && dy <= 2) {
+        const restored = restoreHiddenCropPreview({
+          cropRect,
+          cropRotation,
+          hiddenCropPreview,
+          setCropRect,
+          setCropRotation,
+          setHiddenCropPreview,
+        });
+        if (!restored) {
+          resetCropPreviewToCanvas({ engine, setCropRect, setCropRotation, setHiddenCropPreview });
+        }
+        scheduler.requestRender();
+      }
+      isPendingCropClick = false;
     }
 
     setSelectionBoxSignal(null);

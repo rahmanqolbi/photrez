@@ -3,6 +3,8 @@ import { constrainCropRectToDocument } from "@/viewport/cropGeometry";
 import type { ToolType } from "@/viewport/input-handler";
 import { useEditor } from "./EditorContext";
 import { flattenAllLayers, mergeActiveLayerDown } from "./layerOperations";
+import { cancelLayerTransformSession, commitLayerTransformSession } from "./transformSession";
+import { discardCropSession, applyCropPreview } from "./cropToolActions";
 
 interface CanvasKeyboardOptions {
   isSpacePressed: () => boolean;
@@ -33,7 +35,12 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     cropMode,
     cropSizeTarget,
     cropRotation,
+    setCropRotation,
+    hiddenCropPreview,
+    setHiddenCropPreview,
     cropDeletePixels,
+    layerTransformSession,
+    setLayerTransformSession,
   } = useEditor();
 
   onMount(() => {
@@ -56,30 +63,59 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
       const history = workspace.getActiveHistory();
       if (!history) return;
 
+      // Layer transform session keyboard shortcuts (takes precedence over crop/tool shortcuts)
+      if (layerTransformSession()) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.stopPropagation();
+          if (commitLayerTransformSession(layerTransformSession(), engine, history)) {
+            setLayerTransformSession(null);
+            scheduler.requestRender();
+          }
+          return;
+        }
+
+        if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          if (cancelLayerTransformSession(layerTransformSession(), engine)) {
+            setLayerTransformSession(null);
+            scheduler.requestRender();
+          }
+          return;
+        }
+      }
+
       // Crop tool keyboard shortcuts
       if (activeTool() === "crop") {
         if (e.key === "Enter") {
           e.preventDefault();
-          const rect = cropRect();
-          const engine2 = workspace.getActiveEngine();
-          if (rect && engine2) {
-            const history = workspace.getActiveHistory();
-            history?.commit(engine2.snapshot());
-            engine2.applyCrop(rect.x, rect.y, rect.w, rect.h, {
-              deleteCroppedPixels: cropDeletePixels(),
-              targetSize: cropMode() === "size" ? cropSizeTarget() : null,
-              rotation: cropRotation(),
-            });
-            scheduler.requestRender();
-            setCropRect(null);
-            setActiveTool("move");
-          }
+          applyCropPreview({
+            workspace,
+            renderer,
+            cropRect: cropRect(),
+            cropMode: cropMode(),
+            cropSizeTarget: cropSizeTarget(),
+            cropDeletePixels: cropDeletePixels(),
+            cropRotation: cropRotation(),
+            scheduler,
+            setCropRect,
+            setCropRotation,
+            setHiddenCropPreview,
+            setActiveTool,
+          });
           return;
         }
         if (e.key === "Escape") {
           e.preventDefault();
-          setCropRect(null);
-          setActiveTool("move");
+          discardCropSession({
+            cropRect: () => cropRect(),
+            cropRotation: () => cropRotation(),
+            hiddenCropPreview,
+            setCropRect,
+            setCropRotation,
+            setHiddenCropPreview,
+          });
           return;
         }
         if (e.key.startsWith("Arrow") && cropRect()) {
@@ -118,6 +154,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
       }
 
       const key = e.key.toLowerCase();
+
       const ctrl = e.ctrlKey || e.metaKey;
 
       if (ctrl && key === "e") {

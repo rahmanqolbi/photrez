@@ -6,6 +6,7 @@ import { useCropOverlayDrag } from "./useCropOverlayDrag";
 import { CropOverlayGuides } from "./CropOverlayGuides";
 import { CropOverlayHandles } from "./CropOverlayHandles";
 import { CropOverlayTooltip } from "./CropOverlayTooltip";
+import type { CropPreview } from "./cropState";
 
 interface CropOverlayProps {
   cropRect: CropRect | null;
@@ -16,6 +17,7 @@ interface CropOverlayProps {
   cropMode: "free" | "ratio" | "size";
   cropAspect: { w: number; h: number } | null;
   cropRotation?: number;
+  deleteCropped?: boolean;
   onCropRectChange: (rect: CropRect) => void;
   onCropRotationChange?: (angle: number) => void;
   onHoverHandleChange?: (handle: string | null) => void;
@@ -25,6 +27,9 @@ interface CropOverlayProps {
   onRotationStart?: () => void;
   onRotationCommit?: () => void;
   onDragStateChange?: (isDragging: boolean) => void;
+  onApplyCrop?: () => void;
+  hiddenCropPreview?: CropPreview | null;
+  onHiddenCropPreviewChange?: (preview: CropPreview | null) => void;
 }
 
 const HANDLE_TYPES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
@@ -58,7 +63,7 @@ export function CropOverlay(props: CropOverlayProps) {
     zoom: props.zoom,
     cropMode: props.cropMode,
     cropAspect: props.cropAspect,
-    cropRotation: props.cropRotation,
+    cropRotation: () => props.cropRotation,
     onCropRectChange: props.onCropRectChange,
     onCropRotationChange: props.onCropRotationChange,
     onHoverHandleChange: props.onHoverHandleChange,
@@ -69,6 +74,7 @@ export function CropOverlay(props: CropOverlayProps) {
     onRotationCommit: props.onRotationCommit,
     onDragStateChange: props.onDragStateChange,
     getSvgRef: () => svgRef,
+    onHiddenCropPreviewChange: props.onHiddenCropPreviewChange,
   });
 
   const cropRectCenter = createMemo(() => {
@@ -121,13 +127,20 @@ export function CropOverlay(props: CropOverlayProps) {
         <defs>
           <mask id="crop-shield">
             <rect
-              x={0} y={0}
-              width={props.canvasWidth}
-              height={props.canvasHeight}
+              x={-props.canvasWidth}
+              y={-props.canvasHeight}
+              width={props.canvasWidth * 3}
+              height={props.canvasHeight * 3}
               fill="white"
-              transform={cropRotationValue() !== 0 ? `rotate(${-cropRotationValue()} ${cropRectCenter().x} ${cropRectCenter().y})` : undefined}
             />
-            <rect x={props.cropRect!.x} y={props.cropRect!.y} width={props.cropRect!.w} height={props.cropRect!.h} fill="black" />
+            <rect
+              x={props.cropRect!.x}
+              y={props.cropRect!.y}
+              width={props.cropRect!.w}
+              height={props.cropRect!.h}
+              fill="black"
+              transform={cropRotationValue() !== 0 ? `rotate(${cropRotationValue()} ${cropRectCenter().x} ${cropRectCenter().y})` : undefined}
+            />
           </mask>
         </defs>
         <rect
@@ -135,52 +148,58 @@ export function CropOverlay(props: CropOverlayProps) {
           y={-props.canvasHeight}
           width={props.canvasWidth * 3}
           height={props.canvasHeight * 3}
-          fill="rgba(0,0,0,0.5)"
+          fill={props.deleteCropped ? "#161618" : "rgba(0,0,0,0.5)"}
+          fill-opacity={props.deleteCropped ? 0.98 : 1}
           mask="url(#crop-shield)"
           style={{ "pointer-events": "none" }}
         />
-        <rect
-          x={props.cropRect!.x} y={props.cropRect!.y} width={props.cropRect!.w} height={props.cropRect!.h}
-          fill="none" stroke="white"
-          stroke-width={1 / props.zoom}
-          vector-effect="non-scaling-stroke"
-          style={{ "pointer-events": "none" }}
-        />
-        <CropOverlayGuides
-          x={props.cropRect!.x}
-          y={props.cropRect!.y}
-          w={props.cropRect!.w}
-          h={props.cropRect!.h}
-          zoom={props.zoom}
-          guideMode={props.guideMode}
-        />
-
-        {/* Move hit zone — below handles so corners/edges win */}
-        <rect
-          x={props.cropRect!.x}
-          y={props.cropRect!.y}
-          width={props.cropRect!.w}
-          height={props.cropRect!.h}
-          fill="transparent"
-          data-crop-move
-          style={{ cursor: "move", "pointer-events": "all" }}
-          onPointerDown={(e) => startDrag(e, "move")}
-          onPointerEnter={() => setHover("move")}
-          onPointerLeave={() => { if (!dragState()) setHover(null); }}
-        />
-
-        <CropOverlayHandles
-          handles={handles()}
-          zoom={props.zoom}
-          hitSize={ht()}
-          rotateOuter={ro()}
-          activeHandle={activeHandle()}
-          hoverHandle={hoverHandle()}
-          isDragging={!!dragState()}
-          startDrag={startDrag}
-          setHover={setHover}
-          setHoverPos={setHoverPos}
-        />
+        <g transform={cropRotationValue() !== 0 ? `rotate(${cropRotationValue()} ${cropRectCenter().x} ${cropRectCenter().y})` : undefined}>
+          <rect
+            x={props.cropRect!.x} y={props.cropRect!.y} width={props.cropRect!.w} height={props.cropRect!.h}
+            fill="none" stroke="white"
+            stroke-width={1 / props.zoom}
+            vector-effect="non-scaling-stroke"
+            style={{ "pointer-events": "none" }}
+          />
+          <CropOverlayGuides
+            x={props.cropRect!.x}
+            y={props.cropRect!.y}
+            w={props.cropRect!.w}
+            h={props.cropRect!.h}
+            zoom={props.zoom}
+            guideMode={props.guideMode}
+          />
+          {/* Move hit zone */}
+          <rect
+            x={props.cropRect!.x}
+            y={props.cropRect!.y}
+            width={props.cropRect!.w}
+            height={props.cropRect!.h}
+            fill="transparent"
+            data-crop-move
+            style={{ cursor: "move", "pointer-events": "all" }}
+            onPointerDown={(e) => startDrag(e, "move")}
+            onPointerEnter={() => setHover("move")}
+            onPointerLeave={() => { if (!dragState()) setHover(null); }}
+            onDblClick={(e) => {
+              e.stopPropagation();
+              props.onApplyCrop?.();
+            }}
+          />
+          <CropOverlayHandles
+            handles={handles()}
+            zoom={props.zoom}
+            hitSize={ht()}
+            rotateOuter={ro()}
+            activeHandle={activeHandle()}
+            hoverHandle={hoverHandle()}
+            isDragging={!!dragState()}
+            startDrag={startDrag}
+            setHover={setHover}
+            setHoverPos={setHoverPos}
+            cropRotation={cropRotationValue()}
+          />
+        </g>
 
         <Show when={tooltip()}>
           {(t) => (

@@ -6,7 +6,7 @@ Scope: MVP usability recovery
 
 ## 1. Summary
 
-Photrez needs a Photoshop/Affinity-style multi-document workspace so the app feels familiar and usable immediately after launch. The current single-document mental model makes the app feel incomplete when opened and does not support a normal workflow where users open several images side by side as separate work items.
+Photrez needs a multi-document workspace so the app feels familiar and usable immediately after launch. The current single-document mental model makes the app feel incomplete when opened and does not support a normal workflow where users open several images side by side as separate work items.
 
 This design adds:
 
@@ -29,7 +29,7 @@ Make the first usable workflow obvious:
 4. Work on each image as a separate document tab.
 5. Export the active document.
 
-The result should be familiar to Photoshop/Affinity users without copying Adobe branding or visual identity.
+The result should feel familiar to users of professional image editors without copying third-party branding or visual identity.
 
 ## 3. Decisions Locked During Design Discussion
 
@@ -74,7 +74,7 @@ Non-default behavior:
 
 Rationale:
 
-- Matches Photoshop/Affinity expectations for opening multiple files.
+- Matches common expectations for opening multiple files.
 - Avoids surprising users by mutating the current document when they intended to open another image.
 - Keeps MVP recovery focused on usable document opening and editing.
 
@@ -128,7 +128,7 @@ Behavior:
 
 Rationale:
 
-- Matches the default Photoshop/Affinity mental model.
+- Matches the default multi-document editing mental model.
 - Keeps export behavior predictable.
 
 ### 3.6 Per-Document State
@@ -244,7 +244,7 @@ Decision: MVP UI copy remains English.
 Rationale:
 
 - Existing i18n strategy locks MVP English-only.
-- Photoshop/Affinity familiarity is strongest with common English editor labels.
+- Familiarity is strongest with common English editor labels.
 
 ## 4. Non-Goals
 
@@ -453,7 +453,7 @@ Current backend structure is effectively single-document:
 - `EditorState` owns one `Mutex<HistoryStore>`.
 - Commands implicitly mutate that single document.
 
-This does not support Photoshop/Affinity-like multi-document editing.
+This does not support multi-document editing.
 
 ### 6.2 Target Model
 

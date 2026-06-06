@@ -3,22 +3,40 @@ import { clsx } from "clsx";
 import { Icon } from "./icons";
 import { useEditor } from "./EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
+import { cancelLayerTransformSession } from "./transformSession";
 
 export function DocumentTabsBar() {
-  const { workspace, documents, activeDocumentId, scheduler } = useEditor();
+  const { workspace, documents, activeDocumentId, scheduler, layerTransformSession, setLayerTransformSession } = useEditor();
+
+  const cancelActiveTransformSession = () => {
+    const engine = workspace.getActiveEngine();
+    if (cancelLayerTransformSession(layerTransformSession(), engine)) {
+      setLayerTransformSession(null);
+      scheduler.requestRender();
+    }
+  };
 
   const handleSwitchTab = (id: string) => {
+    if (layerTransformSession()) {
+      cancelActiveTransformSession();
+    }
     workspace.switchDocument(id);
     scheduler.requestRender();
   };
 
   const handleCloseTab = (e: MouseEvent, id: string) => {
     e.stopPropagation();
+    if (layerTransformSession()) {
+      cancelActiveTransformSession();
+    }
     workspace.removeDocument(id);
     scheduler.requestRender();
   };
 
   const handleNewTab = () => {
+    if (layerTransformSession()) {
+      cancelActiveTransformSession();
+    }
     const nextId = `doc-${crypto.randomUUID()}`;
     const name = `Untitled-${workspace.getDocumentCount() + 1}`;
     const session = WorkspaceManager.createBlankDocument(nextId, name, 800, 600);

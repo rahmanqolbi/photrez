@@ -239,7 +239,7 @@ Crop box tidak muncul saat Crop Tool diaktifkan karena:
 
 ### Scope
 
-Replace old display-only crop section (W/H display + APPLY CROP + Cancel) with full interactive Photoshop-style crop controls:
+Replace old display-only crop section (W/H display + APPLY CROP + Cancel) with full interactive crop controls:
 - Mode dropdown: Free / Ratio / Size
 - Free mode: display cropRect W/H
 - Ratio mode: editable aspect ratio W:H
@@ -509,7 +509,7 @@ Fix sebelumnya menggunakan aspect-ratio diagonal object sebagai projection axis 
 
 ### Root Cause
 
-Fix sebelumnya (`docs/AI_HISTORY.md`: BUG FIX — Photoshop-Style Diagonal Projection):
+Fix sebelumnya (`docs/AI_HISTORY.md`: BUG FIX — Diagonal Projection):
 ```ts
 const diagX = handle === "se" || handle === "ne" ? oldW : -oldW;
 const diagY = handle === "se" || handle === "sw" ? oldH : -oldH;
@@ -669,13 +669,13 @@ Resize handle pointer capture bisa "lost" saat resize terlalu cepat. Root cause:
 
 ---
 
-## Current Task — Photoshop-Style Diagonal Projection for Corner Resize (Fix Perpendicular Drift) [COMPLETE]
+## Current Task — Diagonal Projection for Corner Resize (Fix Perpendicular Drift) [COMPLETE]
 
 Date: 2026-06-02
 
 ### Deskripsi
 
-Saat resize dari corner handle dengan mode proportional, gerakan mouse yang tegak lurus terhadap diagonal resize (mis. gerakan NE/SW saat handle SE ditarik) tetap mengubah ukuran gambar. Di Photoshop, gerakan perpendicular tidak menyebabkan perubahan ukuran — hanya gerakan yang sejajar diagonal resize yang memengaruhi.
+Saat resize dari corner handle dengan mode proportional, gerakan mouse yang tegak lurus terhadap diagonal resize (mis. gerakan NE/SW saat handle SE ditarik) tetap mengubah ukuran gambar. Target behavior: gerakan perpendicular tidak menyebabkan perubahan ukuran — hanya gerakan yang sejajar diagonal resize yang memengaruhi.
 
 ### Root Cause
 
@@ -729,7 +729,7 @@ Date: 2026-06-02
 
 ### Deskripsi
 
-Bugfix campaign setelah Photoshop-like Free Transform implementation. Memperbaiki 7 kategori bugs yang ditemukan selama audit P0/P1:
+Bugfix campaign setelah Free Transform implementation. Memperbaiki 7 kategori bugs yang ditemukan selama audit P0/P1:
 
 1. **[COMPLETE]** Repo state repair (Task 0): HEAD buildable from clean checkout — removed stale vite-tsconfig-paths references, committed all pending spec/plan/test files
 2. **[COMPLETE]** Transform semantics fix (Task 2): Shader center-anchored flip (`center → flip`, not `flip → center`). Geometry helpers decouple flip from scale magnitude. CW rotation unified (positive deg = CW) across shader, geometry, SVG overlay, and tests.
@@ -814,20 +814,20 @@ Meningkatkan Move Tool dengan keyboard nudge, canvas auto-select layer, transfor
 
 ---
 
-## Current Task — Photoshop-Like Free Transform for Move Tool [COMPLETE]
+## Current Task — Free Transform for Move Tool [COMPLETE]
 
 Date: 2026-06-02
 
 ### Deskripsi
 
-Implementasi Photoshop-like Free Transform overlay untuk Move Tool. Layer rendering, bounding box, handles, hit testing, cursor, resize math semua menggunakan true 2D transform, sehingga bounding box dan handle mengikuti rotasi/flip layer dengan benar.
+Implementasi Free Transform overlay untuk Move Tool. Layer rendering, bounding box, handles, hit testing, cursor, resize math semua menggunakan true 2D transform, sehingga bounding box dan handle mengikuti rotasi/flip layer dengan benar.
 
 ### Tasks
 
 1. **[COMPLETE]** Transform geometry helpers (`transformGeometry.ts`) + unit tests
 2. **[COMPLETE]** Renderer applies real transform in shader (rotation, flip, center-anchored scale)
 3. **[COMPLETE]** SVG free transform overlay (replace HTML div overlay)
-4. **[COMPLETE]** Photoshop-like pointer math (local-axis resize, rotate drag, modifier keys)
+4. **[COMPLETE]** Local-axis pointer math (resize, rotate drag, modifier keys)
 5. **[COMPLETE]** Dynamic cursor UX (rotation-aware resize cursor)
 6. **[COMPLETE]** Snapping uses transformed AABB
 7. **[COMPLETE]** Verification + docs updates
@@ -852,7 +852,7 @@ Implementasi Photoshop-like Free Transform overlay untuk Move Tool. Layer render
 
 ### Catatan
 
-- Convention: positive rotation = CW (Photoshop-like), shader negates radians to match
+- Convention: positive rotation = CW, shader negates radians to match
 - SVG bounding box rect is axis-aligned (AABB) outside rotated group; handles inside rotated group
 - Handle naming changed from tl/tr/br/bl/t/b/l/r to nw/ne/se/sw/n/e/s/w
 - cursor-resolver tests updated to use new handle naming
@@ -862,7 +862,7 @@ Implementasi Photoshop-like Free Transform overlay untuk Move Tool. Layer render
 
 ### Spec
 
-`docs/superpowers/specs/2026-06-02-photoshop-like-free-transform-design.md`
+`docs/superpowers/specs/2026-06-02-free-transform-design.md`
 
 ---
 
@@ -1131,7 +1131,7 @@ User melihat "move arrow" bukan karena canvas cursor binding rusak, tapi karena 
 ### Catatan
 
 - **Penting**: Cursor binding di canvas (`createEffect` imperative) sekarang BARU bekerja karena overlay tidak intercept lagi. Dua fix sebelumnya benar secara code, tapi tidak terlihat efeknya karena overlay遮盖 canvas.
-- **UX behavior**: Bounding box overlay tetap visible saat Space ditekan (visual feedback), tapi tidak interactive. Sesuai standard image editor (Photoshop, GIMP) — Space = temporary hand/pan tool, override semua tool/handle interactions.
+- **UX behavior**: Bounding box overlay tetap visible saat Space ditekan (visual feedback), tapi tidak interactive. Sesuai standard image editor — Space = temporary hand/pan tool, override semua tool/handle interactions.
 - **Manual test recommended**: `pnpm tauri dev` → hard restart → buka image dengan move tool → tahan Space → cursor HARUS "grab" (bukan "move arrow"); drag = pan canvas (bukan move layer); lepas Space → cursor kembali ke "move"/handle-specific.
 
 ## Previous Task — Cursor Imperative Sync via createEffect [COMPLETE]
@@ -1531,7 +1531,7 @@ Date: 2026-05-31
 
 ### Deskripsi
 
-Mengimplementasikan sistem Viewport navigasi tingkat tinggi persis Photoshop/Figma, yang meliputi Spacebar drag-panning, middle-click panning, Kinetic Momentum Scrolling (flick panning), Shift+Scroll horizontal panning, double-click background untuk fit screen, serta shortcut keyboard Ctrl+Equal/Minus/Zero.
+Mengimplementasikan sistem Viewport navigasi tingkat tinggi, yang meliputi Spacebar drag-panning, middle-click panning, Kinetic Momentum Scrolling (flick panning), Shift+Scroll horizontal panning, double-click background untuk fit screen, serta shortcut keyboard Ctrl+Equal/Minus/Zero.
 
 ### Rencana Kerja
 
@@ -1550,7 +1550,7 @@ Date: 2026-05-31
 
 ### Deskripsi
 
-Mengimplementasikan Move Tool dengan UX interaktif persis Photoshop, yang merender bounding outline dan 8 resize handles, serta memetakan pergeseran/skala pointer ke DocumentEngine transform parameters dengan dukungan rasio aspek terkunci (Shift key) dan Undo/Redo history.
+Mengimplementasikan Move Tool dengan UX interaktif presisi tinggi, yang merender bounding outline dan 8 resize handles, serta memetakan pergeseran/skala pointer ke DocumentEngine transform parameters dengan dukungan rasio aspek terkunci (Shift key) dan Undo/Redo history.
 
 ### Rencana Kerja
 
@@ -1731,7 +1731,7 @@ Date: 2026-05-29
 
 ### Deskripsi
 
-Implementasi multi-document workspace ala Photoshop/Affinity: document tab strip, empty state minimal, multi-file open/drag-drop, per-document state, active-document command routing, dan backend-owned `WorkspaceState`.
+Implementasi multi-document workspace: document tab strip, empty state minimal, multi-file open/drag-drop, per-document state, active-document command routing, dan backend-owned `WorkspaceState`.
 
 ### Perubahan
 

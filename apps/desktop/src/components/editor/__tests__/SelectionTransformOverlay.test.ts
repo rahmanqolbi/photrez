@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render } from "solid-js/web";
-import { EditorProvider } from "../EditorContext";
+import { EditorProvider, useEditor } from "../EditorContext";
 import { SelectionTransformOverlay } from "../SelectionTransformOverlay";
 import { WorkspaceManager } from "@/engine/workspace";
 
@@ -399,5 +399,133 @@ describe("Snap line cleanup", () => {
     expect(onSnapClear).toHaveBeenCalledTimes(1);
 
     restore();
+  });
+
+  it("creates a transform session on resize pointerdown but not on move pointerdown", () => {
+    let capturedSession: any = null;
+    const TestComponent = () => {
+      const { layerTransformSession } = useEditor();
+      capturedSession = layerTransformSession;
+      return h(SelectionTransformOverlay, null)();
+    };
+
+    const ws = new WorkspaceManager();
+    const sessionDoc = WorkspaceManager.createBlankDocument("session-test", "Test", 800, 600);
+    const mockRenderer = {} as any;
+    const mockScheduler = { requestRender: vi.fn() } as any;
+
+    const origSet = SVGElement.prototype.setPointerCapture;
+    const setSpy = vi.fn();
+    SVGElement.prototype.setPointerCapture = setSpy;
+
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    const releaseSpy = vi.fn();
+    SVGElement.prototype.releasePointerCapture = releaseSpy;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      h(
+        EditorProvider,
+        { workspace: ws, renderer: mockRenderer, scheduler: mockScheduler },
+        h(TestComponent, null),
+      ),
+      container,
+    );
+    ws.addDocument(sessionDoc);
+
+    const handle = container.querySelector("[data-handle]") as SVGElement;
+    const moveRect = container.querySelector("rect[data-move]") as SVGElement;
+
+    expect(capturedSession()).toBeNull();
+
+    // Trigger down on move rect
+    moveRect.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 30,
+        bubbles: true,
+        cancelable: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+    expect(capturedSession()).toBeNull();
+
+    // Trigger down on resize handle
+    handle.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 31,
+        bubbles: true,
+        cancelable: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+    expect(capturedSession()).not.toBeNull();
+    expect(capturedSession().documentId).toBe("session-test");
+    expect(capturedSession().layerId).not.toBeNull();
+    expect(capturedSession().originalSnapshot).not.toBeNull();
+
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("Escape during active resize restores original snapshot and clears session", () => {
+    let capturedSession: any = null;
+    const TestComponent = () => {
+      const { layerTransformSession } = useEditor();
+      capturedSession = layerTransformSession;
+      return h(SelectionTransformOverlay, null)();
+    };
+
+    const ws = new WorkspaceManager();
+    const sessionDoc = WorkspaceManager.createBlankDocument("escape-test", "Test", 800, 600);
+    const mockRenderer = {} as any;
+    const mockScheduler = { requestRender: vi.fn() } as any;
+
+    const origSet = SVGElement.prototype.setPointerCapture;
+    const setSpy = vi.fn();
+    SVGElement.prototype.setPointerCapture = setSpy;
+
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    const releaseSpy = vi.fn();
+    SVGElement.prototype.releasePointerCapture = releaseSpy;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      h(
+        EditorProvider,
+        { workspace: ws, renderer: mockRenderer, scheduler: mockScheduler },
+        h(TestComponent, null),
+      ),
+      container,
+    );
+    ws.addDocument(sessionDoc);
+
+    const handle = container.querySelector("[data-handle]") as SVGElement;
+
+    // Trigger down on resize handle to start session
+    handle.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 40,
+        bubbles: true,
+        cancelable: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+    expect(capturedSession()).not.toBeNull();
+
+    // Trigger escape keydown
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(capturedSession()).toBeNull();
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
   });
 });

@@ -494,6 +494,74 @@ describe("CropOverlay reactivity", () => {
 });
 
 describe("CropOverlay new crop box drawing", () => {
+  it("preserves outside document bounds when drawing a replacement crop box", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(() => {
+      const [cropRect, setCropRect] = createSignal({ x: 100, y: 100, w: 200, h: 120 });
+      return (
+        <CropOverlay
+          cropRect={cropRect()}
+          guideMode="thirds"
+          canvasWidth={800}
+          canvasHeight={600}
+          zoom={1}
+          cropMode="free"
+          cropAspect={null}
+          onCropRectChange={setCropRect}
+        />
+      );
+    }, container);
+
+    const svgEl = container.querySelector("svg");
+    expect(svgEl).not.toBeNull();
+
+    svgEl!.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 12,
+        bubbles: true,
+        cancelable: true,
+        clientX: -20,
+        clientY: -10,
+      }),
+    );
+    svgEl!.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 12,
+        bubbles: true,
+        cancelable: true,
+        clientX: 900,
+        clientY: 710,
+      }),
+    );
+    svgEl!.dispatchEvent(
+      new PointerEvent("pointerup", {
+        pointerId: 12,
+        bubbles: true,
+        cancelable: true,
+        clientX: 900,
+        clientY: 710,
+      }),
+    );
+
+    const visualRect = container.querySelectorAll("rect")[3];
+    expect(visualRect.getAttribute("x")).toBe("-20");
+    expect(visualRect.getAttribute("y")).toBe("-10");
+    expect(visualRect.getAttribute("width")).toBe("920");
+    expect(visualRect.getAttribute("height")).toBe("720");
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
   it("ignores tiny new crop draws and restores the previous crop box", () => {
     const origSet = SVGElement.prototype.setPointerCapture;
     SVGElement.prototype.setPointerCapture = vi.fn();

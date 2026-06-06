@@ -1,5 +1,6 @@
 import { For, Show } from "solid-js";
 import { getCursorForHandle } from "@/viewport/transformGeometry";
+import { getRotatePath } from "./SelectionTransformOverlay";
 
 interface CropOverlayHandlesProps {
   handles: { type: string; cx: number; cy: number; size: number }[];
@@ -12,24 +13,29 @@ interface CropOverlayHandlesProps {
   startDrag: (e: PointerEvent, handle: string) => void;
   setHover: (handle: string | null) => void;
   setHoverPos: (pos: { x: number; y: number } | null) => void;
+  cropRotation?: number;
 }
 
 export function CropOverlayHandles(props: CropOverlayHandlesProps) {
   return (
     <For each={props.handles}>
       {(h) => {
-        const cursor = getCursorForHandle(h.type, 0, 1, 1);
+        const cursor = getCursorForHandle(h.type, props.cropRotation ?? 0, 1, 1);
         return (
           <g>
             {/* Corner rotate zone ring (only for corners) */}
             <Show when={["nw", "ne", "se", "sw"].includes(h.type)}>
               <path
-                d={`M ${h.cx} ${h.cy - props.rotateOuter} 
-                    A ${props.rotateOuter} ${props.rotateOuter} 0 1 1 ${h.cx} ${h.cy + props.rotateOuter} 
-                    A ${props.rotateOuter} ${props.rotateOuter} 0 1 1 ${h.cx} ${h.cy - props.rotateOuter} Z
-                    M ${h.cx} ${h.cy - props.hitSize} 
-                    A ${props.hitSize} ${props.hitSize} 0 1 0 ${h.cx} ${h.cy + props.hitSize} 
-                    A ${props.hitSize} ${props.hitSize} 0 1 0 ${h.cx} ${h.cy - props.hitSize} Z`}
+                d={getRotatePath(h.type, h.cx, h.cy, props.rotateOuter, props.rotateOuter - 6 / props.zoom)}
+                fill="none"
+                stroke="white"
+                stroke-width={1.5 / props.zoom}
+                vector-effect="non-scaling-stroke"
+                style={{ "pointer-events": "none" }}
+                opacity={props.hoverHandle?.startsWith("rotate") || props.activeHandle?.startsWith("rotate") ? 1 : 0.6}
+              />
+              <path
+                d={getRotatePath(h.type, h.cx, h.cy, props.rotateOuter, props.hitSize)}
                 fill="transparent"
                 fill-rule="evenodd"
                 style={{ "pointer-events": "all" }}

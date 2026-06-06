@@ -37,7 +37,7 @@ interface UseSelectionTransformDragParams {
 }
 
 export function useSelectionTransformDrag(props: UseSelectionTransformDragParams) {
-  const { workspace, activeLayerId, layers, zoom, pan, scheduler, activeTool, hoverHandle, setHoverHandle, moveSnapEnabled, setHoverPos, hoverPos } = useEditor();
+  const { workspace, activeLayerId, layers, zoom, pan, scheduler, activeTool, hoverHandle, setHoverHandle, moveSnapEnabled, setHoverPos, hoverPos, layerTransformSession, setLayerTransformSession } = useEditor();
 
   const activeLayer = createMemo(() => {
     const id = activeLayerId();
@@ -149,6 +149,8 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
     }
   };
 
+  const isLayerTransformSessionType = (type: string) => type === "rotate" || type !== "move";
+
   const handlePointerDown = (e: PointerEvent, type: string) => {
     if (props.isNavigationMode) return;
     e.stopPropagation();
@@ -162,7 +164,27 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
       svg.setPointerCapture(e.pointerId);
     }
 
-    history.commit(engine.snapshot());
+    const existing = layerTransformSession();
+    if (existing && (existing.documentId !== engine.getId() || existing.layerId !== layer.id)) {
+      return;
+    }
+
+    if (isLayerTransformSessionType(type)) {
+      if (!layerTransformSession()) {
+        const originalSnapshot = engine.snapshot();
+        setLayerTransformSession({
+          documentId: engine.getId(),
+          layerId: layer.id,
+          originalSnapshot,
+          originalTransform: { ...layer.transform },
+          mode: type === "rotate" ? "rotate" : "resize",
+          lockRatio: e.shiftKey,
+          startedAt: Date.now(),
+        });
+      }
+    } else {
+      history.commit(engine.snapshot());
+    }
 
     setDragState({
       type,
@@ -172,6 +194,7 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
       pointerId: e.pointerId,
     });
   };
+
 
   const handlePointerMove = (e: PointerEvent) => {
     const drag = dragState();
@@ -241,6 +264,11 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
         deltaX: 0, deltaY: 0, width: 0, height: 0, scalePercent: 0, snapActive: props.snapActive ?? false,
       });
     } else {
+      const session = layerTransformSession();
+      const lockRatio = session?.layerId === layer.id && session.documentId === workspace.getActiveEngine()?.getId()
+        ? session.lockRatio || e.shiftKey
+        : e.shiftKey;
+
       const newTransform = applyResizeHandle(
         drag.startTransform,
         layer.width,
@@ -248,7 +276,7 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
         drag.type,
         dx,
         dy,
-        e.shiftKey,
+        lockRatio,
         e.altKey
       );
       engine.transformLayer(layer.id, newTransform);
@@ -309,7 +337,13 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
         const engine = workspace.getActiveEngine();
         const layer = getLayer();
         if (engine && layer) {
-          engine.transformLayer(layer.id, drag.startTransform);
+          const session = layerTransformSession();
+          if (session?.documentId === engine.getId() && session.layerId === layer.id) {
+            engine.restore(session.originalSnapshot);
+            setLayerTransformSession(null);
+          } else {
+            engine.transformLayer(layer.id, drag.startTransform);
+          }
           scheduler.requestRender();
         }
         const svg = props.getSvgRef();

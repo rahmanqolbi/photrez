@@ -720,11 +720,11 @@ WebGL renderer harus render dokumen di resolusi 1:1 tanpa viewport transform. CS
 
 ---
 
-## [2026-05-31] FEATURE — High-Fidelity Photoshop-style Viewport Navigation & Kinetic Panning [COMPLETE]
+## [2026-05-31] FEATURE — High-Fidelity Viewport Navigation & Kinetic Panning [COMPLETE]
 
 ### Kategori: FEATURE / UI / FRONTEND / DESIGN
 
-**Deskripsi:** Mengimplementasikan fungsionalitas navigasi viewport premium yang terinspirasi dari alur kerja Photoshop dan Figma, meliputi Spacebar drag-panning, middle-click panning, kinetic momentum scrolling, Shift+Scroll horizontal panning, double-click background to fit, dan hotkey zoom global.
+**Deskripsi:** Mengimplementasikan fungsionalitas navigasi viewport premium, meliputi Spacebar drag-panning, middle-click panning, kinetic momentum scrolling, Shift+Scroll horizontal panning, double-click background to fit, dan hotkey zoom global.
 
 **Solusi:**
 1. **Spacebar & Middle-Click Panning** (`CanvasViewport.tsx`) — Mengintegrasikan event listeners `keydown` dan `keyup` global untuk mendeteksi Spacebar. Menampilkan cursor `"grab"` saat Spacebar ditekan dan `"grabbing"` saat dragging terjadi. Mengaktifkan drag-panning instan pada middle-mouse click (`button === 1`) tanpa Spacebar.
@@ -742,11 +742,11 @@ WebGL renderer harus render dokumen di resolusi 1:1 tanpa viewport transform. CS
 
 ---
 
-## [2026-05-31] FEATURE — High-Fidelity Photoshop-style Move & Transform Overlay [COMPLETE]
+## [2026-05-31] FEATURE — High-Fidelity Move & Transform Overlay [COMPLETE]
 
 ### Kategori: FEATURE / UI / FRONTEND / DESIGN
 
-**Deskripsi:** Mengimplementasikan fungsionalitas "Move Tool" dengan fidelitas tinggi di viewport kanvas (SolidJS + WebGL2) yang berperilaku persis seperti UX Photoshop. Ini menyediakan gizmo bounding box interaktif dengan 8 resize handles dan crosshair tengah, yang terikat dinamis dengan TypeScript Document Engine dan WebGL2 renderer.
+**Deskripsi:** Mengimplementasikan fungsionalitas "Move Tool" dengan fidelitas tinggi di viewport kanvas (SolidJS + WebGL2). Ini menyediakan gizmo bounding box interaktif dengan 8 resize handles dan crosshair tengah, yang terikat dinamis dengan TypeScript Document Engine dan WebGL2 renderer.
 
 **Solusi:**
 1. **SelectionTransformOverlay Component** (`SelectionTransformOverlay.tsx`) — Membuat overlay SolidJS dengan outline dashed oranye Photon Amber (`#E15A17`) dan pixel-perfect 1px shadow border.
@@ -805,7 +805,7 @@ WebGL renderer harus render dokumen di resolusi 1:1 tanpa viewport transform. CS
 
 ### Kategori: FEATURE / UI / FRONTEND / DESIGN / POLISH
 
-**Deskripsi:** Memoles beberapa elemen antarmuka editor desktop untuk memberikan sentuhan premium profesional "Soft & Snappy" yang setara dengan software kreatif komersial (Photoshop/Affinity). Ini mencakup perancangan ulang color swatches, pemangkasan icon non-MVP, perbaikan layout spacing tool rail, dan optimalisasi visual hierarki huruf pada tab control untuk mengeliminasi ilusi optik kebesaran teks.
+**Deskripsi:** Memoles beberapa elemen antarmuka editor desktop untuk memberikan sentuhan premium profesional "Soft & Snappy". Ini mencakup perancangan ulang color swatches, pemangkasan icon non-MVP, perbaikan layout spacing tool rail, dan optimalisasi visual hierarki huruf pada tab control untuk mengeliminasi ilusi optik kebesaran teks.
 
 **Solusi:**
 1. **Premium Diagonal Color Swatch** (`LeftToolRail.tsx`) — Menggantikan color picker bulat tumpuk standar dengan visual split half-circle diagonal inovatif penuh (`size-[36px]` container, `size-[35px]` overlapping circles). Menggunakan CSS `clip-path` diagonal (`polygon(0 0, 100% 0, 0 100%)` untuk foreground dan `polygon(100% 100%, 100% 0, 0 100%)` untuk background) dengan offset pemosisian absolut presisi yang menghasilkan diagonal gap 1.4px transparan yang seimbang.
@@ -815,7 +815,7 @@ WebGL renderer harus render dokumen di resolusi 1:1 tanpa viewport transform. CS
 
 **Validasi:**
 - `pnpm run build`: SUCCESS (TypeScript type check dan Vite bundler selesai sukses).
-- Visual terverifikasi pixel-perfect, snappy, dan sangat mempet (tight spacing) layaknya Photoshop asli.
+- Visual terverifikasi pixel-perfect, snappy, dan sangat mempet (tight spacing).
 
 ## [2026-05-30] DOCUMENTATION — Style Guide & Design Tokens Synchronization [COMPLETE]
 
@@ -1201,7 +1201,7 @@ WebGL renderer harus render dokumen di resolusi 1:1 tanpa viewport transform. CS
 ### Kategori: FEATURE / UI / FRONTEND
 
 **Deskripsi:** Mengimplementasikan konsep "Idea A" untuk menyulap area bawah Right Inspector Panel menjadi sasis nampan fisik berkedalaman (Recessed Compartment). Menghilangkan tampilan latar belakang panel kanan yang datar, dan menggantinya dengan tray mekanis dengan detail visual:
-1. **Wadah Tenggelam (Sunken Tray)**: Membungkus tab Layers dan History dalam kontainer dengan latar belakang abu-abu midnight (`#161618` / `bg-studio-canvas`) dan bayangan mekanis ke dalam (`shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)]`), memberikan ilusi depth 3D yang meyakinkan layaknya Figma atau Lightroom.
+1. **Wadah Tenggelam (Sunken Tray)**: Membungkus tab Layers dan History dalam kontainer dengan latar belakang abu-abu midnight (`#161618` / `bg-studio-canvas`) dan bayangan mekanis ke dalam (`shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)]`), memberikan ilusi depth 3D yang meyakinkan.
 2. **Bingkai Tajam Solid**: Memagari nampan dengan crisp 1px solid border (`border-studio-border`) serta sudut tumpul membulat (`rounded-lg`) agar nest sempurna dengan chassis luar.
 3. **Konsistensi Visual Antar Tab**: Menerapkan wadah yang identik dan berdimensi persis sama untuk tab History, memastikan stabilitas spasial ketika berpindah tab.
 4. **Optimasi Scroll & Integrasi Header**: Memisahkan panel header dari kontainer scroll agar tetap terkunci di bagian atas tray (`flex-shrink-0`), dengan warna transparan (`bg-transparent`) yang berpadu halus dengan kedalaman abu-abu midnight.
@@ -1238,7 +1238,7 @@ WebGL renderer harus render dokumen di resolusi 1:1 tanpa viewport transform. CS
 
 ### Kategori: FEATURE / UI / FRONTEND
 
-**Deskripsi:** Merancang ulang baris input koordinat di seksi Transform pada Inspector menjadi gaya **Segmented Transform Grid** yang sangat presisi tinggi dan terinspirasi dari CAD/Figma. Menggabungkan 4 kotak terpisah tebal (X, Y, W, H) menjadi satu tabel matriks 2x2 modular tunggal, meletakkan label sebagai prefix mikro abu-abu di dalam kolom input yang transparan, dan membuat garis border seluruh matriks menyala oranye Photon Amber secara terpadu ketika salah satu kolom koordinat difokuskan.
+**Deskripsi:** Merancang ulang baris input koordinat di seksi Transform pada Inspector menjadi gaya **Segmented Transform Grid** yang sangat presisi tinggi. Menggabungkan 4 kotak terpisah tebal (X, Y, W, H) menjadi satu tabel matriks 2x2 modular tunggal, meletakkan label sebagai prefix mikro abu-abu di dalam kolom input yang transparan, dan membuat garis border seluruh matriks menyala oranye Photon Amber secara terpadu ketika salah satu kolom koordinat difokuskan.
 
 **Perubahan:**
 1. **`App.tsx`** — Mengganti grid input koordinat di bawah Transform section dengan kontainer tabel matriks 2x2 (`grid grid-cols-2 grid-rows-2 divide-x divide-y border border-studio-border rounded-md bg-studio-input overflow-hidden`) yang menampung prefix labels (`X`, `Y`, `W`, `H`) dan borderless transparent inputs, didukung transisi border dinamis (`focus-within:border-accent transition-colors duration-100`).
@@ -1266,7 +1266,7 @@ WebGL renderer harus render dokumen di resolusi 1:1 tanpa viewport transform. CS
 
 ### Kategori: FEATURE / UI / FRONTEND
 
-**Deskripsi:** Memoles Left Tool Rail untuk meningkatkan estetika mekanis desktop profesional berkinerja tinggi. Menambahkan efek 3D inset shadow pada tombol tool aktif agar tampak masuk secara fisik ke dalam sasis panel. Merancang ulang color swatches menjadi modul interaktif gaya Photoshop lengkap dengan tombol panah melengkung ganda swap-color (pojok kanan atas), tombol default reset warna (pojok kiri bawah), dan mengaitkannya dengan hotkeys global `X` dan `D`.
+**Deskripsi:** Memoles Left Tool Rail untuk meningkatkan estetika mekanis desktop profesional berkinerja tinggi. Menambahkan efek 3D inset shadow pada tombol tool aktif agar tampak masuk secara fisik ke dalam sasis panel. Merancang ulang color swatches menjadi modul interaktif lengkap dengan tombol panah melengkung ganda swap-color (pojok kanan atas), tombol default reset warna (pojok kiri bawah), dan mengaitkannya dengan hotkeys global `X` dan `D`.
 
 **Perubahan:**
 1. **`App.tsx`** —
@@ -1339,7 +1339,7 @@ WebGL renderer harus render dokumen di resolusi 1:1 tanpa viewport transform. CS
 
 ### Kategori: CLEANUP / UI / FRONTEND
 
-**Deskripsi:** Menghapus tombol "Command Palette" dari toolbar kanan karena termasuk Layer B (post-MVP). Di aplikasi editor profesional (Photoshop, Figma, Affinity), command palette tidak pernah menjadi tombol eksplisit di toolbar — hanya akses via shortcut keyboard.
+**Deskripsi:** Menghapus tombol "Command Palette" dari toolbar kanan karena termasuk Layer B (post-MVP). Di aplikasi editor profesional, command palette tidak pernah menjadi tombol eksplisit di toolbar — hanya akses via shortcut keyboard.
 
 **Perubahan:**
 1. **`apps/desktop/src/App.tsx`** — Hapus button Command Palette + separator. Hapus import `Terminal` dari lucide-solid.

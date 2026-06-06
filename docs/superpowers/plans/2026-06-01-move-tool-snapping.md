@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the Move tool drag the active layer with Photoshop-style auto-snap precision, hold-Alt to disable, and one-line smart guides only when a snap is active.
+**Goal:** Make the Move tool drag the active layer with precise auto-snap behavior, hold-Alt to disable, and one-line smart guides only when a snap is active.
 
 **Architecture:** Extend the existing `smartGuides.ts` with a pure `computeSnapAdjustment` helper that returns `{ dx, dy, lines }` for a moving rect against a target list. Keep the existing `computeSnapLines` as a thin wrapper so older tests stay green. Replace the `onComputeSnapLines` side-effect callback on `ToolContext` with a pure `onComputeSnap` that returns `SnapResult` plus an `onSnapLines` setter. Drive snapping from `input-handler.ts` so the input handler applies the deltas and emits guide lines. The viewport precomputes the target list once per drag and feeds both the canvas rect and center lines as additional synthetic rects.
 

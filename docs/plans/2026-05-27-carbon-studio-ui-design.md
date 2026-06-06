@@ -8,7 +8,7 @@ Dokumen ini mendokumentasikan keputusan desain visual dan interaksi untuk antarm
 
 ## 1. Visi Desain & Arah Visual
 
-Photrez diposisikan sebagai editor gambar desktop yang ringan dan praktis. Desain visual **Carbon Studio** dirancang untuk membedakan Photrez secara tegas dari Photoshop (untuk mencegah persepsi klon) sekaligus memberikan lingkungan kerja dengan densitas tinggi yang sangat ergonomis untuk penggunaan profesional jangka panjang.
+Photrez diposisikan sebagai editor gambar desktop yang ringan dan praktis. Desain visual **Carbon Studio** dirancang untuk memberi Photrez identitas visual mandiri sekaligus memberikan lingkungan kerja dengan densitas tinggi yang sangat ergonomis untuk penggunaan profesional jangka panjang.
 
 ### Prinsip Desain Utama:
 1.  **Functional First (Fokus Pekerjaan)**: UI dirancang sangat tenang dan tidak mengganggu. Kanvas kerja adalah satu-satunya fokus visual utama.

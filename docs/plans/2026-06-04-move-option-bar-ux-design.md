@@ -1,7 +1,7 @@
 # Design Spec: Move Option Bar UX & Visual Improvements
 
 ## Goal
-Improve the Move Tool's Option Bar visually and functionally to clarify the state of auto-select and snapping, provide real-time hover selection targeting, and add canvas alignment features to solve classic Photoshop UX pain points.
+Improve the Move Tool's Option Bar visually and functionally to clarify the state of auto-select and snapping, provide real-time hover selection targeting, and add canvas alignment features to solve common move workflow pain points.
 
 ## Proposed Changes
 

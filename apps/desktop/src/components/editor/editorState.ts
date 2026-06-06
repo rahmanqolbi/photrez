@@ -1,5 +1,15 @@
 import { createSignal } from "solid-js";
-import type { LayerNode, DocumentTabSummary } from "@/engine/types";
+import type { LayerNode, DocumentTabSummary, Transform2D, DocumentModel } from "@/engine/types";
+
+export interface LayerTransformSession {
+  documentId: string;
+  layerId: string;
+  originalSnapshot: DocumentModel;
+  originalTransform: Transform2D;
+  mode: "resize" | "rotate";
+  lockRatio: boolean;
+  startedAt: number;
+}
 
 export function createEditorState() {
   const [activeTool, setActiveTool] = createSignal("move");
@@ -23,6 +33,7 @@ export function createEditorState() {
   const [moveAutoSelect, setMoveAutoSelect] = createSignal(true);
   const [moveSnapEnabled, setMoveSnapEnabled] = createSignal(true);
   const [hoverPos, setHoverPos] = createSignal<{ x: number; y: number } | null>(null);
+  const [layerTransformSession, setLayerTransformSession] = createSignal<LayerTransformSession | null>(null);
 
   return {
     activeTool, setActiveTool,
@@ -43,5 +54,7 @@ export function createEditorState() {
     moveAutoSelect, setMoveAutoSelect,
     moveSnapEnabled, setMoveSnapEnabled,
     hoverPos, setHoverPos,
+    layerTransformSession, setLayerTransformSession,
   };
 }
+

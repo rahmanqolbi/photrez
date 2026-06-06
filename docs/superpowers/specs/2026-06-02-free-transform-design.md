@@ -1,10 +1,10 @@
-# Photoshop-Like Free Transform for Photrez Move Tool
+# Free Transform for Photrez Move Tool
 
 Date: 2026-06-02
 
 ## Goal
 
-Bring Photrez Move Tool to Photoshop-grade Free Transform behavior: the bounding box, handles, hit testing, cursor, and renderer all share one true 2D transform model, so rotating, flipping, and resizing a layer feels native to professional image editors.
+Bring Photrez Move Tool to production-grade Free Transform behavior: the bounding box, handles, hit testing, cursor, and renderer all share one true 2D transform model, so rotating, flipping, and resizing a layer feels native to Photrez.
 
 ## Problem
 
@@ -53,7 +53,7 @@ The current Move Tool in Photrez advertises "8 resize handles + 1 rotation handl
 
 - Pointer position is converted to layer-local space using `rotatePoint(pointer, center, -rotation)` before any corner/side/inside test. This makes hit testing correct for any rotation, including flipped layers.
 - Hit zones:
-  - Corner handle hit: `16 / zoom` (Photoshop-like tolerance).
+  - Corner handle hit: `16 / zoom` (comfortable tolerance).
   - Side handle hit: `16 / zoom`.
   - Rotate zone: outside the rectangle by `250 / zoom` in each direction, but inside a square that includes the corners.
   - Move hit: pointer is inside the rotated rectangle but not on a handle.
@@ -180,7 +180,7 @@ The transform pipeline becomes a single, well-defined boundary:
 - All geometry helpers have unit tests; all tests pass.
 - The WebGL renderer draws rotated/flipped pixels correctly.
 - The SVG overlay frame, handles, and rotate zones align with the rendered layer at any rotation.
-- Resize/rotate feel Photoshop-like: local-axis math, dynamic cursors, modifier behavior, single history commit per drag.
+- Resize/rotate feel precise: local-axis math, dynamic cursors, modifier behavior, single history commit per drag.
 - Snapping uses transformed AABB; existing guide-line finite-endpoint guard still passes.
 - Build, frontend tests, and Rust core tests all pass.
 - `docs/AI_CURRENT_TASK.md`, `docs/AI_HISTORY.md`, `docs/FEATURES.md` are updated.

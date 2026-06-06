@@ -15,6 +15,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: [],
     css: true,
+    exclude: ["node_modules/**", "dist/**", "e2e/**"],
   },
 
   // Prevent vite from obscuring rust errors

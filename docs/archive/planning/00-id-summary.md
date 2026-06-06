@@ -7,7 +7,7 @@ File: `docs/00-vision-and-strategy.md`
 
 - Nama kerja produk: `Photrez`.
 - Arah produk: editor gambar desktop yang ringan, cepat, dan praktis untuk kebutuhan desain harian.
-- Posisi produk: workflow familiar, identitas visual tetap berbeda dari Photoshop.
+- Posisi produk: workflow familiar, identitas visual Photrez tetap mandiri.
 - Arah teknologi: `Tauri 2 + SolidJS + TypeScript + Rust + wgpu`.
 - Aturan komunikasi: pesan utama produk adalah performa dan workflow; status open source tetap didokumentasikan, tapi bukan headline utama.
 - Scope dibagi 3 lapisan:

@@ -39,9 +39,10 @@ export function performApplyCrop(
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
 
-  const exportScale = targetSize ? targetSize.w / width : 1;
   const finalW = targetSize ? targetSize.w : width;
   const finalH = targetSize ? targetSize.h : height;
+  const exportScaleX = finalW / width;
+  const exportScaleY = finalH / height;
 
   for (const layer of layers) {
     if (layer.locked) continue;
@@ -67,12 +68,13 @@ export function performApplyCrop(
     const nlcx = width / 2 + rvx;
     const nlcy = height / 2 + rvy;
 
-    // Scale center to target size
-    const finalCX = nlcx * exportScale;
-    const finalCY = nlcy * exportScale;
+    // Scale center to target size. X and Y must be independent because
+    // explicit crop target sizes can intentionally change aspect ratio.
+    const finalCX = nlcx * exportScaleX;
+    const finalCY = nlcy * exportScaleY;
 
-    const finalScaleX = lsx * exportScale;
-    const finalScaleY = lsy * exportScale;
+    const finalScaleX = lsx * exportScaleX;
+    const finalScaleY = lsy * exportScaleY;
     const finalRotation = normalizeRotation(layer.transform.rotation - cropRotation);
 
     if (deleteCropped && layer.imageBitmap) {
@@ -90,9 +92,6 @@ export function performApplyCrop(
           ctx.restore();
 
           const newBitmap = offscreen.transferToImageBitmap();
-          if (layer.imageBitmap && layer.imageBitmap !== newBitmap) {
-            layer.imageBitmap.close();
-          }
           layer.imageBitmap = newBitmap;
           layer.width = finalW;
           layer.height = finalH;

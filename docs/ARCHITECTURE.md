@@ -7,7 +7,7 @@
 
 ## Gambaran Umum
 
-Photrez adalah lightweight desktop image editor yang dibangun sebagai alternatif Photoshop praktis untuk workflow digital dan print. 
+Photrez adalah lightweight desktop image editor yang dibangun untuk workflow digital dan print praktis.
 
 **MVP Runtime:** Tauri 2 (shell) + SolidJS/TypeScript (frontend) + **TypeScript DocumentEngine** (core) + **WebGL2** (renderer).
 **Future target:** Rust (photrez-core) + wgpu (photrez-render) — lihat `docs/AI_CURRENT_TASK.md:1054` Architecture Migration v2.

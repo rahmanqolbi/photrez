@@ -8,7 +8,7 @@ Use these exact terms consistently. Do not introduce synonyms without updating t
 
 | Term | Definition | ❌ Do Not Use |
 | --- | --- | --- |
-| **Photrez** | The product name (working). | Photoshop, PS, PhotoEditor |
+| **Photrez** | The product name (working). | Legacy aliases: PS, PhotoEditor |
 | **MVP** | Minimum Viable Product (version 1). | v1 beta, prototype, alpha |
 | **Shell** | The Tauri desktop application layer. | Frontend, UI layer (ambiguous) |
 | **Core** | The Rust engine for document/editing logic. | Backend, server |

@@ -1,8 +1,17 @@
 import { createSignal } from "solid-js";
 import { useEditor } from "./EditorContext";
+import { cancelLayerTransformSession } from "./transformSession";
 
 export function useLayerDragReorder() {
-  const { workspace, scheduler } = useEditor();
+  const { workspace, scheduler, layerTransformSession, setLayerTransformSession } = useEditor();
+
+  const cancelActiveTransformSession = () => {
+    const engine = workspace.getActiveEngine();
+    if (cancelLayerTransformSession(layerTransformSession(), engine)) {
+      setLayerTransformSession(null);
+      scheduler.requestRender();
+    }
+  };
 
   const [draggedIndex, setDraggedIndex] = createSignal<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = createSignal<number | null>(null);
@@ -66,6 +75,9 @@ export function useLayerDragReorder() {
         const toIdx = dragOverIndex();
         const pos = dropPosition();
         if (toIdx !== null && toIdx !== dragSourceIndex) {
+          if (layerTransformSession()) {
+            cancelActiveTransformSession();
+          }
           const engine = workspace.getActiveEngine();
           const history = workspace.getActiveHistory();
           if (engine && history) {

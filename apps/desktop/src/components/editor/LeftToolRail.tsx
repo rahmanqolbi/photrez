@@ -3,12 +3,24 @@ import { clsx } from "clsx";
 import { Icon } from "./icons";
 import { TOOL_ITEMS } from "./editorData";
 import { useEditor } from "./EditorContext";
+import { cancelLayerTransformSession } from "./transformSession";
 
 export function LeftToolRail(props: { disabled?: boolean }) {
-  const { activeTool, setActiveTool, fgColor, setFgColor, bgColor, setBgColor, scheduler } = useEditor();
+  const { activeTool, setActiveTool, fgColor, setFgColor, bgColor, setBgColor, scheduler, workspace, layerTransformSession, setLayerTransformSession } = useEditor();
+
+  const cancelActiveTransformSession = () => {
+    const engine = workspace.getActiveEngine();
+    if (cancelLayerTransformSession(layerTransformSession(), engine)) {
+      setLayerTransformSession(null);
+      scheduler.requestRender();
+    }
+  };
 
   const handleToolChange = (id: string) => {
     if (props.disabled) return;
+    if (layerTransformSession() && id !== "move" && id !== "selection") {
+      cancelActiveTransformSession();
+    }
     setActiveTool(id);
     scheduler.requestRender();
   };

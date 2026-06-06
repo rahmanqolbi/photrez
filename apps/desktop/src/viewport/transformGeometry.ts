@@ -185,7 +185,7 @@ export function applyResizeHandle(
   const shouldKeepAspect = corner && !shiftKey;
 
   if (shouldKeepAspect) {
-    // Photoshop-style proportional corner resize:
+    // Proportional corner resize along the active diagonal:
     // project mouse delta onto the handle-axis diagonal (cursor direction at 45°).
     // Movement along the handle axis drives proportional scale;
     // movement perpendicular to the handle axis is ignored.

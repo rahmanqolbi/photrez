@@ -99,7 +99,7 @@
 | Task 99 | [Viewport] Implement Ctrl/Alt scroll zooming and Ctrl+Equal/Minus/Zero keyboard shortcuts | [x] Completed |
 | Task 100 | [Verify] Run Vitest tests, TypeScript compiler checks, cargo core tests, and Git commits | [x] Completed |
 | Task 101 | Fix Crop Box Integration & Typing | [x] Completed |
-| Task 102 | Allow Crop Box to Exceed Canvas Bounds (Photoshop-style Canvas Expansion) | [x] Completed |
+| Task 102 | Allow Crop Box to Exceed Canvas Bounds | [x] Completed |
 | Task 103 | [Core] Add drawLayerToContext helper and duplicate/merge/flatten methods to DocumentEngine | [x] Completed |
 | Task 104 | [Core] Add unit tests for engine duplication, merging, and flattening | [x] Completed |
 | Task 105 | [UI] Implement interactive Opacity slider popover and Blend Mode select dropdown in LayersPanel | [x] Completed |
@@ -154,3 +154,64 @@
 | Task 154 | [OptionBar] Import and Register Alignment Icons | [x] Completed |
 | Task 155 | [OptionBar] Implement Direct Canvas Alignment Actions | [x] Completed |
 | Task 156 | [OptionBar] Final Verification & compilation | [x] Completed |
+| Task 157 | [OptionBar] Redesign Crop Option Bar custom selectors & icons | [x] Completed |
+| Task 158 | [OptionBar] Final build & unit test verification | [x] Completed |
+| Task 159 | [OptionBar] Rename Crop Delete Toggle to "Delete Cropped" | [x] Completed |
+| Task 160 | [Overlay] Implement Interactive Crop Canvas Shield Preview | [x] Completed |
+| Task 161 | [OptionBar] Implement Smart Center-Locked Crop Swap | [x] Completed |
+| Task 162 | [Viewport] Remove Floating Crop Mode Indicator HUD | [x] Completed |
+| Task 163 | [Verify] Final build check, frontend tests verification | [x] Completed |
+| Task 164 | [OptionBar] Fix EditableNumField race conditions and decimal jump issue | [x] Completed |
+| Task 165 | [Verify] Validate bug fix build check and test runs | [x] Completed |
+| Task 166 | [OptionBar] Fix Custom Preset dropdown selection logic | [x] Completed |
+| Task 167 | [Verify] Validate Custom Preset build and test runs | [x] Completed |
+| Task 168 | [OptionBar] Implement Centered Auto-Fit on Input and Swap changes | [x] Completed |
+| Task 169 | [Verify] Verify build and test runs | [x] Completed |
+| Task 170 | [OptionBar] Redesign Crop Option Bar dropdowns to use custom opacity-0 overlay pattern | [x] Completed |
+| Task 171 | [Verify] Run Vitest test suites and verify production build | [x] Completed |
+| Task 172 | [Overlay] Fix rotate hover zone boundaries to prevent inner rotation cursor trigger | [x] Completed |
+| Task 173 | [Plan] Create transform session UX implementation plan | [x] Completed |
+| Task 174 | [Plan] Create transform session hardening and contextual option bar implementation plan | [x] Completed |
+| Task 174 | [TransformSession] Task 1: Add Transform Session State | [x] Completed |
+| Task 175 | [TransformSession] Task 2: Add Shared Transform Session Helpers | [x] Completed |
+| Task 176 | [TransformSession] Task 3: Convert Resize/Rotate Into Session Preview | [x] Completed |
+| Task 177 | [TransformSession] Task 4: Add Global Commit/Cancel Keyboard Behavior | [x] Completed |
+| Task 178 | [TransformSession] Task 5: Add Apply/Cancel Controls In Move Option Bar | [x] Completed |
+| Task 179 | [TransformSession] Task 6: Harmonize Status Text And Overlay Feedback | [x] Completed |
+| Task 180 | [TransformSession] Task 7: Full Verification And Docs Sync | [x] Completed |
+| Task 181 | [Plan] Create transform session hardening and contextual option bar implementation plan | [x] Completed |
+| Task 182 | [TransformSessionHardening] Task 1: Strengthen Session Type And Helpers | [x] Completed |
+| Task 183 | [TransformSessionHardening] Task 2: Start Sessions With Document Identity And Full Snapshot | [x] Completed |
+| Task 184 | [TransformSessionHardening] Task 3: Add Session Resolution At Navigation And Destructive UI Boundaries | [x] Completed |
+| Task 185 | [TransformSessionHardening] Task 4: Introduce Contextual Transform Option Bar | [x] Completed |
+| Task 186 | [TransformSessionHardening] Task 5: Wire Ratio Lock Into Drag Resize | [x] Completed |
+| Task 187 | [TransformSessionHardening] Task 6: Status Text And Visual Polish | [x] Completed |
+| Task 188 | [TransformSessionHardening] Task 7: Full Regression Verification | [x] Completed |
+| Task 189 | [TransformSessionHardening] Task 8: Docs Sync After Implementation | [x] Completed |
+| Task 190 | [Plan] Create pasteboard click policy implementation plan | [x] Completed |
+| Task 191 | [PasteboardClickPolicy] Task 1: Add Pure Pasteboard Policy Helper and tests | [x] Completed |
+| Task 192 | [PasteboardClickPolicy] Task 2: Expose Selection Preview Clear Hook | [x] Completed |
+| Task 193 | [PasteboardClickPolicy] Task 3: Add Pasteboard Pointer Handling in CanvasViewport | [x] Completed |
+| Task 194 | [PasteboardClickPolicy] Task 4: Add Component Regression Coverage | [x] Completed |
+| Task 195 | [PasteboardClickPolicy] Task 5: Manual Smoke and Full Verification | [x] Completed |
+| Task 196 | [PasteboardClickPolicy] Task 6: Docs Sync After Implementation | [x] Completed |
+| Task 197 | [Crop] Fix cancel behavior to stay in Crop tool | [x] Completed |
+| Task 198 | [Plan] Create crop interaction model implementation plan | [x] Completed |
+| Task 199 | [Docs] Remove explicit third-party software names from active source comments and non-archive docs | [x] Completed |
+| Task 200 | [Testing] Add Playwright browser smoke test layer | [x] Completed |
+| Task 201 | [CropModel] Task 1: Add Shared Crop Tool Actions | [x] Completed |
+| Task 202 | [CropModel] Task 2: Update Pasteboard Click Policy for Crop | [x] Completed |
+| Task 203 | [CropModel] Task 3: Canvas Click Restores Default Crop Box | [x] Completed |
+| Task 204 | [CropModel] Task 4: Canvas Drag Replaces Current Crop Box | [x] Completed |
+| Task 205 | [CropModel] Task 5: Double-Click Crop Box Applies Crop | [x] Completed |
+| Task 206 | [CropModel] Task 6: Normalize Existing Cancel/Reset/Apply Paths | [x] Completed |
+| Task 207 | [CropModel] Task 7: Full Verification and Docs Sync | [x] Completed |
+| Task 208 | [Plan] Rewrite crop interaction model plan for hidden-preview restore correction | [x] Completed |
+| Task 209 | [Plan] Revise crop interaction model plan for outside-canvas drag replacement | [x] Completed |
+| Task 210 | [CropModelCorrection] Add hidden crop preview state | [x] Completed |
+| Task 211 | [CropModelCorrection] Restore hidden preview on canvas click | [x] Completed |
+| Task 212 | [CropModelCorrection] Discard hidden preview on Cancel/Esc/Apply | [x] Completed |
+| Task 213 | [CropModelCorrection] Regression tests and verification | [x] Completed |
+| Task 214 | [CropModelCorrection] Continue hidden-preview restore implementation and outside-bounds regression coverage | [x] Completed |
+| Task 215 | [CropApply] Fix target-size crop geometry and destructive crop texture sync | [x] Completed |
+| Task 216 | [CropNavigation] Restore Space+drag pasteboard panning while Crop tool is active | [x] Completed |

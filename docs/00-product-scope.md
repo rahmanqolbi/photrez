@@ -36,7 +36,7 @@ This file is intentionally narrow: it defines only the v1 release scope and excl
 
 ## Brand Direction
 
-- Familiar workflow, not Photoshop identity.
+- Familiar workflow with Photrez-owned identity.
 - New visual language (icon set, naming, spacing, palette, typography).
 
 ## Exit Criteria for Scope Lock

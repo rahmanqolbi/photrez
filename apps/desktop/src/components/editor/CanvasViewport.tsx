@@ -15,12 +15,20 @@ import { HoverHighlight } from "./HoverHighlight";
 import { SmartGuides } from "./SmartGuides";
 import { BrushCursorOverlay } from "./BrushCursorOverlay";
 import { CropOverlay } from "./CropOverlay";
-import { CropModeIndicator } from "./CropModeIndicator";
 import { TransformHud } from "./TransformHud";
+import { getPasteboardClickAction } from "./pasteboardClickPolicy";
+import {
+  clearCropPreview,
+  applyCropPreview,
+  hideCropPreview,
+  hasCropReplacementDragDistance,
+  createCropRectFromDocumentPoints
+} from "./cropToolActions";
 
 export function CanvasViewport() {
   const {
     workspace,
+    renderer,
     activeTool,
     zoom,
     pan,
@@ -34,6 +42,12 @@ export function CanvasViewport() {
     cropGuideMode,
     cropAspect,
     cropRotation, setCropRotation,
+    hiddenCropPreview, setHiddenCropPreview,
+    cropDeletePixels,
+    cropSizeTarget,
+    setActiveTool,
+    layerTransformSession,
+    scheduler,
   } = useEditor();
 
   const {
@@ -67,6 +81,21 @@ export function CanvasViewport() {
   // Active crop handle drag state
   const [isCropDragging, setIsCropDragging] = createSignal(false);
 
+  const [pendingPasteboardCropGesture, setPendingPasteboardCropGesture] =
+    createSignal<{
+      pointerId: number;
+      startClient: { clientX: number; clientY: number };
+      startDocument: { x: number; y: number };
+      replacementStarted: boolean;
+    } | null>(null);
+
+  const screenToDocumentPoint = (e: PointerEvent) => {
+    const rect = canvasContainerRef?.getBoundingClientRect();
+    const engine = workspace.getActiveEngine();
+    if (!rect || !engine) return { x: e.clientX, y: e.clientY };
+    return screenToDocument(e.clientX, e.clientY, rect, engine.getViewport());
+  };
+
   const {
     isFitTransition,
     fitToScreenAndRender,
@@ -80,6 +109,7 @@ export function CanvasViewport() {
     snapLines,
     setSnapLines,
     selectionBox,
+    setSelectionBoxSignal,
     hudInfo,
     setHudInfo,
     handleDoubleClick,
@@ -123,6 +153,113 @@ export function CanvasViewport() {
   });
 
 
+  const isPasteboardPointerDown = (e: PointerEvent) => {
+    return e.target === canvasContainerRef;
+  };
+
+  const handlePasteboardPointerDown = (e: PointerEvent) => {
+    if (!isPasteboardPointerDown(e)) return;
+    if (e.button !== 0) return;
+
+    if (activeTool() === "crop") {
+      if (isSpacePressed() || isPanning()) return;
+
+      const startDocument = screenToDocumentPoint(e);
+      setPendingPasteboardCropGesture({
+        pointerId: e.pointerId,
+        startClient: { clientX: e.clientX, clientY: e.clientY },
+        startDocument,
+        replacementStarted: false,
+      });
+      (e.currentTarget as HTMLElement)?.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    const engine = workspace.getActiveEngine();
+    const action = getPasteboardClickAction({
+      hasDocument: Boolean(engine),
+      activeTool: activeTool(),
+      isNavigationMode: isSpacePressed() || isPanning(),
+      hasLayerTransformSession: Boolean(layerTransformSession()),
+      hasCropRect: Boolean(cropRect()),
+      hasSelectionPreview: Boolean(selectionBox()),
+    });
+
+    if (action === "noop") return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (action === "clear-active-layer" && engine) {
+      engine.setActiveLayer(null);
+      setHoverHandle(null);
+      setSnapLines([]);
+      setHudInfo(null);
+      scheduler.requestRender();
+      return;
+    }
+
+    if (action === "clear-selection-preview") {
+      setSelectionBoxSignal(null);
+      setSnapLines([]);
+      setHudInfo(null);
+      scheduler.requestRender();
+      return;
+    }
+  };
+
+  const handlePasteboardPointerMove = (e: PointerEvent) => {
+    const pending = pendingPasteboardCropGesture();
+    if (pending && e.pointerId === pending.pointerId) {
+      if (!hasCropReplacementDragDistance(pending.startClient, e)) {
+        return;
+      }
+
+      const nextRect = createCropRectFromDocumentPoints(
+        pending.startDocument,
+        screenToDocumentPoint(e),
+      );
+      if (!nextRect) {
+        return;
+      }
+
+      setHiddenCropPreview(null);
+      setCropRotation(0);
+      setCropRect(nextRect);
+      setPendingPasteboardCropGesture({ ...pending, replacementStarted: true });
+      e.preventDefault();
+    }
+  };
+
+  const handlePasteboardPointerUp = (e: PointerEvent) => {
+    const pending = pendingPasteboardCropGesture();
+    if (pending && e.pointerId === pending.pointerId) {
+      setPendingPasteboardCropGesture(null);
+      try {
+        (e.currentTarget as HTMLElement)?.releasePointerCapture(e.pointerId);
+      } catch {}
+
+      if (!pending.replacementStarted && !hasCropReplacementDragDistance(pending.startClient, e)) {
+        hideCropPreview({
+          cropRect,
+          cropRotation,
+          hiddenCropPreview,
+          setCropRect,
+          setCropRotation,
+          setHiddenCropPreview,
+        });
+        setHoverHandle(null);
+        setSnapLines([]);
+        setHudInfo(null);
+        scheduler.requestRender();
+      }
+
+      e.preventDefault();
+    }
+  };
+
   return (
     <div
       ref={canvasContainerRef}
@@ -131,9 +268,18 @@ export function CanvasViewport() {
       class="flex-1 relative overflow-hidden bg-editor-canvas"
       onWheel={handleWheel}
       onDblClick={handleDoubleClick}
-      onPointerDown={onViewportPointerDown}
-      onPointerMove={onViewportPointerMove}
-      onPointerUp={onViewportPointerUp}
+      onPointerDown={(e) => {
+        handlePasteboardPointerDown(e);
+        if (!e.defaultPrevented) onViewportPointerDown(e);
+      }}
+      onPointerMove={(e) => {
+        handlePasteboardPointerMove(e);
+        if (!e.defaultPrevented) onViewportPointerMove(e);
+      }}
+      onPointerUp={(e) => {
+        handlePasteboardPointerUp(e);
+        if (!e.defaultPrevented) onViewportPointerUp(e);
+      }}
     >
       {/* CSS Transform container — GPU-accelerated pan/zoom */}
       <Show when={workspace.getActiveEngine()}>
@@ -159,8 +305,6 @@ export function CanvasViewport() {
               inset: 0,
               width: "100%",
               height: "100%",
-              transform: activeTool() === "crop" && cropRect() && cropRotation() !== 0 ? `rotate(${-cropRotation()}deg)` : "none",
-              "transform-origin": activeTool() === "crop" && cropRect() ? `${cropRect()!.x + cropRect()!.w / 2}px ${cropRect()!.y + cropRect()!.h / 2}px` : "center center",
             }}
           />
 
@@ -181,8 +325,6 @@ export function CanvasViewport() {
             class="absolute inset-0 pointer-events-none border border-white/10"
             style={{
               "box-shadow": "0 0 0 1px rgba(0, 0, 0, 0.6), 0 8px 32px rgba(0, 0, 0, 0.7)",
-              transform: activeTool() === "crop" && cropRect() && cropRotation() !== 0 ? `rotate(${-cropRotation()}deg)` : "none",
-              "transform-origin": activeTool() === "crop" && cropRect() ? `${cropRect()!.x + cropRect()!.w / 2}px ${cropRect()!.y + cropRect()!.h / 2}px` : "center center",
             }}
           />
 
@@ -285,6 +427,7 @@ export function CanvasViewport() {
               cropMode={cropMode()}
               cropAspect={cropAspect()}
               cropRotation={cropRotation()}
+              deleteCropped={cropDeletePixels()}
               onCropRectChange={(rect) => setCropRect(rect)}
               onCropRotationChange={setCropRotation}
               onHoverHandleChange={setHoverHandle}
@@ -292,12 +435,27 @@ export function CanvasViewport() {
               snapEnabled={moveSnapEnabled()}
               onSnapLines={setSnapLines}
               onDragStateChange={setIsCropDragging}
+              hiddenCropPreview={hiddenCropPreview()}
+              onHiddenCropPreviewChange={setHiddenCropPreview}
+              onApplyCrop={() => {
+                applyCropPreview({
+                  workspace,
+                  renderer,
+                  cropRect: cropRect(),
+                  cropMode: cropMode(),
+                  cropSizeTarget: cropSizeTarget(),
+                  cropDeletePixels: cropDeletePixels(),
+                  cropRotation: cropRotation(),
+                  scheduler,
+                  setCropRect,
+                  setCropRotation,
+                  setHiddenCropPreview,
+                  setActiveTool,
+                });
+              }}
             />
           </Show>
         </div>
-
-        {/* Crop mode indicator bar — placed outside pan/zoom div so it stays fixed on screen */}
-        <CropModeIndicator isActive={activeTool() === "crop"} />
       </Show>
     </div>
   );

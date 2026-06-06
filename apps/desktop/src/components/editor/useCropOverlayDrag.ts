@@ -10,6 +10,8 @@ import { getRotateCursorByPos } from "@/viewport/cursorRotate";
 import { useEditor } from "./EditorContext";
 import { snapCropRect, type CropSnapTargets } from "@/viewport/cropSnap";
 import type { SnapLine } from "@/viewport/smartGuides";
+import { createCropRectFromDocumentPoints } from "./cropToolActions";
+import type { CropPreview } from "./cropState";
 
 interface UseCropOverlayDragParams {
   cropRect: () => CropRect | null;
@@ -18,7 +20,7 @@ interface UseCropOverlayDragParams {
   zoom: number;
   cropMode: "free" | "ratio" | "size";
   cropAspect: { w: number; h: number } | null;
-  cropRotation?: number;
+  cropRotation?: () => number | undefined;
   onCropRectChange: (rect: CropRect) => void;
   onCropRotationChange?: (angle: number) => void;
   onHoverHandleChange?: (handle: string | null) => void;
@@ -29,6 +31,7 @@ interface UseCropOverlayDragParams {
   onRotationCommit?: () => void;
   onDragStateChange?: (isDragging: boolean) => void;
   getSvgRef: () => SVGSVGElement | undefined;
+  onHiddenCropPreviewChange?: (preview: CropPreview | null) => void;
 }
 
 export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
@@ -61,7 +64,7 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
 
   let tooltipTimeoutId = 0;
 
-  const cropRotationValue = () => params.cropRotation ?? 0;
+  const cropRotationValue = () => params.cropRotation?.() ?? 0;
 
   const setHover = (handle: string | null) => {
     setHoverHandle(handle);
@@ -120,7 +123,7 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
         startRect: { x: rect.x, y: rect.y, w: rect.w, h: rect.h },
         startPointer: { x: pt.x, y: pt.y },
         pointerId: e.pointerId,
-        startRotation: params.cropRotation,
+        startRotation: params.cropRotation?.(),
         startClientX: e.clientX,
         startClientY: e.clientY,
         startPan: pan ? { x: pan().x, y: pan().y } : undefined,
@@ -185,34 +188,12 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
     const docH = params.canvasHeight;
 
     if (drag.handle === "new") {
-      const startPt = drag.startPointer;
-      let w = Math.abs(pt.x - startPt.x);
-      let h = Math.abs(pt.y - startPt.y);
-
-      const constraint = params.cropMode;
-      const aspect = constraint === "ratio" && params.cropAspect ? params.cropAspect : (constraint === "size" && params.cropAspect ? params.cropAspect : null);
-      
-      const shouldKeepAspect = e.shiftKey || aspect !== null;
-      if (shouldKeepAspect) {
-        const ratio = aspect ? (aspect.w / aspect.h) : 1;
-        if (w / h > ratio) {
-          h = w / ratio;
-        } else {
-          w = h * ratio;
-        }
+      const replacement = createCropRectFromDocumentPoints(drag.startPointer, pt);
+      if (replacement) {
+        newRect = replacement;
+      } else {
+        newRect = { x: drag.startPointer.x, y: drag.startPointer.y, w: 0, h: 0 };
       }
-
-      let x = pt.x < startPt.x ? startPt.x - w : startPt.x;
-      let y = pt.y < startPt.y ? startPt.y - h : startPt.y;
-
-      if (e.altKey) {
-        x = startPt.x - w;
-        y = startPt.y - h;
-        w = w * 2;
-        h = h * 2;
-      }
-
-      newRect = constrainCropRectToDocument({ x, y, w, h }, docW, docH);
     } else if (drag.handle === "move") {
       newRect = applyCropMove(drag.startRect, dx, dy, docW, docH);
     } else {
@@ -238,7 +219,7 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
 
     params.onCropRectChange(newRect);
 
-    if (drag.handle !== "new") {
+    if (drag.handle === "move") {
       const oldCX = drag.startRect.x + drag.startRect.w / 2;
       const oldCY = drag.startRect.y + drag.startRect.h / 2;
       const newCX = newRect.x + newRect.w / 2;
@@ -288,6 +269,7 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
       const finalRect = params.cropRect();
       if (finalRect && (finalRect.w < 5 || finalRect.h < 5)) {
         params.onCropRectChange(drag.startRect);
+        params.onCropRotationChange?.(drag.startRotation ?? 0);
       }
     }
 
@@ -298,11 +280,11 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
          finalRect.y !== drag.startRect.y ||
          finalRect.w !== drag.startRect.w ||
          finalRect.h !== drag.startRect.h ||
-         (drag.handle.startsWith("rotate") && params.cropRotation !== drag.startRotation));
+         (drag.handle.startsWith("rotate") && (params.cropRotation?.() ?? 0) !== drag.startRotation));
       if (hasChange) {
         commitCropState(
           { x: drag.startRect.x, y: drag.startRect.y, w: drag.startRect.w, h: drag.startRect.h },
-          drag.startRotation ?? params.cropRotation ?? 0
+          drag.startRotation ?? params.cropRotation?.() ?? 0
         );
       }
     }
@@ -350,10 +332,14 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
       const previousRect = params.cropRect();
       const initialRect = { x: pt.x, y: pt.y, w: 0, h: 0 };
       params.onCropRectChange(initialRect);
+      const prevRotation = params.cropRotation?.() ?? 0;
+      params.onCropRotationChange?.(0);
+      params.onHiddenCropPreviewChange?.(null);
 
       setDragState({
         handle: "new",
         startRect: previousRect ? { x: previousRect.x, y: previousRect.y, w: previousRect.w, h: previousRect.h } : initialRect,
+        startRotation: prevRotation,
         startPointer: { x: pt.x, y: pt.y },
         pointerId: e.pointerId,
         startClientX: e.clientX,

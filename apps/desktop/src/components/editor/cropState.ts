@@ -1,5 +1,10 @@
 import { createSignal } from "solid-js";
 
+export type CropPreview = {
+  rect: { x: number; y: number; w: number; h: number };
+  rotation: number;
+};
+
 export function createCropState() {
   const [cropRect, setCropRect] = createSignal<{ x: number; y: number; w: number; h: number } | null>(null);
   const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("free");
@@ -9,6 +14,7 @@ export function createCropState() {
   const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
   const [cropSizeUnit, setCropSizeUnit] = createSignal<"px" | "cm" | "mm" | "in">("px");
   const [cropRotation, setCropRotation] = createSignal<number>(0);
+  const [hiddenCropPreview, setHiddenCropPreview] = createSignal<CropPreview | null>(null);
 
   // Crop mini undo/redo stack
   const [cropUndoStack, setCropUndoStack] = createSignal<{ rect: { x: number; y: number; w: number; h: number }; rotation: number }[]>([]);
@@ -61,10 +67,16 @@ export function createCropState() {
     cropSizeTarget, setCropSizeTarget,
     cropSizeUnit, setCropSizeUnit,
     cropRotation, setCropRotation,
+    hiddenCropPreview, setHiddenCropPreview,
     commitCropState,
     canCropUndo,
     canCropRedo,
     undoLastCrop,
     redoCrop,
+    clearCropStacks: () => {
+      setCropUndoStack([]);
+      setCropRedoStack([]);
+    },
   };
 }
+

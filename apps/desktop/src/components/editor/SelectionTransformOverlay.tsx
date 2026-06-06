@@ -31,8 +31,24 @@ const HANDLE_HIT = 20;
 const ROTATE_OUTER = 44;
 const HANDLE_TYPES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 
+export function getRotatePath(type: string, cx: number, cy: number, ro: number, ri: number): string {
+  if (type === "nw") {
+    return `M ${cx} ${cy + ro} A ${ro} ${ro} 0 1 1 ${cx + ro} ${cy} L ${cx + ri} ${cy} A ${ri} ${ri} 0 1 0 ${cx} ${cy + ri} Z`;
+  }
+  if (type === "ne") {
+    return `M ${cx - ro} ${cy} A ${ro} ${ro} 0 1 1 ${cx} ${cy + ro} L ${cx} ${cy + ri} A ${ri} ${ri} 0 1 0 ${cx - ri} ${cy} Z`;
+  }
+  if (type === "se") {
+    return `M ${cx} ${cy - ro} A ${ro} ${ro} 0 1 1 ${cx - ro} ${cy} L ${cx - ri} ${cy} A ${ri} ${ri} 0 1 0 ${cx} ${cy - ri} Z`;
+  }
+  if (type === "sw") {
+    return `M ${cx + ro} ${cy} A ${ro} ${ro} 0 1 1 ${cx} ${cy - ro} L ${cx} ${cy - ri} A ${ri} ${ri} 0 1 0 ${cx + ri} ${cy} Z`;
+  }
+  return "";
+}
+
 export function SelectionTransformOverlay(props: SelectionTransformOverlayProps = {}) {
-  const { zoom, activeTool, setHoverHandle, setHoverPos } = useEditor();
+  const { zoom, activeTool, setHoverHandle, setHoverPos, layerTransformSession } = useEditor();
 
   let overlaySvgRef: SVGSVGElement | undefined;
 
@@ -105,7 +121,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
               width={effW()}
               height={effH()}
               fill="none"
-              stroke="#E15A17"
+              stroke={layerTransformSession()?.layerId === getLayer()?.id ? "#E15A17" : "rgba(255,255,255,0.72)"}
               stroke-width={1 / z()}
               vector-effect="non-scaling-stroke"
               style={{ "pointer-events": "none" }}
@@ -149,12 +165,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
                     {/* Corner rotate zone ring (only for corners) */}
                     <Show when={["nw", "ne", "se", "sw"].includes(type)}>
                       <path
-                        d={`M ${hx()} ${hy() - ro()} 
-                            A ${ro()} ${ro()} 0 1 1 ${hx()} ${hy() + ro()} 
-                            A ${ro()} ${ro()} 0 1 1 ${hx()} ${hy() - ro()} Z
-                            M ${hx()} ${hy() - ht()} 
-                            A ${ht()} ${ht()} 0 1 0 ${hx()} ${hy() + ht()} 
-                            A ${ht()} ${ht()} 0 1 0 ${hx()} ${hy() - ht()} Z`}
+                        d={getRotatePath(type, hx(), hy(), ro(), ht())}
                         fill="transparent"
                         fill-rule="evenodd"
                         style={{ "pointer-events": "all" }}

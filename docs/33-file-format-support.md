@@ -61,7 +61,7 @@ This document defines which image formats Photrez can open (import) and export i
 
 | Format | Reason |
 | --- | --- |
-| PSD (Photoshop) | Out of MVP scope; planned for Layer B |
+| PSD | Out of MVP scope; planned for Layer B |
 | TIFF | Low priority for target users |
 | SVG | Vector format; Photrez is raster-only in MVP |
 | RAW (CR2, NEF, ARW) | Requires specialized decoder; post-MVP |

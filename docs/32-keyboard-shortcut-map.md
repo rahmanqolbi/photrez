@@ -2,14 +2,14 @@
 
 This document defines the baseline keyboard shortcuts for Photrez MVP.
 
-Shortcuts follow Photoshop-familiar conventions where applicable,
+Shortcuts follow familiar desktop editor conventions where applicable,
 but Photrez reserves the right to diverge for unique product identity.
 
 Reference: Existing implementation in `aplikasi-cetak-massal` studio.
 
 ## 1) Design Principles
 
-1. Single-key shortcuts for tool switching (Photoshop convention).
+1. Single-key shortcuts for tool switching.
 2. `Ctrl+key` for commands (save, undo, selection, etc.).
 3. `Shift+key` to cycle sub-tools within a tool group.
 4. Modifier keys (`Space`, `Alt`, `Shift`) for temporary mode changes.

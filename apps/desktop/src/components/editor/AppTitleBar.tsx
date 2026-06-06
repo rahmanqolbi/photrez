@@ -5,6 +5,7 @@ import { runTauriWindowAction } from "@/lib/desktop";
 import { useEditor } from "./EditorContext";
 import { showOpenImageDialog, readFileBytes } from "@/tauri/native";
 import { WorkspaceManager } from "@/engine/workspace";
+import { cancelLayerTransformSession } from "./transformSession";
 
 type AppTitleBarProps = {
   isRightDockOpen: boolean;
@@ -12,7 +13,17 @@ type AppTitleBarProps = {
 };
 
 export function AppTitleBar(props: AppTitleBarProps) {
-  const { workspace, renderer, scheduler, activeDocumentId, documents, activeTool, undoLastCrop, canCropUndo, redoCrop, canCropRedo, setCropRect, setCropRotation } = useEditor();
+  const { workspace, renderer, scheduler, activeDocumentId, documents, activeTool, undoLastCrop, canCropUndo, redoCrop, canCropRedo, setCropRect, setCropRotation, layerTransformSession, setLayerTransformSession } = useEditor();
+
+  const cancelActiveTransformSession = (): boolean => {
+    const engine = workspace.getActiveEngine();
+    if (cancelLayerTransformSession(layerTransformSession(), engine)) {
+      setLayerTransformSession(null);
+      scheduler.requestRender();
+      return true;
+    }
+    return false;
+  };
 
   const activeDocName = () => {
     const id = activeDocumentId();
@@ -21,6 +32,7 @@ export function AppTitleBar(props: AppTitleBarProps) {
   };
 
   const handleUndo = () => {
+    if (cancelActiveTransformSession()) return;
     // Crop mode: use crop undo stack instead of document undo
     if (activeTool() === "crop" && canCropUndo()) {
       const state = undoLastCrop();
@@ -31,24 +43,30 @@ export function AppTitleBar(props: AppTitleBarProps) {
       }
     }
     // Fall through to document undo for non-crop or empty crop stack
-    const engine = workspace.getActiveEngine();
-    const history = workspace.getActiveHistory();
-    if (engine && history && history.canUndo()) {
-      const prev = history.undo(engine.snapshot());
-      if (prev) {
-        engine.restore(prev);
-        // Sync texture handles
-        for (const layer of engine.getLayers()) {
-          if (layer.imageBitmap) {
-            renderer.uploadImage(layer.id, layer.imageBitmap);
+    try {
+      const engine = workspace.getActiveEngine();
+      const history = workspace.getActiveHistory();
+      if (engine && history && history.canUndo()) {
+        const prev = history.undo(engine.snapshot());
+        if (prev) {
+          engine.restore(prev);
+          const dpr = window.devicePixelRatio || 1;
+          renderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr);
+          for (const layer of engine.getLayers()) {
+            if (layer.imageBitmap) {
+              renderer.uploadImage(layer.id, layer.imageBitmap);
+            }
           }
+          scheduler.requestRender();
         }
-        scheduler.requestRender();
       }
+    } catch (err) {
+      console.error("Undo failed:", err);
     }
   };
 
   const handleRedo = () => {
+    if (cancelActiveTransformSession()) return;
     // Crop mode: use crop redo stack instead of document redo
     if (activeTool() === "crop" && canCropRedo()) {
       const state = redoCrop();
@@ -59,19 +77,25 @@ export function AppTitleBar(props: AppTitleBarProps) {
       }
     }
     // Fall through to document redo for non-crop or empty crop stack
-    const engine = workspace.getActiveEngine();
-    const history = workspace.getActiveHistory();
-    if (engine && history && history.canRedo()) {
-      const next = history.redo(engine.snapshot());
-      if (next) {
-        engine.restore(next);
-        for (const layer of engine.getLayers()) {
-          if (layer.imageBitmap) {
-            renderer.uploadImage(layer.id, layer.imageBitmap);
+    try {
+      const engine = workspace.getActiveEngine();
+      const history = workspace.getActiveHistory();
+      if (engine && history && history.canRedo()) {
+        const next = history.redo(engine.snapshot());
+        if (next) {
+          engine.restore(next);
+          const dpr = window.devicePixelRatio || 1;
+          renderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr);
+          for (const layer of engine.getLayers()) {
+            if (layer.imageBitmap) {
+              renderer.uploadImage(layer.id, layer.imageBitmap);
+            }
           }
+          scheduler.requestRender();
         }
-        scheduler.requestRender();
       }
+    } catch (err) {
+      console.error("Redo failed:", err);
     }
   };
 

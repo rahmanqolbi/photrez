@@ -9,6 +9,7 @@ import { Navigator } from "./Navigator";
 import { LayerItem } from "./LayerItem";
 import { useLayerDragReorder } from "./useLayerDragReorder";
 import { useLayerActions } from "./useLayerActions";
+import { cancelLayerTransformSession } from "./transformSession";
 
 export function LayersPanel() {
   const {
@@ -19,7 +20,9 @@ export function LayersPanel() {
     scheduler,
     zoom,
     activeDocumentId,
-    syncViewport
+    syncViewport,
+    layerTransformSession,
+    setLayerTransformSession
   } = useEditor();
 
   const [showOpacitySlider, setShowOpacitySlider] = createSignal(false);
@@ -72,6 +75,14 @@ export function LayersPanel() {
     };
   };
 
+  const cancelActiveTransformSession = () => {
+    const engine = workspace.getActiveEngine();
+    if (cancelLayerTransformSession(layerTransformSession(), engine)) {
+      setLayerTransformSession(null);
+      scheduler.requestRender();
+    }
+  };
+
   const uploadCurrentLayerTextures = () => {
     const engine = workspace.getActiveEngine();
     if (!engine) return;
@@ -83,6 +94,9 @@ export function LayersPanel() {
   };
 
   const handleHistoryUndo = () => {
+    if (layerTransformSession()) {
+      cancelActiveTransformSession();
+    }
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (!engine || !history || !history.canUndo()) return;
@@ -94,6 +108,9 @@ export function LayersPanel() {
   };
 
   const handleHistoryRedo = () => {
+    if (layerTransformSession()) {
+      cancelActiveTransformSession();
+    }
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (!engine || !history || !history.canRedo()) return;
@@ -176,6 +193,9 @@ export function LayersPanel() {
             const engine = workspace.getActiveEngine();
             const id = activeLayerId();
             if (engine && id) {
+              if (layerTransformSession()) {
+                cancelActiveTransformSession();
+              }
               const history = workspace.getActiveHistory();
               history?.commit(engine.snapshot());
               engine.setLayerBlendMode(id, e.target.value as any);
@@ -232,6 +252,9 @@ export function LayersPanel() {
                   const engine = workspace.getActiveEngine();
                   const id = activeLayerId();
                   if (engine && id) {
+                    if (layerTransformSession()) {
+                      cancelActiveTransformSession();
+                    }
                     if (!opacityHistorySnapshot()) {
                       setOpacityHistorySnapshot(engine.snapshot());
                     }

@@ -74,13 +74,18 @@
 | ✅ DONE      | Crop box resize reactivity (overlay updates live during drag) |
 | ✅ DONE      | Crop snapping — canvas edges/centers + layer edges (Smart Guides, Alt disables) |
 | ✅ DONE      | Crop rotation — rotatable crop boundaries with screen-aligned visual box (canvas rotates behind), dynamic cursor, snap to 15° with Shift, angle readout, and layer offset/rotation update |
-| ✅ DONE      | Photoshop-style crop moving & panning — crop box remains stationary while canvas pans behind (move & resize), aligning with reference app |
+| ✅ DONE      | Desktop-editor crop moving & panning — crop box remains stationary while canvas pans behind (move & resize), aligned with professional editor behavior |
 | ✅ DONE      | Draw new crop box from scratch by click-dragging outside the current crop box |
 | ✅ DONE      | Arrow-key crop nudge (1px, 10px with Shift) with viewport pan compensation |
 | ✅ DONE      | Crop intermediate undo/redo — dedicated mini undo stack for crop rect |
 | ✅ DONE      | Aspect ratio preset dropdown (12 common ratios + custom, auto-fit on select) |
 | ✅ DONE      | Size mode unit conversion (px/cm/mm/in at 96 PPI) |
 | ✅ DONE      | Rotate 90° buttons (↺ CCW / ↻ CW) in crop option bar |
+| ✅ DONE      | Crop cancel stays in Crop tool (Esc/Cancel clears crop box without switching to Move) |
+| ✅ DONE      | Crop interaction model — pasteboard click hides crop box, canvas click restores hidden crop box, drag from inside or outside canvas replaces crop box, double-click inside crop box applies crop |
+| ✅ DONE      | Crop apply geometry hardening — independent X/Y target-size scaling and WebGL texture re-upload after destructive crop |
+| ✅ DONE      | Crop mode pasteboard panning guard — Space+drag navigation stays available while Crop tool is active |
+
 
 ---
 
@@ -243,4 +248,6 @@
 
 | Status | Item |
 | ------ | ---- |
+| DONE | Brush and Eraser tool improvement plan created: `docs/superpowers/plans/2026-06-06-brush-eraser-tool-improvements.md` |
+| DONE | Crop Hidden Preview Restore correction plan created: `docs/superpowers/plans/2026-06-05-crop-interaction-model-plan.md` |
 | DONE | Scalability and maintainability refactor plan created: `docs/plans/2026-06-04-scalability-maintainability-refactor-plan.md` |

@@ -17,7 +17,7 @@ The working name (`Photrez`) remains valid until this gate is explicitly closed.
 - Basic uniqueness search for final name in software category.
 - Domain availability check for primary and fallback domains.
 - Social handle availability check for primary channels.
-- Confirm no direct confusion with Adobe/Photoshop naming.
+- Confirm no direct confusion with third-party product naming.
 
 ## Documentation Sync Gate
 

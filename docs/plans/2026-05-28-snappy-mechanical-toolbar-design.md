@@ -7,7 +7,7 @@
 ---
 
 ## 1. Goal & Aesthetic Principles
-The goal is to completely restructure and redesign the **Contextual Tool Options Bar (Toolbar)** in Photrez to align it with high-precision, professional desktop CAD/graphics software (e.g. Figma, Blender, Adobe Lightroom) and strictly eliminate all forms of "AI slop" (no blurry drop shadows, no glassmorphism, no neon glowing edges, and no mismatched heights).
+The goal is to completely restructure and redesign the **Contextual Tool Options Bar (Toolbar)** in Photrez to align it with high-precision, professional desktop graphics software and strictly eliminate all forms of "AI slop" (no blurry drop shadows, no glassmorphism, no neon glowing edges, and no mismatched heights).
 
 ### Anti-AI Slop Guidelines:
 - **Zero-Tint Neutral Surfaces**: All backgrounds use solid `#202022` (`bg-studio-panel`) and `#28282B` (`bg-studio-input`). No blur backdrops or translucent blends.

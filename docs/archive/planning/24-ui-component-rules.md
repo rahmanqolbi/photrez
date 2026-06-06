@@ -6,7 +6,7 @@ Dokumen ini berisi aturan implementasi komponen agar hasil UI antar agent konsis
 
 Komponen prioritas desktop editor:
 
-1. **AppTitleBar**: Header window desktop, macOS/Figma style, height `46px`.
+1. **AppTitleBar**: Header window desktop, desktop titlebar style, height `46px`.
 2. **LeftToolRail**: Sidebar vertikal tool, width `52px`.
 3. **RightDock**: Container sidebar ganda, side-by-side Properties + Layers.
 4. **PropertiesPanel**: Panel parameter transform, anchor grid, dan basic sliders (`300px` / `336px` 2XL).
@@ -63,7 +63,7 @@ Komponen prioritas desktop editor:
 - **MVP Tools Restriction**: LeftToolRail hanya memuat **6 Alat MVP Utama** (Move, Rectangle Select, Crop, Eyedropper, Brush, Eraser) dalam satu kolom stack vertikal tanpa dividers.
 - **mt-auto Spawner**: Modul warna dan tombol ellipsis didorong secara fisik menggunakan pembatas mekanis `mt-auto` di bagian paling bawah.
 - **Diagonal Swatches bertumpuk**:
-  - Ukuran kontainer luar: `size-[36px]` (mempet penuh Photoshop-style).
+  - Ukuran kontainer luar: `size-[36px]` (mempet penuh untuk efisiensi ruang).
   - Terdiri atas dua elemen lingkaran absolut berukuran `size-[35px]` tumpang tindih secara diagonal.
   - Memakai properti `clip-path` diagonal: Foreground `polygon(0 0, 100% 0, 0 100%)` (top-left) dan Background `polygon(100% 100%, 100% 0, 0 100%)` (bottom-right).
   - Jarak diagonal transparan `1.4px` dihasilkan secara presisi melalui offset posisi `top-0 left-0` vs `bottom-0 right-0`.

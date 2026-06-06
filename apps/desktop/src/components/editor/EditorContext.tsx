@@ -4,10 +4,11 @@ import { WebGL2Backend } from "@/renderer/webgl2";
 import { RenderScheduler } from "@/renderer/scheduler";
 import { LayerNode, DocumentTabSummary } from "@/engine/types";
 import { Accessor, Setter } from "solid-js";
-import { createEditorState } from "./editorState";
-import { createCropState } from "./cropState";
+import { createEditorState, LayerTransformSession } from "./editorState";
+import { createCropState, CropPreview } from "./cropState";
 import { setupWorkspaceSync } from "./workspaceSync";
 import { openImage } from "./editorOpenImage";
+
 
 export interface EditorContextValue {
   workspace: WorkspaceManager;
@@ -73,16 +74,24 @@ export interface EditorContextValue {
   setCropSizeUnit: Setter<"px" | "cm" | "mm" | "in">;
   cropRotation: Accessor<number>;
   setCropRotation: Setter<number>;
+  hiddenCropPreview: Accessor<CropPreview | null>;
+  setHiddenCropPreview: Setter<CropPreview | null>;
   commitCropState: (rect: { x: number; y: number; w: number; h: number }, rotation: number) => void;
   canCropUndo: Accessor<boolean>;
   canCropRedo: Accessor<boolean>;
   undoLastCrop: () => { rect: { x: number; y: number; w: number; h: number }; rotation: number } | null;
   redoCrop: () => { rect: { x: number; y: number; w: number; h: number }; rotation: number } | null;
+  clearCropStacks: () => void;
 
   // Rotate cursor hover position (screen-space)
   hoverPos: Accessor<{ x: number; y: number } | null>;
   setHoverPos: Setter<{ x: number; y: number } | null>;
+
+  // Transform Session
+  layerTransformSession: Accessor<LayerTransformSession | null>;
+  setLayerTransformSession: Setter<LayerTransformSession | null>;
 }
+
 
 const EditorContext = createContext<EditorContextValue>();
 

@@ -7,7 +7,7 @@
 
 ## Product Vision
 
-Photrez is a lightweight desktop image editor designed as a practical Photoshop alternative for digital and print workflows.
+Photrez is a lightweight desktop image editor designed for practical digital and print workflows.
 
 ## Positioning
 
@@ -17,7 +17,7 @@ Photrez is a lightweight desktop image editor designed as a practical Photoshop 
 
 Suggested line:
 
-- `A lightweight Photoshop alternative for practical design and print workflows.`
+- `A lightweight desktop image editor for practical design and print workflows.`
 
 ## Target Users (Priority Order)
 
@@ -29,14 +29,14 @@ Suggested line:
 
 1. Lightweight by default (`<80 MB` installer, low idle RAM, fast startup).
 2. Rust core is source of truth for document and heavy operations.
-3. UI familiarity without copying Photoshop identity.
+3. UI familiarity with Photrez-owned identity.
 4. PSD compatibility is progressive and transparent.
 5. Print workflow is a strategic differentiator.
 6. Open format and open plugin ecosystem are long-term strategy.
 
 ## Non-Clone Guardrails
 
-- Do not copy Adobe/Photoshop trademarks, logos, or product identity.
+- Do not copy third-party trademarks, logos, or product identity.
 - Do not mirror panel/toolbar layout one-to-one.
 - Keep naming, iconography, and visual system distinct.
 - Reuse generic editor concepts only (layers, selection, transform, blend, export).
@@ -75,5 +75,5 @@ Suggested line:
 
 ## Roadmap Communication Rule
 
-- Never market as "Photoshop killer" in early phases.
+- Never market by positioning against a named third-party product in early phases.
 - Use transparent capability statements (for example: `PSD Preview & Basic Edit`).

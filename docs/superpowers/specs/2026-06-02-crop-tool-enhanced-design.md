@@ -3,11 +3,11 @@
 **Date:** 2026-06-02
 **Status:** Draft
 **Scope:** MVP (Phase 1)
-**Approach:** 2 (Photoshop-like Enhanced Rectangular Crop)
+**Approach:** 2 (Enhanced Rectangular Crop)
 
 ## Goal
 
-Replace the current bare-bones crop tool (display-only W/H, APPLY CROP button) with a Photoshop-grade Enhanced Crop Tool: interactive crop box with 8 resize handles + move inside, ratio/size/free modes, live guides, and Enter/Esc apply/cancel — all without requiring a Rust core or wgpu renderer.
+Replace the current bare-bones crop tool (display-only W/H, APPLY CROP button) with an enhanced Crop Tool: interactive crop box with 8 resize handles + move inside, ratio/size/free modes, live guides, and Enter/Esc apply/cancel — all without requiring a Rust core or wgpu renderer.
 
 ## Problem
 
@@ -70,7 +70,7 @@ After the initial drag, the crop box shows 8 handles (4 corners + 4 edges):
 
 - **Corner handles**: resize along both axes simultaneously.
   - Shift+drag corner: free (non-proportional) resize.
-  - Default (no Shift): proportional resize maintaining aspect ratio (if `cropMode` is "free", default to proportional like Photoshop's crop tool; if "ratio" mode, locked to ratio; if "size" mode, resize changes W/H that must match target size).
+  - Default (no Shift): proportional resize maintaining aspect ratio (if `cropMode` is "free", default to proportional; if "ratio" mode, locked to ratio; if "size" mode, resize changes W/H that must match target size).
 - **Edge handles**: resize one axis only.
 - **Alt+drag any handle**: resize from center point (opposite edge anchored).
 
@@ -139,7 +139,7 @@ The crop overlay is drawn as an SVG layer over the canvas (extending the current
 #### Corner Brackets (Hit Zone Enhancement)
 
 - Visual: small L-shaped brackets extending ~12px outside each corner, white 1px stroke.
-- Functional: these extend the interactive hit zone for corner handles, matching Photoshop behavior.
+- Functional: these extend the interactive hit zone for corner handles.
 - Hit zone: `16 / zoom` px around each handle center.
 
 #### Guide Overlay
@@ -191,7 +191,7 @@ Default mode: **Free**.
 
 #### W / H Fields
 
-- In **Free** mode: display current crop rect dimensions (read-only, matching Photoshop's crop info display).
+- In **Free** mode: display current crop rect dimensions as read-only crop info.
 - In **Ratio** mode: editable fields for custom ratio (e.g., set W=16, H=9 to lock to 16:9).
 - In **Size** mode: editable fields for target dimensions in px.
 

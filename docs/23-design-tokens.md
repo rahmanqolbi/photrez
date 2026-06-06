@@ -73,7 +73,7 @@ Dimensi aktual yang berlabuh pada tepi window (docked layout):
 
 | Elemen | Dimensi | Catatan / Class Tailwind |
 | --- | --- | --- |
-| **AppTitleBar** height | `46px` | macOS/Figma style, centered doc title, `h-[46px]` |
+| **AppTitleBar** height | `46px` | Desktop titlebar style, centered doc title, `h-[46px]` |
 | **DocumentTabsBar** height | `44px` | `h-[44px] bg-editor-topbar` |
 | **OptionBar** height | `44px` | `h-[44px] bg-editor-toolbar` |
 | **BottomStatusBar** height | `32px` | `h-[32px] bg-editor-topbar` |
@@ -149,7 +149,7 @@ Gradien warna biphasic yang digunakan saat ini:
 
 ## 8) Premium Diagonal Color Swatch
 
-LeftToolRail memuat swatch warna bertumpuk diagonal inovatif yang memaksimalkan ukuran target klik hingga `36px` (mempet penuh untuk efisiensi ruang Photoshop-style), dengan visual potongan diagonal geometris yang presisi:
+LeftToolRail memuat swatch warna bertumpuk diagonal inovatif yang memaksimalkan ukuran target klik hingga `36px` (mempet penuh untuk efisiensi ruang), dengan visual potongan diagonal geometris yang presisi:
 
 ```tsx
 // Implementasi custom diagonal swatches bertumpuk

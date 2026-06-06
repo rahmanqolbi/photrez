@@ -1,5 +1,6 @@
 import { useEditor } from "./EditorContext";
 import { flattenAllLayers, mergeActiveLayerDown } from "./layerOperations";
+import { cancelLayerTransformSession } from "./transformSession";
 
 export function useLayerActions() {
   const {
@@ -8,9 +9,20 @@ export function useLayerActions() {
     layers,
     activeLayerId,
     scheduler,
+    layerTransformSession,
+    setLayerTransformSession,
   } = useEditor();
 
+  const cancelActiveTransformSession = () => {
+    const engine = workspace.getActiveEngine();
+    if (cancelLayerTransformSession(layerTransformSession(), engine)) {
+      setLayerTransformSession(null);
+      scheduler.requestRender();
+    }
+  };
+
   const handleDuplicateActiveLayer = () => {
+    cancelActiveTransformSession();
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     const activeId = activeLayerId();
@@ -25,6 +37,7 @@ export function useLayerActions() {
   };
 
   const handleMergeActiveLayerDown = () => {
+    cancelActiveTransformSession();
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     const activeId = activeLayerId();
@@ -36,6 +49,7 @@ export function useLayerActions() {
   };
 
   const handleFlattenAllLayers = () => {
+    cancelActiveTransformSession();
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (engine && history) {
@@ -52,6 +66,7 @@ export function useLayerActions() {
 
   const handleToggleVisibility = (e: MouseEvent, id: string) => {
     e.stopPropagation();
+    cancelActiveTransformSession();
     const engine = workspace.getActiveEngine();
     const layer = engine?.getLayer(id);
     if (engine && layer) {
@@ -64,6 +79,7 @@ export function useLayerActions() {
 
   const handleToggleLock = (e: MouseEvent, id: string) => {
     e.stopPropagation();
+    cancelActiveTransformSession();
     const engine = workspace.getActiveEngine();
     const layer = engine?.getLayer(id);
     if (engine && layer) {
@@ -76,6 +92,7 @@ export function useLayerActions() {
 
   const handleToggleLockTransparency = (e: MouseEvent, id: string) => {
     e.stopPropagation();
+    cancelActiveTransformSession();
     const engine = workspace.getActiveEngine();
     const layer = engine?.getLayer(id);
     if (engine && layer) {
@@ -88,6 +105,7 @@ export function useLayerActions() {
 
   const handleToggleLockPosition = (e: MouseEvent, id: string) => {
     e.stopPropagation();
+    cancelActiveTransformSession();
     const engine = workspace.getActiveEngine();
     const layer = engine?.getLayer(id);
     if (engine && layer) {
@@ -100,6 +118,7 @@ export function useLayerActions() {
 
   const handleToggleLockRotation = (e: MouseEvent, id: string) => {
     e.stopPropagation();
+    cancelActiveTransformSession();
     const engine = workspace.getActiveEngine();
     const layer = engine?.getLayer(id);
     if (engine && layer) {
@@ -112,6 +131,7 @@ export function useLayerActions() {
 
   const handleMoveUp = (e: MouseEvent, index: number) => {
     e.stopPropagation();
+    cancelActiveTransformSession();
     if (index > 0) {
       const engine = workspace.getActiveEngine();
       const history = workspace.getActiveHistory();
@@ -125,6 +145,7 @@ export function useLayerActions() {
 
   const handleMoveDown = (e: MouseEvent, index: number) => {
     e.stopPropagation();
+    cancelActiveTransformSession();
     if (index < layers().length - 1) {
       const engine = workspace.getActiveEngine();
       const history = workspace.getActiveHistory();
@@ -137,6 +158,7 @@ export function useLayerActions() {
   };
 
   const handleAddLayer = () => {
+    cancelActiveTransformSession();
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (engine && history) {
@@ -147,6 +169,7 @@ export function useLayerActions() {
   };
 
   const handleDeleteActiveLayer = () => {
+    cancelActiveTransformSession();
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     const activeId = activeLayerId();

@@ -516,9 +516,6 @@ export class DocumentEngine {
   setLayerImageBitmap(id: LayerId, bitmap: ImageBitmap): void {
     const layer = this.getLayer(id);
     if (layer) {
-      if (layer.imageBitmap && layer.imageBitmap !== bitmap) {
-        layer.imageBitmap.close();
-      }
       layer.imageBitmap = bitmap;
       layer.width = bitmap.width;
       layer.height = bitmap.height;
@@ -606,6 +603,14 @@ export class DocumentEngine {
 
   restore(snapshot: DocumentModel): void {
     this.model = restoreSnapshot(snapshot);
+    // Clean up stale texture handles for layers that no longer exist
+    const currentIds = new Set(this.model.layers.map(l => l.id));
+    for (const existingId of this.textureHandles.keys()) {
+      if (!currentIds.has(existingId)) {
+        this.textureHandles.delete(existingId);
+      }
+    }
+    this.dirtyLayerIds.clear();
     this.notifyChange();
   }
 

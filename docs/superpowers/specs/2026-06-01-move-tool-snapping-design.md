@@ -8,7 +8,7 @@ Scope: MVP move tool precision and simplification
 
 Photrez's Move tool currently drags the active layer with raw pointer
 positions, ignoring alignment cues. Drag precision feels imprecise
-compared to Photoshop, Affinity, and Figma. The user can only see
+compared to professional editor expectations. The user can only see
 where the layer ends up after releasing the mouse.
 
 This design adds:
@@ -40,7 +40,7 @@ Make Move tool drag feel like a desktop image editor:
    (default 5 document pixels).
 
 After this change, Move tool matches the precision users expect from
-Photoshop or Affinity without introducing new UI surfaces.
+professional editors without introducing new UI surfaces.
 
 ## 3. Decisions Locked During Design Discussion
 
@@ -100,7 +100,7 @@ Behavior:
 
 Rationale:
 
-- Auto-snap matches Photoshop, Figma, and Affinity default behavior.
+- Auto-snap matches common professional editor default behavior.
 - `Alt` disable is the standard temporary override across the
   industry. Users who do not like snapping can hold `Alt` for the rest
   of the session.
@@ -229,7 +229,7 @@ Rationale:
 
 - **Snapping to off-canvas layers**: a layer can be dragged far
   outside the canvas via Move tool. The snap engine still evaluates
-  these targets. This is acceptable because Photoshop and Figma
+  these targets. This is acceptable because professional editors
   behave the same way.
 - **Threshold feels wrong**: a 5px threshold is a guess. It is
   configurable and easy to tune; the first release can ship with 5
@@ -239,8 +239,8 @@ Rationale:
   sample. This is well under 1ms on modern hardware for typical
   scene sizes (<=200 layers). No risk for MVP.
 - **Locked layer surprise**: locking a layer still allows snapping
-  to it. This matches Photoshop but a user might expect otherwise.
-  We accept the Photoshop behavior for consistency.
+  to it. This matches the chosen Photrez interaction model but a user might expect otherwise.
+  We accept this behavior for consistency.
 
 ## 6. Out of Scope
 

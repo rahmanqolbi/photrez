@@ -124,6 +124,120 @@ describe('DocumentEngine', () => {
     expect(engine.getLayers().map(l => l.name)).toEqual(['Layer 2', 'Layer 1']);
   });
 
+  it('snapshot creates deep clone — model mutation does not affect snapshot', () => {
+    const engine = new DocumentEngine('doc-deep', 'Deep Clone', 800, 600);
+    const l1 = engine.addLayer('Layer 1');
+    l1.transform.x = 100;
+
+    const snap = engine.snapshot();
+
+    engine.setViewport({ panX: 999, panY: 999, zoom: 5, rotation: 0 });
+    engine.getLayer(l1.id)!.transform.x = 200;
+    engine.getLayer(l1.id)!.opacity = 0.1;
+
+    expect(snap.viewport.panX).toBe(0);
+    expect(snap.layers[0].transform.x).toBe(100);
+    expect(snap.layers[0].opacity).toBe(1);
+  });
+
+  it('snapshot with selection is deep-cloned', () => {
+    const engine = new DocumentEngine('doc-sel', 'Selection', 800, 600);
+    engine.addLayer('Layer 1');
+    engine.createSelection(10, 20, 100, 200);
+
+    const snap = engine.snapshot();
+    expect(snap.selection).toEqual({ x: 10, y: 20, width: 100, height: 200 });
+
+    engine.clearSelection();
+    expect(snap.selection).toEqual({ x: 10, y: 20, width: 100, height: 200 });
+  });
+
+  it('restore replaces all mutable state', () => {
+    const engine = new DocumentEngine('doc-restore', 'Restore', 400, 300);
+    engine.addLayer('Layer 1');
+    engine.setViewport({ panX: 100, panY: 50, zoom: 2, rotation: 0 });
+    engine.createSelection(0, 0, 400, 300);
+
+    const snap = engine.snapshot();
+
+    engine.addLayer('Layer 2');
+    engine.setViewport({ panX: 0, panY: 0, zoom: 1, rotation: 0 });
+    engine.clearSelection();
+
+    engine.restore(snap);
+
+    expect(engine.getLayers().length).toBe(1);
+    expect(engine.getViewport()).toEqual({ panX: 100, panY: 50, zoom: 2, rotation: 0 });
+    expect(engine.getSelection()).toEqual({ x: 0, y: 0, width: 400, height: 300 });
+  });
+
+  it('restore handles selection of null', () => {
+    const engine = new DocumentEngine('doc-null-sel', 'No Sel', 800, 600);
+    engine.addLayer('Layer 1');
+    const snap = engine.snapshot();
+
+    expect(snap.selection).toBeNull();
+    engine.restore(snap);
+    expect(engine.getSelection()).toBeNull();
+  });
+
+  it('multiple snapshots remain independent after restore', () => {
+    const engine = new DocumentEngine('doc-multi', 'Multi', 800, 600);
+    engine.addLayer('A');
+
+    const snap1 = engine.snapshot();
+    engine.addLayer('B');
+    const snap2 = engine.snapshot();
+
+    engine.restore(snap1);
+    expect(engine.getLayers().map(l => l.name)).toEqual(['A']);
+
+    engine.restore(snap2);
+    expect(engine.getLayers().map(l => l.name)).toEqual(['B', 'A']);
+  });
+
+  it('snapshot reuses ImageBitmap reference (immutable)', () => {
+    const bitmap = { width: 100, height: 100 } as ImageBitmap;
+    const engine = new DocumentEngine('doc-bitmap', 'Bitmap', 800, 600);
+    const l1 = engine.addLayer('Layer 1', 100, 100);
+    engine.setLayerImageBitmap(l1.id, bitmap);
+
+    const snap = engine.snapshot();
+    expect(snap.layers[0].imageBitmap).toBe(bitmap);
+
+    const newBitmap = { width: 200, height: 200 } as ImageBitmap;
+    engine.setLayerImageBitmap(l1.id, newBitmap);
+
+    expect(snap.layers[0].imageBitmap).toBe(bitmap);
+    expect(snap.layers[0].imageBitmap).not.toBe(newBitmap);
+  });
+
+  it('restore preserves ImageBitmap reference from snapshot', () => {
+    const bitmap = { width: 100, height: 100 } as ImageBitmap;
+    const engine = new DocumentEngine('doc-restore-bmp', 'Restore Bitmap', 800, 600);
+    const l1 = engine.addLayer('Layer 1', 100, 100);
+    engine.setLayerImageBitmap(l1.id, bitmap);
+
+    const snap = engine.snapshot();
+    const newBitmap = { width: 200, height: 200 } as ImageBitmap;
+    engine.setLayerImageBitmap(l1.id, newBitmap);
+
+    engine.restore(snap);
+    expect(engine.getLayer(l1.id)!.imageBitmap).toBe(bitmap);
+  });
+
+  it('restore does not affect previously taken snapshots', () => {
+    const engine = new DocumentEngine('doc-indep', 'Independent', 800, 600);
+    engine.addLayer('V1');
+    const snap1 = engine.snapshot();
+
+    engine.addLayer('V2');
+    const snap2 = engine.snapshot();
+
+    engine.restore(snap1);
+    expect(snap2.layers.length).toBe(2);
+  });
+
   describe('getRenderState', () => {
     it('returns documentSize matching engine dimensions (not canvas pixel buffer)', () => {
       // Bug regression test: getRenderState() must use the document's intrinsic
@@ -210,6 +324,22 @@ describe('DocumentEngine', () => {
       // Layer transform scaled by 800/400 = 2x, 600/300 = 2x
       expect(layer.transform.x).toBeCloseTo(200, 0);
       expect(layer.transform.y).toBeCloseTo(100, 0);
+    });
+
+    it('applies independent targetSize scaling on each axis', () => {
+      const engine = new DocumentEngine('doc-crop-size-nonuniform', 'Crop Size Nonuniform', 800, 600);
+      const layer = engine.addLayer('Layer 1', 100, 100);
+      layer.transform.x = 200;
+      layer.transform.y = 100;
+
+      engine.applyCrop(100, 50, 400, 300, { targetSize: { w: 800, h: 300 } });
+
+      expect(engine.getWidth()).toBe(800);
+      expect(engine.getHeight()).toBe(300);
+      expect(layer.transform.x).toBeCloseTo(200, 4);
+      expect(layer.transform.y).toBeCloseTo(50, 4);
+      expect(layer.transform.scaleX).toBeCloseTo(2, 4);
+      expect(layer.transform.scaleY).toBeCloseTo(1, 4);
     });
 
     it('does not move locked layers (non-destructive)', () => {

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Polish rotate layer interaction di Move Tool agar lebih mirip Photoshop dan referensi `aplikasi-cetak-massal`. Saat ini rotate zone sudah ada tapi UX-nya lemah: cursor masih `crosshair` generic, hit area kurang nyaman, dan feedback kurang jelas.
+Polish rotate layer interaction di Move Tool agar terasa lebih presisi dan mengikuti referensi internal `aplikasi-cetak-massal`. Saat ini rotate zone sudah ada tapi UX-nya lemah: cursor masih `crosshair` generic, hit area kurang nyaman, dan feedback kurang jelas.
 
 ## Problem
 
@@ -63,7 +63,7 @@ Polish rotate layer interaction di Move Tool agar lebih mirip Photoshop dan refe
 
 ## Out of Scope
 
-- Rotate canvas/view (Photoshop Rotate View tool)
+- Rotate canvas/view tool
 - Pivot point draggable
 - Skew/perspective
 - Dedicated rotate handle (knob)
@@ -73,4 +73,4 @@ Polish rotate layer interaction di Move Tool agar lebih mirip Photoshop dan refe
 
 - `aplikasi-cetak-massal/src/renderer/src/components/studio/utils/cursorRotate.ts` — cursor rotate utilities
 - `aplikasi-cetak-massal/src/renderer/src/components/studio/components/canvas/EditorCanvas.tsx` — cursor integration pattern
-- Adobe Help: Transforming Objects — rotate objects interaction
+- External reference: transform object rotation interaction

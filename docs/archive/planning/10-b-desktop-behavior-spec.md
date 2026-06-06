@@ -1,6 +1,6 @@
 # 10.b - Desktop Behavior Spec (MVP)
 
-Dokumen ini melengkapi panduan "Anti-Webapp" dengan mendefinisikan *behavior* (perilaku interaksi) tingkat lanjut yang wajib diimplementasikan agar Photrez terasa dan berfungsi seperti *software desktop* profesional (Photoshop/Affinity).
+Dokumen ini melengkapi panduan "Anti-Webapp" dengan mendefinisikan *behavior* (perilaku interaksi) tingkat lanjut yang wajib diimplementasikan agar Photrez terasa dan berfungsi seperti *software desktop* profesional.
 
 ## 1. Global Shortcut Hijacking & Stateful Keys
 

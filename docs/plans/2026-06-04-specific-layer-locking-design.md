@@ -5,7 +5,7 @@ Status: Approved
 
 ## Overview
 
-This specification details the implementation of a Photoshop-style specific layer locking system. In addition to the existing global "Lock All" (`locked`) property, we introduce:
+This specification details the implementation of a specific layer locking system. In addition to the existing global "Lock All" (`locked`) property, we introduce:
 1. **Lock Transparency** (`lockTransparency`): Prevents brush painting from altering transparent pixels.
 2. **Lock Position** (`lockPosition`): Prevents changes to the X and Y coordinates.
 3. **Lock Rotation** (`lockRotation`): Prevents changes to the rotation angle.

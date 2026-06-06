@@ -1,8 +1,8 @@
-# Photoshop-Like Free Transform Implementation Plan
+# Free Transform Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Bring Photrez Move Tool to Photoshop-grade Free Transform behavior.
+**Goal:** Bring Photrez Move Tool to production-grade Free Transform behavior.
 
 **Architecture:** Add pure geometry helpers in `viewport/transformGeometry.ts`, update WebGL shader for center-anchored scale+rotate+flip, replace HTML overlay with SVG rotated bounding box, rewire pointer handlers to call helper math, and update cursor resolver.
 
@@ -949,7 +949,7 @@ git commit -m "feat(overlay): replace HTML div overlay with SVG rotated bounding
 
 ---
 
-### Task 4: Photoshop-Like Pointer Math (already in Task 1 + Task 3)
+### Task 4: Local-Axis Pointer Math (already in Task 1 + Task 3)
 
 The pointer math for resize/rotation is already implemented in `transformGeometry.ts` (`applyResizeHandle`, `applyRotationDrag`) and wired in `SelectionTransformOverlay.tsx`. This task is essentially rolled into Tasks 1 and 3.
 
@@ -1156,11 +1156,11 @@ Append entry:
 
 ```markdown
 ---
-## [2026-06-02] FEATURE — Photoshop-Like Free Transform for Move Tool [COMPLETE]
+## [2026-06-02] FEATURE — Free Transform for Move Tool [COMPLETE]
 
 ### Kategori: FEATURE / VIEWPORT / MOVE TOOL / UX
 
-**Deskripsi:** Implementasi Photoshop-like Free Transform overlay untuk Move Tool. Layer rendering, bounding box, handles, hit testing, cursor, dan resize math semuanya menggunakan true 2D transform. Rotasi, flip, dan scale diterapkan di vertex shader sehingga pixel layer mengikuti transform dengan benar. Bounding box di-render sebagai SVG rotated group, bukan HTML div axis-aligned. Resize handle menggunakan local-axis math, bukan screen-axis. Aspect ratio lock default untuk corner drag, Shift untuk free scaling, Alt untuk center-anchor, dan Esc untuk revert. Cursor resize berubah sesuai sudut handle.
+**Deskripsi:** Implementasi Free Transform overlay untuk Move Tool. Layer rendering, bounding box, handles, hit testing, cursor, dan resize math semuanya menggunakan true 2D transform. Rotasi, flip, dan scale diterapkan di vertex shader sehingga pixel layer mengikuti transform dengan benar. Bounding box di-render sebagai SVG rotated group, bukan HTML div axis-aligned. Resize handle menggunakan local-axis math, bukan screen-axis. Aspect ratio lock default untuk corner drag, Shift untuk free scaling, Alt untuk center-anchor, dan Esc untuk revert. Cursor resize berubah sesuai sudut handle.
 
 **Files Changed:**
 - `apps/desktop/src/viewport/transformGeometry.ts`: NEW — pure geometry helpers (getLayerCenter, getLayerCorners, getLayerAabb, pointToLayerLocal, detectHandle, applyResizeHandle, applyRotationDrag, getCursorForHandle).
@@ -1194,7 +1194,7 @@ Update the "Selection + Move + Transform" section. Find the row `Transform handl
 Or add a new row after the existing transform handles row:
 
 ```markdown
-| ✅ DONE      | Photoshop-like free transform (rotated SVG overlay, center-anchored render, local-axis resize, aspect-lock, dynamic cursor) |
+| ✅ DONE      | Free transform (rotated SVG overlay, center-anchored render, local-axis resize, aspect-lock, dynamic cursor) |
 ```
 
 - [ ] **Step 5: Final commit**

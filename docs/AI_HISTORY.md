@@ -1,5 +1,575 @@
 # AI History — Photrez
 
+## [2026-06-06] PLANNING — Brush and Eraser Tool Improvements Plan [COMPLETE]
+
+### Kategori: PLANNING / BRUSH / ERASER / FRONTEND
+
+**Deskripsi:** Membuat rencana implementasi lengkap untuk memperkuat Brush dan Eraser tool Photrez. Plan mengunci fase pertama pada state tool terpisah, option bar interaktif, pointer payload yang membawa settings aktif, renderer stroke berbasis size/hardness/strength, cursor preview sinkron, shortcut ukuran aktif, dan feedback saat layer tidak bisa diedit.
+
+**Referensi:** Rencana dibuat setelah membaca implementasi paint/retouch di `D:\Project\aplikasi-cetak-massal` dan mengambil pola yang cocok untuk Photrez: pemisahan setting brush/eraser, cursor yang mengikuti setting aktif, shortcut ukuran aktif, dan history dirty-rect sebagai follow-up terpisah. Context7 digunakan untuk memverifikasi pola SolidJS signals, event handlers, context, dan cleanup listener.
+
+**Scope Boundary:** Tidak mengimplementasikan runtime code pada tahap ini. Dirty-rect history, flow control, pressure input, preset brush, textured brush, dan mask-based erase ditunda agar implementasi pertama tetap sesuai arsitektur MVP.
+
+**Files Changed:**
+- [ADD] `docs/superpowers/plans/2026-06-06-brush-eraser-tool-improvements.md`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+- [MODIFY] `docs/FEATURES.md`
+
+**Verifikasi:** Documentation-only planning task. Plan reviewed for concrete logic flow, exact target files, TDD steps, command gates, docs sync, risk handling, and placeholder scan.
+
+---
+
+## [2026-06-05] BUG FIX — Crop Mode Pasteboard Panning Regression [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / POINTER ROUTING
+
+**Deskripsi:** Memperbaiki regresi panning saat Crop tool aktif. Space+drag pada pasteboard/outside canvas sekarang kembali diteruskan ke jalur navigasi/panning, bukan dianggap sebagai gesture crop replacement.
+
+**Root Cause:** Handler pasteboard khusus Crop tool di `CanvasViewport.tsx` menangkap klik kiri lebih dulu dan memanggil `preventDefault()` tanpa mengecek `isSpacePressed()` / `isPanning()`. Akibatnya `usePanNavigation` tidak menerima pointer down untuk memulai pan.
+
+**Fix Rationale:** Mode navigasi harus punya prioritas lebih tinggi daripada gesture editing. Saat Space sedang ditahan atau pan sudah aktif, pasteboard handler Crop tool harus no-op agar event tetap mengalir ke `onViewportPointerDown`.
+
+**Files Changed:**
+- [MODIFY] `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+- [MODIFY] `docs/FEATURES.md`
+- [MODIFY] `docs/plans/task.md`
+
+**Verifikasi:**
+- PASS: `pnpm.cmd --filter photrez-desktop test -- apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx --run --pool=threads --maxWorkers=1` (regression RED sebelum fix, GREEN setelah fix; Vitest menjalankan 30 files, 324 tests)
+- PASS: `pnpm.cmd run build`
+
+---
+
+## [2026-06-05] BUG FIX — Crop Apply Geometry and Texture Sync [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / ENGINE
+
+**Deskripsi:** Memperbaiki hasil crop apply yang dapat terlihat bergeser atau tidak sesuai setelah crop diterapkan, terutama saat mode size menggunakan target width/height yang tidak identik dengan rasio crop box atau saat destructive crop mengganti bitmap layer.
+
+**Root Cause:** `performApplyCrop()` memakai satu skala dari lebar crop untuk semua axis, sehingga target size non-uniform salah menghitung posisi/scale Y. Selain itu, `applyCropPreview()` hanya meminta render setelah destructive crop, tetapi tidak meng-upload ulang `imageBitmap` layer yang baru ke WebGL texture.
+
+**Fix Rationale:** Geometri crop harus mengikuti skala X/Y independen seperti preview/export berbasis canvas. Setelah bitmap layer diganti, texture WebGL harus disinkronkan sebelum render berikutnya agar tampilan canvas memakai bitmap terbaru, bukan texture lama dengan transform baru.
+
+**Files Changed:**
+- [MODIFY] `apps/desktop/src/engine/cropApply.ts`
+- [MODIFY] `apps/desktop/src/engine/__tests__/document.test.ts`
+- [MODIFY] `apps/desktop/src/components/editor/cropToolActions.ts`
+- [MODIFY] `apps/desktop/src/components/editor/__tests__/cropToolActions.test.ts`
+- [MODIFY] `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/CropOptionBar.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasKeyboard.ts`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+- [MODIFY] `docs/FEATURES.md`
+- [MODIFY] `docs/plans/task.md`
+
+**Verifikasi:**
+- PASS: `pnpm.cmd --filter photrez-desktop test -- apps/desktop/src/engine/__tests__/document.test.ts --run --pool=threads --maxWorkers=1` (regression RED sebelum fix, GREEN setelah fix; Vitest menjalankan 30 files, 323 tests)
+- PASS: `pnpm.cmd --filter photrez-desktop test -- apps/desktop/src/components/editor/__tests__/cropToolActions.test.ts apps/desktop/src/engine/__tests__/document.test.ts --run --pool=threads --maxWorkers=1` (30 files, 323 tests)
+- PASS: `pnpm.cmd run build`
+
+---
+
+## [2026-06-05] BUG FIX — Crop Hidden Preview Restore Continuation [COMPLETE]
+
+### Kategori: BUG FIX / UX / CROP / FRONTEND
+
+**Deskripsi:** Melanjutkan eksekusi plan Crop Interaction Model yang sempat berhenti. Pekerjaan lanjutan membersihkan debug log runtime dari pasteboard crop gesture, mengetikkan prop hidden crop preview di `CropOverlay`/`useCropOverlayDrag`, dan menambahkan regression test agar replacement crop box yang dibuat dari drag dapat mempertahankan koordinat di luar bounds document untuk canvas expansion.
+
+**Root Cause:** Implementasi sebelumnya sudah menjalankan sebagian besar plan, tetapi masih meninggalkan logging debug di viewport dan belum memiliki regression test eksplisit untuk outside-bounds replacement crop creation.
+
+**Fix Rationale:** Pasteboard click dan pasteboard drag harus dibedakan tanpa logging runtime, dan behavior crop expansion perlu dikunci dengan test agar executor berikutnya tidak mengembalikan clamp ke bounds document.
+
+**Files Changed:**
+- [MODIFY] `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/CropOverlay.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/useCropOverlayDrag.ts`
+- [MODIFY] `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+- [MODIFY] `docs/plans/task.md`
+
+**Verifikasi:**
+- PASS: `pnpm.cmd --filter photrez-desktop test` (30 files, 322 tests)
+- PASS: `pnpm.cmd run build`
+- PASS: `pnpm.cmd run test:e2e` (5/5 Playwright smoke tests)
+
+---
+
+## [2026-06-05] PLANNING — Crop Outside-Canvas Drag Plan Revision [COMPLETE]
+
+### Kategori: PLANNING / UX / CROP / FRONTEND
+
+**Deskripsi:** Merevisi plan Crop Interaction Model agar drag gesture dapat membuat crop box baru dari dalam canvas, dari pasteboard/outside canvas, melintasi batas canvas, atau sepenuhnya di luar canvas. Plan sekarang membedakan pasteboard click sebagai hide-only behavior dan pasteboard drag sebagai replacement crop creation setelah melewati threshold.
+
+**Root Cause:** Versi plan koreksi sebelumnya sudah memperbaiki hide/restore, tetapi belum mengunci perilaku drag dari luar canvas sehingga executor masih bisa menganggap pasteboard hanya menerima klik hide/no-op.
+
+**Files Changed:**
+- [MODIFY] `docs/superpowers/plans/2026-06-05-crop-interaction-model-plan.md`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+- [MODIFY] `docs/FEATURES.md`
+- [MODIFY] `docs/plans/task.md`
+
+**Verifikasi:**
+- Documentation-only planning revision. Verified for explicit UX contract, exact target files, TDD snippets, smoke coverage, and placeholder scan.
+
+---
+
+## [2026-06-05] PLANNING — Crop Hidden Preview Restore Correction Plan [COMPLETE]
+
+### Kategori: PLANNING / UX / CROP / FRONTEND
+
+**Deskripsi:** Menulis ulang plan Crop Interaction Model untuk memperbaiki drift dari obrolan. Plan baru membedakan `hide`, `restore`, `discard`, dan `replace`: pasteboard click menyembunyikan crop preview dan menyimpan rect/rotation terakhir; canvas click tanpa drag mengembalikan hidden preview; full-canvas preview hanya fallback jika tidak ada hidden preview; Cancel/Esc membuang session.
+
+**Root Cause:** Plan sebelumnya menerjemahkan "cropbox muncul lagi" sebagai "reset ke full-canvas crop box", sehingga implementasi kehilangan crop preview terakhir setelah pasteboard click.
+
+**Files Changed:**
+- [MODIFY] `docs/superpowers/plans/2026-06-05-crop-interaction-model-plan.md`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+- [MODIFY] `docs/FEATURES.md`
+- [MODIFY] `docs/plans/task.md`
+
+**Verifikasi:**
+- Documentation-only correction plan. Verified for corrected UX contract, exact implementation tasks, TDD steps, expected command outputs, and docs sync.
+
+---
+
+## [2026-06-05] FEATURE — Crop Interaction Model [COMPLETE]
+
+### Kategori: FEATURE / UX / CROP / FRONTEND
+
+**Deskripsi:** Mengimplementasikan Crop Interaction Model yang selaras dengan alur kerja profesional: klik pasteboard untuk clear crop preview tanpa keluar dari Crop tool, klik canvas untuk me-restore crop box default, canvas drag untuk me-replace crop box aktif dengan reset rotation ke 0, double-click di dalam crop box untuk apply crop dan beralih ke Move tool. Semua aksi apply disatukan melalui helper `cropToolActions.ts`.
+
+**Files Changed/Added:**
+- [NEW] `apps/desktop/src/components/editor/cropToolActions.ts`
+- [NEW] `apps/desktop/src/components/editor/__tests__/cropToolActions.test.ts`
+- [MODIFY] `apps/desktop/src/components/editor/pasteboardClickPolicy.ts`
+- [MODIFY] `apps/desktop/src/components/editor/__tests__/pasteboardClickPolicy.test.ts`
+- [MODIFY] `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasPointerTools.ts`
+- [MODIFY] `apps/desktop/src/components/editor/useCropOverlayDrag.ts`
+- [MODIFY] `apps/desktop/src/components/editor/CropOverlay.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/CropOptionBar.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasKeyboard.ts`
+- [MODIFY] `apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+- [MODIFY] `docs/FEATURES.md`
+- [MODIFY] `docs/plans/task.md`
+
+**Verifikasi:**
+- PASS: `pnpm --filter photrez-desktop test` (312/312 frontend tests passing)
+- PASS: `cargo test --workspace` (85/85 Rust tests passing)
+- PASS: `pnpm run build` (tsc & Vite production build successful)
+
+---
+
+## [2026-06-05] FEATURE — Browser Smoke Test Layer [COMPLETE]
+
+### Kategori: FEATURE / TESTING / FRONTEND / E2E
+
+**Deskripsi:** Menambahkan lapisan browser smoke test berbasis Playwright untuk melengkapi coverage Vitest. Test menjalankan Photrez via Vite dev server dan memverifikasi shell editor, empty workspace, pembuatan blank canvas, pergantian contextual tool option bar, dan toggle side panel pada viewport responsif.
+
+**Files Changed/Added:**
+- [NEW] `apps/desktop/playwright.config.ts`
+- [NEW] `apps/desktop/e2e/editor-smoke.spec.ts`
+- [MODIFY] `apps/desktop/package.json`
+- [MODIFY] `apps/desktop/vite.config.ts`
+- [MODIFY] `package.json`
+- [MODIFY] `pnpm-lock.yaml`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+- [MODIFY] `docs/FEATURES.md`
+- [MODIFY] `docs/plans/task.md`
+
+**TDD Evidence:**
+- RED: `pnpm.cmd --filter photrez-desktop exec playwright test` failed because the Playwright command did not exist.
+- RED: after adding the dependency, tests failed because browser binaries were not installed.
+- RED: after installing Chromium, tests exposed selector/viewport issues that were corrected.
+- GREEN: browser smoke tests pass via the new root script.
+
+**Verifikasi:**
+- PASS: `pnpm.cmd run test:e2e` (3/3 browser smoke tests passing)
+- PASS: `pnpm.cmd --filter photrez-desktop test` (308/308 Vitest tests passing)
+- PASS: `pnpm.cmd run build`
+
+---
+
+## [2026-06-05] MAINTENANCE — Third-Party Software Name Cleanup [COMPLETE]
+
+### Kategori: MAINTENANCE / DOCS / SOURCE COMMENTS / BRANDING
+
+**Deskripsi:** Membersihkan penyebutan eksplisit nama software/aplikasi pihak ketiga dari komentar source aktif, dokumentasi non-archive, dan archive docs. Istilah diganti dengan bahasa netral seperti `professional editor`, `desktop titlebar style`, `production-grade`, `precise`, dan `Photrez-owned identity`.
+
+**Scope Boundary:** Dependency lockfile tidak diubah karena masih berisi nama paket transitif dari dependency.
+
+**Files Changed/Added:** Source comments in `apps/desktop/src/viewport/transformGeometry.ts`, `apps/desktop/src/viewport/cropSnap.ts`, `apps/desktop/src/renderer/shaders.ts`; active docs under `docs/`; archive docs under `docs/archive/`; `README.md`.
+
+**Verifikasi:**
+- PASS: active source scan contains no explicit third-party software name matches.
+- PASS: full repo content scan contains no explicit third-party software name matches outside dependency lockfile.
+- PASS: full repo filename scan contains no explicit third-party software name matches.
+- PASS: `pnpm.cmd run build`
+- PASS: `pnpm.cmd --filter photrez-desktop test` (308/308 frontend tests passing)
+
+---
+
+## [2026-06-05] PLANNING — Crop Interaction Model Plan [COMPLETE]
+
+### Kategori: PLANNING / UX / CROP / FRONTEND
+
+**Deskripsi:** Membuat rencana implementasi lengkap untuk behavior Crop tool Photrez: klik pasteboard menghilangkan crop box tanpa keluar dari Crop tool, klik canvas mengembalikan crop box default, drag canvas mengganti crop box, dan double-click di dalam crop box menerapkan crop.
+
+**Files Changed:**
+- [ADD] `docs/superpowers/plans/2026-06-05-crop-interaction-model-plan.md`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+- [MODIFY] `docs/FEATURES.md`
+- [MODIFY] `docs/plans/task.md`
+
+**Verifikasi:**
+- Documentation-only planning task. Verified by reviewing the plan for concrete UX rules, target files, implementation sequence, tests, smoke scenarios, risks, and final verification commands.
+
+---
+
+## [2026-06-05] BUG FIX — Crop Cancel Stays In Crop Tool [COMPLETE]
+
+### Kategori: BUG FIX / UX / CROP / FRONTEND
+
+**Deskripsi:** Memperbaiki perilaku Crop cancel agar tombol `Cancel` di Crop Option Bar dan shortcut `Esc` hanya membatalkan crop box aktif tanpa mengganti tool aktif ke Move. Crop Apply tetap dapat kembali ke Move karena operasi crop sudah selesai diterapkan.
+
+**Root Cause:** Handler cancel crop di `CropOptionBar.tsx` dan handler `Escape` di `useCanvasKeyboard.ts` masih memanggil `setActiveTool("move")`, sehingga aksi membatalkan crop juga keluar dari Crop tool.
+
+**Fix Rationale:** Cancel adalah pembatalan session/preview crop, bukan pergantian tool. Menghapus pemanggilan `setActiveTool("move")` pada jalur cancel menjaga user tetap berada di Crop tool untuk membuat crop box baru atau menyesuaikan crop workflow berikutnya.
+
+**Files Changed/Added:**
+- [MODIFY] `apps/desktop/src/components/editor/CropOptionBar.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasKeyboard.ts`
+- [MODIFY] `apps/desktop/src/components/editor/__tests__/CropOptionBar.test.tsx`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+- [MODIFY] `docs/FEATURES.md`
+- [MODIFY] `docs/plans/task.md`
+
+**Verifikasi:**
+- ✅ `pnpm.cmd --filter photrez-desktop test -- CropOptionBar`: PASS (308/308 frontend tests passing)
+- ✅ `pnpm.cmd run build`: PASS (tsc compilation successful, Vite bundle built)
+
+---
+
+## [2026-06-05] FEATURE — Pasteboard Click Policy [COMPLETE]
+
+### Kategori: FEATURE / UX / VIEWPORT / FRONTEND
+
+**Deskripsi:** Menambahkan kebijakan klik pasteboard/outside-canvas terpusat agar Move normal dapat clear active layer, Selection dapat clear preview, dan mode penting seperti Transform Session, Crop, Brush, Eraser, serta Eyedropper tetap aman dari pembatalan tidak sengaja.
+
+**Files Changed/Added:**
+- [NEW] `apps/desktop/src/components/editor/pasteboardClickPolicy.ts`
+- [NEW] `apps/desktop/src/components/editor/__tests__/pasteboardClickPolicy.test.ts`
+- [NEW] `apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/CanvasViewport.tsx`
+
+**Verifikasi:**
+- ✅ `pnpm run build`: PASS (Vite & tsc compile clean)
+- ✅ `pnpm --filter photrez-desktop test`: PASS (307/307 tests passing, including component integration tests)
+- ✅ `cargo test --workspace`: PASS (85/85 tests passing)
+
+---
+
+## [2026-06-05] PLANNING — Pasteboard Click Policy Plan [COMPLETE]
+
+### Kategori: PLANNING / UX / VIEWPORT / FRONTEND
+
+**Deskripsi:** Membuat rencana implementasi lengkap untuk behavior klik luar canvas/pasteboard. Plan mengunci kebijakan per-tool: Move normal clear active layer, Selection clear preview, Transform Session dan Crop tidak dibatalkan oleh pasteboard click, Brush/Eraser/Eyedropper no-op, dan panning tetap prioritas.
+
+**Files Changed:**
+- [ADD] `docs/superpowers/plans/2026-06-05-pasteboard-click-policy-plan.md`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+- [MODIFY] `docs/FEATURES.md`
+- [MODIFY] `docs/plans/task.md`
+
+**Verifikasi:**
+- Documentation-only planning task. Verified by reviewing the plan for concrete UX policy, target files, tests, manual smoke scenarios, and final verification commands.
+
+---
+
+## [2026-06-05] FEATURE — Transform Session Hardening and Contextual Option Bar [COMPLETE]
+
+### Kategori: FEATURE / UX / TRANSFORM / FRONTEND
+
+**Deskripsi:** Hardened layer transform session lifecycle and added contextual Transform Option Bar while resize/rotate transform preview is active.
+
+**Files Changed/Added:**
+- [NEW] `apps/desktop/src/components/editor/TransformOptionBar.tsx`
+- [NEW] `apps/desktop/src/components/editor/__tests__/TransformOptionBar.test.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/editorState.ts`
+- [MODIFY] `apps/desktop/src/components/editor/OptionBar.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/MoveOptionBar.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/LeftToolRail.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/DocumentTabsBar.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/LayersPanel.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/AppTitleBar.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/BottomStatusBar.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/useSelectionTransformDrag.ts`
+- [MODIFY] `apps/desktop/src/components/editor/useLayerDragReorder.ts`
+- [MODIFY] `apps/desktop/src/components/editor/__tests__/SelectionTransformOverlay.test.ts`
+- [MODIFY] `apps/desktop/src/components/editor/__tests__/transformSession.test.ts`
+
+**Verifikasi:**
+- ✅ `pnpm run build`: PASS (tsc compilation successful, Vite bundle built)
+- ✅ `pnpm --filter photrez-desktop test`: PASS (295/295 tests passing, including new TransformOptionBar and SelectionTransformOverlay Escape tests)
+- ✅ `cargo test -p photrez-core`: PASS (85/85 tests passing)
+- ✅ `cargo test --workspace`: PASS (85/85 tests passing)
+
+---
+
+## [2026-06-05] PLANNING — Transform Session Hardening + Contextual Option Bar Plan [COMPLETE]
+
+### Kategori: PLANNING / UX / TRANSFORM / FRONTEND
+
+**Deskripsi:** Membuat rencana implementasi lengkap untuk dua lanjutan pekerjaan Transform Session: memperbaiki lifecycle/undo/session-safety yang masih kurang dan menambahkan Photoshop-style contextual Transform Option Bar saat resize/rotate preview aktif.
+
+**Files Changed:**
+- [ADD] `docs/superpowers/plans/2026-06-05-transform-session-hardening-contextual-optionbar-plan.md`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+- [MODIFY] `docs/FEATURES.md`
+- [MODIFY] `docs/plans/task.md`
+
+**Verifikasi:**
+- Documentation-only planning task. Verified by reviewing the plan for concrete scope, exact files, lifecycle rules, contextual option bar UX, tests, verification commands, and docs sync steps.
+
+---
+
+## [2026-06-05] FEATURE — Photoshop-Style Transform Session UX [COMPLETE]
+
+### Kategori: FEATURE / UX / TRANSFORM / FRONTEND
+
+**Deskripsi:** Mengimplementasikan Photoshop-style transient transform session di mana modifikasi layer (resize dan rotate) berjalan sebagai preview sementara, dan memerlukan Enter/Apply untuk commit atau Esc/Cancel untuk membatalkan (revert) ke transform semula. Bergerak bebas (Move Tool body drag) tetap direct manipulation yang langsung di-commit saat pointer dilepas untuk menjaga alur kerja yang ringan.
+
+**Rincian Perubahan:**
+1. **Transform Session State (`editorState.ts` & `EditorContext.tsx`)**:
+   - Menambahkan tipe `LayerTransformSession` untuk menyimpan ID layer, transform awal (`originalTransform`), mode ("resize" | "rotate"), dan timestamp mulai.
+   - Menyediakan signal `layerTransformSession` dan setter-nya di `createEditorState` dan mempublikasikannya melalui `EditorContext`.
+2. **Transform Session Helpers (`transformSession.ts` & `transformSession.test.ts`)**:
+   - Menulis helper `commitLayerTransformSession` untuk merekam snapshot transform lama (sebagai titik undo) dan keluar session.
+   - Menulis helper `cancelLayerTransformSession` untuk me-revert properti transform layer ke nilai awal dan keluar session.
+   - Menulis unit test untuk helper-helper di atas (vitest).
+3. **Selection Transform Drag (`useSelectionTransformDrag.ts`)**:
+   - Mengubah event pointer down agar tidak langsung melakukan `history.commit` pada resize/rotate, melainkan memulai `layerTransformSession` baru jika belum ada.
+   - Memperbarui event keydown Escape pada saat drag pointer aktif agar me-restore transform asli dari data session jika ada.
+4. **Keyboard Shortcuts Routing (`useCanvasKeyboard.ts`)**:
+   - Menambahkan interseptor keyboard pada saat `layerTransformSession()` aktif: menekan `Enter` akan memanggil `commitLayerTransformSession` dan menekan `Escape` akan memanggil `cancelLayerTransformSession`.
+5. **Option Bar Controls (`MoveOptionBar.tsx`)**:
+   - Menambahkan tombol "Apply" dan "Cancel" secara kontekstual di sebelah kanan tombol Reset pada Move Options Bar ketika `layerTransformSession()` sedang aktif.
+6. **Visual & Status Feedback (`BottomStatusBar.tsx` & `SelectionTransformOverlay.tsx`)**:
+   - Bottom status bar menampilkan pesan petunjuk: "Transform active. Enter to apply, Esc to cancel."
+   - Bounding box outline pada `SelectionTransformOverlay` berubah warna menjadi Photon Amber `#E15A17` saat transform session aktif, dan tetap putih transparan tipis `rgba(255,255,255,0.72)` saat selection biasa.
+
+**Files Changed/Added:**
+- [NEW] `apps/desktop/src/components/editor/transformSession.ts`
+- [NEW] `apps/desktop/src/components/editor/__tests__/transformSession.test.ts`
+- [MODIFY] `apps/desktop/src/components/editor/editorState.ts`
+- [MODIFY] `apps/desktop/src/components/editor/EditorContext.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/useSelectionTransformDrag.ts`
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasKeyboard.ts`
+- [MODIFY] `apps/desktop/src/components/editor/MoveOptionBar.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/BottomStatusBar.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/plans/task.md`
+- [MODIFY] `docs/FEATURES.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+
+**Verifikasi:**
+- ✅ `pnpm run build`: PASS
+- ✅ `pnpm --filter photrez-desktop test`: 289/289 tests PASS (including new transform session helper tests and drag handler regression tests)
+- ✅ `cargo test --workspace`: 85/85 tests PASS
+
+---
+
+## [2026-06-05] PLANNING — Transform Session UX Implementation Plan [COMPLETE]
+
+### Kategori: PLANNING / UX / TRANSFORM / FRONTEND
+
+**Deskripsi:** Membuat rencana implementasi untuk Photoshop-style transient transform session di Photrez. Keputusan UX yang dikunci: klik layer dengan Move tool tetap lightweight selection, body move tetap direct manipulation, sedangkan resize/rotate layer masuk session eksplisit dengan Enter/Apply untuk commit dan Esc/Cancel untuk revert. Crop tetap memakai session crop yang sudah ada.
+
+**Files Changed:**
+- [ADD] `docs/superpowers/plans/2026-06-05-transform-session-ux-plan.md`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/plans/task.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+- [MODIFY] `docs/FEATURES.md`
+
+**Verifikasi:**
+- Documentation-only planning task. Verified by reading the generated plan for concrete scope, exact file paths, task order, code-level implementation notes, test commands, and docs sync steps.
+
+---
+
+## [2026-06-05] BUG FIX — Rotate Handle Hover Cursor Outside Boundary Fix [COMPLETE]
+
+### Kategori: BUG FIX / OVERLAY / INTERACTION
+
+**Deskripsi:** Memperbaiki bug di mana kursor mouse berubah menjadi kursor rotasi (rotate icon) pada saat berada di area dalam (bounding box) layer/crop box dekat sudut (corner), padahal area dalam tersebut tidak seharusnya memicu rotasi.
+
+**Akar Masalah (Root Cause):**
+Sebelumnya, zona deteksi rotasi di sudut bounding box didefinisikan sebagai cincin donat 360 derajat penuh menggunakan path melingkar dengan radius luar `rotateOuter` (44px) dan radius dalam `hitSize` (20px). Karena donat ini penuh 360 derajat, bagian kuadran donat yang mengarah ke dalam bounding box layer/crop box ikut menangkap event pointer enter/hover. Hal ini membuat kursor berubah menjadi kursor rotate meskipun mouse berada di dalam area layer/crop.
+
+**Logika Perbaikan (Fix Rationale):**
+Membatasi area deteksi rotasi agar hanya aktif pada 270 derajat bagian luar sudut, dan mengecualikan kuadran 90 derajat bagian dalam sudut:
+1. Membuat fungsi helper `getRotatePath` di `SelectionTransformOverlay.tsx` untuk menghitung path donat 270 derajat untuk masing-masing sudut:
+   - `nw` (top-left): Mengecualikan kuadran kanan-bawah (`dx > 0` dan `dy > 0`).
+   - `ne` (top-right): Mengecualikan kuadran kiri-bawah (`dx < 0` dan `dy > 0`).
+   - `se` (bottom-right): Mengecualikan kuadran kiri-atas (`dx < 0` dan `dy < 0`).
+   - `sw` (bottom-left): Mengecualikan kuadran kanan-atas (`dx > 0` dan `dy < 0`).
+2. Menerapkan helper `getRotatePath` pada `SelectionTransformOverlay.tsx` (Move Tool transform overlay) dan `CropOverlayHandles.tsx` (Crop Tool handles overlay).
+
+**Files Changed:**
+- [MODIFY] `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/CropOverlayHandles.tsx`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/plans/task.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+
+**Verifikasi:**
+- ✅ `pnpm run build`: PASS
+- ✅ `pnpm --filter photrez-desktop test`: 286/286 tests PASS
+- ✅ `cargo test --workspace`: 85/85 tests PASS
+
+---
+
+## [2026-06-04] FEATURE — Crop Option Bar Dropdown Visual Refinement [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND / CROP / OPTION BAR / UX
+
+**Deskripsi:** Memperbaiki tampilan dropdown menu pada Crop Option Bar agar lebih rapi, modern, dan menyatu sempurna secara visual dengan tombol dropdown/chevron (mengatasi masalah di mana teks dropdown terlihat terlalu kecil dan tidak menyatu/tidak sejajar dengan ikon chevron di sampingnya).
+
+**Rincian Perubahan:**
+1. **Custom Dropdown Overlay Pattern (`CropOptionBar.tsx`)**:
+   - Memodifikasi wadah dropdown pada Crop Mode Selector, Preset Selector, Unit Selector, dan Composition Guide Mode Selector agar menggunakan layout custom.
+   - Menyembunyikan elemen native `<select>` dengan properti `opacity-0 absolute inset-0 w-full h-full cursor-pointer` sehingga diletakkan tepat di atas container dropdown visual secara penuh.
+   - Menampilkan teks pilihan terpilih menggunakan tag `<span>` dengan styling `text-[11px] text-editor-text mr-4 select-none` yang rata tengah dan selaras sempurna dengan input angka desimal lain di Options Bar.
+   - Menyelaraskan letak ikon `chevron-down` di sisi kanan dengan class `ml-auto pointer-events-none text-editor-text-dim` sehingga terlihat menyatu sebagai satu tombol yang utuh.
+   - Menjamin area klik (hitbox) selektor mencakup seluruh bidang termasuk tombol chevron, sehingga mengklik bagian manapun pada wadah dropdown akan membuka menu select dengan lancar.
+2. **Pencantuman Helper Mode Label**:
+   - Menambahkan fungsi pembantu reaktif SolidJS (`cropModeLabel()`, `presetLabel()`, `guideModeLabel()`, `unitLabel()`) untuk melacak dan memetakan nilai sinyal mentah ke label teks display dropdown yang sesuai.
+
+**Files Changed/Added:**
+- [MODIFY] `apps/desktop/src/components/editor/CropOptionBar.tsx`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/plans/task.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+
+**Verifikasi:**
+- ✅ `pnpm run build`: PASS
+- ✅ `pnpm --filter photrez-desktop test`: PASS (286/286 tests passing, including CropOptionBar.test.tsx regression suite)
+
+---
+
+## [2026-06-04] BUG FIX — Crop Option Bar Centered Auto-Fit on Input changes [COMPLETE]
+
+### Kategori: BUG FIX / UI / FRONTEND / CROP / OPTION BAR / UX
+
+**Deskripsi:** Memperbaiki auto-fit pada crop option bar input (custom aspect ratio W/H, target size W/H, dan swap W/H) agar selalu memposisikan crop box secara pas di tengah kanvas (centered auto-fit).
+
+**Root Cause:**
+1. Pemanggilan `fitCropRectToAspect` di onSubmit handler custom aspect ratio dan target size memiliki argumen terbalik/salah (melewatkan `rect` di posisi `aspect`, dan `nextAspect` di posisi `docWidth` yang memicu parameter NaN).
+2. Tombol swap W/H hanya menukar lebar dan tinggi dari kotak crop lama secara fisik di sekitar titik pusatnya tanpa melakukan penyesuaian (fit) terhadap batas dimensi kanvas baru, menyebabkan kotak crop meluber keluar kanvas pada rasio yang tidak seragam.
+
+**Rincian Perubahan:**
+1. **Perbaikan Parameter Auto-Fit**: Memperbaiki pemanggilan fungsi `fitCropRectToAspect` di onSubmit custom aspect dan target size inputs agar menggunakan parameter yang tepat: `fitCropRectToAspect(nextAspect/nextTarget, docWidth(), docHeight(), cropRotation())`.
+2. **Auto-Fit pada Swap**: Menyesuaikan logika swap W/H pada mode Ratio dan Size agar secara proaktif menghitung ulang dan menerapkan auto-fit kotak crop di tengah kanvas (centered auto-fit) dengan aspek rasio atau target dimensi yang baru saja ditukar.
+3. **Unit Tests (`CropOptionBar.test.tsx`)**: Membuat berkas test suite baru untuk menguji skenario perubahan aspect input, target size input, dan klik tombol swap W/H agar menghasilkan crop rect yang terpusat dan berukuran pas sesuai dimensi kanvas.
+
+**Files Changed/Added:**
+- [MODIFY] `apps/desktop/src/components/editor/CropOptionBar.tsx`
+- [NEW] `apps/desktop/src/components/editor/__tests__/CropOptionBar.test.tsx`
+- [MODIFY] `docs/plans/task.md`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+
+**Verifikasi:**
+- ✅ `pnpm run build`: PASS
+- ✅ `pnpm --filter photrez-desktop test`: PASS (286/286 tests passing)
+
+---
+
+## [2026-06-04] FEATURE — Crop Option Bar Photoshop Pain Points & Input Fixes [COMPLETE]
+
+### Kategori: FEATURE / BUG FIX / UI / FRONTEND / CROP / OPTION BAR / UX
+
+**Deskripsi:** Menyelesaikan pain point Photoshop pada crop tool option bar (Destructive vs Non-destructive, Center-locked Swap, dan penghapusan HUD mengambang) serta memperbaiki bug input field option bar.
+
+**Rincian Perubahan:**
+1. **Destructive vs. Non-destructive UX**:
+   - Mengubah label tombol dari `"Delete"` menjadi `"Delete Cropped"`.
+   - Menambahkan tooltip memperjelas perbedaan tindakan yang merusak (destructive) dan aman (non-destructive).
+   - Mengubah visual mask di `CropOverlay.tsx` agar area luar crop diwarnai warna gelap kanvas `#161618` (opacity `0.98`) ketika destructive aktif, dan warna transparan tipis `rgba(0,0,0,0.55)` ketika non-destructive aktif.
+2. **Smart Center-Locked Swap & Auto-Fit**:
+   - Menghitung titik pusat crop box saat ini dan menukar lebar serta tinggi secara dinamis seputar pusat tersebut agar posisi crop box tidak melompat bergeser ke pojok.
+   - Menyelaraskan pertukaran nilai pada preset rasionya (`cropAspect`) dan target dimensi (`cropSizeTarget`).
+   - Menambahkan pemanggilan `fitCropRectToAspect` ketika opsi mode crop, preset custom, atau target size diubah, agar crop box di canvas segera menyesuaikan bentuknya secara instan di layar (menyelesaikan masalah "nothing happens").
+3. **Pembersihan HUD**:
+   - Menghapus komponen pop-up status mengambang `CropModeIndicator` ("Mode Potong") yang berlebih agar tampilan viewport lebih bersih.
+4. **Perbaikan Input Field (EditableNumField & Freeform Read-Only)**:
+   - Memperbaiki race condition di SolidJS di mana pemanggilan `setEditing(false)` memicu efek visual memperbarui sinyal `text()` kembali ke nilai awal yang bulat sebelum nilai baru sempat dibaca/di-commit.
+   - Menyamakan format nilai display dan editing dengan batas presisi 2 angka di belakang koma (`Math.round(val * 100) / 100`) untuk mencegah lompatan/perubahan angka decimal yang sangat panjang pada saat input difokuskan.
+   - Menegaskan desain di mana mode "Free" menampilkan W & H secara *read-only* (menggunakan `NumField` bawaan) karena dimensinya ditentukan bebas di canvas, sedangkan pengetikan nilai angka presisi difasilitasi di mode "Ratio" dan "Size".
+5. **Perbaikan Dropdown Custom Preset**:
+   - Memecah dependensi reaktif yang kaku di mana pilihan `"Custom"` pada preset dropdown otomatis menutup kolom input W/H jika aspek rasio yang diketik secara tidak sengaja persis sama dengan salah satu nilai aspek preset bawaan (seperti `16:9` atau `4:5`). Sinyal `selectedPreset` mandiri digunakan untuk melacak pilihan dropdown secara deterministik.
+
+**Files Changed/Added:**
+- [MODIFY] `apps/desktop/src/components/editor/CropOptionBar.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/OptionBarShared.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/CropOverlay.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/primitives.tsx`
+- [MODIFY] `docs/plans/task.md`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+
+**Verifikasi:**
+- ✅ `pnpm run build`: PASS
+- ✅ `pnpm --filter photrez-desktop test`: PASS (283/283 tests passing)
+
+---
+
+## [2026-06-04] FEATURE — Crop Tool Option Bar Visual & UX Improvements [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND / CROP / OPTION BAR / UX
+
+**Deskripsi:** Memperbaiki visual dan UX pada Option Bar milik Crop Tool agar memiliki tampilan yang premium, rapi, dan konsisten dengan standar estetika *Soft & Snappy*.
+
+**Rincian Perubahan:**
+1. **Custom Select Dropdowns (`CropOptionBar.tsx`)**: Desain ulang selektor Dropdown bawaan (Crop Mode, Preset, dan Guide Mode) menggunakan pembungkus custom dengan chevron overlay absolut. Menambahkan transisi focus-ring dan warna border untuk kecocokan tema gelap.
+2. **Standardisasi Ikon Lucide (`icons.tsx`, `CropOptionBar.tsx`)**:
+   - Mengganti simbol teks rotasi/swap (`↺`, `↻`, `↔`) dengan ikon Lucide resolusi tinggi yang terintegrasi (`rotate-ccw`, `rotate-cw`, `swap`).
+   - Mendaftarkan ikon `RotateCcw` dan `ArrowLeftRight` pada `icons.tsx`.
+3. **Penyelarasan UX & Tooltip (`CropOptionBar.tsx`)**:
+   - Menambahkan atribut `title` sebagai tooltip bantu untuk semua tombol aksi bertipe ikon saja.
+   - Menyetel tinggi tombol APPLY menjadi 24px agar seragam dengan tinggi elemen input desimal dan tombol reset/cancel lainnya.
+
+**Files Changed/Added:**
+- [MODIFY] `apps/desktop/src/components/editor/icons.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/CropOptionBar.tsx`
+- [MODIFY] `docs/plans/task.md`
+- [MODIFY] `docs/FEATURES.md`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+
+**Verifikasi:**
+- ✅ `pnpm run build`: PASS (Vite + tsc)
+- ✅ `pnpm --filter photrez-desktop test`: PASS (283/283 tests passing)
+
+---
+
 ## [2026-06-04] FEATURE — Move Tool Option Bar Visual & UX Improvements [COMPLETE]
 
 ### Kategori: FEATURE / UI / FRONTEND / MOVE / OPTION BAR / UX

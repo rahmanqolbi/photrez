@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace bare-bones crop tool with Photoshop-grade Enhanced Crop Tool: interactive crop box with 8 resize handles + move, ratio/size/free modes, 5 guide modes, live dimension HUD, Enter/Esc apply/cancel, and full Option Bar controls.
+**Goal:** Replace bare-bones crop tool with an enhanced Crop Tool: interactive crop box with 8 resize handles + move, ratio/size/free modes, 5 guide modes, live dimension HUD, Enter/Esc apply/cancel, and full Option Bar controls.
 
 **Architecture:** Crop tool runs entirely in TypeScript/WebGL2 MVP runtime. Crop geometry is a pure function module (`cropGeometry.ts`). The interactive SVG overlay (`CropOverlay.tsx`) handles pointer events for resize/move. The Option Bar surface signals from `EditorContext`. `engine.cropCanvas()` is called on apply (destructive). The crop-rect is the single source of truth — no more `cropW`/`cropH` drift.
 

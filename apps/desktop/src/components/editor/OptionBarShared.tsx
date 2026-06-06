@@ -1,10 +1,11 @@
 import { Icon } from "./icons";
 import { clsx } from "clsx";
 
-export function ToggleBtn(props: { active: boolean; onChange: (v: boolean) => void; icon: string; label: string }) {
+export function ToggleBtn(props: { active: boolean; onChange: (v: boolean) => void; icon: string; label: string; title?: string }) {
   return (
     <button
       onClick={() => props.onChange(!props.active)}
+      title={props.title}
       class={clsx(
         "flex h-[24px] shrink-0 items-center gap-1 rounded-[4px] border px-2 text-[11px] font-medium transition-all duration-75",
         props.active

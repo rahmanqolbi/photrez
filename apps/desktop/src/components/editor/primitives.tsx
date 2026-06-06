@@ -103,24 +103,39 @@ export function EditableNumField(props: {
   onSubmit: (val: number) => void;
 }) {
   let inputRef: HTMLInputElement | undefined;
-  const [draft, setDraft] = createSignal(props.value);
+
+  const formatValue = (val: number) => {
+    return `${Math.round(val * 100) / 100}`;
+  };
+
+  const [text, setText] = createSignal(formatValue(props.value));
   const [editing, setEditing] = createSignal(false);
 
   createEffect(() => {
-    if (!editing()) setDraft(props.value);
+    if (!editing()) {
+      setText(formatValue(props.value));
+    }
   });
 
   const commit = () => {
+    if (!editing()) return;
+    const val = text();
     setEditing(false);
-    const v = draft();
-    if (v !== props.value) {
-      props.onSubmit(v);
+    inputRef?.blur();
+
+    const parsed = parseFloat(val);
+    if (!isNaN(parsed)) {
+      if (Math.abs(parsed - props.value) > 0.0001) {
+        props.onSubmit(parsed);
+      }
+    } else {
+      setText(formatValue(props.value));
     }
   };
 
   const revert = () => {
     setEditing(false);
-    setDraft(props.value);
+    setText(formatValue(props.value));
     inputRef?.blur();
   };
 
@@ -138,17 +153,15 @@ export function EditableNumField(props: {
       <input
         ref={inputRef}
         type="text"
-        value={editing() ? draft() : `${Math.round(draft())}`}
+        value={text()}
         onFocus={() => {
           if (props.disabled) return;
           setEditing(true);
+          setText(formatValue(props.value));
           inputRef?.select();
         }}
         onInput={(e) => {
-          if (!editing()) return;
-          const raw = e.currentTarget.value;
-          const parsed = parseFloat(raw);
-          if (!isNaN(parsed)) setDraft(parsed);
+          setText(e.currentTarget.value);
         }}
         onKeyDown={(e) => {
           if (e.key === "Enter") { e.preventDefault(); commit(); }
