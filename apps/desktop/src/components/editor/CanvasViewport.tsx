@@ -16,6 +16,7 @@ import { SmartGuides } from "./SmartGuides";
 import { BrushCursorOverlay } from "./BrushCursorOverlay";
 import { CropOverlay } from "./CropOverlay";
 import { TransformHud } from "./TransformHud";
+import { BrushContextMenu } from "./BrushContextMenu";
 import { getPasteboardClickAction } from "./pasteboardClickPolicy";
 import {
   clearCropPreview,
@@ -70,6 +71,8 @@ export function CanvasViewport() {
     onViewportPointerDown,
     onViewportPointerMove,
     onViewportPointerUp,
+    onViewportPointerCancel,
+    onViewportLostPointerCapture,
   } = usePanNavigation({
     getCanvasContainerRef: () => canvasContainerRef,
     fitToScreenAndRender: () => fitToScreenAndRender(),
@@ -116,6 +119,8 @@ export function CanvasViewport() {
     onCanvasPointerDown,
     onCanvasPointerMove,
     onCanvasPointerUp,
+    onCanvasPointerCancel,
+    onCanvasLostPointerCapture,
   } = useCanvasPointerTools({
     getCanvasContainerRef: () => canvasContainerRef,
     getCanvasRef: () => canvasRef,
@@ -269,17 +274,31 @@ export function CanvasViewport() {
       onWheel={handleWheel}
       onDblClick={handleDoubleClick}
       onPointerDown={(e) => {
+        if (isSpacePressed() || isPanning()) {
+          onViewportPointerDown(e);
+          return;
+        }
         handlePasteboardPointerDown(e);
         if (!e.defaultPrevented) onViewportPointerDown(e);
       }}
       onPointerMove={(e) => {
+        if (isPanning()) {
+          onViewportPointerMove(e);
+          return;
+        }
         handlePasteboardPointerMove(e);
         if (!e.defaultPrevented) onViewportPointerMove(e);
       }}
       onPointerUp={(e) => {
+        if (isPanning()) {
+          onViewportPointerUp(e);
+          return;
+        }
         handlePasteboardPointerUp(e);
         if (!e.defaultPrevented) onViewportPointerUp(e);
       }}
+      onPointerCancel={onViewportPointerCancel}
+      onLostPointerCapture={onViewportLostPointerCapture}
     >
       {/* CSS Transform container — GPU-accelerated pan/zoom */}
       <Show when={workspace.getActiveEngine()}>
@@ -300,6 +319,8 @@ export function CanvasViewport() {
             onPointerDown={onCanvasPointerDown}
             onPointerMove={onCanvasPointerMove}
             onPointerUp={onCanvasPointerUp}
+            onPointerCancel={onCanvasPointerCancel}
+            onLostPointerCapture={onCanvasLostPointerCapture}
             style={{
               position: "absolute",
               inset: 0,
@@ -419,6 +440,7 @@ export function CanvasViewport() {
           {/* Crop Overlay — self-contained SVG with pointer capture */}
           <Show when={activeTool() === "crop" && cropRect()}>
             <CropOverlay
+              isNavigationMode={isSpacePressed() || isPanning()}
               cropRect={cropRect()}
               guideMode={cropGuideMode()}
               canvasWidth={docWidth()}
@@ -457,6 +479,7 @@ export function CanvasViewport() {
           </Show>
         </div>
       </Show>
+      <BrushContextMenu />
     </div>
   );
 }
