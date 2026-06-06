@@ -22,6 +22,7 @@ function createContext(overrides: Record<string, any> = {}) {
     brushSize: 20,
     brushHardness: 0.5,
     brushOpacity: 1,
+    paintSettings: { size: 20, hardness: 0.5, opacity: 1, flow: 1, smoothing: 0 },
     isAltPressed: false,
     isDragging: false,
     dragStart: { x: 0, y: 0 },

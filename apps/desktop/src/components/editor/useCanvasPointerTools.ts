@@ -2,6 +2,7 @@ import { createSignal } from "solid-js";
 import { useEditor } from "./EditorContext";
 import { screenToDocument } from "@/viewport/coords";
 import { hitTestLayers, type LayerInfo } from "@/viewport/layerHitTest";
+import type { DocumentEngine } from "@/engine/document";
 import {
   handlePointerDown,
   handlePointerMove,
@@ -9,6 +10,7 @@ import {
   type ToolType,
   type ToolContext,
 } from "@/viewport/input-handler";
+import { getActivePaintToolSettings, getPaintToolBlockReason, type PaintToolSettings } from "./brushToolState";
 import { getLayerAabb } from "@/viewport/transformGeometry";
 import { computeSnapAdjustment, type SnapRect } from "@/viewport/smartGuides";
 import type { HudMode } from "./TransformHud";
@@ -22,8 +24,8 @@ interface UseCanvasPointerToolsParams {
   isAltPressed: () => boolean;
   stopMomentum: () => void;
   fitToScreenAndRender: () => void;
-  commitBrushStroke: (engine: any, id: string) => void;
-  onPaintStroke?: (points: { x: number; y: number }[], isEraser: boolean) => void;
+  commitBrushStroke: (engine: DocumentEngine, id: string) => void;
+  onPaintStroke?: (points: { x: number; y: number }[], isEraser: boolean, settings: PaintToolSettings) => void;
 }
 
 type HudData = {
@@ -59,6 +61,12 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     moveAutoSelect,
     moveSnapEnabled,
     setHoverPos,
+    brushSize,
+    brushHardness,
+    brushOpacity,
+    eraserSize,
+    eraserHardness,
+    eraserOpacity,
   } = useEditor();
 
   let isPendingCropClick = false;
@@ -79,6 +87,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     brushSize: 20,
     brushHardness: 0.8,
     brushOpacity: 1.0,
+    paintSettings: { size: 20, hardness: 0.8, opacity: 1, flow: 1, smoothing: 0 },
     selectedLayerId: null,
     isAltPressed: false,
     isDragging: false,
@@ -124,6 +133,22 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       }
     };
     interactiveState.onHoverHandle = setHoverHandle;
+
+    interactiveState.paintSettings = getActivePaintToolSettings(activeTool(), {
+      brushSize: brushSize(),
+      brushHardness: brushHardness(),
+      brushOpacity: brushOpacity(),
+      brushFlow: 1,
+      brushSmoothing: 0,
+      eraserSize: eraserSize(),
+      eraserHardness: eraserHardness(),
+      eraserOpacity: eraserOpacity(),
+      eraserFlow: 1,
+      eraserSmoothing: 0,
+    });
+    interactiveState.brushSize = interactiveState.paintSettings.size;
+    interactiveState.brushHardness = interactiveState.paintSettings.hardness;
+    interactiveState.brushOpacity = interactiveState.paintSettings.opacity;
 
     const activeEngineForTargets = workspace.getActiveEngine();
     const movingId = activeEngineForTargets ? activeEngineForTargets.getActiveLayerId() : null;
@@ -186,7 +211,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   };
 
   const onCanvasPointerDown = (e: PointerEvent) => {
-    if (params.isSpacePressed() || e.button === 1) return;
+    if (params.isSpacePressed() || params.isPanning() || e.button === 1) return;
 
     params.stopMomentum();
     const engine = workspace.getActiveEngine();
@@ -207,6 +232,17 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
         engine.setActiveLayer(hit.id);
         scheduler.requestRender();
       }
+    }
+
+    // Guard: prevent no-op history commit for blocked brush/eraser strokes
+    if (activeTool() === "brush" || activeTool() === "eraser") {
+      const layerId = engine.getActiveLayerId();
+      let activePaintLayer: ReturnType<DocumentEngine["getLayer"]> | null = null;
+      if (layerId) {
+        activePaintLayer = engine.getLayer(layerId);
+      }
+      if (getPaintToolBlockReason(activePaintLayer, activeTool() === "eraser")) return;
+      history.commit(engine.snapshot());
     }
 
     prepareToolContext();
@@ -253,9 +289,6 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     if (!engine || !history) return;
 
     setSnapLines([]);
-    const canvas = params.getCanvasRef();
-    if (canvas) canvas.releasePointerCapture(e.pointerId);
-
     const coords = getDocCoords(e);
     handlePointerUp(
       activeTool() as ToolType,
@@ -266,6 +299,9 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       () => scheduler.requestRender(),
       interactiveState,
     );
+
+    const canvas = params.getCanvasRef();
+    if (canvas) canvas.releasePointerCapture(e.pointerId);
 
     const tool = activeTool() as ToolType;
     if (tool === "brush" || tool === "eraser") {
@@ -296,6 +332,46 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     setSelectionBoxSignal(null);
   };
 
+  const onCanvasPointerCancel = (e: PointerEvent) => {
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+
+    try {
+      const canvas = params.getCanvasRef();
+      if (canvas) canvas.releasePointerCapture(e.pointerId);
+    } catch {
+      // Capture may already have been released — ignore
+    }
+
+    const tool = activeTool() as ToolType;
+    if (tool === "brush" || tool === "eraser") {
+      const layerId = engine.getActiveLayerId();
+      if (layerId && interactiveState.strokePoints.length > 0) {
+        params.commitBrushStroke(engine, layerId);
+      }
+    }
+
+    interactiveState.strokePoints = [];
+    interactiveState.isDragging = false;
+  };
+
+  const onCanvasLostPointerCapture = (e: PointerEvent) => {
+    // Capture already lost — no releasePointerCapture call needed
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+
+    const tool = activeTool() as ToolType;
+    if (tool === "brush" || tool === "eraser") {
+      const layerId = engine.getActiveLayerId();
+      if (layerId && interactiveState.strokePoints.length > 0) {
+        params.commitBrushStroke(engine, layerId);
+      }
+    }
+
+    interactiveState.strokePoints = [];
+    interactiveState.isDragging = false;
+  };
+
   return {
     snapLines,
     setSnapLines,
@@ -308,6 +384,8 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     onCanvasPointerDown,
     onCanvasPointerMove,
     onCanvasPointerUp,
+    onCanvasPointerCancel,
+    onCanvasLostPointerCapture,
     prepareToolContext,
   };
 }

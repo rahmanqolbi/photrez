@@ -5,6 +5,7 @@ import { useEditor } from "./EditorContext";
 import { flattenAllLayers, mergeActiveLayerDown } from "./layerOperations";
 import { cancelLayerTransformSession, commitLayerTransformSession } from "./transformSession";
 import { discardCropSession, applyCropPreview } from "./cropToolActions";
+import { PAINT_SIZE_STEP, adjustPaintSize } from "./brushToolState";
 
 interface CanvasKeyboardOptions {
   isSpacePressed: () => boolean;
@@ -41,6 +42,10 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     cropDeletePixels,
     layerTransformSession,
     setLayerTransformSession,
+    brushSize,
+    setBrushSize,
+    eraserSize,
+    setEraserSize,
   } = useEditor();
 
   onMount(() => {
@@ -187,6 +192,42 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
           }
           scheduler.requestRender();
         }
+        return;
+      }
+
+      // Paint tool shortcuts
+      if (!ctrl && key === "b") {
+        e.preventDefault();
+        setActiveTool("brush");
+        scheduler.requestRender();
+        return;
+      }
+
+      if (!ctrl && key === "e") {
+        e.preventDefault();
+        setActiveTool("eraser");
+        scheduler.requestRender();
+        return;
+      }
+
+      if (!ctrl && (e.key === "[" || e.key === "]") && (activeTool() === "brush" || activeTool() === "eraser")) {
+        e.preventDefault();
+        const delta = e.key === "[" ? -PAINT_SIZE_STEP : PAINT_SIZE_STEP;
+        const next = adjustPaintSize(activeTool(), {
+          brushSize: brushSize(),
+          brushHardness: 1,
+          brushOpacity: 1,
+          brushFlow: 1,
+          brushSmoothing: 0,
+          eraserSize: eraserSize(),
+          eraserHardness: 1,
+          eraserOpacity: 1,
+          eraserFlow: 1,
+          eraserSmoothing: 0,
+        }, delta);
+        setBrushSize(next.brushSize);
+        setEraserSize(next.eraserSize);
+        scheduler.requestRender();
         return;
       }
 
