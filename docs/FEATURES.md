@@ -95,10 +95,24 @@
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Brush stroke drawing                       |
 | ✅ DONE      | Eraser stroke                              |
-| ✅ DONE      | Size control                               |
-| ✅ DONE      | Opacity control                            |
-| ✅ DONE      | Hardness control                           |
-| ✅ DONE      | Cursor size preview                        |
+| ✅ DONE      | Brush and eraser separate settings (size, hardness, strength) |
+| ✅ DONE      | Interactive BrushOptionBar with real setting controls |
+| ✅ DONE      | Brush/eraser cursor preview reflects active size and hardness |
+| ✅ DONE      | Brush/eraser active-size shortcuts (`[` / `]`) |
+| ✅ DONE      | Paint blocked-state feedback for locked, hidden, and protected layers |
+| ✅ DONE      | Soft edge rendering via radial gradient falloff |
+| ✅ DONE      | Hard brush (hardness=100%) solid fill (no gradient) |
+| ✅ DONE      | Cursor overlay accounts for viewport pan and zoom |
+| ✅ DONE      | Cursor radius matches stroke at any zoom level |
+| ✅ DONE      | Pointer cancel / lost capture commits partial stroke |
+| ✅ DONE      | Document-to-layer-local coordinate conversion for transformed layers |
+| ✅ DONE      | Flow control — per-dab alpha multiplier (opacity × flow, 0–100%) |
+| ✅ DONE      | Smoothing engine — weighted moving average (PaintSmoother, 0–100 maps to 2–10 point window) |
+| ✅ DONE      | Brush presets — Hard Round, Soft Round, Detail, Large Soft, Hard Eraser, Soft Eraser |
+| ✅ DONE      | Preset tracking — independent brush/eraser preset ID, manual edit clears to "Custom" |
+| ✅ DONE      | Enhanced option bar — Flow input, Smoothing input, Preset dropdown |
+| ✅ DONE      | Right-click context menu — Size/Hardness/Strength sliders, preset grid, Reset button, close on Escape/outside click |
+| ✅ DONE      | Keyboard shortcuts — `[`/`]` for size, Shift+`[`/`]` for hardness |
 
 ---
 

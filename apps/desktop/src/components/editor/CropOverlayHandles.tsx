@@ -3,6 +3,7 @@ import { getCursorForHandle } from "@/viewport/transformGeometry";
 import { getRotatePath } from "./SelectionTransformOverlay";
 
 interface CropOverlayHandlesProps {
+  isNavigationMode?: boolean;
   handles: { type: string; cx: number; cy: number; size: number }[];
   zoom: number;
   hitSize: number;
@@ -17,6 +18,7 @@ interface CropOverlayHandlesProps {
 }
 
 export function CropOverlayHandles(props: CropOverlayHandlesProps) {
+  const pe = () => props.isNavigationMode ? "none" as const : "all" as const;
   return (
     <For each={props.handles}>
       {(h) => {
@@ -38,7 +40,7 @@ export function CropOverlayHandles(props: CropOverlayHandlesProps) {
                 d={getRotatePath(h.type, h.cx, h.cy, props.rotateOuter, props.hitSize)}
                 fill="transparent"
                 fill-rule="evenodd"
-                style={{ "pointer-events": "all" }}
+                style={{ "pointer-events": pe() }}
                 onPointerDown={(e) => props.startDrag(e, `rotate-${h.type}`)}
                 onPointerEnter={(e) => {
                   props.setHover(`rotate-${h.type}`);
@@ -58,7 +60,7 @@ export function CropOverlayHandles(props: CropOverlayHandlesProps) {
               height={props.hitSize}
               fill="transparent"
               data-crop-handle={h.type}
-              style={{ cursor, "pointer-events": "all" }}
+              style={{ cursor, "pointer-events": pe() }}
               onPointerDown={(e) => props.startDrag(e, h.type)}
               onPointerEnter={() => props.setHover(h.type)}
               onPointerLeave={() => { if (!props.isDragging) props.setHover(null); }}

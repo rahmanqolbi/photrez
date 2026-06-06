@@ -10,6 +10,7 @@ import {
   applyRotationDrag,
   normalizeRotation,
   getCursorForHandle,
+  documentToLayerLocal,
 } from "../viewport/transformGeometry";
 import type { Transform2D } from "../engine/types";
 
@@ -474,5 +475,51 @@ describe("getCursorForHandle", () => {
     const c = getCursorForHandle("e", 0, -1, 1);
     // flipX makes visual rotation mirrored
     expect(typeof c).toBe("string");
+  });
+});
+
+describe("documentToLayerLocal", () => {
+  const IDENTITY: Transform2D = { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false };
+
+  it("returns same coords when layer has no offset/scale/rotation", () => {
+    const result = documentToLayerLocal(50, 30, IDENTITY, 200, 100);
+    // center=(100,50), rel=(-50,-20), no rot/scale → local = (-50 + 100, -20 + 50) = (50, 30)
+    expect(result.x).toBeCloseTo(50);
+    expect(result.y).toBeCloseTo(30);
+  });
+
+  it("maps document point that falls at layer center to layer center", () => {
+    // layer center at (100,100) with w=200,h=100 → center = (200, 150)
+    // doc point at center (200,150) → rel=(0,0) → local center (100,50)
+    const result = documentToLayerLocal(200, 150, BASE_TRANSFORM, LAYER_W, LAYER_H);
+    expect(result.x).toBeCloseTo(100);
+    expect(result.y).toBeCloseTo(50);
+  });
+
+  it("accounts for layer scale", () => {
+    const result = documentToLayerLocal(300, 125, { x: 100, y: 50, scaleX: 2, scaleY: 1, rotation: 0, flipH: false, flipV: false }, 200, 100);
+    // center=(300,100), rel=(0,25), un-scale: x=0/2=0, y=25/1=25 → local = (0+100, 25+50) = (100, 75)
+    expect(result.x).toBeCloseTo(100);
+    expect(result.y).toBeCloseTo(75);
+  });
+
+  it("accounts for layer rotation", () => {
+    // Rotated 90° CW: center=(200,100)
+    // doc point at center + (100,0) → rel=(100,0)
+    // un-rotate 90°: rot = (-100*sin(-90)=0, -100*cos(-90)...)
+    // cos(-90)=0, sin(-90)=-1 → (100*0 - 0*(-1), 100*(-1) + 0*0) = (0, -100)
+    // local = (0 + 100, -100 + 50) = (100, -50)
+    const result = documentToLayerLocal(300, 100, { x: 100, y: 50, scaleX: 1, scaleY: 1, rotation: 90, flipH: false, flipV: false }, 200, 100);
+    expect(result.x).toBeCloseTo(100);
+    expect(result.y).toBeCloseTo(-50);
+  });
+
+  it("accounts for flipH", () => {
+    // scaleX = -1, flipH = true
+    // layer center at (100 + 200/2, 50 + 100/2) = (200, 100)
+    // doc at (200, 100) → local center (100, 50)
+    const result = documentToLayerLocal(200, 100, { x: 100, y: 50, scaleX: -1, scaleY: 1, rotation: 0, flipH: true, flipV: false }, 200, 100);
+    expect(result.x).toBeCloseTo(100);
+    expect(result.y).toBeCloseTo(50);
   });
 });

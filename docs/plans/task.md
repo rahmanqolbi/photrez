@@ -215,3 +215,21 @@
 | Task 214 | [CropModelCorrection] Continue hidden-preview restore implementation and outside-bounds regression coverage | [x] Completed |
 | Task 215 | [CropApply] Fix target-size crop geometry and destructive crop texture sync | [x] Completed |
 | Task 216 | [CropNavigation] Restore Space+drag pasteboard panning while Crop tool is active | [x] Completed |
+| Task 217 | [BrushEraser] Create pure paint settings model (brushToolState.ts) | [x] Completed |
+| Task 218 | [BrushEraser] Wire paint signals into editor state and context | [x] Completed |
+| Task 219 | [BrushEraser] Implement interactive BrushOptionBar | [x] Completed |
+| Task 220 | [BrushEraser] Create paintStrokeRenderer and wire pointer payload | [x] Completed |
+| Task 221 | [BrushEraser] Update cursor overlay to reflect active paint settings | [x] Completed |
+| Task 222 | [BrushEraser] Add paint tool keyboard shortcuts (B, E, [, ]) | [x] Completed |
+| Task 223 | [BrushEraser] Add blocked-state feedback in BottomStatusBar | [x] Completed |
+| Task 224 | [BrushEraser] Full verification and docs sync | [x] Completed |
+| Task 225 | [BrushEraserFix] Fix brush cursor overlay zoom/pan coordinate calculation | [x] Completed |
+| Task 226 | [BrushEraserFix] Fix hardness=100% solid fill in paintStrokeRenderer | [x] Completed |
+| Task 227 | [BrushEraserFix] Prevent no-op history commit for blocked strokes | [x] Completed |
+| Task 228 | [BrushEraserFix] Fix `settings: any` → `PaintToolSettings` typing | [x] Completed |
+| Task 229 | [BrushEraserFix] Fix BottomStatusBar mojibake (`×` → `x`) | [x] Completed |
+| Task 230 | [BrushEraserFix] Add tests for hardness=1 solid fill | [x] Completed |
+| Task 231 | [BrushEraserFix] Fix cursor radius zoom (remove /zoom inside scale(zoom) SVG) | [x] Completed |
+| Task 232 | [BrushEraserFix] Add pointercancel handler for brush stroke cleanup | [x] Completed |
+| Task 233 | [BrushEraserFix] Convert stroke coords to layer-local for transformed layers | [x] Completed |
+| Task 234 | [BrushEraserFix] Add async commit race guard (verify engine+layer after await) | [x] Completed |

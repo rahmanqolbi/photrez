@@ -349,3 +349,5 @@ describe("renderPaintStrokeToContext", () => {
     expect(ctx.restore).toHaveBeenCalled();
   });
 });
+
+

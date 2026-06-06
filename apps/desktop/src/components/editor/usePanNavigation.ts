@@ -128,6 +128,19 @@ export function usePanNavigation(options: PanNavigationOptions) {
     );
   };
 
+  function resetPanning(pointerId?: number) {
+    if (pointerId !== undefined) {
+      const ref = options.getCanvasContainerRef();
+      if (ref) {
+        try { ref.releasePointerCapture(pointerId); } catch { /* capture may already be gone */ }
+      }
+    }
+    setIsPanning(false);
+    panDragStart = { clientX: 0, clientY: 0, panX: 0, panY: 0 };
+    momentumVelocity = { x: 0, y: 0 };
+    stopMomentum();
+  }
+
   const onViewportPointerUp = (e: PointerEvent) => {
     if (!isPanning()) return;
 
@@ -162,6 +175,16 @@ export function usePanNavigation(options: PanNavigationOptions) {
     }
   };
 
+  const onViewportPointerCancel = (e: PointerEvent) => {
+    if (!isPanning()) return;
+    resetPanning(e.pointerId);
+  };
+
+  const onViewportLostPointerCapture = (e: PointerEvent) => {
+    if (!isPanning()) return;
+    resetPanning(e.pointerId);
+  };
+
   return {
     isSpacePressed,
     setIsSpacePressed,
@@ -173,5 +196,7 @@ export function usePanNavigation(options: PanNavigationOptions) {
     onViewportPointerDown,
     onViewportPointerMove,
     onViewportPointerUp,
+    onViewportPointerCancel,
+    onViewportLostPointerCapture,
   };
 }

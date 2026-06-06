@@ -14,6 +14,7 @@ import { createCropRectFromDocumentPoints } from "./cropToolActions";
 import type { CropPreview } from "./cropState";
 
 interface UseCropOverlayDragParams {
+  isNavigationMode: () => boolean;
   cropRect: () => CropRect | null;
   canvasWidth: number;
   canvasHeight: number;
@@ -101,6 +102,7 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
   const resolvedCursor = createMemo(() => {
     const handle = hoverHandle();
     const drag = dragState();
+    if (params.isNavigationMode()) return drag ? "grabbing" : "grab";
     if (drag?.handle.startsWith("rotate")) return rotateCursor();
     if (!handle) return "crosshair";
     if (handle.startsWith("rotate")) return rotateCursor();
@@ -109,6 +111,7 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
   });
 
   const startDrag = (e: PointerEvent, handle: string) => {
+    if (params.isNavigationMode()) return;
     const rect = params.cropRect();
     const svg = params.getSvgRef();
     if (!rect || !svg) return;
@@ -320,6 +323,7 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
 
   const handleSvgPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
+    if (params.isNavigationMode()) return;
     const target = e.target as SVGElement;
     const svg = params.getSvgRef();
     if (target === svg || target.getAttribute("mask") || target.style.pointerEvents === "none" || target.style.cursor === "crosshair") {

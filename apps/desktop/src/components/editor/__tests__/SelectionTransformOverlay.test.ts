@@ -529,3 +529,143 @@ describe("Snap line cleanup", () => {
     container.parentNode?.removeChild(container);
   });
 });
+
+describe("Space+pan navigation mode", () => {
+  function setupNavigationTest(isNavigationMode: boolean) {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("nav-test", "Test", 800, 600);
+
+    const mockRenderer = {} as any;
+    const mockScheduler = { requestRender: vi.fn() } as any;
+
+    const origSet = SVGElement.prototype.setPointerCapture;
+    const setSpy = vi.fn();
+    SVGElement.prototype.setPointerCapture = setSpy;
+
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    const releaseSpy = vi.fn();
+    SVGElement.prototype.releasePointerCapture = releaseSpy;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      h(
+        EditorProvider,
+        { workspace: ws, renderer: mockRenderer, scheduler: mockScheduler },
+        h(SelectionTransformOverlay, { isNavigationMode }),
+      ),
+      container,
+    );
+    ws.addDocument(session);
+
+    const svg = container.querySelector("svg[data-overlay-svg]") as SVGElement;
+    const moveRect = container.querySelector("rect[data-move]") as SVGElement;
+    const handle = container.querySelector("[data-handle]") as SVGElement;
+
+    setSpy.mockClear();
+    releaseSpy.mockClear();
+
+    return { svg, moveRect, handle, setSpy, dispose, restore: () => {
+      SVGElement.prototype.setPointerCapture = origSet;
+      SVGElement.prototype.releasePointerCapture = origRelease;
+      dispose();
+      container.parentNode?.removeChild(container);
+    }};
+  }
+
+  it("does not capture pointer on move rect when isNavigationMode is true", () => {
+    const { moveRect, setSpy, restore } = setupNavigationTest(true);
+
+    moveRect.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 50,
+        bubbles: true,
+        cancelable: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+
+    expect(setSpy).not.toHaveBeenCalled();
+    restore();
+  });
+
+  it("does not capture pointer on resize handle when isNavigationMode is true", () => {
+    const { handle, setSpy, restore } = setupNavigationTest(true);
+
+    handle.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 51,
+        bubbles: true,
+        cancelable: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+
+    expect(setSpy).not.toHaveBeenCalled();
+    restore();
+  });
+
+  it("still captures pointer on move rect when isNavigationMode is false", () => {
+    const { moveRect, setSpy, restore } = setupNavigationTest(false);
+
+    moveRect.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 52,
+        bubbles: true,
+        cancelable: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+
+    expect(setSpy).toHaveBeenCalledTimes(1);
+    restore();
+  });
+
+  it("move rect events bubble to parent element in navigation mode", () => {
+    const { moveRect, restore } = setupNavigationTest(true);
+
+    const parentListener = vi.fn();
+    const parent = moveRect.parentElement!;
+    parent.addEventListener("pointerdown", parentListener);
+
+    moveRect.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 53,
+        bubbles: true,
+        cancelable: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+
+    expect(parentListener).toHaveBeenCalledTimes(1);
+    parent.removeEventListener("pointerdown", parentListener);
+    restore();
+  });
+
+  it("handle events bubble to parent element in navigation mode", () => {
+    const { handle, restore } = setupNavigationTest(true);
+
+    const parentListener = vi.fn();
+    const parent = handle.parentElement!;
+    parent.addEventListener("pointerdown", parentListener);
+
+    handle.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 54,
+        bubbles: true,
+        cancelable: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+
+    expect(parentListener).toHaveBeenCalledTimes(1);
+    parent.removeEventListener("pointerdown", parentListener);
+    restore();
+  });
+});

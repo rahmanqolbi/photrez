@@ -9,6 +9,7 @@ import { CropOverlayTooltip } from "./CropOverlayTooltip";
 import type { CropPreview } from "./cropState";
 
 interface CropOverlayProps {
+  isNavigationMode?: boolean;
   cropRect: CropRect | null;
   guideMode: "none" | "thirds" | "grid" | "diagonal" | "golden";
   canvasWidth: number;
@@ -41,6 +42,8 @@ const ROTATE_OUTER = 44;
 export function CropOverlay(props: CropOverlayProps) {
   let svgRef: SVGSVGElement | undefined;
 
+  const navMode = () => props.isNavigationMode ?? false;
+
   const {
     activeHandle,
     hoverHandle,
@@ -57,6 +60,7 @@ export function CropOverlay(props: CropOverlayProps) {
     cropRotationValue,
     setHoverPos,
   } = useCropOverlayDrag({
+    isNavigationMode: navMode,
     cropRect: () => props.cropRect,
     canvasWidth: props.canvasWidth,
     canvasHeight: props.canvasHeight,
@@ -113,7 +117,7 @@ export function CropOverlay(props: CropOverlayProps) {
           width: "100%",
           height: "100%",
           overflow: "visible",
-          "pointer-events": "auto",
+          "pointer-events": navMode() ? "none" : "auto",
           "z-index": 35,
         }}
         style:cursor={resolvedCursor()}
@@ -177,7 +181,7 @@ export function CropOverlay(props: CropOverlayProps) {
             height={props.cropRect!.h}
             fill="transparent"
             data-crop-move
-            style={{ cursor: "move", "pointer-events": "all" }}
+            style={{ cursor: "move", "pointer-events": navMode() ? "none" : "all" }}
             onPointerDown={(e) => startDrag(e, "move")}
             onPointerEnter={() => setHover("move")}
             onPointerLeave={() => { if (!dragState()) setHover(null); }}
@@ -187,6 +191,7 @@ export function CropOverlay(props: CropOverlayProps) {
             }}
           />
           <CropOverlayHandles
+            isNavigationMode={navMode()}
             handles={handles()}
             zoom={props.zoom}
             hitSize={ht()}

@@ -2,6 +2,48 @@
 
 ---
 
+## Current Task - Brush/Eraser Tool UX Phase 2 [COMPLETE]
+
+**Date:** 2026-06-06
+
+### What's Built
+1. ✅ **Flow control** — per-dab alpha multiplier (`effectiveAlpha = opacity * flow`), range 0-100%, default 100%.
+2. ✅ **Smoothing engine** — `PaintSmoother` class with weighted moving average over 2-10 points, mapped from smoothing 0-100.
+3. ✅ **Brush presets** — Hard Round, Soft Round, Detail, Large Soft, Hard Eraser, Soft Eraser with apply/clear logic.
+4. ✅ **Preset tracking** — `brushPresetId`/`eraserPresetId` in editor state; manual edit clears to "Custom".
+5. ✅ **Enhanced option bar** — Flow, Smoothing, preset dropdown added to Size/Hardness/Strength/Hard 100.
+6. ✅ **Right-click context menu** — floating panel with Size/Hardness/Strength sliders, preset grid, Reset button.
+7. ✅ **Keyboard shortcuts** — `[`/`]` for size, Shift+`[`/`]` for hardness.
+8. ✅ **Smoothing integration** — applied to pointerdown/move/up points before stroke rendering.
+9. ✅ **Right-click guard** — `e.button === 2` prevents paint on right-click.
+10. ✅ **Pointer cancel/lostcapture** — resets smoother buffer on both events.
+
+### Verification Results
+- PASS: 507/507 frontend tests (43 files)
+- PASS: `pnpm.cmd run build` (tsc + Vite)
+- PASS: 85/85 Rust core tests
+
+---
+
+## Current Task - Brush and Eraser Tool Improvements [COMPLETE]
+
+**Date:** 2026-06-06
+
+### Scope
+1. Wire brush and eraser settings into editor state and option bar.
+2. Pass active paint settings through pointer handling.
+3. Render brush and eraser strokes with size, hardness, and strength.
+4. Make brush cursor preview match active settings.
+5. Add paint tool keyboard shortcuts and blocked-state status feedback.
+
+### Verification Results
+- PASS: targeted brush/eraser tests.
+- PASS: frontend unit suite with stable worker mode (433 tests).
+- PASS: `pnpm.cmd run build`.
+- PASS: `pnpm.cmd run test:e2e` (5/5 Playwright smoke tests).
+
+---
+
 ## Current Task - Brush and Eraser Tool Improvements Plan [COMPLETE]
 
 **Date:** 2026-06-06

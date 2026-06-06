@@ -1,6 +1,7 @@
 import type { DocumentEngine } from "../engine/document";
 import type { CommandHistory } from "../engine/history";
 import type { SnapLine, SnapRect, SnapResult } from "./smartGuides";
+import type { PaintToolSettings } from "@/components/editor/brushToolState";
 import { getLayerAabb } from "./transformGeometry";
 
 export type ToolType = "move" | "selection" | "crop" | "eyedropper" | "brush" | "eraser";
@@ -25,7 +26,12 @@ export interface ToolContext {
   setBgColor?: (c: string) => void;
   onSelectionCreated?: (x: number, y: number, w: number, h: number) => void;
   onCropCreated?: (x: number, y: number, w: number, h: number) => void;
-  onPaintStroke?: (points: { x: number; y: number }[], isEraser: boolean) => void;
+  paintSettings: PaintToolSettings;
+  onPaintStroke?: (
+    points: { x: number; y: number }[],
+    isEraser: boolean,
+    settings: PaintToolSettings,
+  ) => void;
   onHoverHandle?: (handle: string | null) => void;
   onComputeSnap?: (rect: SnapRect) => SnapResult;
   onSnapLines?: (lines: SnapLine[]) => void;
@@ -50,9 +56,8 @@ export function handlePointerDown(
   } else if (tool === "crop") {
     context.onCropCreated?.(docX, docY, 0, 0);
   } else if (tool === "brush" || tool === "eraser") {
-    history.commit(engine.snapshot());
     context.strokePoints = [{ x: docX, y: docY }];
-    context.onPaintStroke?.([...context.strokePoints], tool === "eraser");
+    context.onPaintStroke?.([...context.strokePoints], tool === "eraser", context.paintSettings);
   } else if (tool === "eyedropper") {
     const color = engine.samplePixel(docX, docY);
     const hex = rgbToHex(color[0], color[1], color[2]);
@@ -93,7 +98,7 @@ export function handlePointerMove(
     context.onCropCreated?.(x, y, w, h);
   } else if (tool === "brush" || tool === "eraser") {
     context.strokePoints.push({ x: docX, y: docY });
-    context.onPaintStroke?.([...context.strokePoints], tool === "eraser");
+    context.onPaintStroke?.([...context.strokePoints], tool === "eraser", context.paintSettings);
   } else if (tool === "eyedropper") {
     const color = engine.samplePixel(docX, docY);
     const hex = rgbToHex(color[0], color[1], color[2]);
@@ -150,7 +155,7 @@ export function handlePointerUp(
     }
   } else if (tool === "brush" || tool === "eraser") {
     if (context.selectedLayerId && context.strokePoints.length > 0) {
-      context.onPaintStroke?.([...context.strokePoints], tool === "eraser");
+      context.onPaintStroke?.([...context.strokePoints], tool === "eraser", context.paintSettings);
     }
     context.strokePoints = [];
   } else if (tool === "crop") {

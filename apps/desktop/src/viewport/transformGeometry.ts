@@ -61,6 +61,29 @@ export function pointToLayerLocal(point: Point, transform: Transform2D, w: numbe
   return rotatePoint(point, center, -transform.rotation);
 }
 
+/** Convert document-space coordinates to layer-local pixel coordinates,
+ *  accounting for layer transform (position, scale, rotation, flip). */
+export function documentToLayerLocal(
+  docX: number,
+  docY: number,
+  transform: Transform2D,
+  w: number,
+  h: number,
+): { x: number; y: number } {
+  const center = getLayerCenter(transform, w, h);
+  const relX = docX - center.x;
+  const relY = docY - center.y;
+  const rot = rotatePoint({ x: relX, y: relY }, { x: 0, y: 0 }, -transform.rotation);
+  const flipX = transform.flipH ? -1 : 1;
+  const flipY = transform.flipV ? -1 : 1;
+  const sx = transform.scaleX * flipX;
+  const sy = transform.scaleY * flipY;
+  return {
+    x: (sx !== 0 ? rot.x / sx : 0) + w / 2,
+    y: (sy !== 0 ? rot.y / sy : 0) + h / 2,
+  };
+}
+
 export function getNearestRotateCorner(
   point: Point,
   transform: Transform2D,

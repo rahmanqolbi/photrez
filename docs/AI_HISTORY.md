@@ -1,5 +1,141 @@
 # AI History — Photrez
 
+## [2026-06-06] FEATURE — Brush/Eraser Tool UX Phase 2: Flow, Smoothing, Presets, Context Menu [COMPLETE]
+
+### Kategori: FEATURE / BRUSH / ERASER / FRONTEND / UX
+
+**Deskripsi:** Brush/Eraser Tool UX Phase 2 — flow control, smoothing engine, brush presets, right-click context menu, and keyboard shortcuts for hardness adjustment.
+
+**Rincian Perubahan:**
+1. **Flow control** — Added `flow` field (0–100%) to `PaintToolSettings`/`PaintToolState`. Flow multiplier applied in `renderPaintStrokeToContext()` via `ctx.globalAlpha = settings.opacity * settings.flow`. Default 100%.
+2. **Smoothing engine** — `PaintSmoother` class in `paintSmoothing.ts` with exponential-decay weighted moving average over circular buffer. `smoothingToWindowSize()` maps 0–100 → 1–10 points.
+3. **Brush presets** — `BrushPreset` interface + `BRUSH_PRESETS` array: 6 presets (Hard Round, Soft Round, Detail, Large Soft, Hard Eraser, Soft Eraser). `applyPaintPreset()` returns `Partial<PaintToolState>` for the target tool.
+4. **Preset tracking** — `brushPresetId`/`eraserPresetId` signals in editor state. Manual edit to any setting clears the active preset id to `null`.
+5. **Enhanced option bar** — Flow input, Smoothing input, Preset dropdown in `BrushOptionBar.tsx`. Eraser tool still shows "Hard 100" button.
+6. **Right-click context menu** — `BrushContextMenu.tsx` floating panel near cursor (clamped to viewport). Size/Hardness/Strength range sliders + 2×3 preset grid + Reset button. Opens on `contextmenu` event on `#canvas-container`, closes on outside click/Escape. Only for brush/eraser tools, not while Space held.
+7. **Keyboard shortcuts** — `[`/`]` for size adjustment (5px step), Shift+`[`/`]` for hardness adjustment (10% step). Added to `useCanvasKeyboard.ts`.
+8. **Smoothing integration** — `PaintSmoother` instantiated in `useCanvasPointerTools`, smoothed points in pointerdown/move/up. `reset()` on pointerdown/cancel/lostcapture. `setWindowSize()` from active settings.
+9. **Right-click guard** — `e.button === 2` early return in `onCanvasPointerDown` prevents paint stroke start on right-click.
+
+**Files Changed/Added:**
+- [MODIFY] `apps/desktop/src/components/editor/brushToolState.ts` — flow, smoothing, presets, `applyPaintPreset`, `clampPaintSmoothing`, `adjustPaintHardness`
+- [NEW] `apps/desktop/src/components/editor/paintSmoothing.ts` — `PaintSmoother` class, `smoothingToWindowSize`
+- [MODIFY] `apps/desktop/src/components/editor/paintStrokeRenderer.ts` — `globalAlpha = opacity * flow`
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasPointerTools.ts` — PaintSmoother, smoothed points, right-click guard
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasKeyboard.ts` — `[`/`]` size + Shift+`[`/`]` hardness shortcuts
+- [MODIFY] `apps/desktop/src/components/editor/BrushOptionBar.tsx` — Flow, Smoothing, Preset dropdown, clearPresetId
+- [NEW] `apps/desktop/src/components/editor/BrushContextMenu.tsx` — Right-click context menu
+- [MODIFY] `apps/desktop/src/components/editor/CanvasViewport.tsx` — Mount `<BrushContextMenu />`
+- [MODIFY] `apps/desktop/src/components/editor/editorState.ts` — brushFlow, brushSmoothing, eraserFlow, eraserSmoothing, brushPresetId, eraserPresetId
+- [MODIFY] `apps/desktop/src/components/editor/EditorContext.tsx` — 12 new interface members
+- [NEW] `apps/desktop/src/components/editor/__tests__/paintSmoothing.test.ts` — 5 smoothing tests
+- [NEW] `apps/desktop/src/components/editor/__tests__/BrushContextMenu.test.tsx` — 5 context menu tests
+- [MODIFY] `apps/desktop/src/components/editor/__tests__/BrushOptionBar.test.tsx` — 5 flow/smoothing/preset tests
+- [MODIFY] `apps/desktop/src/components/editor/__tests__/paintStrokeRenderer.test.ts` — flow multiplier test
+- [ADD] `docs/superpowers/specs/2026-06-06-brush-eraser-ux-phase2-design.md`
+- [ADD] `docs/superpowers/plans/2026-06-06-brush-eraser-ux-phase2.md`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+- [MODIFY] `docs/FEATURES.md`
+
+**Verifikasi:**
+- PASS: 507/507 frontend tests (43 files)
+- PASS: `pnpm.cmd run build` (tsc + Vite)
+- PASS: 85/85 Rust core tests
+
+---
+
+## [2026-06-06] FEATURE — Brush and Eraser Tool Improvements [COMPLETE]
+
+### Kategori: FEATURE / BRUSH / ERASER / FRONTEND
+
+**Deskripsi:** Mengimplementasikan brush dan eraser tool improvement plan: state tool terpisah untuk brush/eraser (size, hardness, strength), interactive BrushOptionBar, paint settings payload dalam pointer flow, stroke rendering dengan size/hardness/opacity, cursor overlay yang merefleksikan ukuran aktif, blocked-state feedback untuk hidden/locked/protected layer, dan keyboard shortcuts untuk B (brush), E (eraser), `[`/`]` (size adjustment).
+
+**Root Cause:** Paint tools sudah ada tetapi option bar, pointer context, cursor overlay, dan stroke renderer menggunakan nilai tetap.
+
+**Fix Rationale:** Brush dan eraser harus memiliki state eksplisit dan terpisah, serta rendered stroke harus menggunakan settings yang sama dengan yang ditampilkan di UI.
+
+**Files Changed/Added:**
+- [NEW] `apps/desktop/src/components/editor/brushToolState.ts`
+- [NEW] `apps/desktop/src/components/editor/paintStrokeRenderer.ts`
+- [NEW] `apps/desktop/src/components/editor/__tests__/brushToolState.test.ts`
+- [NEW] `apps/desktop/src/components/editor/__tests__/BrushOptionBar.test.tsx`
+- [NEW] `apps/desktop/src/components/editor/__tests__/paintStrokeRenderer.test.ts`
+- [NEW] `apps/desktop/src/components/editor/__tests__/BrushCursorOverlay.test.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/editorState.ts`
+- [MODIFY] `apps/desktop/src/components/editor/EditorContext.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/BrushOptionBar.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/BrushCursorOverlay.tsx`
+- [MODIFY] `apps/desktop/src/components/editor/useBrushOverlay.ts`
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasKeyboard.ts`
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasPointerTools.ts`
+- [MODIFY] `apps/desktop/src/components/editor/BottomStatusBar.tsx`
+- [MODIFY] `apps/desktop/src/viewport/input-handler.ts`
+- [MODIFY] `apps/desktop/src/__tests__/input-handler-move.test.ts`
+- [MODIFY] `apps/desktop/src/__tests__/input-handler-snap.test.ts`
+- [MODIFY] `apps/desktop/src/__tests__/keyboard-shortcuts.test.ts`
+- [MODIFY] `docs/AI_CURRENT_TASK.md`
+- [MODIFY] `docs/AI_HISTORY.md`
+- [MODIFY] `docs/FEATURES.md`
+- [MODIFY] `docs/plans/task.md`
+
+**Verifikasi:**
+- PASS: `pnpm.cmd --filter photrez-desktop test -- --pool=threads --maxWorkers=1` (433 tests, 41 files)
+- PASS: `pnpm.cmd run build` (tsc + Vite production build)
+
+## [2026-06-06] FIX — Brush/Eraser Tool Post-Review Fixes
+
+### Kategori: FIX / BRUSH / ERASER / FRONTEND
+
+**Deskripsi:** Memperbaiki 6 masalah yang ditemukan dalam code review brush/eraser implementation:
+1. Brush cursor overlay mengabaikan viewport pan (menggunakan `screenToDocument` untuk konversi koordinat yang benar)
+2. Hardness=100% membuat radial gradient dengan radius start==end (special-case solid fill untuk hard brush)
+3. No-op history entry untuk blocked stroke (history commit dipindahkan ke caller setelah guard block check)
+4. `settings: any` pada `useCanvasPointerTools.ts` interface (diganti ke `PaintToolSettings`)
+5. Potensi mojibake pada separator dimensi di BottomStatusBar (`×` diganti ASCII `x`)
+6. Test coverage hardness=1 solid fill dengan mock ctx
+
+**Files Changed:**
+- [MODIFY] `apps/desktop/src/components/editor/BrushCursorOverlay.tsx` — gunakan `screenToDocument`, tambah `workspace`
+- [MODIFY] `apps/desktop/src/components/editor/paintStrokeRenderer.ts` — solid fill untuk hardness >= 1
+- [MODIFY] `apps/desktop/src/viewport/input-handler.ts` — hapus `history.commit` dari brush/eraser case
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasPointerTools.ts` — guard block check; import `DocumentEngine`, `PaintToolSettings`, `getPaintToolBlockReason`; type `any` → `PaintToolSettings`; `commitBrushStroke` engine type
+- [MODIFY] `apps/desktop/src/components/editor/BottomStatusBar.tsx` — `×` → `x`
+- [MODIFY] `apps/desktop/src/components/editor/__tests__/paintStrokeRenderer.test.ts` — test hardness=1 dan <1 dengan mock ctx
+
+**Remaining design decisions (non-blocking):**
+- Opacity per-dab: current semantics = "flow" (accumulative). If "strength" (max opacity) is desired, renderer needs temp mask + single composite
+- Transformed layer coordinates: stroke draws in document space directly. Layer-local conversion needed for transformed raster layers
+
+**Verifikasi:**
+- PASS: 42/42 targeted tests across 7 files (`brushToolState`, `BrushOptionBar`, `BrushCursorOverlay`, `paintStrokeRenderer`, `input-handler-move`, `input-handler-snap`, `keyboard-shortcuts`)
+- PASS: `npx tsc --noEmit --skipLibCheck` (clean compile)
+
+## [2026-06-06] FIX — Round 2: Zoom Cursor, Pointer Cancel, Layer-Local Coords, Async Race
+
+### Kategori: FIX / BRUSH / ERASER / FRONTEND
+
+**Deskripsi:** Perbaikan lanjutan berdasarkan code review depth:
+1. Brush cursor radius salah saat zoom ≠ 1 (radius dibagi zoom padahal SVG sudah di dalam `scale(zoom)`). Sekarang `r={radius()}` tanpa `/ zoom()`.
+2. Pointer cancel / lost capture tidak ditangani — stroke aktif bisa tertinggal. Tambah `onPointerCancel` di canvas yang commit stroke partial + reset state.
+3. Koordinat stroke masih document-space, tidak layer-local. Untuk layer dengan transform/offset/scale/rotation, stroke bisa meleset. Tambah `documentToLayerLocal()` di `transformGeometry.ts` dan konversi di `useBrushOverlay.ts`.
+4. Async commit race: `createImageBitmap` bisa selesai setelah layer dihapus/diganti. Tambah guard `workspace.getActiveEngine() === engine && engine.getLayer(layerId)` setelah await.
+
+**Files Changed:**
+- [MODIFY] `apps/desktop/src/components/editor/BrushCursorOverlay.tsx` — hapus `/ zoom()` dari radius
+- [MODIFY] `apps/desktop/src/components/editor/useBrushOverlay.ts` — konversi document-to-layer-local; async race guard
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasPointerTools.ts` — tambah `onCanvasPointerCancel`
+- [MODIFY] `apps/desktop/src/components/editor/CanvasViewport.tsx` — bind `onPointerCancel`
+- [MODIFY] `apps/desktop/src/viewport/transformGeometry.ts` — tambah `documentToLayerLocal()`
+
+**Verifikasi:**
+- PASS: 42/42 targeted tests (7 files)
+- PASS: 12/12 CanvasViewport tests
+- PASS: `npx tsc --noEmit --skipLibCheck`
+- PASS: `pnpm.cmd run test:e2e` (5/5 Playwright smoke tests)
+
+---
+
 ## [2026-06-06] PLANNING — Brush and Eraser Tool Improvements Plan [COMPLETE]
 
 ### Kategori: PLANNING / BRUSH / ERASER / FRONTEND

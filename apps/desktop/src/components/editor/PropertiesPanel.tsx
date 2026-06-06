@@ -1,8 +1,9 @@
-import type { JSX } from "solid-js";
 import { For, Show } from "solid-js";
 import { Icon, type IconName } from "./icons";
 import { NumField, PropRow, SelectField, Slider } from "./primitives";
 import { useEditor } from "./EditorContext";
+import { SectionHeader } from "./SectionHeader";
+import { CanvasProperties } from "./CanvasProperties";
 
 const COLLAPSED_SECTIONS: readonly {
   icon: IconName;
@@ -60,31 +61,22 @@ export function PropertiesPanel() {
         >
           <Show
             when={activeLayer()}
-            fallback={
-              <div class="flex h-40 items-center justify-center text-editor-text-dim text-[13px]">
-                No active layer selected
-              </div>
-            }
+            fallback={<CanvasProperties />}
           >
             {(layer) => (
               <div class="border-b border-editor-divider px-4 py-3.5">
-                <SectionHeader>
-                  <div class="flex items-center gap-2">
+                <SectionHeader
+                  icon="move"
+                  iconClass="text-editor-text-dim"
+                  label="Transform"
+                  trailing={
                     <Icon
-                      name="move"
-                      class="size-3.5 text-editor-text-dim"
+                      name="chevron-up"
+                      class="size-4 text-editor-text-dim"
                       strokeWidth={1.75}
                     />
-                    <span class="text-[12.5px] font-medium text-editor-text">
-                      Transform
-                    </span>
-                  </div>
-                  <Icon
-                    name="chevron-up"
-                    class="size-4 text-editor-text-dim"
-                    strokeWidth={1.75}
-                  />
-                </SectionHeader>
+                  }
+                />
 
                 <div class="mt-3 flex flex-col gap-2.5">
                   <PropRow label="Position">
@@ -140,23 +132,18 @@ export function PropertiesPanel() {
           </Show>
 
           <div class="border-b border-editor-divider px-4 py-3.5">
-            <SectionHeader>
-              <div class="flex items-center gap-2">
+            <SectionHeader
+              icon="sun"
+              iconClass="text-editor-text-dim"
+              label="Basic"
+              trailing={
                 <Icon
-                  name="sun"
+                  name="x"
                   class="size-3.5 text-editor-text-dim"
                   strokeWidth={1.75}
                 />
-                <span class="text-[12.5px] font-medium text-editor-text">
-                  Basic
-                </span>
-              </div>
-              <Icon
-                name="x"
-                class="size-3.5 text-editor-text-dim"
-                strokeWidth={1.75}
-              />
-            </SectionHeader>
+              }
+            />
 
             <div class="mt-3 flex flex-col gap-2.5">
               <PropRow label="Profile">
@@ -201,10 +188,6 @@ export function PropertiesPanel() {
       </div>
     </section>
   );
-}
-
-function SectionHeader(props: { children: JSX.Element }) {
-  return <div class="flex items-center justify-between">{props.children}</div>;
 }
 
 function SliderRow(props: {

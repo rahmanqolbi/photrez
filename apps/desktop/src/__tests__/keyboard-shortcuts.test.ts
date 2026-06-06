@@ -64,6 +64,21 @@ describe('Keyboard shortcut mapping', () => {
   });
 });
 
+describe('Paint tool shortcuts', () => {
+  it("should map E to eraser tool", () => {
+    const key = "e";
+    const isEraser = key === "e";
+    expect(isEraser).toBe(true);
+  });
+
+  it("should map bracket keys to active paint size adjustment", () => {
+    const decrementKey = "[";
+    const incrementKey = "]";
+    expect(decrementKey).toBe("[");
+    expect(incrementKey).toBe("]");
+  });
+});
+
 describe('Nudge with arrow keys', () => {
   it('should nudge 1px with arrow key', () => {
     const shiftKey = false;

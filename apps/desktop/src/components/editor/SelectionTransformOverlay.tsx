@@ -143,7 +143,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
               width={effW()}
               height={effH()}
               fill="transparent"
-              style={{ "pointer-events": "all" }}
+              style={{ "pointer-events": props.isNavigationMode ? "none" : "all" }}
               data-move
               onPointerDown={(e) => handlePointerDown(e, "move")}
               onPointerEnter={() => setHoverHandle("move")}
@@ -168,7 +168,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
                         d={getRotatePath(type, hx(), hy(), ro(), ht())}
                         fill="transparent"
                         fill-rule="evenodd"
-                        style={{ "pointer-events": "all" }}
+                        style={{ "pointer-events": props.isNavigationMode ? "none" : "all" }}
                         onPointerDown={(e) => handlePointerDown(e, "rotate")}
                         onPointerEnter={(e) => {
                           setHoverPos({ x: e.clientX, y: e.clientY });
@@ -186,7 +186,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
                       width={ht()}
                       height={ht()}
                       fill="transparent"
-                      style={{ "pointer-events": "all" }}
+                      style={{ "pointer-events": props.isNavigationMode ? "none" : "all" }}
                       data-handle={type}
                       onPointerDown={(e) => handlePointerDown(e, type)}
                       onPointerEnter={() => setHoverHandle(type)}

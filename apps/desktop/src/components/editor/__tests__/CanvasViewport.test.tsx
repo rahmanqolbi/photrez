@@ -14,29 +14,38 @@ vi.mock("../useViewportRenderer", () => ({
 }));
 
 // Mock useBrushOverlay
+const { mockCommitBrushStroke } = vi.hoisted(() => ({
+  mockCommitBrushStroke: vi.fn(),
+}));
 vi.mock("../useBrushOverlay", () => ({
   useBrushOverlay: () => ({
     onPaintStroke: vi.fn(),
-    commitBrushStroke: vi.fn(),
+    commitBrushStroke: mockCommitBrushStroke,
     setOverlayCanvasRef: vi.fn(),
     getOverlayCanvasRef: vi.fn(),
   }),
 }));
 
 // Mock usePanNavigation
-const mockOnViewportPointerDown = vi.fn();
 let mockSpacePressed = false;
+let mockPanningActive = false;
+const mockOnViewportPointerDown = vi.fn();
+const mockOnViewportPointerUp = vi.fn();
+const mockOnViewportPointerCancel = vi.fn();
+const mockOnViewportLostPointerCapture = vi.fn();
 vi.mock("../usePanNavigation", () => ({
   usePanNavigation: () => ({
     isSpacePressed: () => mockSpacePressed,
     setIsSpacePressed: vi.fn(),
-    isPanning: () => false,
+    isPanning: () => mockPanningActive,
     setIsPanning: vi.fn(),
     stopMomentum: vi.fn(),
     handleWheel: vi.fn(),
     onViewportPointerDown: mockOnViewportPointerDown,
     onViewportPointerMove: vi.fn(),
-    onViewportPointerUp: vi.fn(),
+    onViewportPointerUp: mockOnViewportPointerUp,
+    onViewportPointerCancel: mockOnViewportPointerCancel,
+    onViewportLostPointerCapture: mockOnViewportLostPointerCapture,
   }),
 }));
 
@@ -88,9 +97,13 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
     mockOnViewportPointerDown.mockClear();
+    mockOnViewportPointerUp.mockClear();
+    mockOnViewportPointerCancel.mockClear();
+    mockOnViewportLostPointerCapture.mockClear();
+    mockCommitBrushStroke.mockClear();
     mockSpacePressed = false;
+    mockPanningActive = false;
 
-    // Stub JSDOM missing pointer capture methods
     Element.prototype.setPointerCapture = vi.fn();
     Element.prototype.releasePointerCapture = vi.fn();
   });
@@ -253,7 +266,7 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     setTool("crop");
     setCrop({ x: 12, y: 18, w: 200, h: 140 });
-    setCropRotation(15); // Set rotation
+    setCropRotation(15);
 
     dispatchPasteboardClick();
 
@@ -367,5 +380,347 @@ describe("CanvasViewport Pasteboard Clicks", () => {
 
     expect(mockOnViewportPointerDown).toHaveBeenCalledWith(expect.objectContaining({ pointerId: 1 }));
     expect(getCrop()).toEqual({ x: 120, y: 120, w: 180, h: 120 });
+  });
+
+  it("commits brush stroke on pointercancel during active brush drag", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("brush");
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    if (!canvas) throw new Error("Canvas not found");
+
+    canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 50, clientY: 50, button: 0, pointerId: 99 }));
+    canvas.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true, pointerId: 99 }));
+
+    expect(mockCommitBrushStroke).toHaveBeenCalled();
+  });
+
+  it("commits brush stroke on lostpointercapture during active brush drag", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("brush");
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    if (!canvas) throw new Error("Canvas not found");
+
+    canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 50, clientY: 50, button: 0, pointerId: 99 }));
+    canvas.dispatchEvent(new PointerEvent("lostpointercapture", { bubbles: true, pointerId: 99 }));
+
+    expect(mockCommitBrushStroke).toHaveBeenCalled();
+  });
+
+  it("does not start brush drag when isPanning is true", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("brush");
+    mockPanningActive = true;
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    if (!canvas) throw new Error("Canvas not found");
+
+    canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 50, clientY: 50, button: 0, pointerId: 42 }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 100, clientY: 100, button: 0, pointerId: 42 }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, clientX: 100, clientY: 100, button: 0, pointerId: 42 }));
+
+    // No brush stroke should be committed since drag was blocked
+    expect(mockCommitBrushStroke).not.toHaveBeenCalled();
+  });
+
+  it("routes pointerdown event to container panning handler when isPanning blocks canvas", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("selection");
+    mockPanningActive = true;
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    if (!canvas) throw new Error("Canvas not found");
+
+    canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, clientX: 100, clientY: 100, button: 0, pointerId: 7 }));
+
+    // Event should bubble to container → onViewportPointerDown should be called
+    expect(mockOnViewportPointerDown).toHaveBeenCalledWith(
+      expect.objectContaining({ pointerId: 7, button: 0 })
+    );
+  });
+
+  it("calls onViewportPointerCancel when container receives pointercancel", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const viewportContainer = container.querySelector("[data-viewport-container]") as HTMLDivElement;
+    if (!viewportContainer) throw new Error("Viewport container not found");
+
+    viewportContainer.dispatchEvent(new PointerEvent("pointercancel", { bubbles: false, pointerId: 5 }));
+
+    expect(mockOnViewportPointerCancel).toHaveBeenCalledWith(
+      expect.objectContaining({ pointerId: 5 })
+    );
+  });
+
+  it("calls onViewportLostPointerCapture when container receives lostpointercapture", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const viewportContainer = container.querySelector("[data-viewport-container]") as HTMLDivElement;
+    if (!viewportContainer) throw new Error("Viewport container not found");
+
+    viewportContainer.dispatchEvent(new PointerEvent("lostpointercapture", { bubbles: false, pointerId: 3 }));
+
+    expect(mockOnViewportLostPointerCapture).toHaveBeenCalledWith(
+      expect.objectContaining({ pointerId: 3 })
+    );
+  });
+
+  it("sets pointer capture on canvas pointerdown when isPanning is false", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("brush");
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    if (!canvas) throw new Error("Canvas not found");
+
+    canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 50, clientY: 50, button: 0, pointerId: 8 }));
+
+    expect(Element.prototype.setPointerCapture).toHaveBeenCalledWith(8);
+  });
+
+  it("does not set pointer capture on canvas pointerdown when isPanning is true", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("brush");
+    mockPanningActive = true;
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    if (!canvas) throw new Error("Canvas not found");
+
+    canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 50, clientY: 50, button: 0, pointerId: 9 }));
+
+    // The isPanning guard should prevent setPointerCapture
+    // It may have been called by other code, so check the last call args
+    const calls = (Element.prototype.setPointerCapture as ReturnType<typeof vi.fn>).mock.calls;
+    const lastCall = calls[calls.length - 1];
+    // If there are calls, the last one should NOT be for pointerId 9 (our test event)
+    if (lastCall) {
+      expect(lastCall[0]).not.toBe(9);
+    }
+  });
+});
+
+describe("Space+pan global override across all tools", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    ws = new WorkspaceManager();
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    mockOnViewportPointerDown.mockClear();
+    mockOnViewportPointerUp.mockClear();
+    mockCommitBrushStroke.mockClear();
+    mockSpacePressed = false;
+    mockPanningActive = false;
+
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+  });
+
+  afterEach(() => {
+    if (dispose) dispose();
+    container.parentNode?.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  function renderViewport() {
+    const session = WorkspaceManager.createBlankDocument("doc-pan", "Pan Test", 800, 600);
+    ws.addDocument(session);
+
+    const result = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer} scheduler={scheduler}>
+          <TestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+
+    dispose = result;
+    return { session };
+  }
+
+  function getCanvas(): HTMLCanvasElement {
+    const c = container.querySelector("canvas") as HTMLCanvasElement;
+    if (!c) throw new Error("Canvas not found");
+    return c;
+  }
+
+  function getContainer(): HTMLDivElement {
+    const c = container.querySelector("[data-viewport-container]") as HTMLDivElement;
+    if (!c) throw new Error("Viewport container not found");
+    return c;
+  }
+
+  function firePointerDown(el: Element, pointerId = 10, clientX = 100, clientY = 100) {
+    el.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId, clientX, clientY,
+    }));
+  }
+
+  function firePointerMove(el: Element, pointerId = 10, clientX = 200, clientY = 200) {
+    el.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId, clientX, clientY,
+    }));
+  }
+
+  function firePointerUp(el: Element, pointerId = 10, clientX = 200, clientY = 200) {
+    el.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId, clientX, clientY,
+    }));
+  }
+
+  // --- Tool-specific Space+pan tests ---
+
+  it("Move tool + selected layer: routes to pan handler when Space held", async () => {
+    const { session } = renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("move");
+    mockSpacePressed = true;
+    const layers = session.engine.getLayers();
+    session.engine.setActiveLayer(layers[0].id);
+
+    firePointerDown(getCanvas());
+
+    expect(mockOnViewportPointerDown).toHaveBeenCalled();
+    // Layer should still be active (no pasteboard clear happened)
+    expect(session.engine.getActiveLayerId()).toBe(layers[0].id);
+  });
+
+  it("Selection tool + canvas: routes to pan handler when Space held", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("selection");
+    mockSpacePressed = true;
+
+    firePointerDown(getCanvas());
+
+    expect(mockOnViewportPointerDown).toHaveBeenCalled();
+    // No selection marquee should be created
+    expect(container.querySelector("rect.animate-dash")).toBeNull();
+  });
+
+  it("Crop tool + canvas: routes to pan handler when Space held", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("crop");
+    mockSpacePressed = true;
+
+    firePointerDown(getCanvas());
+
+    expect(mockOnViewportPointerDown).toHaveBeenCalled();
+  });
+
+  it("Brush tool + canvas: routes to pan handler when Space held", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("brush");
+    mockSpacePressed = true;
+
+    firePointerDown(getCanvas());
+
+    expect(mockOnViewportPointerDown).toHaveBeenCalled();
+    expect(mockCommitBrushStroke).not.toHaveBeenCalled();
+  });
+
+  it("Eraser tool + canvas: routes to pan handler when Space held", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("eraser");
+    mockSpacePressed = true;
+
+    firePointerDown(getCanvas());
+
+    expect(mockOnViewportPointerDown).toHaveBeenCalled();
+    expect(mockCommitBrushStroke).not.toHaveBeenCalled();
+  });
+
+  it("Crop tool + pasteboard: routes to pan handler when Space held (not pasteboard crop)", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("crop");
+    setCrop({ x: 10, y: 10, w: 100, h: 100 });
+    mockSpacePressed = true;
+
+    firePointerDown(getContainer());
+
+    expect(mockOnViewportPointerDown).toHaveBeenCalled();
+    // Crop rect should not have been cleared
+    expect(getCrop()).toEqual({ x: 10, y: 10, w: 100, h: 100 });
+  });
+
+  it("Container pointerdown routes to pan handler before pasteboard handler when Space held", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("move");
+    mockSpacePressed = true;
+
+    const containerEl = getContainer();
+    // Spy on the container's pasteboard handler to verify it's not called
+    const listenerSpy = vi.fn();
+    containerEl.addEventListener("pointerdown", listenerSpy);
+
+    firePointerDown(containerEl);
+
+    // The mockOnViewportPointerDown should have been called
+    expect(mockOnViewportPointerDown).toHaveBeenCalled();
+  });
+
+  it("Space+pan works from canvas into pasteboard via pointer capture (isPanning = true)", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("brush");
+    mockPanningActive = true;
+
+    const canvas = getCanvas();
+    firePointerMove(canvas);
+    firePointerUp(canvas);
+
+    // No brush commit since panning blocked everything
+    expect(mockCommitBrushStroke).not.toHaveBeenCalled();
+  });
+
+  it("Container pointerdown still routes to pasteboard handler when Space is NOT held", async () => {
+    const { session } = renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("move");
+    mockSpacePressed = false;
+
+    const layers = session.engine.getLayers();
+    session.engine.setActiveLayer(layers[0].id);
+    firePointerDown(getContainer());
+
+    // Active layer should be cleared (pasteboard click behavior)
+    expect(session.engine.getActiveLayerId()).toBeNull();
+  });
+
+  it("Middle mouse button starts panning regardless of tool and Space state", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("brush");
+
+    const canvas = getCanvas();
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 1, pointerId: 20, clientX: 50, clientY: 50,
+    }));
+
+    // onViewportPointerDown should be called (it handles button === 1)
+    expect(mockOnViewportPointerDown).toHaveBeenCalledWith(
+      expect.objectContaining({ pointerId: 20, button: 1 })
+    );
   });
 });

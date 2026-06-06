@@ -2,6 +2,7 @@ import { Show } from "solid-js";
 import { clsx } from "clsx";
 import { Icon } from "./icons";
 import { useEditor } from "./EditorContext";
+import { getPaintToolBlockReason } from "./brushToolState";
 
 const TOOL_DESCRIPTIONS: Record<string, string> = {
   move: "Drag to move layer. Hold Shift for constrained movement.",
@@ -34,9 +35,19 @@ export function BottomStatusBar() {
     }
   };
 
+  const activeLayer = () => layers().find((layer) => layer.id === activeLayerId()) ?? null;
+
+  const paintBlockReason = () => {
+    const tool = activeTool();
+    if (tool !== "brush" && tool !== "eraser") return null;
+    return getPaintToolBlockReason(activeLayer(), tool === "eraser");
+  };
+
   const statusText = () => {
     const session = layerTransformSession();
     if (session) return "Transform preview active. Edit values above, Enter to apply, Esc to cancel.";
+    const blocked = paintBlockReason();
+    if (blocked) return blocked;
     return TOOL_DESCRIPTIONS[activeTool()] || "";
   };
 
@@ -48,7 +59,7 @@ export function BottomStatusBar() {
           fallback={<span class="text-editor-text/60">No image open</span>}
         >
           <span class="text-editor-text/80">
-            {docWidth()} × {docHeight()} px
+            {docWidth()} x {docHeight()} px
           </span>
           <span class="border-l border-editor-divider pl-4 flex items-center gap-2">
             <span class="text-editor-text/80">{Math.round(zoom() * 100)}%</span>
