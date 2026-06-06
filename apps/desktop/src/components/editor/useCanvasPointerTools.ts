@@ -25,7 +25,7 @@ interface UseCanvasPointerToolsParams {
   isAltPressed: () => boolean;
   stopMomentum: () => void;
   fitToScreenAndRender: () => void;
-  commitBrushStroke: (engine: DocumentEngine, id: string) => void;
+  commitBrushStroke: (engine: DocumentEngine, id: string, isEraser: boolean) => void;
   onPaintStroke?: (points: { x: number; y: number }[], isEraser: boolean, settings: PaintToolSettings) => void;
 }
 
@@ -318,7 +318,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const tool = activeTool() as ToolType;
     if (tool === "brush" || tool === "eraser") {
       const layerId = engine.getActiveLayerId();
-      if (layerId) params.commitBrushStroke(engine, layerId);
+      if (layerId) params.commitBrushStroke(engine, layerId, tool === "eraser");
     }
 
     if (tool === "crop" && isPendingCropClick) {
@@ -360,7 +360,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     if (tool === "brush" || tool === "eraser") {
       const layerId = engine.getActiveLayerId();
       if (layerId && interactiveState.strokePoints.length > 0) {
-        params.commitBrushStroke(engine, layerId);
+        params.commitBrushStroke(engine, layerId, tool === "eraser");
       }
     }
 
@@ -378,7 +378,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     if (tool === "brush" || tool === "eraser") {
       const layerId = engine.getActiveLayerId();
       if (layerId && interactiveState.strokePoints.length > 0) {
-        params.commitBrushStroke(engine, layerId);
+        params.commitBrushStroke(engine, layerId, tool === "eraser");
       }
     }
 

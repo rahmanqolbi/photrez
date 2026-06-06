@@ -28,12 +28,36 @@ export interface PaintEditableLayer {
 }
 
 export const MIN_PAINT_SIZE = 1;
-export const MAX_PAINT_SIZE = 500;
+export const MAX_PAINT_SIZE = 2000;
 export const PAINT_SIZE_STEP = 5;
 export const PAINT_SIZE_STEP_HARDNESS = 0.1;
 
 export const MIN_SMOOTHING = 0;
 export const MAX_SMOOTHING = 100;
+
+export const SLIDER_SIZE_MAX = 100;
+export const SLIDER_SIZE_THRESHOLD = 75;
+export const MAX_LINEAR_SIZE = 500;
+
+export function sizeSliderToPaintSize(sliderValue: number): number {
+  const clamped = Math.max(0, Math.min(SLIDER_SIZE_MAX, sliderValue));
+  if (clamped <= SLIDER_SIZE_THRESHOLD) {
+    const t = clamped / SLIDER_SIZE_THRESHOLD;
+    return Math.round(MIN_PAINT_SIZE + (MAX_LINEAR_SIZE - MIN_PAINT_SIZE) * t);
+  }
+  const t = (clamped - SLIDER_SIZE_THRESHOLD) / (SLIDER_SIZE_MAX - SLIDER_SIZE_THRESHOLD);
+  const eased = t * t;
+  return Math.round(MAX_LINEAR_SIZE + (MAX_PAINT_SIZE - MAX_LINEAR_SIZE) * eased);
+}
+
+export function paintSizeToSizeSlider(size: number): number {
+  const clamped = Math.max(MIN_PAINT_SIZE, Math.min(MAX_PAINT_SIZE, size));
+  if (clamped <= MAX_LINEAR_SIZE) {
+    return Math.round(((clamped - MIN_PAINT_SIZE) / (MAX_LINEAR_SIZE - MIN_PAINT_SIZE)) * SLIDER_SIZE_THRESHOLD);
+  }
+  const t = Math.sqrt((clamped - MAX_LINEAR_SIZE) / (MAX_PAINT_SIZE - MAX_LINEAR_SIZE));
+  return Math.round(SLIDER_SIZE_THRESHOLD + t * (SLIDER_SIZE_MAX - SLIDER_SIZE_THRESHOLD));
+}
 
 export function clampPaintSize(value: number): number {
   if (!Number.isFinite(value)) return MIN_PAINT_SIZE;

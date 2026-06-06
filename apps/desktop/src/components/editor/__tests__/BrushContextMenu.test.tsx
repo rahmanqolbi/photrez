@@ -103,7 +103,7 @@ describe("BrushContextMenu", () => {
     dispose();
   });
 
-  it("size slider updates brush size signal", () => {
+  it("size slider updates brush size signal via non-linear mapping", () => {
     const mock = createMockEditor({ activeTool: "brush", brushSize: 30 });
     vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mock as any);
 
@@ -119,11 +119,13 @@ describe("BrushContextMenu", () => {
 
     const sizeSlider = root.querySelector<HTMLInputElement>("[data-context-size]")!;
     expect(sizeSlider).toBeTruthy();
-    expect(sizeSlider.value).toBe("30");
+    // slider is 0-100 non-linear; size=30 maps to slider ~4
+    expect(sizeSlider.value).toBe("4");
 
+    // slider=50 → size~334
     sizeSlider.value = "50";
     sizeSlider.dispatchEvent(new Event("input", { bubbles: true }));
-    expect(mock.brushSize()).toBe(50);
+    expect(mock.brushSize()).toBe(334);
 
     dispose();
   });

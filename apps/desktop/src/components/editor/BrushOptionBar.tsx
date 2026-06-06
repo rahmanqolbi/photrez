@@ -1,6 +1,6 @@
 import { Show, createSignal, For } from "solid-js";
 import { useEditor } from "./EditorContext";
-import { clampPaintPercent, clampPaintSize, clampPaintSmoothing, BRUSH_PRESETS, applyPaintPreset } from "./brushToolState";
+import { clampPaintPercent, clampPaintSize, clampPaintSmoothing, BRUSH_PRESETS, applyPaintPreset, sizeSliderToPaintSize, paintSizeToSizeSlider } from "./brushToolState";
 
 function formatPercent(value: number): number {
   return Math.round(value * 100);
@@ -122,13 +122,23 @@ export function BrushOptionBar() {
             data-paint-size
             type="number"
             min="1"
-            max="500"
+            max="2000"
             value={size()}
             onInput={(event) => setSize(Number(event.currentTarget.value))}
             class="w-12 bg-transparent text-[11px] text-editor-text outline-none"
           />
           <span class="text-[10px] text-editor-text-dim">px</span>
         </label>
+
+        <input
+          data-paint-size-slider
+          type="range"
+          min="0"
+          max="100"
+          value={paintSizeToSizeSlider(size())}
+          onInput={(event) => setSize(sizeSliderToPaintSize(Number(event.currentTarget.value)))}
+          class="w-[72px] h-1 accent-editor-accent"
+        />
 
         <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
           <span class="text-[10px] font-medium text-editor-text-dim">Hard</span>

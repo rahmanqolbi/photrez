@@ -6,6 +6,10 @@ import {
   getActivePaintToolSettings,
   adjustPaintSize,
   getPaintToolBlockReason,
+  sizeSliderToPaintSize,
+  paintSizeToSizeSlider,
+  MAX_PAINT_SIZE,
+  MAX_LINEAR_SIZE,
   type PaintToolState,
 } from "../brushToolState";
 
@@ -26,7 +30,46 @@ describe("brushToolState", () => {
   it("clamps paint size to the MVP bounds", () => {
     expect(clampPaintSize(-4)).toBe(1);
     expect(clampPaintSize(24.4)).toBe(24);
-    expect(clampPaintSize(900)).toBe(500);
+    expect(clampPaintSize(900)).toBe(900);
+    expect(clampPaintSize(3000)).toBe(MAX_PAINT_SIZE);
+  });
+
+  it("sizeSliderToPaintSize mapping is correct", () => {
+    expect(sizeSliderToPaintSize(0)).toBe(1);
+    expect(sizeSliderToPaintSize(75)).toBe(MAX_LINEAR_SIZE);
+    expect(sizeSliderToPaintSize(100)).toBe(MAX_PAINT_SIZE);
+  });
+
+  it("sizeSliderToPaintSize returns linear growth in 0-75 range", () => {
+    expect(sizeSliderToPaintSize(0)).toBe(1);
+    expect(sizeSliderToPaintSize(37)).toBeCloseTo(250, -1);
+    expect(sizeSliderToPaintSize(75)).toBe(MAX_LINEAR_SIZE);
+  });
+
+  it("sizeSliderToPaintSize returns accelerated growth in 75-100 range", () => {
+    // At slider 75+12.5=87.5, the eased value should be between 500 and 2000
+    const at87 = sizeSliderToPaintSize(87);
+    expect(at87).toBeGreaterThan(MAX_LINEAR_SIZE);
+    expect(at87).toBeLessThan(MAX_PAINT_SIZE);
+    expect(sizeSliderToPaintSize(100)).toBe(MAX_PAINT_SIZE);
+  });
+
+  it("sizeSliderToPaintSize clamps out-of-range values", () => {
+    expect(sizeSliderToPaintSize(-10)).toBe(1);
+    expect(sizeSliderToPaintSize(150)).toBe(MAX_PAINT_SIZE);
+  });
+
+  it("paintSizeToSizeSlider inverts sizeSliderToPaintSize", () => {
+    for (const slider of [0, 10, 25, 50, 75, 80, 90, 100]) {
+      const size = sizeSliderToPaintSize(slider);
+      const back = paintSizeToSizeSlider(size);
+      expect(back).toBe(slider);
+    }
+  });
+
+  it("paintSizeToSizeSlider clamps out-of-range values", () => {
+    expect(paintSizeToSizeSlider(-5)).toBe(0);
+    expect(paintSizeToSizeSlider(9999)).toBe(100);
   });
 
   it("clamps percentage settings to 0..1", () => {

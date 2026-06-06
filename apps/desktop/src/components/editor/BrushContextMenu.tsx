@@ -1,6 +1,6 @@
 import { createSignal, onMount, onCleanup, Show } from "solid-js";
 import { useEditor } from "./EditorContext";
-import { clampPaintPercent, clampPaintSize, BRUSH_PRESETS, applyPaintPreset } from "./brushToolState";
+import { clampPaintPercent, clampPaintSize, BRUSH_PRESETS, applyPaintPreset, sizeSliderToPaintSize, paintSizeToSizeSlider } from "./brushToolState";
 
 export function BrushContextMenu() {
   const {
@@ -135,10 +135,10 @@ export function BrushContextMenu() {
           <input
             data-context-size
             type="range"
-            min="1"
-            max="500"
-            value={size()}
-            onInput={(e) => setSizeValue(Number(e.currentTarget.value))}
+            min="0"
+            max="100"
+            value={paintSizeToSizeSlider(size())}
+            onInput={(e) => setSizeValue(sizeSliderToPaintSize(Number(e.currentTarget.value)))}
             class="w-full h-1 accent-editor-accent"
           />
         </div>
