@@ -37,7 +37,7 @@
 /* Global Reset & Base Styles */
 @layer base {
   * {
-    @apply box-border m-0 p-0 select-none outline-none border-studio-border;
+    @apply box-border m-0 p-0 select-none border-studio-border;
   }
   
   input, textarea {
@@ -50,6 +50,34 @@
     font-size: 13px;
     line-height: 1.2;
   }
+}
+
+/* ─── Focus: mouse vs keyboard ─── */
+/* Suppress visual halo for mouse/finger clicks — keep transparent outline for forced-colors mode */
+:focus:not(:focus-visible) {
+  outline: 2px solid transparent !important;
+  outline-offset: 2px !important;
+}
+
+/* Visible accent indicator for keyboard Tab / focus-visible navigation */
+:focus-visible {
+  outline: 2px solid var(--color-accent, #E15A17) !important;
+  outline-offset: 2px !important;
+}
+
+/* 
+ * Focus-within containers (select-wraps, composite controls):
+ * Only show ring/border change when the focused child was activated via keyboard.
+ * Suppress it when the child was mouse/finger clicked.
+ */
+.focus-ring-within:has(:focus-visible) {
+  outline: 1px solid color-mix(in srgb, var(--color-accent, #E15A17) 30%, transparent);
+  outline-offset: -1px;
+  border-color: color-mix(in srgb, var(--color-accent, #E15A17) 50%, transparent);
+}
+.focus-ring-within:has(:focus:not(:focus-visible)) {
+  outline: none;
+  border-color: var(--color-editor-field-border);
 }
 
 /* Photrez Component Utilities */

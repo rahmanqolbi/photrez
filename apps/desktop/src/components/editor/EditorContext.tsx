@@ -6,6 +6,12 @@ import { LayerNode, DocumentTabSummary } from "@/engine/types";
 import { Accessor, Setter } from "solid-js";
 import { createEditorState, LayerTransformSession } from "./editorState";
 import { createCropState, CropPreview } from "./cropState";
+import {
+  createModernCropState,
+  type ModernCropFrame,
+  type ModernCropImageTransform,
+  type ModernCropSnapshot,
+} from "./modernCropState";
 import { setupWorkspaceSync } from "./workspaceSync";
 import { openImage } from "./editorOpenImage";
 
@@ -57,6 +63,10 @@ export interface EditorContextValue {
   moveSnapEnabled: Accessor<boolean>;
   setMoveSnapEnabled: Setter<boolean>;
 
+  // Crop interaction mode
+  cropInteractionMode: Accessor<"modern" | "classic">;
+  setCropInteractionMode: Setter<"modern" | "classic">;
+
   // Crop Tool options
   cropRect: Accessor<{ x: number; y: number; w: number; h: number } | null>;
   setCropRect: Setter<{ x: number; y: number; w: number; h: number } | null>;
@@ -76,6 +86,16 @@ export interface EditorContextValue {
   setCropRotation: Setter<number>;
   hiddenCropPreview: Accessor<CropPreview | null>;
   setHiddenCropPreview: Setter<CropPreview | null>;
+  modernCropFrame: Accessor<ModernCropFrame | null>;
+  setModernCropFrame: Setter<ModernCropFrame | null>;
+  modernCropImageTransform: Accessor<ModernCropImageTransform>;
+  setModernCropImageTransform: Setter<ModernCropImageTransform>;
+  resetModernCrop: () => void;
+  commitModernCropState: () => void;
+  canModernCropUndo: Accessor<boolean>;
+  canModernCropRedo: Accessor<boolean>;
+  undoModernCrop: () => ModernCropSnapshot | null;
+  redoModernCrop: () => ModernCropSnapshot | null;
   commitCropState: (rect: { x: number; y: number; w: number; h: number }, rotation: number) => void;
   canCropUndo: Accessor<boolean>;
   canCropRedo: Accessor<boolean>;
@@ -116,6 +136,11 @@ export interface EditorContextValue {
   setBrushPresetId: Setter<string | null>;
   eraserPresetId: Accessor<string | null>;
   setEraserPresetId: Setter<string | null>;
+
+  showResizeDialog: Accessor<boolean>;
+  setShowResizeDialog: Setter<boolean>;
+  showExportDialog: Accessor<boolean>;
+  setShowExportDialog: Setter<boolean>;
 }
 
 
@@ -137,6 +162,7 @@ export function EditorProvider(props: {
 }) {
   const editorState = createEditorState();
   const cropState = createCropState();
+  const modernCropState = createModernCropState();
 
   const { syncState, syncViewport } = setupWorkspaceSync({
     workspace: props.workspace,
@@ -172,6 +198,7 @@ export function EditorProvider(props: {
     openImage: handleOpenImage,
     ...editorState,
     ...cropState,
+    ...modernCropState,
     syncViewport,
   };
 

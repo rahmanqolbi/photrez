@@ -32,6 +32,7 @@ export function createEditorState() {
 
   const [moveAutoSelect, setMoveAutoSelect] = createSignal(true);
   const [moveSnapEnabled, setMoveSnapEnabled] = createSignal(true);
+  const [cropInteractionMode, setCropInteractionMode] = createSignal<"modern" | "classic">("modern");
   const [hoverPos, setHoverPos] = createSignal<{ x: number; y: number } | null>(null);
   const [layerTransformSession, setLayerTransformSession] = createSignal<LayerTransformSession | null>(null);
 
@@ -47,6 +48,9 @@ export function createEditorState() {
   const [eraserSmoothing, setEraserSmoothing] = createSignal(0);
   const [brushPresetId, setBrushPresetId] = createSignal<string | null>(null);
   const [eraserPresetId, setEraserPresetId] = createSignal<string | null>(null);
+
+  const [showResizeDialog, setShowResizeDialog] = createSignal(false);
+  const [showExportDialog, setShowExportDialog] = createSignal(false);
 
   return {
     activeTool, setActiveTool,
@@ -66,6 +70,7 @@ export function createEditorState() {
     viewportHeight, setViewportHeight,
     moveAutoSelect, setMoveAutoSelect,
     moveSnapEnabled, setMoveSnapEnabled,
+    cropInteractionMode, setCropInteractionMode,
     hoverPos, setHoverPos,
     layerTransformSession, setLayerTransformSession,
     brushSize, setBrushSize,
@@ -80,6 +85,8 @@ export function createEditorState() {
     eraserSmoothing, setEraserSmoothing,
     brushPresetId, setBrushPresetId,
     eraserPresetId, setEraserPresetId,
+    showResizeDialog, setShowResizeDialog,
+    showExportDialog, setShowExportDialog,
   };
 }
 

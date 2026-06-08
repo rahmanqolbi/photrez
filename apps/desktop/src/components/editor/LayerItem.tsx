@@ -126,7 +126,7 @@ export function LayerItem(props: LayerItemProps) {
           }}
           onClick={(e) => e.stopPropagation()}
           onBlur={commitRename}
-          class="flex-1 text-[12.5px] text-editor-text bg-editor-field border border-editor-field-border rounded px-1.5 focus:outline-none focus:border-editor-accent h-[22px] min-w-0"
+          class="flex-1 text-[12.5px] text-editor-text bg-editor-field border border-editor-field-border rounded px-1.5 focus:outline-none focus-visible:border-editor-accent h-[22px] min-w-0"
           ref={(el) => setTimeout(() => el?.focus(), 10)}
         />
       </Show>

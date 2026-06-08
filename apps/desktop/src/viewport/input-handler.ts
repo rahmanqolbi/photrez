@@ -20,6 +20,7 @@ export interface ToolContext {
   dragStart: { x: number; y: number };
   dragCurrent: { x: number; y: number };
   strokePoints: { x: number; y: number }[];
+  dragTool: ToolType | null;
   
   // Custom updates
   setFgColor?: (c: string) => void;
@@ -46,6 +47,7 @@ export function handlePointerDown(
   requestRender: () => void,
   context: ToolContext
 ): void {
+  context.dragTool = tool;
   context.isDragging = true;
   context.dragStart = { x: docX, y: docY };
   context.dragCurrent = { x: docX, y: docY };
@@ -74,7 +76,7 @@ export function handlePointerDown(
 }
 
 export function handlePointerMove(
-  tool: ToolType,
+  _tool: ToolType,
   docX: number,
   docY: number,
   engine: DocumentEngine,
@@ -84,6 +86,7 @@ export function handlePointerMove(
   if (!context.isDragging) return;
   context.dragCurrent = { x: docX, y: docY };
 
+  const tool = context.dragTool ?? _tool;
   if (tool === "selection") {
     const x = Math.min(context.dragStart.x, docX);
     const y = Math.min(context.dragStart.y, docY);
@@ -131,7 +134,7 @@ export function handlePointerMove(
 }
 
 export function handlePointerUp(
-  tool: ToolType,
+  _tool: ToolType,
   docX: number,
   docY: number,
   engine: DocumentEngine,
@@ -143,6 +146,7 @@ export function handlePointerUp(
   context.isDragging = false;
   context.dragCurrent = { x: docX, y: docY };
 
+  const tool = context.dragTool ?? _tool;
   if (tool === "selection") {
     const x = Math.min(context.dragStart.x, docX);
     const y = Math.min(context.dragStart.y, docY);

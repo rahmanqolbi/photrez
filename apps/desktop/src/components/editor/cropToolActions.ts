@@ -70,6 +70,7 @@ export function applyCropPreview(params: {
   setCropRotation: (rot: number) => void;
   setHiddenCropPreview: (preview: CropPreview | null) => void;
   setActiveTool: (tool: string) => void;
+  recenterViewport?: () => void;
 }) {
   const engine = params.workspace.getActiveEngine();
   const rect = params.cropRect;
@@ -80,9 +81,13 @@ export function applyCropPreview(params: {
 
   engine.applyCrop(rect.x, rect.y, rect.w, rect.h, {
     deleteCroppedPixels: params.cropDeletePixels,
-    targetSize: params.cropMode === "size" ? params.cropSizeTarget : null,
+    targetSize: params.cropMode === "size" && params.cropSizeTarget
+      ? { w: Math.round(params.cropSizeTarget.w), h: Math.round(params.cropSizeTarget.h) }
+      : null,
     rotation: params.cropRotation,
   });
+
+  params.recenterViewport?.();
 
   const dpr = window.devicePixelRatio || 1;
   params.renderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr);

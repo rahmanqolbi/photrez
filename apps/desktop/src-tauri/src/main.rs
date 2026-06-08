@@ -113,3 +113,116 @@ fn main() {
         .run(tauri::generate_context!())
         .expect("Error while running Photrez");
 }
+
+// ─── Tests ───
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::Engine;
+
+    fn temp_path(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join("photrez-test");
+        let _ = std::fs::create_dir_all(&dir);
+        dir.join(name)
+    }
+
+    #[test]
+    fn test_write_file_bytes_creates_file() {
+        let path = temp_path("test_write_creates.png");
+        let _ = std::fs::remove_file(&path);
+
+        let data = b"hello photrez export";
+        let b64 = base64::engine::general_purpose::STANDARD.encode(data);
+        let result = write_file_bytes(path.to_str().unwrap().to_string(), b64.clone());
+
+        assert!(result.is_ok(), "write_file_bytes should succeed: {:?}", result);
+        assert!(path.exists(), "file should exist on disk");
+
+        let written = std::fs::read(&path).unwrap();
+        assert_eq!(written, data, "written content should match input");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_write_file_bytes_roundtrip() {
+        let path = temp_path("test_roundtrip.png");
+        let _ = std::fs::remove_file(&path);
+
+        // PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A + minimal valid pixel
+        let original: Vec<u8> = vec![
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG header
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+            0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+            0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+            0x54, 0x08, 0xD7, 0x63, 0x60, 0x60, 0x60, 0x00,
+            0x00, 0x00, 0x04, 0x00, 0x01, 0x27, 0x34, 0x27,
+            0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44,
+            0xAE, 0x42, 0x60, 0x82, // IEND chunk
+        ];
+        let b64 = base64::engine::general_purpose::STANDARD.encode(&original);
+
+        // Write
+        let write_result = write_file_bytes(path.to_str().unwrap().to_string(), b64.clone());
+        assert!(write_result.is_ok());
+        assert!(path.exists());
+
+        // Read back via read_file_bytes
+        let read_result = read_file_bytes(path.to_str().unwrap().to_string());
+        assert!(read_result.is_ok());
+
+        let value = read_result.unwrap();
+        let obj = value.as_object().unwrap();
+        let data_str = obj["data"]["data"].as_str().unwrap();
+        let roundtrip = base64::engine::general_purpose::STANDARD.decode(data_str).unwrap();
+        assert_eq!(roundtrip, original, "roundtrip content should match");
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_write_file_bytes_invalid_base64() {
+        let path = temp_path("test_invalid_b64.png");
+        let result = write_file_bytes(path.to_str().unwrap().to_string(), "not-valid-base64!!!".to_string());
+        assert!(result.is_err(), "invalid base64 should produce error");
+        let err_value = result.unwrap_err();
+        assert!(err_value.to_string().contains("E_VALIDATION"));
+    }
+
+    #[test]
+    fn test_write_file_bytes_to_invalid_path() {
+        let bad_path = format!("Z:\\nope\\{}", std::process::id());
+        let b64 = base64::engine::general_purpose::STANDARD.encode(b"test");
+        let result = write_file_bytes(bad_path, b64);
+        assert!(result.is_err(), "write to invalid path should error");
+    }
+
+    #[test]
+    fn test_read_file_bytes_nonexistent_file() {
+        let result = read_file_bytes("Z:\\nonexistent_file_12345.png".to_string());
+        assert!(result.is_err(), "reading nonexistent file should error");
+        let err_value = result.unwrap_err();
+        assert!(err_value.to_string().contains("E_IO"));
+    }
+
+    #[test]
+    fn test_ping_response() {
+        let result = ping();
+        assert!(result.is_ok());
+        let value = result.unwrap();
+        assert_eq!(value["ok"], true);
+        assert_eq!(value["data"]["status"], "ok");
+        assert_eq!(value["data"]["service"], "native");
+    }
+
+    #[test]
+    fn test_get_contract_info_includes_write_command() {
+        let result = get_contract_info();
+        assert!(result.is_ok());
+        let value = result.unwrap();
+        let commands = value["data"]["supported_commands"].as_array().unwrap();
+        let names: Vec<&str> = commands.iter().map(|c| c.as_str().unwrap()).collect();
+        assert!(names.contains(&"write_file_bytes"));
+        assert!(names.contains(&"read_file_bytes"));
+    }
+}

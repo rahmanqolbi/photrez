@@ -4,9 +4,687 @@ import { createSignal } from "solid-js";
 import { CropOptionBar } from "../CropOptionBar";
 import * as EditorContextModule from "../EditorContext";
 
+function fireModeChange(container: HTMLElement, mode: string) {
+  const selects = container.querySelectorAll("select");
+  const modeSelect = selects[0];
+  modeSelect.value = mode;
+  modeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function firePresetChange(container: HTMLElement, value: string) {
+  const selects = container.querySelectorAll("select");
+  // selects[0]=mode, selects[1]=preset (visible in ratio mode),
+  // selects[2]=guide (always visible), selects[3]=unit (visible in size mode)
+  const presetSelect = selects[1];
+  if (presetSelect) {
+    presetSelect.value = value;
+    presetSelect.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+}
+
+const MAX_W = 800; // min(viewportWidth=800, docWidth=1600 * zoom=1)
+const MAX_H = 600; // min(viewportHeight=600, docHeight=1200 * zoom=1)
+
+const modernContextBase = {
+  workspace: {}, setActiveTool: vi.fn(), scheduler: {},
+  cropRect: () => null, setCropRect: vi.fn(),
+  cropInteractionMode: () => "modern" as const, setCropInteractionMode: vi.fn(),
+  cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
+  cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+  cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
+  cropRotation: () => 0, setCropRotation: vi.fn(),
+  hiddenCropPreview: () => null, setHiddenCropPreview: vi.fn(),
+  docWidth: () => 1600, docHeight: () => 1200,
+  viewportWidth: () => MAX_W, viewportHeight: () => MAX_H,
+  zoom: () => 1,
+  pan: () => ({ x: 0, y: 0 }),
+  modernCropImageTransform: () => ({ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }),
+  setModernCropImageTransform: vi.fn(),
+  resetModernCrop: vi.fn(),
+  commitCropState: vi.fn(),
+  activeDocumentId: () => "mock-doc-id",
+};
+
+function runWithContainer(fn: (container: HTMLElement, dispose: () => void) => void) {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  let disposed = false;
+  const dispose = () => {
+    if (!disposed) {
+      disposed = true;
+      container.parentNode?.removeChild(container);
+    }
+  };
+  try {
+    fn(container, dispose);
+  } finally {
+    dispose();
+  }
+}
+
+function renderOptionBar(mockValue: any, container: HTMLElement) {
+  vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+  return render(() => <CropOptionBar />, container);
+}
+
 describe("CropOptionBar", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe("crop box always fits inside canvas after changes", () => {
+    it("keeps frame within canvas bounds after repeated mode changes", () => {
+      runWithContainer((container, done) => {
+        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("free");
+        const [cropAspect, setCropAspect] = createSignal<{ w: number; h: number } | null>(null);
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 400, h: 300 });
+        const setCropModeSpy = vi.fn((m) => setCropMode(m));
+        const setCropAspectSpy = vi.fn((a) => setCropAspect(a));
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+        const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode, setCropMode: setCropModeSpy,
+          cropAspect, setCropAspect: setCropAspectSpy,
+          cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+          modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+        }, container);
+
+        // Free→Ratio: frame should be max at 16:9
+        fireModeChange(container, "ratio");
+        let frame = setModernFrameSpy.mock.lastCall?.[0];
+        expect(frame.w).toBeLessThanOrEqual(MAX_W);
+        expect(frame.h).toBeLessThanOrEqual(MAX_H);
+        expect(frame.w / frame.h).toBeCloseTo(16 / 9, 1);
+
+        // Ratio→Size (800x600): frame at target zoom
+        fireModeChange(container, "size");
+        frame = setModernFrameSpy.mock.lastCall?.[0];
+        expect(frame.w).toBeLessThanOrEqual(MAX_W);
+        expect(frame.h).toBeLessThanOrEqual(MAX_H);
+
+        // Size→Free: frame unchanged
+        fireModeChange(container, "free");
+        frame = setModernFrameSpy.mock.lastCall?.[0];
+        expect(frame.w).toBeLessThanOrEqual(MAX_W);
+        expect(frame.h).toBeLessThanOrEqual(MAX_H);
+
+        // Free→Ratio again: frame re-fitted
+        fireModeChange(container, "ratio");
+        frame = setModernFrameSpy.mock.lastCall?.[0];
+        expect(frame.w).toBeLessThanOrEqual(MAX_W);
+        expect(frame.h).toBeLessThanOrEqual(MAX_H);
+        expect(frame.w / frame.h).toBeCloseTo(16 / 9, 1);
+
+        done();
+      });
+    });
+
+    it("clamps oversized frame when switching from Size to Free in Modern mode", () => {
+      runWithContainer((container, done) => {
+        // Start with an oversized frame (simulating a large size target that doesn't fit)
+        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("size");
+        const [cropAspect, setCropAspect] = createSignal<{ w: number; h: number } | null>(null);
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>({ w: 5000, h: 4000 });
+        const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 5000, h: 4000 });
+        const setCropModeSpy = vi.fn((m) => setCropMode(m));
+        const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode, setCropMode: setCropModeSpy,
+          cropAspect, setCropAspect: vi.fn(),
+          cropSizeTarget, setCropSizeTarget: vi.fn(),
+          modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+        }, container);
+
+        fireModeChange(container, "free");
+
+        const frame = setModernFrameSpy.mock.lastCall?.[0];
+        expect(frame.w).toBeLessThanOrEqual(MAX_W);
+        expect(frame.h).toBeLessThanOrEqual(MAX_H);
+        // Aspect preserved from 5000:4000 = 5:4 = 1.25
+        expect(frame.w / frame.h).toBeCloseTo(5 / 4, 1);
+
+        done();
+      });
+    });
+
+    it("fills canvas at target aspect when switching to Size mode (Modern)", () => {
+      runWithContainer((container, done) => {
+        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("free");
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 400, h: 300 });
+        const setCropModeSpy = vi.fn((m) => setCropMode(m));
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+        const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+
+        renderOptionBar({
+          ...modernContextBase,
+          zoom: () => 1,
+          cropMode, setCropMode: setCropModeSpy,
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+          modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+        }, container);
+
+        // Switch to Size mode — frame fills canvas at target 800x600 (4:3) aspect
+        fireModeChange(container, "size");
+        let frame = setModernFrameSpy.mock.lastCall?.[0];
+        expect(frame.w).toBeLessThanOrEqual(MAX_W);
+        expect(frame.h).toBeLessThanOrEqual(MAX_H);
+
+        done();
+      });
+    });
+
+    it("fills canvas at target aspect under any zoom (Modern)", () => {
+      runWithContainer((container, done) => {
+        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("free");
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 400, h: 300 });
+        const setCropModeSpy = vi.fn((m) => setCropMode(m));
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+        const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+
+        renderOptionBar({
+          ...modernContextBase,
+          zoom: () => 0.5,
+          cropMode, setCropMode: setCropModeSpy,
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+          modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+        }, container);
+
+        // Switch to Size mode — frame fills canvas at target 800x600 (4:3) aspect
+        // Even at zoom=0.5, the frame should fill the max canvas bounds
+        fireModeChange(container, "size");
+        let frame = setModernFrameSpy.mock.lastCall?.[0];
+        expect(frame.w).toBeLessThanOrEqual(MAX_W);
+        expect(frame.h).toBeLessThanOrEqual(MAX_H);
+        expect(frame.w / frame.h).toBeCloseTo(800 / 600, 1);
+
+        done();
+      });
+    });
+
+    it("re-fits frame after ratio preset change in Modern mode", () => {
+      runWithContainer((container, done) => {
+        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("ratio");
+        const [cropAspect, setCropAspect] = createSignal<{ w: number; h: number } | null>({ w: 16, h: 9 });
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 800, h: 450 });
+        const setCropAspectSpy = vi.fn((a) => setCropAspect(a));
+        const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode, setCropMode: vi.fn(),
+          cropAspect, setCropAspect: setCropAspectSpy,
+          cropSizeTarget, setCropSizeTarget: vi.fn(),
+          modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+        }, container);
+
+        // Change preset from 16:9 to 3:2
+        firePresetChange(container, "3:2");
+
+        expect(setCropAspectSpy).toHaveBeenCalledWith({ w: 3, h: 2 });
+        const frame = setModernFrameSpy.mock.lastCall?.[0];
+        expect(frame.w).toBeLessThanOrEqual(MAX_W);
+        expect(frame.h).toBeLessThanOrEqual(MAX_H);
+        // 3:2 aspect preserved
+        expect(frame.w / frame.h).toBeCloseTo(3 / 2, 1);
+
+        done();
+      });
+    });
+
+    it("re-fits frame when switching to custom ratio 'preset' in Modern mode", () => {
+      runWithContainer((container, done) => {
+        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("ratio");
+        const [cropAspect, setCropAspect] = createSignal<{ w: number; h: number } | null>(null);
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 600, h: 400 });
+        const setCropAspectSpy = vi.fn((a) => setCropAspect(a));
+        const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode, setCropMode: vi.fn(),
+          cropAspect, setCropAspect: setCropAspectSpy,
+          cropSizeTarget, setCropSizeTarget: vi.fn(),
+          modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+        }, container);
+
+        // Select "custom" preset in Ratio mode — initialPreset() returns "custom" when cropAspect is null
+        firePresetChange(container, "custom");
+
+        // cropAspect was null, so it defaults to 16:9
+        expect(setCropAspectSpy).toHaveBeenCalledWith({ w: 16, h: 9 });
+        const frame = setModernFrameSpy.mock.lastCall?.[0];
+        expect(frame.w).toBeLessThanOrEqual(MAX_W);
+        expect(frame.h).toBeLessThanOrEqual(MAX_H);
+        expect(frame.w / frame.h).toBeCloseTo(16 / 9, 1);
+
+        done();
+      });
+    });
+
+    it("keeps frame within canvas bounds in Classic mode after mode changes", () => {
+      runWithContainer((container, done) => {
+        const [cropRect, setCropRect] = createSignal<{ x: number; y: number; w: number; h: number } | null>({
+          x: 0, y: 0, w: 1600, h: 1200,
+        });
+        const [cropAspect, setCropAspect] = createSignal<{ w: number; h: number } | null>(null);
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("free");
+        const setCropRectSpy = vi.fn((r) => setCropRect(r));
+        const setCropModeSpy = vi.fn((m) => setCropMode(m));
+
+        renderOptionBar({
+          workspace: {}, setActiveTool: vi.fn(), scheduler: {},
+          cropRect, setCropRect: setCropRectSpy,
+          cropInteractionMode: () => "classic" as const, setCropInteractionMode: vi.fn(),
+          cropMode, setCropMode: setCropModeSpy,
+          cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
+          cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+          cropAspect, setCropAspect,
+          cropSizeTarget, setCropSizeTarget,
+          cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
+          cropRotation: () => 0, setCropRotation: vi.fn(),
+          hiddenCropPreview: () => null, setHiddenCropPreview: vi.fn(),
+          docWidth: () => 1600, docHeight: () => 1200,
+          activeDocumentId: () => "mock-doc-id",
+        }, container);
+
+        // Free→Ratio: fits to 16:9 within 1600x1200 doc
+        fireModeChange(container, "ratio");
+        let rect = setCropRectSpy.mock.lastCall?.[0];
+        expect(rect.x).toBeGreaterThanOrEqual(0);
+        expect(rect.y).toBeGreaterThanOrEqual(0);
+        expect(rect.x + rect.w).toBeLessThanOrEqual(1600);
+        expect(rect.y + rect.h).toBeLessThanOrEqual(1200);
+        expect(rect.w / rect.h).toBeCloseTo(16 / 9, 1);
+
+        // Ratio→Size (800x600): fits within doc
+        fireModeChange(container, "size");
+        rect = setCropRectSpy.mock.lastCall?.[0];
+        expect(rect.x).toBeGreaterThanOrEqual(0);
+        expect(rect.x + rect.w).toBeLessThanOrEqual(1600);
+        expect(rect.y + rect.h).toBeLessThanOrEqual(1200);
+
+        // Size→Free: no rect change expected
+        fireModeChange(container, "free");
+        // Only 2 calls so far (Ratio + Size), Free doesn't change rect in Classic
+        expect(setCropRectSpy).toHaveBeenCalledTimes(2);
+
+        done();
+      });
+    });
+  });
+
+  describe("mode select immediate application", () => {
+    it("applies Free→Ratio immediately in Classic mode with existing cropRect", () => {
+      const [cropRect, setCropRect] = createSignal<{ x: number; y: number; w: number; h: number } | null>({
+        x: 0, y: 0, w: 1600, h: 1200,
+      });
+      const [cropAspect, setCropAspect] = createSignal<{ w: number; h: number } | null>(null);
+      const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("free");
+      const setCropRectSpy = vi.fn((r) => setCropRect(r));
+      const setCropAspectSpy = vi.fn((a) => setCropAspect(a));
+      const setCropModeSpy = vi.fn((m) => setCropMode(m));
+
+      vi.spyOn(EditorContextModule, "useEditor").mockReturnValue({
+        workspace: {}, setActiveTool: vi.fn(), scheduler: {},
+        cropRect, setCropRect: setCropRectSpy,
+        cropInteractionMode: () => "classic" as const, setCropInteractionMode: vi.fn(),
+        cropMode, setCropMode: setCropModeSpy,
+        cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
+        cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+        cropAspect, setCropAspect: setCropAspectSpy,
+        cropSizeTarget: () => null, setCropSizeTarget: vi.fn(),
+        cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
+        cropRotation: () => 0, setCropRotation: vi.fn(),
+        hiddenCropPreview: () => null, setHiddenCropPreview: vi.fn(),
+        docWidth: () => 1600, docHeight: () => 1200,
+        activeDocumentId: () => "mock-doc-id",
+      } as any);
+
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const dispose = render(() => <CropOptionBar />, container);
+
+      fireModeChange(container, "ratio");
+
+      expect(setCropModeSpy).toHaveBeenCalledWith("ratio");
+      expect(setCropAspectSpy).toHaveBeenCalledWith({ w: 16, h: 9 });
+      expect(setCropRectSpy).toHaveBeenCalled();
+      const rect = setCropRectSpy.mock.lastCall?.[0];
+      // 1600x1200 canvas, 16:9 aspect (1.78): width-constrained → w=1600, h=900, centered y=150
+      expect(rect.w).toBe(1600);
+      expect(rect.h).toBeCloseTo(900, 1);
+      expect(rect.y).toBeCloseTo(150, 1);
+      expect(rect.x).toBe(0);
+
+      dispose();
+      container.parentNode?.removeChild(container);
+    });
+
+    it("applies Free→Ratio immediately in Modern mode", () => {
+      const [cropAspect, setCropAspect] = createSignal<{ w: number; h: number } | null>(null);
+      const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("free");
+      const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 500, h: 500 });
+      const setCropModeSpy = vi.fn((m) => setCropMode(m));
+      const setCropAspectSpy = vi.fn((a) => setCropAspect(a));
+      const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+      const setCropRectSpy = vi.fn();
+
+      vi.spyOn(EditorContextModule, "useEditor").mockReturnValue({
+        workspace: {}, setActiveTool: vi.fn(), scheduler: {},
+        cropRect: () => null, setCropRect: setCropRectSpy,
+        cropInteractionMode: () => "modern" as const, setCropInteractionMode: vi.fn(),
+        cropMode, setCropMode: setCropModeSpy,
+        cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
+        cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+        cropAspect, setCropAspect: setCropAspectSpy,
+        cropSizeTarget: () => null, setCropSizeTarget: vi.fn(),
+        cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
+        cropRotation: () => 0, setCropRotation: vi.fn(),
+        hiddenCropPreview: () => null, setHiddenCropPreview: vi.fn(),
+        docWidth: () => 1600, docHeight: () => 1200,
+        viewportWidth: () => 800, viewportHeight: () => 600,
+        zoom: () => 1,
+        pan: () => ({ x: 0, y: 0 }),
+        modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+        modernCropImageTransform: () => ({ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }),
+        setModernCropImageTransform: vi.fn(),
+        resetModernCrop: vi.fn(),
+        commitCropState: vi.fn(),
+        activeDocumentId: () => "mock-doc-id",
+      } as any);
+
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const dispose = render(() => <CropOptionBar />, container);
+
+      fireModeChange(container, "ratio");
+
+      expect(setCropModeSpy).toHaveBeenCalledWith("ratio");
+      expect(setCropAspectSpy).toHaveBeenCalledWith({ w: 16, h: 9 });
+      expect(setModernFrameSpy).toHaveBeenCalled();
+      const frame = setModernFrameSpy.mock.lastCall?.[0];
+      // getDefaultModernCropFrame fits 16:9 inside min(viewport, projected canvas)
+      // maxW = min(800, 1600) = 800, maxH = min(600, 1200) = 600
+      // 16:9 → w=800, h=450 (fits within 600)
+      expect(frame.w).toBe(800);
+      expect(frame.h).toBe(450);
+
+      dispose();
+      container.parentNode?.removeChild(container);
+    });
+
+    it("fills canvas at target aspect when switching to Size mode (Modern)", () => {
+      const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+      const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("free");
+      const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 500, h: 500 });
+      const setCropModeSpy = vi.fn((m) => setCropMode(m));
+      const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+      const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+      const setCropRectSpy = vi.fn();
+
+      vi.spyOn(EditorContextModule, "useEditor").mockReturnValue({
+        workspace: {}, setActiveTool: vi.fn(), scheduler: {},
+        cropRect: () => null, setCropRect: setCropRectSpy,
+        cropInteractionMode: () => "modern" as const, setCropInteractionMode: vi.fn(),
+        cropMode, setCropMode: setCropModeSpy,
+        cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
+        cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+        cropAspect: () => null, setCropAspect: vi.fn(),
+        cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+        cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
+        cropRotation: () => 0, setCropRotation: vi.fn(),
+        hiddenCropPreview: () => null, setHiddenCropPreview: vi.fn(),
+        docWidth: () => 1600, docHeight: () => 1200,
+        viewportWidth: () => 800, viewportHeight: () => 600,
+        zoom: () => 1,
+        pan: () => ({ x: 0, y: 0 }),
+        modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+        modernCropImageTransform: () => ({ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }),
+        setModernCropImageTransform: vi.fn(),
+        resetModernCrop: vi.fn(),
+        commitCropState: vi.fn(),
+        activeDocumentId: () => "mock-doc-id",
+      } as any);
+
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const dispose = render(() => <CropOptionBar />, container);
+
+      fireModeChange(container, "size");
+
+      expect(setCropModeSpy).toHaveBeenCalledWith("size");
+      expect(setCropSizeTargetSpy).toHaveBeenCalledWith({ w: 800, h: 600 });
+      expect(setModernFrameSpy).toHaveBeenCalled();
+      const frame = setModernFrameSpy.mock.lastCall?.[0];
+      // target 800x600 (4:3) matches canvas aspect → frame fills viewport
+      expect(frame.w).toBe(800);
+      expect(frame.h).toBe(600);
+
+      dispose();
+      container.parentNode?.removeChild(container);
+    });
+
+    it("applies Free→Size immediately in Classic mode with existing cropRect", () => {
+      const [cropRect, setCropRect] = createSignal<{ x: number; y: number; w: number; h: number } | null>({
+        x: 0, y: 0, w: 1600, h: 1200,
+      });
+      const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+      const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("free");
+      const setCropRectSpy = vi.fn((r) => setCropRect(r));
+      const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+      const setCropModeSpy = vi.fn((m) => setCropMode(m));
+
+      vi.spyOn(EditorContextModule, "useEditor").mockReturnValue({
+        workspace: {}, setActiveTool: vi.fn(), scheduler: {},
+        cropRect, setCropRect: setCropRectSpy,
+        cropInteractionMode: () => "classic" as const, setCropInteractionMode: vi.fn(),
+        cropMode, setCropMode: setCropModeSpy,
+        cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
+        cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+        cropAspect: () => null, setCropAspect: vi.fn(),
+        cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+        cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
+        cropRotation: () => 0, setCropRotation: vi.fn(),
+        hiddenCropPreview: () => null, setHiddenCropPreview: vi.fn(),
+        docWidth: () => 1600, docHeight: () => 1200,
+        activeDocumentId: () => "mock-doc-id",
+      } as any);
+
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const dispose = render(() => <CropOptionBar />, container);
+
+      fireModeChange(container, "size");
+
+      expect(setCropModeSpy).toHaveBeenCalledWith("size");
+      expect(setCropSizeTargetSpy).toHaveBeenCalledWith({ w: 800, h: 600 });
+      expect(setCropRectSpy).toHaveBeenCalled();
+      const rect = setCropRectSpy.mock.lastCall?.[0];
+      // 1600x1200 canvas, size target 800x600 (aspect 1.33) matches canvas → full canvas
+      expect(rect.w).toBe(1600);
+      expect(rect.h).toBe(1200);
+
+      dispose();
+      container.parentNode?.removeChild(container);
+    });
+
+    it("applies Ratio→Free immediately without changing frame (Classic)", () => {
+      const [cropRect, setCropRect] = createSignal<{ x: number; y: number; w: number; h: number } | null>({
+        x: 50, y: 50, w: 400, h: 300,
+      });
+      const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("ratio");
+      const setCropRectSpy = vi.fn((r) => setCropRect(r));
+      const setCropModeSpy = vi.fn((m) => setCropMode(m));
+
+      vi.spyOn(EditorContextModule, "useEditor").mockReturnValue({
+        workspace: {}, setActiveTool: vi.fn(), scheduler: {},
+        cropRect, setCropRect: setCropRectSpy,
+        cropInteractionMode: () => "classic" as const, setCropInteractionMode: vi.fn(),
+        cropMode, setCropMode: setCropModeSpy,
+        cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
+        cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+        cropAspect: () => ({ w: 16, h: 9 }), setCropAspect: vi.fn(),
+        cropSizeTarget: () => null, setCropSizeTarget: vi.fn(),
+        cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
+        cropRotation: () => 0, setCropRotation: vi.fn(),
+        hiddenCropPreview: () => null, setHiddenCropPreview: vi.fn(),
+        docWidth: () => 1600, docHeight: () => 1200,
+        activeDocumentId: () => "mock-doc-id",
+      } as any);
+
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const dispose = render(() => <CropOptionBar />, container);
+
+      fireModeChange(container, "free");
+
+      expect(setCropModeSpy).toHaveBeenCalledWith("free");
+      // Rect should NOT be changed when going to Free
+      expect(setCropRectSpy).not.toHaveBeenCalled();
+
+      dispose();
+      container.parentNode?.removeChild(container);
+    });
+
+    it("applies Ratio→Free immediately without changing frame geometry (Modern)", () => {
+      const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("ratio");
+      const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 600, h: 400 });
+      const setCropModeSpy = vi.fn((m) => setCropMode(m));
+      const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+
+      vi.spyOn(EditorContextModule, "useEditor").mockReturnValue({
+        workspace: {}, setActiveTool: vi.fn(), scheduler: {},
+        cropRect: () => null, setCropRect: vi.fn(),
+        cropInteractionMode: () => "modern" as const, setCropInteractionMode: vi.fn(),
+        cropMode, setCropMode: setCropModeSpy,
+        cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
+        cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+        cropAspect: () => ({ w: 16, h: 9 }), setCropAspect: vi.fn(),
+        cropSizeTarget: () => null, setCropSizeTarget: vi.fn(),
+        cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
+        cropRotation: () => 0, setCropRotation: vi.fn(),
+        hiddenCropPreview: () => null, setHiddenCropPreview: vi.fn(),
+        docWidth: () => 1600, docHeight: () => 1200,
+        viewportWidth: () => 800, viewportHeight: () => 600,
+        zoom: () => 1,
+        pan: () => ({ x: 0, y: 0 }),
+        modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+        modernCropImageTransform: () => ({ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }),
+        setModernCropImageTransform: vi.fn(),
+        resetModernCrop: vi.fn(),
+        commitCropState: vi.fn(),
+        activeDocumentId: () => "mock-doc-id",
+      } as any);
+
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const dispose = render(() => <CropOptionBar />, container);
+
+      fireModeChange(container, "free");
+
+      expect(setCropModeSpy).toHaveBeenCalledWith("free");
+      // Free mode clamps frame to max bounds (600x400 already fits, so unchanged)
+      expect(setModernFrameSpy).toHaveBeenCalled();
+      const frame = setModernFrameSpy.mock.lastCall?.[0];
+      expect(frame.w).toBe(600);
+      expect(frame.h).toBe(400);
+
+      dispose();
+      container.parentNode?.removeChild(container);
+    });
+
+    it("applies Ratio→Size immediately in Classic mode", () => {
+      const [cropRect, setCropRect] = createSignal<{ x: number; y: number; w: number; h: number } | null>({
+        x: 0, y: 0, w: 1600, h: 900,
+      });
+      const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+      const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("ratio");
+      const setCropRectSpy = vi.fn((r) => setCropRect(r));
+      const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+      const setCropModeSpy = vi.fn((m) => setCropMode(m));
+
+      vi.spyOn(EditorContextModule, "useEditor").mockReturnValue({
+        workspace: {}, setActiveTool: vi.fn(), scheduler: {},
+        cropRect, setCropRect: setCropRectSpy,
+        cropInteractionMode: () => "classic" as const, setCropInteractionMode: vi.fn(),
+        cropMode, setCropMode: setCropModeSpy,
+        cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
+        cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+        cropAspect: () => ({ w: 16, h: 9 }), setCropAspect: vi.fn(),
+        cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+        cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
+        cropRotation: () => 0, setCropRotation: vi.fn(),
+        hiddenCropPreview: () => null, setHiddenCropPreview: vi.fn(),
+        docWidth: () => 1600, docHeight: () => 1200,
+        activeDocumentId: () => "mock-doc-id",
+      } as any);
+
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const dispose = render(() => <CropOptionBar />, container);
+
+      fireModeChange(container, "size");
+
+      expect(setCropModeSpy).toHaveBeenCalledWith("size");
+      expect(setCropSizeTargetSpy).toHaveBeenCalledWith({ w: 800, h: 600 });
+      expect(setCropRectSpy).toHaveBeenCalled();
+      const rect = setCropRectSpy.mock.lastCall?.[0];
+      // 1600x1200 canvas, size target 800x600 (aspect 1.33) = canvas aspect → full canvas
+      expect(rect.w).toBe(1600);
+      expect(rect.h).toBe(1200);
+
+      dispose();
+      container.parentNode?.removeChild(container);
+    });
+
+    it("applies Size→Free immediately in Classic mode without changing rect", () => {
+      const [cropRect, setCropRect] = createSignal<{ x: number; y: number; w: number; h: number } | null>({
+        x: 100, y: 100, w: 800, h: 600,
+      });
+      const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("size");
+      const setCropRectSpy = vi.fn((r) => setCropRect(r));
+      const setCropModeSpy = vi.fn((m) => setCropMode(m));
+
+      vi.spyOn(EditorContextModule, "useEditor").mockReturnValue({
+        workspace: {}, setActiveTool: vi.fn(), scheduler: {},
+        cropRect, setCropRect: setCropRectSpy,
+        cropInteractionMode: () => "classic" as const, setCropInteractionMode: vi.fn(),
+        cropMode, setCropMode: setCropModeSpy,
+        cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
+        cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+        cropAspect: () => null, setCropAspect: vi.fn(),
+        cropSizeTarget: () => ({ w: 800, h: 600 }), setCropSizeTarget: vi.fn(),
+        cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
+        cropRotation: () => 0, setCropRotation: vi.fn(),
+        hiddenCropPreview: () => null, setHiddenCropPreview: vi.fn(),
+        docWidth: () => 1600, docHeight: () => 1200,
+        activeDocumentId: () => "mock-doc-id",
+      } as any);
+
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const dispose = render(() => <CropOptionBar />, container);
+
+      fireModeChange(container, "free");
+
+      expect(setCropModeSpy).toHaveBeenCalledWith("free");
+      expect(setCropRectSpy).not.toHaveBeenCalled();
+
+      dispose();
+      container.parentNode?.removeChild(container);
+    });
   });
 
   it("calls setCropRect with centered auto-fit coordinates on custom aspect submit", async () => {
@@ -27,6 +705,8 @@ describe("CropOptionBar", () => {
       scheduler: {},
       cropRect,
       setCropRect: setCropRectSpy,
+      cropInteractionMode: () => "classic" as const,
+      setCropInteractionMode: vi.fn(),
       cropMode,
       setCropMode,
       cropGuideMode: () => "none",
@@ -99,6 +779,8 @@ describe("CropOptionBar", () => {
       scheduler: {},
       cropRect,
       setCropRect: setCropRectSpy,
+      cropInteractionMode: () => "classic" as const,
+      setCropInteractionMode: vi.fn(),
       cropMode,
       setCropMode,
       cropGuideMode: () => "none",
@@ -170,6 +852,8 @@ describe("CropOptionBar", () => {
       scheduler: {},
       cropRect,
       setCropRect: setCropRectSpy,
+      cropInteractionMode: () => "classic" as const,
+      setCropInteractionMode: vi.fn(),
       cropMode,
       setCropMode,
       cropGuideMode: () => "none",
@@ -241,6 +925,8 @@ describe("CropOptionBar", () => {
       scheduler: {},
       cropRect,
       setCropRect: setCropRectSpy,
+      cropInteractionMode: () => "classic" as const,
+      setCropInteractionMode: vi.fn(),
       cropMode,
       setCropMode,
       cropGuideMode: () => "none",
@@ -281,5 +967,526 @@ describe("CropOptionBar", () => {
 
     dispose();
     container.parentNode?.removeChild(container);
+  });
+
+  describe("Size mode fills canvas at target aspect ratio", () => {
+    const fitMaxW = 800;
+    const fitMaxH = 600;
+
+    it("small target (100×100) produces frame filling canvas at 1:1 aspect", () => {
+      runWithContainer((container, done) => {
+        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("free");
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 400, h: 300 });
+        const setCropModeSpy = vi.fn((m) => setCropMode(m));
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+        const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode, setCropMode: setCropModeSpy,
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeTarget: () => ({ w: 100, h: 100 }), setCropSizeTarget: setCropSizeTargetSpy,
+          modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+        }, container);
+
+        fireModeChange(container, "size");
+
+        const frame = setModernFrameSpy.mock.lastCall?.[0];
+        expect(frame.w).toBeLessThanOrEqual(fitMaxW);
+        expect(frame.h).toBeLessThanOrEqual(fitMaxH);
+        // 100:100 = 1:1 aspect, height fills canvas (600), width = 600
+        expect(frame.w / frame.h).toBeCloseTo(1, 1);
+        expect(frame.w).toBeGreaterThan(100); // frame is larger than raw target
+        done();
+      });
+    });
+
+    it("very tall target (1000×2000) produces frame filling canvas at 1:2 aspect", () => {
+      runWithContainer((container, done) => {
+        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("free");
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 400, h: 300 });
+        const setCropModeSpy = vi.fn((m) => setCropMode(m));
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+        const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode, setCropMode: setCropModeSpy,
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeTarget: () => ({ w: 1000, h: 2000 }), setCropSizeTarget: setCropSizeTargetSpy,
+          modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+        }, container);
+
+        fireModeChange(container, "size");
+
+        const frame = setModernFrameSpy.mock.lastCall?.[0];
+        expect(frame.w).toBeLessThanOrEqual(fitMaxW);
+        expect(frame.h).toBeLessThanOrEqual(fitMaxH);
+        // 1000:2000 = 1:2 aspect, height fills canvas (600), width = 300
+        expect(frame.w / frame.h).toBeCloseTo(0.5, 1);
+        done();
+      });
+    });
+
+    it("very wide target (2000×1000) produces frame filling canvas at 2:1 aspect", () => {
+      runWithContainer((container, done) => {
+        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("free");
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 400, h: 300 });
+        const setCropModeSpy = vi.fn((m) => setCropMode(m));
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+        const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode, setCropMode: setCropModeSpy,
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeTarget: () => ({ w: 2000, h: 1000 }), setCropSizeTarget: setCropSizeTargetSpy,
+          modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+        }, container);
+
+        fireModeChange(container, "size");
+
+        const frame = setModernFrameSpy.mock.lastCall?.[0];
+        expect(frame.w).toBeLessThanOrEqual(fitMaxW);
+        expect(frame.h).toBeLessThanOrEqual(fitMaxH);
+        // 2000:1000 = 2:1 aspect, width fills canvas (800), height = 400
+        expect(frame.w / frame.h).toBeCloseTo(2, 1);
+        done();
+      });
+    });
+
+    it("size W input submit refits frame to new aspect (Modern)", () => {
+      runWithContainer((container, done) => {
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>({ w: 800, h: 600 });
+        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("size");
+        const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 800, h: 600 });
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+        const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode, setCropMode: vi.fn(),
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
+          cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+          modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+        }, container);
+
+        const inputs = container.querySelectorAll("input");
+        const wInput = inputs[0];
+        wInput.focus();
+        wInput.value = "400";
+        wInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        wInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+        // Target changed to 400x600 (aspect 2:3) → frame should fill canvas at 2:3
+        const frame = setModernFrameSpy.mock.lastCall?.[0];
+        expect(frame.w).toBeLessThanOrEqual(fitMaxW);
+        expect(frame.h).toBeLessThanOrEqual(fitMaxH);
+        expect(frame.w / frame.h).toBeCloseTo(400 / 600, 1);
+        done();
+      });
+    });
+
+    it("size H input submit refits frame to new aspect (Modern)", () => {
+      runWithContainer((container, done) => {
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>({ w: 800, h: 600 });
+        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("size");
+        const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 800, h: 600 });
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+        const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode, setCropMode: vi.fn(),
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
+          cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+          modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+        }, container);
+
+        const inputs = container.querySelectorAll("input");
+        // W input is inputs[0], H input is inputs[1]
+        const hInput = inputs[1];
+        hInput.focus();
+        hInput.value = "300";
+        hInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        hInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+        // Target changed to 800x300 (aspect 8:3) → frame should fill canvas at 8:3
+        const frame = setModernFrameSpy.mock.lastCall?.[0];
+        expect(frame.w).toBeLessThanOrEqual(fitMaxW);
+        expect(frame.h).toBeLessThanOrEqual(fitMaxH);
+        expect(frame.w / frame.h).toBeCloseTo(800 / 300, 1);
+        done();
+      });
+    });
+
+    it("swap button in Size mode refits frame to swapped aspect (Modern)", () => {
+      runWithContainer((container, done) => {
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>({ w: 300, h: 600 });
+        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("size");
+        const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 400, h: 800 });
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+        const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode, setCropMode: vi.fn(),
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+          cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
+          modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+        }, container);
+
+        // Find the swap button (has aria-label "Swap Width/Height")
+        const swapBtn = Array.from(container.querySelectorAll("button")).find(
+          (b) => b.getAttribute("aria-label") === "Swap width and height"
+        );
+        expect(swapBtn).toBeDefined();
+        swapBtn!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+        // Target swapped to 600x300 (aspect 2:1) → frame should fill canvas at 2:1
+        expect(setCropSizeTargetSpy).toHaveBeenCalledWith({ w: 600, h: 300 });
+        const frame = setModernFrameSpy.mock.lastCall?.[0];
+        expect(frame.w).toBeLessThanOrEqual(fitMaxW);
+        expect(frame.h).toBeLessThanOrEqual(fitMaxH);
+        expect(frame.w / frame.h).toBeCloseTo(2, 1);
+        done();
+      });
+    });
+  });
+
+  describe("Size mode physical unit value stability (no drift)", () => {
+    it("3×4 cm stays stable across repeated submits", () => {
+      runWithContainer((container, done) => {
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const [sizeUnit, setSizeUnit] = createSignal<"px" | "cm" | "mm" | "in">("cm");
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode: () => "size" as const, setCropMode: vi.fn(),
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+          cropSizeUnit: sizeUnit, setCropSizeUnit: vi.fn((u) => setSizeUnit(u)),
+          modernCropFrame: () => null, setModernCropFrame: vi.fn(),
+        }, container);
+
+        const inputs = container.querySelectorAll("input");
+        const wInput = inputs[0] as HTMLInputElement;
+        const hInput = inputs[1] as HTMLInputElement;
+
+        // Enter W=3 cm
+        wInput.focus();
+        wInput.value = "3";
+        wInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        wInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        expect(wInput.value).toBe("3");
+
+        // Enter H=4 cm
+        hInput.focus();
+        hInput.value = "4";
+        hInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        hInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        expect(hInput.value).toBe("4");
+
+        // Re-submit W=3 again — should not drift to 2.99
+        wInput.focus();
+        wInput.value = "3";
+        wInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        wInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        expect(wInput.value).toBe("3");
+
+        // Re-submit H=4 again — should not drift
+        hInput.focus();
+        hInput.value = "4";
+        hInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        hInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        expect(hInput.value).toBe("4");
+
+        done();
+      });
+    });
+
+    it("4×6 in stays stable across repeated submits", () => {
+      runWithContainer((container, done) => {
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const [sizeUnit, setSizeUnit] = createSignal<"px" | "cm" | "mm" | "in">("in");
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode: () => "size" as const, setCropMode: vi.fn(),
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+          cropSizeUnit: sizeUnit, setCropSizeUnit: vi.fn((u) => setSizeUnit(u)),
+          modernCropFrame: () => null, setModernCropFrame: vi.fn(),
+        }, container);
+
+        const inputs = container.querySelectorAll("input");
+        const wInput = inputs[0] as HTMLInputElement;
+        const hInput = inputs[1] as HTMLInputElement;
+
+        wInput.focus();
+        wInput.value = "4";
+        wInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        wInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        expect(wInput.value).toBe("4");
+
+        hInput.focus();
+        hInput.value = "6";
+        hInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        hInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        expect(hInput.value).toBe("6");
+
+        // Re-submit should not drift
+        wInput.focus();
+        wInput.value = "4";
+        wInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        wInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        expect(wInput.value).toBe("4");
+
+        done();
+      });
+    });
+
+    it("unit switch (cm→px→cm) preserves displayed value", () => {
+      runWithContainer((container, done) => {
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const [sizeUnit, setSizeUnit] = createSignal<"px" | "cm" | "mm" | "in">("cm");
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode: () => "size" as const, setCropMode: vi.fn(),
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+          cropSizeUnit: sizeUnit, setCropSizeUnit: vi.fn((u) => setSizeUnit(u)),
+          modernCropFrame: () => null, setModernCropFrame: vi.fn(),
+        }, container);
+
+        const inputs = container.querySelectorAll("input");
+        const wInput = inputs[0] as HTMLInputElement;
+        const hInput = inputs[1] as HTMLInputElement;
+
+        // Enter 3×4 cm
+        wInput.focus();
+        wInput.value = "3";
+        wInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        wInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+        hInput.focus();
+        hInput.value = "4";
+        hInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        hInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+        // Switch to px
+        setSizeUnit("px");
+        // Switch back to cm
+        setSizeUnit("cm");
+
+        // After round-trip, display should still show 3 and 4
+        expect(wInput.value).toBe("3");
+        expect(hInput.value).toBe("4");
+
+        done();
+      });
+    });
+
+    it("mode switch (Size→Free→Size) preserves value", () => {
+      runWithContainer((container, done) => {
+        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("size");
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode, setCropMode: vi.fn((m) => setCropMode(m)),
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+          cropSizeUnit: () => "cm" as const, setCropSizeUnit: vi.fn(),
+          modernCropFrame: () => null, setModernCropFrame: vi.fn(),
+        }, container);
+
+        // Enter W=3 cm in Size mode
+        let inputs = container.querySelectorAll("input");
+        let wInput = inputs[0] as HTMLInputElement;
+        wInput.focus();
+        wInput.value = "3";
+        wInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        wInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+        // Switch to Free mode — Size section unmounts
+        setCropMode("free");
+
+        // Switch back to Size — Size section remounts
+        setCropMode("size");
+
+        // After remount, display should still show 3
+        inputs = container.querySelectorAll("input");
+        wInput = inputs[0] as HTMLInputElement;
+        expect(wInput.value).toBe("3");
+
+        done();
+      });
+    });
+
+    it("repeated re-renders cause no value drift (3×4 cm)", () => {
+      runWithContainer((container, done) => {
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const [sizeUnit, setSizeUnit] = createSignal<"px" | "cm" | "mm" | "in">("cm");
+        const [renderTick, setRenderTick] = createSignal(0);
+        const setCropSizeTargetSpy = vi.fn((t) => {
+          setCropSizeTarget(t);
+          setRenderTick((n) => n + 1);
+        });
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode: () => "size" as const, setCropMode: vi.fn(),
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+          cropSizeUnit: sizeUnit, setCropSizeUnit: vi.fn((u) => setSizeUnit(u)),
+          modernCropFrame: () => null, setModernCropFrame: vi.fn(),
+        }, container);
+
+        const inputs = container.querySelectorAll("input");
+        const wInput = inputs[0] as HTMLInputElement;
+        const hInput = inputs[1] as HTMLInputElement;
+
+        // 10 rounds of entering 3×4 cm — should never drift
+        for (let i = 0; i < 10; i++) {
+          wInput.focus();
+          wInput.value = "3";
+          wInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+          wInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+          expect(wInput.value).toBe(`3`);
+
+          hInput.focus();
+          hInput.value = "4";
+          hInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+          hInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+          expect(hInput.value).toBe(`4`);
+        }
+
+        done();
+      });
+    });
+
+    it("3×4 cm converts to ~354×472 px at 300 DPI (not 113×151)", () => {
+      runWithContainer((container, done) => {
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode: () => "size" as const, setCropMode: vi.fn(),
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+          cropSizeUnit: () => "cm" as const, setCropSizeUnit: vi.fn(),
+          modernCropFrame: () => null, setModernCropFrame: vi.fn(),
+        }, container);
+
+        const inputs = container.querySelectorAll("input");
+        const wInput = inputs[0] as HTMLInputElement;
+        const hInput = inputs[1] as HTMLInputElement;
+
+        wInput.focus();
+        wInput.value = "3";
+        wInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        wInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+        // 3 cm at 300 DPI = 354 px (not 113 at 96 DPI)
+        const lastW = setCropSizeTargetSpy.mock.lastCall?.[0];
+        expect(lastW.w).toBeCloseTo(354.33, 1);
+
+        hInput.focus();
+        hInput.value = "4";
+        hInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        hInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+        // 4 cm at 300 DPI = 472 px
+        const lastH = setCropSizeTargetSpy.mock.lastCall?.[0];
+        expect(lastH.h).toBeCloseTo(472.44, 1);
+
+        done();
+      });
+    });
+
+    it("4×6 in converts to ~1200×1800 px at 300 DPI (not 384×576)", () => {
+      runWithContainer((container, done) => {
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode: () => "size" as const, setCropMode: vi.fn(),
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+          cropSizeUnit: () => "in" as const, setCropSizeUnit: vi.fn(),
+          modernCropFrame: () => null, setModernCropFrame: vi.fn(),
+        }, container);
+
+        const inputs = container.querySelectorAll("input");
+        const wInput = inputs[0] as HTMLInputElement;
+        const hInput = inputs[1] as HTMLInputElement;
+
+        wInput.focus();
+        wInput.value = "4";
+        wInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        wInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+        // 4 in at 300 DPI = 1200 px (not 384 at 96 DPI)
+        const lastW = setCropSizeTargetSpy.mock.lastCall?.[0];
+        expect(lastW.w).toBe(1200);
+
+        hInput.focus();
+        hInput.value = "6";
+        hInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        hInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+        // 6 in at 300 DPI = 1800 px
+        const lastH = setCropSizeTargetSpy.mock.lastCall?.[0];
+        expect(lastH.h).toBe(1800);
+
+        done();
+      });
+    });
+
+    it("applied crop passes rounded pixel values at 300 DPI (not silently downscaled)", () => {
+      runWithContainer((container, done) => {
+        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
+        const setCropSizeTargetSpy = vi.fn((t) => setCropSizeTarget(t));
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropMode: () => "size" as const, setCropMode: vi.fn(),
+          cropAspect: () => null, setCropAspect: vi.fn(),
+          cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
+          cropSizeUnit: () => "cm" as const, setCropSizeUnit: vi.fn(),
+          modernCropFrame: () => null, setModernCropFrame: vi.fn(),
+        }, container);
+
+        const inputs = container.querySelectorAll("input");
+        const wInput = inputs[0] as HTMLInputElement;
+        const hInput = inputs[1] as HTMLInputElement;
+
+        wInput.focus();
+        wInput.value = "3";
+        wInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+        wInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+        // Verify the last setCropSizeTarget call has ~354 px, not 113
+        const lastTarget = setCropSizeTargetSpy.mock.lastCall?.[0];
+        expect(lastTarget.w).toBeGreaterThan(300); // 300+ DPI, not 96 DPI
+        expect(lastTarget.w).toBeCloseTo(354.33, 1);
+
+        done();
+      });
+    });
   });
 });

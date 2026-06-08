@@ -11,7 +11,7 @@
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Buat layer baru (via IPC command)          |
-| ✅ DONE      | Hapus layer (guard: tidak bisa hapus terakhir) |
+| ✅ DONE      | Hapus layer (guard: tidak bisa hapus terakhir, konfirmasi dialog) |
 | ✅ DONE      | Reorder layer (z-index)                    |
 | ✅ DONE      | Layer visibility toggle                    |
 | ✅ DONE      | Layer locking                              |
@@ -68,15 +68,15 @@
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Crop image (with bounds validation)        |
 | ✅ DONE      | Resize image/canvas                        |
-| ⬜ TODO      | Aspect ratio lock toggle                   |
+| ✅ DONE      | Resize canvas dialog + aspect ratio lock toggle |
 | ✅ DONE      | Crop overlay/guide UI                      |
 | ✅ DONE      | Interactive crop option bar (mode dropdown, editable ratio/size, guide overlay selector, delete toggle, swap W/H, reset/apply/cancel) |
 | ✅ DONE      | Crop box resize reactivity (overlay updates live during drag) |
 | ✅ DONE      | Crop snapping — canvas edges/centers + layer edges (Smart Guides, Alt disables) |
-| ✅ DONE      | Crop rotation — rotatable crop boundaries with screen-aligned visual box (canvas rotates behind), dynamic cursor, snap to 15° with Shift, angle readout, and layer offset/rotation update |
+| ✅ DONE      | Crop rotation — rotatable crop boundaries with screen-aligned visual box (canvas rotates behind), dynamic cursor, snap to 15° with Shift, angle readout, layer offset/rotation update, and local-axis resize after rotation |
 | ✅ DONE      | Desktop-editor crop moving & panning — crop box remains stationary while canvas pans behind (move & resize), aligned with professional editor behavior |
 | ✅ DONE      | Draw new crop box from scratch by click-dragging outside the current crop box |
-| ✅ DONE      | Arrow-key crop nudge (1px, 10px with Shift) with viewport pan compensation |
+| ✅ DONE      | Arrow-key crop nudge (1px, 10px with Shift) with viewport pan compensation and undo commit via `!e.repeat` guard |
 | ✅ DONE      | Crop intermediate undo/redo — dedicated mini undo stack for crop rect |
 | ✅ DONE      | Aspect ratio preset dropdown (12 common ratios + custom, auto-fit on select) |
 | ✅ DONE      | Size mode unit conversion (px/cm/mm/in at 96 PPI) |
@@ -84,7 +84,9 @@
 | ✅ DONE      | Crop cancel stays in Crop tool (Esc/Cancel clears crop box without switching to Move) |
 | ✅ DONE      | Crop interaction model — pasteboard click hides crop box, canvas click restores hidden crop box, drag from inside or outside canvas replaces crop box, double-click inside crop box applies crop |
 | ✅ DONE      | Crop apply geometry hardening — independent X/Y target-size scaling and WebGL texture re-upload after destructive crop |
+| ✅ DONE      | Crop apply viewport recentering — after crop commit, the new canvas/artboard is fitted back to the viewport center before renderer resize/upload |
 | ✅ DONE      | Crop mode pasteboard panning guard — Space+drag navigation stays available while Crop tool is active |
+| ✅ DONE      | Crop interaction modes — Modern (dedicated viewport-fixed centered frame; frame size tracks projected canvas bounds `docWidth × zoom × scale`, clamped by viewport; frame recomputes on zoom changes; resize clamps to projected bounds; drag/rotate transforms the image under the frame; rotation pivots around the rendered cropbox center in screen coordinates so the frame center stays visually pinned; apply uses the visual frame size and pivot rather than a rotated AABB and converts preview rotation to the crop engine convention so committed orientation matches the visual preview; drag/resize compensation stays screen-aligned under rotation; Shift/Alt/Shift+Alt resize modifiers match Classic Crop conventions where applicable; Enter applies, Esc cancels, Arrow/Shift+Arrow nudges image with undo commit, Ctrl+Z/Ctrl+Y/Ctrl+Shift+Z undo/redo; resize changes frame size from center; size mode preserves target aspect ratio during resize; dedicated undo/redo stack for frame/transform operations; state resets on tool exit to prevent transform leak; no pasteboard click-to-create) and Classic (document-space crop box can move/resize/rotate over static image; pasteboard click creates/hides rect) toggleable via option bar |
 
 
 ---
@@ -123,8 +125,18 @@
 | ✅ DONE      | Export JPG (quality setting)               |
 | ✅ DONE      | Export PNG                                 |
 | ✅ DONE      | Export WebP (quality setting)              |
-| ✅ DONE      | Export dialog UI                           |
-| ✅ DONE      | File save dialog (Tauri)                   |
+| ✅ DONE      | Export dialog UI (format picker + quality slider) |
+| ✅ DONE      | Export pipeline — composite → encode → write via Tauri |
+| ✅ DONE      | Export button in RightDock                 |
+| ✅ DONE      | Ctrl+S / Save shortcut opens export dialog |
+| ✅ DONE      | Export compositing parity with renderer (layer order, opacity, transforms, blend modes via drawLayerToContext) |
+| ✅ DONE      | E2E test: export dialog opens, format switch, quality slider |
+| ✅ DONE      | E2E test: encodeComposite produces valid PNG/JPEG/WebP with correct headers/magic bytes |
+| ✅ DONE      | E2E test: output dimensions match document, invisible layers excluded, transforms respected |
+| ⬜ KNOWN LIMITATION | Blend mode parity: Canvas 2D globalCompositeOperation vs WebGL GLSL shader may differ slightly at alpha=0 or alpha=1 boundaries (pre-multiplied vs straight alpha edge cases). Visual difference is negligible for MVP. |
+| ✅ DONE      | Rust unit tests: write_file_bytes creates file, read_file_bytes roundtrip, error handling (7 tests) |
+| ✅ DONE      | E2E data flow test: encodeComposite → base64 → decode → byte-for-byte match + valid PNG image |
+| ⬜ MANUAL    | Native save dialog UI + file-on-disk verification: run `pnpm tauri dev`, draw, Ctrl+S, save, open in external viewer |
 
 ---
 
@@ -133,7 +145,7 @@
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Undo (Ctrl+Z)                              |
-| ✅ DONE      | Redo (Ctrl+Y)                              |
+| ✅ DONE      | Redo (Ctrl+Y / Ctrl+Shift+Z)               |
 | ✅ DONE      | Snapshot-based history (max 50)            |
 | ✅ DONE      | Redo branch discard on new mutation        |
 | ⬜ TODO      | History panel UI (list of operations)      |
@@ -252,7 +264,7 @@
 | ⬜ TODO      | CI pipeline (GitHub Actions)               |
 | ✅ DONE      | Unit tests (core crate) — 69 tests         |
 | ✅ DONE      | Contract tests (IPC commands) — 13 tests   |
-| ✅ DONE      | Frontend tests — 267 passing tests (21 files) |
+| ✅ DONE      | Frontend tests — 681 passing tests (50 files) |
 | ✅ DONE      | M6 Perf Gate (all metrics PASS)            |
 | ✅ DONE      | Native Vite tsconfig paths (removed `vite-tsconfig-paths` plugin) |
 | ✅ DONE      | Release candidate (MSI + NSIS installers)  |

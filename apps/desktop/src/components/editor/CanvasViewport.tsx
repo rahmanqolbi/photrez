@@ -1,4 +1,4 @@
-import { createSignal, Show } from "solid-js";
+import { createMemo, createSignal, createEffect, Show } from "solid-js";
 import { screenToDocument } from "@/viewport/coords";
 import { computeSnapAdjustment } from "@/viewport/smartGuides";
 import type { SnapRect } from "@/viewport/smartGuides";
@@ -15,9 +15,12 @@ import { HoverHighlight } from "./HoverHighlight";
 import { SmartGuides } from "./SmartGuides";
 import { BrushCursorOverlay } from "./BrushCursorOverlay";
 import { CropOverlay } from "./CropOverlay";
+import { ModernCropOverlay } from "./ModernCropOverlay";
 import { TransformHud } from "./TransformHud";
 import { BrushContextMenu } from "./BrushContextMenu";
 import { getPasteboardClickAction } from "./pasteboardClickPolicy";
+import { getDefaultModernCropFrame, getModernCropApplyRotation, getModernCropImagePivot, getProjectedCanvasSize, modernFrameToCropRect } from "@/viewport/modernCropGeometry";
+import { fitCropRectToAspect } from "@/viewport/cropAutoFit";
 import {
   clearCropPreview,
   applyCropPreview,
@@ -31,21 +34,33 @@ export function CanvasViewport() {
     workspace,
     renderer,
     activeTool,
+    activeDocumentId,
     zoom,
     pan,
+    viewportWidth,
+    viewportHeight,
     docWidth,
     docHeight,
     setHoverHandle,
     syncViewport,
     moveSnapEnabled,
     cropRect, setCropRect,
+    cropInteractionMode, setCropInteractionMode,
     cropMode,
     cropGuideMode,
     cropAspect,
     cropRotation, setCropRotation,
+    modernCropFrame, setModernCropFrame,
+    modernCropImageTransform, setModernCropImageTransform,
+    resetModernCrop,
+    commitModernCropState,
     hiddenCropPreview, setHiddenCropPreview,
     cropDeletePixels,
     cropSizeTarget,
+    setCropAspect,
+    setCropMode,
+    setCropSizeTarget,
+    clearCropStacks,
     setActiveTool,
     layerTransformSession,
     scheduler,
@@ -60,6 +75,7 @@ export function CanvasViewport() {
 
   let canvasContainerRef!: HTMLDivElement;
   let canvasRef!: HTMLCanvasElement;
+  let lastModernCropSessionKey: string | null = null;
 
   const {
     isSpacePressed,
@@ -91,6 +107,33 @@ export function CanvasViewport() {
       startDocument: { x: number; y: number };
       replacementStarted: boolean;
     } | null>(null);
+
+  const modernImageTransformStyle = createMemo(() => {
+    const frame = modernCropFrame();
+    const transform = modernCropImageTransform();
+    if (!frame) {
+      return `translate3d(${pan().x + transform.offsetX}px, ${pan().y + transform.offsetY}px, 0) scale(${zoom() * transform.scale})`;
+    }
+
+    const pivot = getModernCropImagePivot({
+      frame,
+      viewport: {
+        width: viewportWidth(),
+        height: viewportHeight(),
+        panX: pan().x,
+        panY: pan().y,
+        zoom: zoom(),
+      },
+      transform,
+    });
+
+    return [
+      `translate3d(${pivot.screen.x}px, ${pivot.screen.y}px, 0)`,
+      `rotate(${transform.rotation}deg)`,
+      `scale(${zoom() * transform.scale})`,
+      `translate3d(${-pivot.document.x}px, ${-pivot.document.y}px, 0)`,
+    ].join(" ");
+  });
 
   const screenToDocumentPoint = (e: PointerEvent) => {
     const rect = canvasContainerRef?.getBoundingClientRect();
@@ -143,6 +186,84 @@ export function CanvasViewport() {
     isAltPressed,
   });
 
+  // Reset Classic crop state when switching documents to prevent stale
+  // cropRect/cropRotation from leaking across documents with different dimensions.
+  let prevDocIdForCropReset: string | null = null;
+  createEffect(() => {
+    const docId = activeDocumentId();
+    if (prevDocIdForCropReset !== null && prevDocIdForCropReset !== docId) {
+      setCropRect(null);
+      setCropRotation(0);
+      setCropMode("free");
+      setCropAspect(null);
+      setCropSizeTarget(null);
+      setHiddenCropPreview(null);
+      clearCropStacks();
+    }
+    prevDocIdForCropReset = docId;
+  });
+
+  // Modern crop keeps the frame in viewport coordinates, independent of cropRect.
+  createEffect(() => {
+    if (activeTool() !== "crop" || cropInteractionMode() !== "modern") {
+      if (lastModernCropSessionKey !== null) {
+        resetModernCrop();
+      }
+      lastModernCropSessionKey = null;
+      return;
+    }
+
+    // Build aspect from current mode so frame stays in sync with option bar
+    const mode = cropMode();
+    const ratioAspect = cropAspect();
+    const sizeTarget = cropSizeTarget();
+    const aspect = mode === "ratio" && ratioAspect
+      ? ratioAspect
+      : mode === "size" && sizeTarget && sizeTarget.w > 0 && sizeTarget.h > 0
+        ? { w: sizeTarget.w, h: sizeTarget.h }
+        : null;
+
+    const aspectKey = aspect ? `${aspect.w}x${aspect.h}` : "";
+    const sessionKey = `${activeDocumentId() ?? "none"}:${viewportWidth()}x${viewportHeight()}:${zoom()}:${mode}:${aspectKey}`;
+    if (lastModernCropSessionKey !== sessionKey || !modernCropFrame()) {
+      lastModernCropSessionKey = sessionKey;
+      setModernCropFrame(getDefaultModernCropFrame({
+        viewportWidth: viewportWidth(),
+        viewportHeight: viewportHeight(),
+        docWidth: docWidth(),
+        docHeight: docHeight(),
+        zoom: zoom(),
+        scale: modernCropImageTransform().scale,
+        aspect,
+      }));
+    }
+  });
+
+  // Classic crop: initialize preview on entry when mode is constrained
+  createEffect(() => {
+    if (activeTool() !== "crop" || cropInteractionMode() !== "classic") return;
+
+    const mode = cropMode();
+    if (mode === "free") return;
+    if (cropRect() !== null || hiddenCropPreview() !== null) return;
+
+    const docW = docWidth();
+    const docH = docHeight();
+    if (docW <= 0 || docH <= 0) return;
+
+    if (mode === "ratio") {
+      const a = cropAspect();
+      if (a) {
+        setCropRect(fitCropRectToAspect(a, docW, docH, cropRotation()));
+      }
+    } else if (mode === "size") {
+      const t = cropSizeTarget();
+      if (t && t.w > 0 && t.h > 0) {
+        setCropRect(fitCropRectToAspect(t, docW, docH, cropRotation()));
+      }
+    }
+  });
+
   // Alt key and shortcuts Setup
   useCanvasKeyboard({
     isSpacePressed,
@@ -168,6 +289,7 @@ export function CanvasViewport() {
 
     if (activeTool() === "crop") {
       if (isSpacePressed() || isPanning()) return;
+      if (cropInteractionMode() === "modern") return;
 
       const startDocument = screenToDocumentPoint(e);
       setPendingPasteboardCropGesture({
@@ -265,6 +387,13 @@ export function CanvasViewport() {
     }
   };
 
+  const handlePasteboardPointerCancel = (e: PointerEvent) => {
+    const pending = pendingPasteboardCropGesture();
+    if (pending && e.pointerId === pending.pointerId) {
+      setPendingPasteboardCropGesture(null);
+    }
+  };
+
   return (
     <div
       ref={canvasContainerRef}
@@ -297,14 +426,56 @@ export function CanvasViewport() {
         handlePasteboardPointerUp(e);
         if (!e.defaultPrevented) onViewportPointerUp(e);
       }}
-      onPointerCancel={onViewportPointerCancel}
+      onPointerCancel={(e) => {
+        handlePasteboardPointerCancel(e);
+        onViewportPointerCancel(e);
+      }}
       onLostPointerCapture={onViewportLostPointerCapture}
     >
       {/* CSS Transform container — GPU-accelerated pan/zoom */}
       <Show when={workspace.getActiveEngine()}>
+        {/* WebGL Canvas — outside transform div for 1:1 pixel mapping.
+            The canvas pixel buffer is Math.round(docWidth * zoom * dpr) but the
+            CSS box inside a scale(zoom) parent would be docWidth before transform.
+            This creates a downscale then upscale cycle — bilinear filtering bleeds
+            transparent pixels from outside the canvas onto edge pixels, causing the
+            "visible thin gap" at high zoom. By placing the canvas outside, its CSS
+            dimensions exactly match its pixel buffer (at dpr=1), eliminating the
+            filtering artifact. */}
+        <canvas
+          ref={canvasRef}
+          onPointerDown={onCanvasPointerDown}
+          onPointerMove={onCanvasPointerMove}
+          onPointerUp={onCanvasPointerUp}
+          onPointerCancel={onCanvasPointerCancel}
+          onLostPointerCapture={onCanvasLostPointerCapture}
+          style={{
+            position: "absolute",
+            left: cropInteractionMode() === "modern" && activeTool() === "crop" ? "0px" : `${pan().x}px`,
+            top: cropInteractionMode() === "modern" && activeTool() === "crop" ? "0px" : `${pan().y}px`,
+            width: cropInteractionMode() === "modern" && activeTool() === "crop"
+              ? `${docWidth()}px`
+              : `${Math.round(docWidth() * zoom())}px`,
+            height: cropInteractionMode() === "modern" && activeTool() === "crop"
+              ? `${docHeight()}px`
+              : `${Math.round(docHeight() * zoom())}px`,
+            transform: cropInteractionMode() === "modern" && activeTool() === "crop"
+              ? modernImageTransformStyle()
+              : undefined,
+            "transform-origin": "0 0",
+            "image-rendering": "auto",
+            transition: isPanning() || isFitTransition() || isCropDragging()
+              ? "none"
+              : cropInteractionMode() === "modern" && activeTool() === "crop"
+                ? "transform 0.15s cubic-bezier(0.2, 0, 0, 1)"
+                : "left 0.15s cubic-bezier(0.2, 0, 0, 1), top 0.15s cubic-bezier(0.2, 0, 0, 1)",
+          }}
+        />
         <div
           style={{
-            transform: `translate3d(${pan().x}px, ${pan().y}px, 0) scale(${zoom()})`,
+            transform: cropInteractionMode() === "modern" && activeTool() === "crop"
+              ? modernImageTransformStyle()
+              : `translate3d(${pan().x}px, ${pan().y}px, 0) scale(${zoom()})`,
             "transform-origin": "0 0",
             transition: isPanning() || isFitTransition() || isCropDragging() ? "none" : "transform 0.15s cubic-bezier(0.2, 0, 0, 1)",
             "will-change": isPanning() || isCropDragging() ? "transform" : "auto",
@@ -313,21 +484,6 @@ export function CanvasViewport() {
             height: `${docHeight()}px`,
           }}
         >
-          {/* WebGL Canvas — fills document space */}
-          <canvas
-            ref={canvasRef}
-            onPointerDown={onCanvasPointerDown}
-            onPointerMove={onCanvasPointerMove}
-            onPointerUp={onCanvasPointerUp}
-            onPointerCancel={onCanvasPointerCancel}
-            onLostPointerCapture={onCanvasLostPointerCapture}
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-            }}
-          />
 
           {/* Overlay canvas — sync 2D brush preview, no createImageBitmap per move */}
           <canvas
@@ -437,8 +593,8 @@ export function CanvasViewport() {
             />
           </Show>
 
-          {/* Crop Overlay — self-contained SVG with pointer capture */}
-          <Show when={activeTool() === "crop" && cropRect()}>
+          {/* Classic Crop Overlay — document-space crop rect with pointer capture */}
+          <Show when={activeTool() === "crop" && cropInteractionMode() === "classic" && cropRect()}>
             <CropOverlay
               isNavigationMode={isSpacePressed() || isPanning()}
               cropRect={cropRect()}
@@ -473,11 +629,61 @@ export function CanvasViewport() {
                   setCropRotation,
                   setHiddenCropPreview,
                   setActiveTool,
+                  recenterViewport: () => fitToScreenAndRender(),
                 });
               }}
             />
           </Show>
         </div>
+        <Show when={activeTool() === "crop" && cropInteractionMode() === "modern" && modernCropFrame()}>
+          {(frame) => {
+            const sa = () => cropMode() === "size" && cropSizeTarget() ? cropSizeTarget() : null;
+            const ea = () => cropMode() === "ratio" ? cropAspect() : sa();
+            return (
+            <ModernCropOverlay
+              isNavigationMode={isSpacePressed() || isPanning()}
+              frame={frame()}
+              imageTransform={modernCropImageTransform()}
+              viewportWidth={viewportWidth()}
+              viewportHeight={viewportHeight()}
+              projectedWidth={docWidth() * zoom() * (modernCropImageTransform().scale ?? 1)}
+              projectedHeight={docHeight() * zoom() * (modernCropImageTransform().scale ?? 1)}
+              cropMode={cropMode()}
+              cropAspect={ea()}
+              guideMode={cropGuideMode()}
+              onFrameChange={setModernCropFrame}
+              onImageTransformChange={setModernCropImageTransform}
+              onHoverHandleChange={setHoverHandle}
+              onDragStateChange={setIsCropDragging}
+              onModernCropCommit={() => commitModernCropState()}
+              onApplyCrop={() => {
+                const rect = modernFrameToCropRect({
+                  frame: frame(),
+                  viewport: {
+                    width: viewportWidth(),
+                    height: viewportHeight(),
+                    panX: pan().x,
+                    panY: pan().y,
+                    zoom: zoom(),
+                  },
+                  transform: modernCropImageTransform(),
+                });
+                applyCropPreview({
+                  workspace, renderer,
+                  cropRect: rect,
+                  cropMode: cropMode(),
+                  cropSizeTarget: cropSizeTarget(),
+                  cropDeletePixels: cropDeletePixels(),
+                  cropRotation: getModernCropApplyRotation(modernCropImageTransform().rotation),
+                  scheduler,
+                  setCropRect, setCropRotation, setHiddenCropPreview, setActiveTool,
+                  recenterViewport: () => fitToScreenAndRender(),
+                });
+                resetModernCrop();
+              }}
+            />);
+          }}
+        </Show>
       </Show>
       <BrushContextMenu />
     </div>

@@ -2,6 +2,7 @@ import { createMemo, Show } from "solid-js";
 import type { CropRect } from "@/viewport/cropGeometry";
 import type { CropSnapTargets } from "@/viewport/cropSnap";
 import type { SnapLine } from "@/viewport/smartGuides";
+import { getRotateBandPath, ROTATE_BAND_PX, ROTATE_CORNER_EXTRA } from "@/viewport/rotateBand";
 import { useCropOverlayDrag } from "./useCropOverlayDrag";
 import { CropOverlayGuides } from "./CropOverlayGuides";
 import { CropOverlayHandles } from "./CropOverlayHandles";
@@ -37,7 +38,6 @@ const HANDLE_TYPES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 
 const HANDLE_SIZE = 8;
 const HANDLE_HIT = 20;
-const ROTATE_OUTER = 44;
 
 export function CropOverlay(props: CropOverlayProps) {
   let svgRef: SVGSVGElement | undefined;
@@ -92,7 +92,6 @@ export function CropOverlay(props: CropOverlayProps) {
 
   const hs = () => HANDLE_SIZE / props.zoom;
   const ht = () => HANDLE_HIT / props.zoom;
-  const ro = () => ROTATE_OUTER / props.zoom;
 
   const handles = createMemo(() => {
     const rect = props.cropRect;
@@ -173,6 +172,37 @@ export function CropOverlay(props: CropOverlayProps) {
             zoom={props.zoom}
             guideMode={props.guideMode}
           />
+          {/* 360° rotate band — behind move zone and handles */}
+          <path
+            d={getRotateBandPath(
+              props.cropRect!.x,
+              props.cropRect!.y,
+              props.cropRect!.w,
+              props.cropRect!.h,
+              ROTATE_BAND_PX / props.zoom,
+              ROTATE_CORNER_EXTRA / props.zoom,
+            )}
+            fill="transparent"
+            fill-rule="evenodd"
+            data-crop-rotate-band
+            style={{ "pointer-events": navMode() ? "none" : "all" }}
+            onPointerDown={(e) => startDrag(e, "rotate")}
+            onPointerEnter={(e) => {
+              setHover("rotate");
+              setHoverPos({ x: e.clientX, y: e.clientY });
+            }}
+            onPointerMove={(e) => {
+              if (hoverHandle() === "rotate" || dragState()?.handle.startsWith("rotate")) {
+                setHoverPos({ x: e.clientX, y: e.clientY });
+              }
+            }}
+            onPointerLeave={() => {
+              if (!dragState()) {
+                setHover(null);
+                setHoverPos(null);
+              }
+            }}
+          />
           {/* Move hit zone */}
           <rect
             x={props.cropRect!.x}
@@ -195,7 +225,6 @@ export function CropOverlay(props: CropOverlayProps) {
             handles={handles()}
             zoom={props.zoom}
             hitSize={ht()}
-            rotateOuter={ro()}
             activeHandle={activeHandle()}
             hoverHandle={hoverHandle()}
             isDragging={!!dragState()}

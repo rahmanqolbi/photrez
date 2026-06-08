@@ -1,9 +1,10 @@
-import { createSignal, createMemo, createEffect, onCleanup } from "solid-js";
+import { createSignal, createMemo, createEffect, onMount, onCleanup } from "solid-js";
 import type { CropRect } from "@/viewport/cropGeometry";
 import {
   constrainCropRectToDocument,
   applyCropResizeHandle,
   applyCropMove,
+  screenDeltaToRotatedCropLocalDelta,
 } from "@/viewport/cropGeometry";
 import { getCursorForHandle, normalizeRotation } from "@/viewport/transformGeometry";
 import { getRotateCursorByPos } from "@/viewport/cursorRotate";
@@ -60,7 +61,6 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
     startRotation?: number;
     startClientX: number;
     startClientY: number;
-    startPan?: { x: number; y: number };
   } | null>(null);
 
   let tooltipTimeoutId = 0;
@@ -129,7 +129,6 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
         startRotation: params.cropRotation?.(),
         startClientX: e.clientX,
         startClientY: e.clientY,
-        startPan: pan ? { x: pan().x, y: pan().y } : undefined,
       });
       params.onRotationStart?.();
     } else {
@@ -140,7 +139,6 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
         pointerId: e.pointerId,
         startClientX: e.clientX,
         startClientY: e.clientY,
-        startPan: pan ? { x: pan().x, y: pan().y } : undefined,
       });
       if (handle !== "move") setActiveHandle(handle);
     }
@@ -200,9 +198,10 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
     } else if (drag.handle === "move") {
       newRect = applyCropMove(drag.startRect, dx, dy, docW, docH);
     } else {
+      const localDelta = screenDeltaToRotatedCropLocalDelta(dx, dy, cropRotationValue());
       const constraint = params.cropMode;
       const aspect = constraint === "ratio" && params.cropAspect ? params.cropAspect : null;
-      newRect = applyCropResizeHandle(drag.startRect, drag.handle, dx, dy, {
+      newRect = applyCropResizeHandle(drag.startRect, drag.handle, localDelta.dx, localDelta.dy, {
         constraint,
         aspect,
         shift: e.shiftKey,
@@ -223,28 +222,11 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
     params.onCropRectChange(newRect);
 
     if (drag.handle === "move") {
-      const oldCX = drag.startRect.x + drag.startRect.w / 2;
-      const oldCY = drag.startRect.y + drag.startRect.h / 2;
-      const newCX = newRect.x + newRect.w / 2;
-      const newCY = newRect.y + newRect.h / 2;
-      const actualDx = newCX - oldCX;
-      const actualDy = newCY - oldCY;
-
-      const engine = sdk.workspace?.getActiveEngine();
-      if (engine && drag.startPan) {
-        engine.setViewport({
-          panX: drag.startPan.x - actualDx * params.zoom,
-          panY: drag.startPan.y - actualDy * params.zoom,
-        });
-        sdk.syncViewport?.();
-        sdk.scheduler?.requestRender();
-      }
-
       if (tooltipTimeoutId) clearTimeout(tooltipTimeoutId);
       tooltipTimeoutId = 0;
       setTooltip({
-        x: pt.x + actualDx,
-        y: pt.y + actualDy,
+        x: pt.x,
+        y: pt.y,
         w: newRect.w,
         h: newRect.h
       });
@@ -302,10 +284,23 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
 
   const handleLostPointerCapture = (e: PointerEvent) => {
     const drag = dragState();
-    if (!drag || e.pointerId !== drag.pointerId) return;
+    if (!drag) return;
 
     if (drag.handle.startsWith("rotate")) {
       params.onRotationCommit?.();
+    } else if (drag.handle !== "new") {
+      const finalRect = params.cropRect();
+      const hasChange = finalRect &&
+        (finalRect.x !== drag.startRect.x ||
+         finalRect.y !== drag.startRect.y ||
+         finalRect.w !== drag.startRect.w ||
+         finalRect.h !== drag.startRect.h);
+      if (hasChange) {
+        commitCropState(
+          { x: drag.startRect.x, y: drag.startRect.y, w: drag.startRect.w, h: drag.startRect.h },
+          drag.startRotation ?? params.cropRotation?.() ?? 0
+        );
+      }
     }
 
     setDragState(null);
@@ -353,6 +348,34 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
       params.onDragStateChange?.(true);
     }
   };
+
+  onMount(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const drag = dragState();
+      if (e.key === "Escape" && drag) {
+        e.preventDefault();
+        const svg = params.getSvgRef();
+        if (svg) { try { svg.releasePointerCapture(drag.pointerId); } catch {} }
+
+        if (drag.handle === "new") {
+          params.onCropRectChange(drag.startRect);
+          params.onCropRotationChange?.(drag.startRotation ?? 0);
+        } else {
+          params.onCropRectChange(drag.startRect);
+          params.onCropRotationChange?.(drag.startRotation ?? params.cropRotation?.() ?? 0);
+        }
+
+        setDragState(null);
+        setActiveHandle(null);
+        params.onSnapLines?.([]);
+        params.onDragStateChange?.(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    onCleanup(() => {
+      window.removeEventListener("keydown", handleKeyDown);
+    });
+  });
 
   onCleanup(() => {
     if (tooltipTimeoutId) clearTimeout(tooltipTimeoutId);

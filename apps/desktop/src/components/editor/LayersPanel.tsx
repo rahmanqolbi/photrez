@@ -202,7 +202,7 @@ export function LayersPanel() {
               scheduler.requestRender();
             }
           }}
-          class="h-[26px] w-[120px] rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[12px] text-editor-text focus:outline-none focus:border-editor-accent"
+          class="h-[26px] w-[120px] rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[12px] text-editor-text focus:outline-none focus-visible:border-editor-accent"
         >
           <option value="normal">Normal</option>
           <option value="multiply">Multiply</option>

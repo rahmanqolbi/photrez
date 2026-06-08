@@ -4,6 +4,7 @@ import { Icon } from "./icons";
 import { LayersPanel } from "./LayersPanel";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { INSPECTOR_TABS } from "./editorData";
+import { useEditor } from "./EditorContext";
 
 type RightDockProps = {
   open: boolean;
@@ -32,8 +33,12 @@ function InspectorTabs() {
 }
 
 function ExportButton() {
+  const { setShowExportDialog } = useEditor();
   return (
-    <button class="flex h-[28px] shrink-0 items-center gap-2 rounded-[4px] border border-editor-field-border px-3 text-[12.5px] text-editor-text transition-colors hover:bg-white/[0.045]">
+    <button
+      onClick={() => setShowExportDialog(true)}
+      class="flex h-[28px] shrink-0 items-center gap-2 rounded-[4px] border border-editor-field-border px-3 text-[12.5px] text-editor-text transition-colors hover:bg-white/[0.045]"
+    >
       Export
       <Icon
         name="chevron-down"

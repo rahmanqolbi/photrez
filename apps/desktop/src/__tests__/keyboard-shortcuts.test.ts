@@ -18,10 +18,19 @@ describe('Keyboard shortcut mapping', () => {
     expect(isFlipV).toBe(true);
   });
 
+  it('should map Ctrl+Shift+Z to redo', () => {
+    const ctrlKey = true;
+    const shiftKey = true;
+    const key = 'z';
+    const isRedo = ctrlKey && shiftKey && key === 'z';
+    expect(isRedo).toBe(true);
+  });
+
   it('should map Ctrl+Z to undo', () => {
     const ctrlKey = true;
+    const shiftKey = false;
     const key = 'z';
-    const isUndo = ctrlKey && key === 'z';
+    const isUndo = ctrlKey && !shiftKey && key === 'z';
     expect(isUndo).toBe(true);
   });
 

@@ -1,5 +1,6 @@
 import { onMount, onCleanup } from "solid-js";
 import { constrainCropRectToDocument } from "@/viewport/cropGeometry";
+import { getModernCropApplyRotation, modernFrameToCropRect } from "@/viewport/modernCropGeometry";
 import type { ToolType } from "@/viewport/input-handler";
 import { useEditor } from "./EditorContext";
 import { flattenAllLayers, mergeActiveLayerDown } from "./layerOperations";
@@ -39,7 +40,23 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     setCropRotation,
     hiddenCropPreview,
     setHiddenCropPreview,
+    cropInteractionMode,
+    undoLastCrop,
+    redoCrop,
+    canCropUndo,
+    canCropRedo,
+    undoModernCrop,
+    redoModernCrop,
+    commitModernCropState,
+    commitCropState,
     cropDeletePixels,
+    modernCropFrame,
+    modernCropImageTransform,
+    setModernCropImageTransform,
+    resetModernCrop,
+    viewportWidth,
+    viewportHeight,
+    pan,
     layerTransformSession,
     setLayerTransformSession,
     brushSize,
@@ -103,37 +120,112 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
 
       // Crop tool keyboard shortcuts
       if (activeTool() === "crop") {
+        const ctrl = e.ctrlKey || e.metaKey;
+        const key = e.key.toLowerCase();
+        if (ctrl && e.shiftKey && key === "z") {
+          e.preventDefault();
+          e.stopPropagation();
+          if (cropInteractionMode() === "modern") {
+            redoModernCrop();
+          } else if (canCropRedo()) {
+            const entry = redoCrop();
+            if (entry) {
+              setCropRect(entry.rect);
+              setCropRotation(entry.rotation);
+            }
+          }
+          return;
+        }
+        if (ctrl && key === "z") {
+          e.preventDefault();
+          e.stopPropagation();
+          if (cropInteractionMode() === "modern") {
+            undoModernCrop();
+          } else if (canCropUndo()) {
+            const entry = undoLastCrop();
+            if (entry) {
+              setCropRect(entry.rect);
+              setCropRotation(entry.rotation);
+            }
+          }
+          return;
+        }
+        if (ctrl && key === "y") {
+          e.preventDefault();
+          e.stopPropagation();
+          if (cropInteractionMode() === "modern") {
+            redoModernCrop();
+          } else if (canCropRedo()) {
+            const entry = redoCrop();
+            if (entry) {
+              setCropRect(entry.rect);
+              setCropRotation(entry.rotation);
+            }
+          }
+          return;
+        }
         if (e.key === "Enter") {
           e.preventDefault();
-          applyCropPreview({
-            workspace,
-            renderer,
-            cropRect: cropRect(),
-            cropMode: cropMode(),
-            cropSizeTarget: cropSizeTarget(),
-            cropDeletePixels: cropDeletePixels(),
-            cropRotation: cropRotation(),
-            scheduler,
-            setCropRect,
-            setCropRotation,
-            setHiddenCropPreview,
-            setActiveTool,
-          });
+          if (cropInteractionMode() === "modern" && modernCropFrame()) {
+            const rect = modernFrameToCropRect({
+              frame: modernCropFrame()!,
+              viewport: {
+                width: viewportWidth(),
+                height: viewportHeight(),
+                panX: pan().x,
+                panY: pan().y,
+                zoom: zoom(),
+              },
+              transform: modernCropImageTransform(),
+            });
+            applyCropPreview({
+              workspace, renderer,
+              cropRect: rect,
+              cropMode: cropMode(),
+              cropSizeTarget: cropSizeTarget(),
+              cropDeletePixels: cropDeletePixels(),
+              cropRotation: getModernCropApplyRotation(modernCropImageTransform().rotation),
+              scheduler,
+              setCropRect, setCropRotation, setHiddenCropPreview, setActiveTool,
+              recenterViewport: options.fitToScreenAndRender,
+            });
+            resetModernCrop();
+          } else {
+            applyCropPreview({
+              workspace,
+              renderer,
+              cropRect: cropRect(),
+              cropMode: cropMode(),
+              cropSizeTarget: cropSizeTarget(),
+              cropDeletePixels: cropDeletePixels(),
+              cropRotation: cropRotation(),
+              scheduler,
+              setCropRect,
+              setCropRotation,
+              setHiddenCropPreview,
+              setActiveTool,
+              recenterViewport: options.fitToScreenAndRender,
+            });
+          }
           return;
         }
         if (e.key === "Escape") {
           e.preventDefault();
-          discardCropSession({
-            cropRect: () => cropRect(),
-            cropRotation: () => cropRotation(),
-            hiddenCropPreview,
-            setCropRect,
-            setCropRotation,
-            setHiddenCropPreview,
-          });
+          if (cropInteractionMode() === "modern") {
+            resetModernCrop();
+          } else {
+            discardCropSession({
+              cropRect: () => cropRect(),
+              cropRotation: () => cropRotation(),
+              hiddenCropPreview,
+              setCropRect,
+              setCropRotation,
+              setHiddenCropPreview,
+            });
+          }
           return;
         }
-        if (e.key.startsWith("Arrow") && cropRect()) {
+        if (e.key.startsWith("Arrow") && (cropRect() || modernCropFrame())) {
           e.preventDefault();
           const step = e.shiftKey ? 10 : 1;
           let dx = 0;
@@ -143,26 +235,35 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
           else if (e.key === "ArrowLeft") dx = -step;
           else if (e.key === "ArrowRight") dx = step;
 
-          const rect = cropRect()!;
-          const newRect = constrainCropRectToDocument(
-            { ...rect, x: rect.x + dx, y: rect.y + dy },
-            docWidth(),
-            docHeight()
-          );
+          if (cropInteractionMode() === "modern" && modernCropFrame()) {
+            if (!e.repeat) commitModernCropState();
+            const t = modernCropImageTransform();
+            setModernCropImageTransform({
+              ...t,
+              offsetX: t.offsetX + dx,
+              offsetY: t.offsetY + dy,
+            });
+          } else {
+            const rect = cropRect()!;
+            if (!e.repeat) commitCropState(rect, cropRotation());
+            const newRect = constrainCropRectToDocument(
+              { ...rect, x: rect.x + dx, y: rect.y + dy },
+              docWidth(),
+              docHeight()
+            );
 
-          // Re-calculate actual offset delta (in case constraints blocked it)
-          const actualDx = newRect.x - rect.x;
-          const actualDy = newRect.y - rect.y;
+            const actualDx = newRect.x - rect.x;
+            const actualDy = newRect.y - rect.y;
 
-          setCropRect(newRect);
+            setCropRect(newRect);
 
-          // Pan viewport in opposite direction so the crop box remains visually stationary
-          const vp = engine.getViewport();
-          engine.setViewport({
-            panX: vp.panX - actualDx * zoom(),
-            panY: vp.panY - actualDy * zoom(),
-          });
-          options.syncViewport();
+            const vp = engine.getViewport();
+            engine.setViewport({
+              panX: vp.panX - actualDx * zoom(),
+              panY: vp.panY - actualDy * zoom(),
+            });
+            options.syncViewport();
+          }
           scheduler.requestRender();
           return;
         }

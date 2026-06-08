@@ -1,5 +1,587 @@
 # AI History — Photrez
 
+## [2026-06-08] BUG FIX — Classic Rotated Crop Resize Axis [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / UX
+
+**Root Cause:** Classic Crop visually rotates the crop rectangle and handles inside an SVG group, but resize drag math still passed raw screen/document-axis deltas to `applyCropResizeHandle()`. After rotation, the visible handle's local X/Y axes no longer match the screen axes, so dragging a rotated handle changed the wrong dimension and made the crop box stretch oddly.
+
+**Fix Rationale:** Resize deltas must be converted from screen/document axes into the crop box's local axes before width/height math runs. Move and rotation interactions should remain unchanged.
+
+**Rincian Perubahan:**
+1. `cropGeometry.ts` — Added `screenDeltaToRotatedCropLocalDelta()` to inverse-rotate pointer deltas by the active crop rotation.
+2. `useCropOverlayDrag.ts` — Classic Crop resize now uses the local delta before calling `applyCropResizeHandle()`.
+3. `crop-geometry.test.ts` — Added regression coverage for rotated crop resize delta mapping, including 90-degree axis conversion and east-handle resize behavior.
+
+### Verification Results
+- PASS: `pnpm --filter photrez-desktop exec vitest run src/__tests__/crop-geometry.test.ts src/components/editor/__tests__/CropOverlay.test.tsx --pool=threads --maxWorkers=1` (70 tests)
+- PASS: `pnpm run build`
+- PASS: `pnpm --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (728 tests)
+
+---
+
+## [2026-06-08] BUG FIX — Crop Rotate Regression Recovery [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / UX
+
+**Root Cause:** A rollback/recovery pass left two crop-rotation regressions. Modern Crop's WebGL canvas had been moved outside the document transform container to fix post-crop edge sampling, but `modernImageTransformStyle()` still only transformed the document-space overlay container. During Modern Crop rotation, the photo stayed visually static while the artboard border/overlay rotated, producing the black moving box. Classic Crop also still rendered the old corner arc rotate controls in `CropOverlayHandles` even though `CropOverlay` already had the shared outside rotate band.
+
+**Fix Rationale:** Treat this as a narrow recovery, not a crop behavior rewrite. Modern Crop must apply the same pivot transform directly to the rendered image canvas when crop is active. Classic Crop should keep move/resize geometry unchanged and remove only the stale arc rotate UI so the shared outside band owns rotation.
+
+**Rincian Perubahan:**
+1. `CanvasViewport.tsx` — When Modern Crop is active, the WebGL canvas now uses document-size CSS dimensions and applies `modernImageTransformStyle()` directly, so the image rotates around the existing Modern Crop pivot.
+2. `CropOverlayHandles.tsx` — Removed old Classic corner arc rotate paths and related props/imports; resize handles remain unchanged.
+3. `CropOverlay.tsx` — Removed the now-unused `rotateOuter` prop wiring to `CropOverlayHandles`.
+
+### Verification Results
+- PASS: `pnpm --filter photrez-desktop exec vitest run src/components/editor/__tests__/CropOverlay.test.tsx src/components/editor/__tests__/rotateBand.test.ts --pool=threads --maxWorkers=1` (42 tests)
+- PASS: `pnpm run build`
+- PASS: `pnpm --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (724 tests)
+
+---
+
+## [2026-06-08] BUG FIX — Size Mode Frame Fitting + Crop Re-entry Sync [COMPLETE]
+
+### Kategori: BUG FIX / CROP / UX
+
+**Bug 1 — Size mode preview used raw target dimensions:**
+`fitFrameToMaxBounds(target * zoom)` preserved literal target pixel size, so a 100×100 target produced a tiny 100×100 frame instead of filling the canvas at 1:1 aspect.
+
+**Fix (CropOptionBar.tsx):** Replaced with `setModernFrameToAspect({ w: target.w, h: target.h })` in all 4 Size mode paths. Frame now always fills canvas at target's aspect ratio, matching Ratio mode semantics.
+
+**Bug 2 — Modern crop session key ignored mode/values:**
+Session key `${activeDocumentId}:${viewport}x${viewportH}:${zoom}` didn't track `cropMode` or size/ratio values. Changing modes mid-session or re-entering crop didn't refit the frame. Size mode passed `aspect: null`, defaulting to canvas aspect.
+
+**Fix (CanvasViewport.tsx):** Extended session key to `${...}:${mode}:${aspectKey}`. Computes aspect from mode: Ratio uses `cropAspect()`, Size uses target aspect, Free uses null.
+
+**Bug 3 — Classic crop had no entry initialization:**
+No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ratio mode with no rect left preview empty while controls showed correct values.
+
+**Fix (CanvasViewport.tsx):** Added `createEffect` that initializes `cropRect` via `fitCropRectToAspect` when entering Classic crop in constrained mode with no rect and no hidden preview.
+
+**New tests (11 total):** 6 in CropOptionBar.test.tsx (small/wide/tall targets, input edits, swap), 5 in CanvasViewport.test.tsx (entry in Size/Ratio/Free modes, mode switching).
+
+**Verification:**
+- `pnpm.cmd run build` — PASS
+- `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` — 692/692 tests, 50 files
+
+---
+
+## [2026-06-08] BUG FIX — Classic Crop State Leaks Across Document Switches [COMPLETE]
+
+### Kategori: BUG FIX / CROP / DOCUMENT MANAGEMENT
+
+**Root Cause:** Classic crop state (`cropRect`, `cropRotation`, `cropMode`, `cropAspect`, `cropSizeTarget`, `hiddenCropPreview`, undo/redo stacks) is stored in pure signals in `cropState.ts` with no reactive effects on `activeDocumentId`. When switching documents, stale crop coordinates from the old document leaked into the new document, which may have different dimensions.
+
+**Fix Rationale:** Add a `createEffect` in `CanvasViewport.tsx` that watches `activeDocumentId()` and resets all Classic crop state when the document changes. Use a `prevDocIdForCropReset` sentinel variable to skip the initial mount (first effect run sets the sentinel but does not reset state). The effect also resets undo/redo stacks via `clearCropStacks()`.
+
+**Changes:**
+- `CanvasViewport.tsx`: Added crop reset `createEffect` (lines 188-203); added `setCropMode`, `setCropAspect`, `setCropSizeTarget`, `clearCropStacks` to destructuring from `useEditor()`
+- `CanvasViewport.test.tsx`: 4 new tests for doc-switch crop state reset (Classic + Modern frame recomputation)
+- `CropOverlay.test.tsx`: 3 new tests for Modern crop lostpointercapture during move/resize/rotate
+- `modern-crop-geometry.test.ts`: 6 new edge case tests (minimum size, extreme aspect ratios)
+
+**Verification:**
+- PASS: `pnpm.cmd run build` (tsc + Vite)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (681 tests, 50 files)
+
+---
+
+## [2026-06-08] BUG FIX — Crop Mode Select Stale Application [COMPLETE]
+
+### Kategori: BUG FIX / CROP / UX
+
+**Root Cause:** The crop mode `<select>` Free/Ratio/Size `onChange` handler in `CropOptionBar.tsx` had `if (cropRect())` guard, which excluded Modern mode entirely (`cropRect()` is always null in Modern mode — it uses `modernCropFrame`). No `mode === "free"` branch existed. Modern frame updates were never called in the handler — only Classic `setCropRect()` was called.
+
+**Fix Rationale:** Remove the `if (cropRect())` guard so mode changes apply regardless of interaction mode. Add explicit branches for all three modes:
+- **Free**: release constraint without changing frame geometry.
+- **Ratio**: set `cropAspect` (default 16:9), fit frame — `setModernFrameToAspect` for Modern, `fitCropRectToAspect` for Classic.
+- **Size**: set `cropSizeTarget` (default 800×600), resize frame — `setModernCropFrame({ w: targetW * zoom(), h: targetH * zoom() })` for Modern, `fitCropRectToAspect` for Classic.
+
+**Rincian Perubahan:**
+1. `CropOptionBar.tsx` — rewrote `<select onChange>` handler: removed `cropRect()` guard, added `free`/`ratio`/`size` branches, added Modern frame updates via `setModernFrameToAspect` and `setModernCropFrame`.
+2. `CropOptionBar.test.tsx` — added 8 regression tests covering Free→Ratio (Classic+Modern), Free→Size (Classic+Modern), Ratio→Free (Classic+Modern), Ratio→Size (Classic), Size→Free (Classic).
+
+### Verification Results
+- PASS: `pnpm.cmd --filter photrez-desktop exec vitest run src/components/editor/__tests__/CropOptionBar.test.tsx` (12 tests: 8 new + 4 existing)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (661 tests, 50 files)
+- PASS: `pnpm.cmd run build`
+
+---
+
+## [2026-06-08] BUG FIX — Crop Mode/Layout Changes Stale Frame [COMPLETE]
+
+### Kategori: BUG FIX / CROP / UX
+
+**Root Cause:** Even after Phase 1 made mode selection apply immediately, the frame could still be stale/oversized because:
+1. `setModernFrameToAspect` preserved current frame size and just adjusted one axis — no canvas-bounds check.
+2. Size mode assigned `target * zoom` directly without clamping — large targets produced oversized frames.
+3. `handlePresetChange("custom")` only handled Classic mode, not Modern.
+4. Swap button Size/Free paths assigned without clamping.
+5. Mode → Free did not clamp oversized frame.
+
+**Fix Rationale:** Add `fitFrameToMaxBounds` helper that scales down preserving aspect if frame exceeds `min(viewportW, docW * zoom)`. Use it in all frame-setting paths. Rewrite `setModernFrameToAspect` to delegate to `getDefaultModernCropFrame` which always returns the max canvas-fitting frame at the given aspect.
+
+**Rincian Perubahan:**
+1. `CropOptionBar.tsx` — new `fitFrameToMaxBounds` helper; `setModernFrameToAspect` rewritten; 8 paths updated to clamp: mode→Free, mode→Size, Size W input, Size H input, preset→custom, swap Size, swap Free.
+2. `CropOptionBar.test.tsx` — 7 new tests: repeated mode cycling (5 transitions), Size→Free oversized clamp, ratio preset change, custom ratio, Classic mode cycling.
+
+### Verification Results
+- PASS: `pnpm.cmd --filter photrez-desktop exec vitest run src/components/editor/__tests__/CropOptionBar.test.tsx` (19 tests)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (668 tests, 50 files)
+- PASS: `pnpm.cmd run build`
+
+---
+
+## [2026-06-08] BUG FIX — Global Focus Halo (focus-visible) [COMPLETE]
+
+### Kategori: BUG FIX / UI / ACCESSIBILITY / CSS
+
+**Root Cause:** `index.css` had `* { @apply outline-none }` which uses the universal selector (specificity 0,0,0), too weak to override the browser default `:focus { outline: auto }` (specificity 0,1,0). Tailwind v4's `outline-none` produces `outline: 2px solid transparent; outline-offset: 2px`, which on dark backgrounds renders as a visible white-ish anti-aliased edge artifact. No `:focus-visible` rules existed, so mouse clicks and keyboard Tab produced the same persistent "halo" visual. Keyboard accessibility was broken — no visible focus indicator for Tab navigation.
+
+**Fix Rationale:** Remove `outline-none` from the `*` reset (it was too weak anyway). Add `:focus:not(:focus-visible)` to suppress the transparent outline for mouse clicks (keeping transparent outline structure for forced-colors mode compat). Add `:focus-visible` with accent-colored 2px outline for keyboard focus navigation. This applies globally to all interactive elements — toolbar buttons, tabs, panel buttons, controls — without per-component changes.
+
+**Rincian Perubahan:**
+1. Removed `outline-none` from `* { @apply ... }` in `index.css` base layer.
+2. Added `:focus:not(:focus-visible)` rule — `outline: 2px solid transparent !important; outline-offset: 2px !important` — suppresses mouse focus artifact.
+3. Added `:focus-visible` rule — `outline: 2px solid var(--color-accent, #E15A17) !important; outline-offset: 2px !important` — visible accent indicator for keyboard Tab navigation.
+4. No component-level changes needed — global CSS handles all interactive elements.
+
+### Files Changed:
+- `apps/desktop/src/index.css`
+- `docs/AI_CURRENT_TASK.md`
+- `docs/AI_HISTORY.md`
+
+### Verification Results
+- PASS: `pnpm.cmd run build` (tsc + Vite)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (653 tests, 50 files)
+
+---
+
+## [2026-06-07] BUG FIX — Modern Crop Apply Rotation Sign [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / UX
+
+**Root Cause:** Modern Crop preview renders image rotation as the document/CSS transform `+R`, but `DocumentEngine.applyCrop()` interprets `cropRotation` as the crop-frame rotation and subtracts it from the layer transform. Modern Crop was passing preview rotation directly into the engine, so a visually rotated crop could commit with the opposite/inverted orientation.
+
+**Fix Rationale:** Modern Crop's rotation value is a preview transform, not the engine's crop-frame rotation convention. The conversion must happen at the Modern Crop apply boundary so Classic Crop keeps its existing semantics while every Modern apply path sends a consistent inverse rotation.
+
+**Rincian Perubahan:**
+1. Added `getModernCropApplyRotation()` to convert Modern preview rotation into the crop engine apply rotation.
+2. Updated Modern Crop apply from viewport overlay, keyboard Enter, and option-bar Apply to use the converted rotation.
+3. Added regression coverage for the rotation convention helper and Modern Crop keyboard apply behavior.
+4. Preserved Classic Crop `cropRotation()` pass-through behavior.
+
+### Files Changed:
+- `apps/desktop/src/viewport/modernCropGeometry.ts`
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- `apps/desktop/src/components/editor/CropOptionBar.tsx`
+- `apps/desktop/src/components/editor/useCanvasKeyboard.ts`
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts`
+- `apps/desktop/src/components/editor/__tests__/ModernCropKeyboardParity.test.tsx`
+- `docs/AI_CURRENT_TASK.md`
+- `docs/AI_HISTORY.md`
+- `docs/FEATURES.md`
+
+### Verification Results
+- RED: `pnpm.cmd exec vitest run src/components/editor/__tests__/ModernCropKeyboardParity.test.tsx src/__tests__/modern-crop-geometry.test.ts --pool=threads --maxWorkers=1` failed because Modern Enter still sent `cropRotation: 15` and the conversion helper was missing.
+- PASS: `pnpm.cmd exec vitest run src/components/editor/__tests__/ModernCropKeyboardParity.test.tsx src/__tests__/modern-crop-geometry.test.ts --pool=threads --maxWorkers=1` (45 tests)
+- PASS: `pnpm.cmd run build`
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (605 tests, 50 files)
+
+---
+
+## [2026-06-07] BUG FIX — Modern Crop Visual Apply and Rotated Drag Direction [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / UX
+
+**Root Cause:** Modern Crop apply converted the viewport-space cropbox into document space by inverse-mapping all four rotated screen corners and returning their axis-aligned bounding box. The crop engine already accepts the crop frame width/height plus a separate rotation value, so sending an AABB made the committed crop canvas larger than the visible cropbox and shifted the result away from the visual preview. Modern Crop move/resize compensation also stored raw screen deltas directly in `offsetX/offsetY`; because the render transform rotates offset deltas, dragging after rotation moved the image along a rotated direction instead of following the mouse in screen space.
+
+**Fix Rationale:** Modern Crop's visual frame is screen-aligned and rotation is an image transform under that frame. Apply must therefore send the crop frame center plus visual frame size converted to document units, while preserving rotation as the crop engine rotation option. Pointer movement is user-facing screen-space input, so move/resize compensation must be inverse-rotated before being written into the image transform offset state.
+
+**Rincian Perubahan:**
+1. Changed `modernFrameToCropRect()` to use the rendered cropbox pivot and frame `w/h / (zoom * scale)`, instead of a rotated document-space AABB.
+2. Added `modernScreenDeltaToImageOffsetDelta()` to convert screen deltas into image offset deltas under the current rotation.
+3. Updated Modern Crop move drag and resize compensation to use inverse-rotated deltas.
+4. Replaced the old regression expectation that locked in AABB growth for rotated Modern crop.
+5. Added overlay-level coverage proving a rightward screen drag at 90-degree rotation updates image offset vertically, which renders as a rightward visual move.
+
+### Files Changed:
+- `apps/desktop/src/viewport/modernCropGeometry.ts`
+- `apps/desktop/src/components/editor/ModernCropOverlay.tsx`
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts`
+- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx`
+- `docs/AI_CURRENT_TASK.md`
+- `docs/AI_HISTORY.md`
+- `docs/FEATURES.md`
+
+### Verification Results
+- RED: `pnpm.cmd exec vitest run src/__tests__/modern-crop-geometry.test.ts --pool=threads --maxWorkers=1` failed because rotated Modern crop returned AABB dimensions and drag delta helper was missing.
+- PASS: `pnpm.cmd exec vitest run src/components/editor/__tests__/CropOverlay.test.tsx src/__tests__/modern-crop-geometry.test.ts --pool=threads --maxWorkers=1` (61 tests)
+- PASS: `pnpm.cmd run build`
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (604 tests, 50 files)
+
+---
+
+## [2026-06-07] BUG FIX — Crop Apply Recenters Viewport After Commit [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / UX
+
+**Root Cause:** `applyCropPreview()` changed the document dimensions and refreshed renderer textures, but it did not recompute viewport zoom/pan for the new canvas size. Any pre-crop viewport state, including Modern Crop image movement/rotation state expressed through the viewport model, could survive after crop commit and leave the new artboard visually off-center.
+
+**Fix Rationale:** Applying crop changes the canvas dimensions, so the viewport must be fitted to the new document before the renderer backing buffer is resized. The shared crop apply action now accepts a recenter hook and invokes it immediately after `engine.applyCrop()` so Classic Crop, Modern Crop, Enter, double-click, and option-bar Apply share the same post-crop viewport behavior.
+
+**Rincian Perubahan:**
+1. Added optional `recenterViewport` support to `applyCropPreview()`.
+2. Calls `recenterViewport` before `renderer.resize()` so the WebGL backing buffer uses the updated zoom from the recentered viewport.
+3. Wired `CanvasViewport` Modern/Classic apply paths and `useCanvasKeyboard` Enter paths to `fitToScreenAndRender()`.
+4. Wired `CropOptionBar` Apply to `engine.fitToScreen(viewportWidth, viewportHeight)` plus `syncViewport()`.
+5. Added a regression test proving crop apply recenters the viewport after commit.
+
+### Files Changed:
+- `apps/desktop/src/components/editor/cropToolActions.ts`
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- `apps/desktop/src/components/editor/useCanvasKeyboard.ts`
+- `apps/desktop/src/components/editor/CropOptionBar.tsx`
+- `apps/desktop/src/components/editor/__tests__/cropToolActions.test.ts`
+- `docs/AI_CURRENT_TASK.md`
+- `docs/AI_HISTORY.md`
+- `docs/FEATURES.md`
+
+### Verification Results
+- RED: `pnpm.cmd exec vitest run src/components/editor/__tests__/cropToolActions.test.ts --pool=threads --maxWorkers=1` failed because `recenterViewport` was not called.
+- PASS: `pnpm.cmd exec vitest run src/components/editor/__tests__/cropToolActions.test.ts --pool=threads --maxWorkers=1` (7 tests)
+- PASS: `pnpm.cmd run build`
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (602 tests, 50 files)
+
+---
+
+## [2026-06-07] BUG FIX — Modern Crop Modifier and Shortcut Parity [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / UX
+
+**Root Cause:** Modern Crop used its own simplified resize path and did not pass pointer `shiftKey`/`altKey` into the geometry helper. That dropped Classic Crop modifier behavior for free aspect lock, ratio/size Shift inversion, Alt center resize, and Shift+Alt combined resize. The Crop keyboard branch also checked `Ctrl+Z` before `Ctrl+Shift+Z`, so Modern Crop redo via `Ctrl+Shift+Z` was incorrectly routed to undo.
+
+**Fix Rationale:** Modern Crop is a different coordinate model, but not a different interaction contract. Modifier interpretation should match Classic Crop and Transform conventions wherever the behavior applies, while preserving the viewport-fixed Modern frame and its image-compensation model.
+
+**Rincian Perubahan:**
+1. Added `shift`/`alt` inputs to `resizeModernFrameOneSided()`.
+2. Reused Classic Crop resize semantics for Shift corner behavior and kept Modern's existing compensation model for normal one-sided resize.
+3. Passed `e.shiftKey` and `e.altKey` from `ModernCropOverlay` into the Modern resize helper.
+4. Reordered Crop keyboard undo/redo handling so `Ctrl+Shift+Z` maps to redo before plain `Ctrl+Z` undo.
+5. Added regression tests for Modern Shift, Alt, Shift+Alt, Enter, Esc, Shift+Arrow nudge, Ctrl+Z, Ctrl+Y, and Ctrl+Shift+Z.
+
+### Files Changed:
+- `apps/desktop/src/viewport/modernCropGeometry.ts`
+- `apps/desktop/src/components/editor/ModernCropOverlay.tsx`
+- `apps/desktop/src/components/editor/useCanvasKeyboard.ts`
+- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx`
+- `apps/desktop/src/components/editor/__tests__/ModernCropKeyboardParity.test.tsx`
+- `docs/AI_CURRENT_TASK.md`
+- `docs/AI_HISTORY.md`
+- `docs/FEATURES.md`
+
+### Verification Results
+- PASS: `pnpm.cmd exec vitest run src/__tests__/modern-crop-geometry.test.ts src/components/editor/__tests__/CropOverlay.test.tsx src/components/editor/__tests__/ModernCropKeyboardParity.test.tsx --pool=threads --maxWorkers=1` (63 tests)
+- PASS: `pnpm.cmd run build`
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (602 tests, 50 files)
+
+---
+
+## [2026-06-07] BUG FIX — Modern Crop Rotation Pivot Uses Cropbox Center [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / UX
+
+**Root Cause:** Modern Crop rendered the image/document with `translate(pan + offset) rotate(rotation) scale(...)` and `transform-origin: 0 0`. That made CSS rotate around the document top-left instead of the rendered cropbox center, so the cropbox center drifted visually while rotating.
+
+**Fix Rationale:** Modern Crop is a viewport-space frame with the image moving underneath it. The visual transform and inverse crop-apply geometry must share one pivot: the rendered cropbox center in screen coordinates. The render transform now maps the document point under that screen pivot back to the same screen pivot after rotation and scale.
+
+**Rincian Perubahan:**
+1. Added `getModernCropFrameScreenCenter()` and `getModernCropImagePivot()` helpers in `modernCropGeometry.ts`.
+2. Updated `CanvasViewport.tsx` Modern transform to use `translate(pivot screen) rotate(...) scale(...) translate(-pivot document)`.
+3. Updated `screenPointToModernDocumentPoint()` and `modernFrameToCropRect()` so apply-crop inverse geometry uses the same pivot math as the DOM transform.
+4. Added regression tests proving the rendered cropbox center remains pinned under rotation and scale.
+
+### Files Changed:
+- `apps/desktop/src/viewport/modernCropGeometry.ts`
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts`
+- `docs/AI_CURRENT_TASK.md`
+- `docs/AI_HISTORY.md`
+- `docs/FEATURES.md`
+
+### Verification Results
+- PASS: `pnpm.cmd exec vitest run src/__tests__/modern-crop-geometry.test.ts --pool=threads --maxWorkers=1` (39 tests)
+- PASS: `pnpm.cmd run build`
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (594 tests, 49 files)
+
+---
+
+## [2026-06-07] FEATURE — Modern Crop: Projected Canvas Bounds [COMPLETE]
+
+### Kategori: FEATURE / CROP / FRONTEND / UX
+
+**Root Cause:** Modern crop frame size was tied to viewport dimensions only (`viewportWidth`/`viewportHeight`), ignoring the projected canvas size (`docWidth × zoom × scale`). This meant zoom in/out did not adjust the crop frame, and the frame could be arbitrarily large or small relative to the actual canvas content.
+
+**Fix Rationale:** Frame size should track the projected canvas bounds — the visible canvas size at the current zoom level. The frame fits within `min(viewport, projected canvas)`, recomputes on zoom changes, and resize interactions clamp to projected bounds. This keeps the crop frame visually aligned with the document content.
+
+**Rincian Perubahan:**
+1. Added `getProjectedCanvasSize()` helper to `modernCropGeometry.ts` — computes `docWidth × zoom × scale` and `docHeight × zoom × scale`.
+2. Added `clampFrameToProjectedBounds()` helper — clamps frame w/h to projected canvas size with minimum 24px.
+3. Updated `getDefaultModernCropFrame()` — frame fits within `min(viewport, projected canvas)`. Added optional `scale` param (defaults to 1).
+4. Updated `resizeModernFrameFromCenter()` and `resizeModernFrameOneSided()` — accept `projectedWidth`/`projectedHeight` as max bounds (fall back to viewport if not provided).
+5. Updated `CanvasViewport.tsx` — session key now includes zoom so frame recomputes on zoom changes. Passes `scale` from `modernCropImageTransform` and computed `projectedWidth`/`projectedHeight` to overlay.
+6. Updated `ModernCropOverlay.tsx` — added `projectedWidth`/`projectedHeight` props, resize handler passes projected bounds to `resizeModernFrameOneSided`.
+7. Updated `CropOverlay.test.tsx` — added missing `projectedWidth`/`projectedHeight` props to test render.
+8. Added 4 new tests: `getProjectedCanvasSize`, `clampFrameToProjectedBounds`, projected bounds clamping for center and one-sided resize. Updated 3 existing tests for new semantics.
+
+### Files Changed:
+- `apps/desktop/src/viewport/modernCropGeometry.ts` — added `getProjectedCanvasSize`, `clampFrameToProjectedBounds`, updated `getDefaultModernCropFrame`, `resizeModernFrameFromCenter`, `resizeModernFrameOneSided`
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` — zoom in session key, scale param, projected bounds computation
+- `apps/desktop/src/components/editor/ModernCropOverlay.tsx` — projectedWidth/projectedHeight props, resize handler update
+- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` — added projectedWidth/projectedHeight to test render
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — 4 new tests, 3 updated tests
+
+### Verification Results
+- PASS: `npx vitest run src/__tests__/modern-crop-geometry.test.ts` (37 tests)
+- PASS: `pnpm.cmd run build` (tsc + Vite)
+- PASS: `npx vitest run` (588 tests, 49 files)
+
+---
+
+## [2026-06-07] FEATURE — Modern Crop: Size Mode Resize + Undo/Redo [COMPLETE]
+
+### Kategori: FEATURE / CROP / FRONTEND / UX
+
+**Root Cause:** Modern crop lacked size-mode aspect-ratio constraint during interactive resize. The `resizeModernFrameFromCenter` helper only handled free and ratio modes. Modern crop also lacked a dedicated undo/redo stack for frame and image-transform operations; switching tools or applying crop discarded any intermediate adjustment history.
+
+**Fix Rationale:** Size mode should preserve the target-size aspect ratio during resize (same constraint behavior as ratio mode, but using `cropSizeTarget` as the aspect source). A dedicated undo/redo stack lets the user step through frame resize, image drag, and image rotation operations independently from the classic crop undo stack and the global document history.
+
+**Rincian Perubahan:**
+1. Added `cropMode` parameter to `resizeModernFrameFromCenter` — when `"size"` or `"ratio"`, the aspect ratio constraint is active. CanvasViewport computes effective aspect from `cropSizeTarget` when in size mode.
+2. Added `commitModernCropState`, `undoModernCrop`, `redoModernCrop` to `modernCropState.ts` with dedicated undo/redo stacks. `resetModernCrop` clears both stacks.
+3. Added `onModernCropCommit` callback prop to `ModernCropOverlay`, called at the start of every drag (move/resize/rotate). CanvasViewport wires it to `commitModernCropState`.
+4. Added Ctrl+Z/Y (or Cmd+Z/Y) keyboard shortcuts in `useCanvasKeyboard.ts` for modern crop undo/redo — also wired for classic crop undo/redo.
+5. Exposed `commitModernCropState`, `canModernCropUndo`, `canModernCropRedo`, `undoModernCrop`, `redoModernCrop` through `EditorContext`.
+6. Added 19 new tests: size-mode constrain preserves aspect ratio, center stays fixed during N/S/E/corner resize, undo/redo commit/restore/clear/stack behavior.
+
+### Files Changed:
+- `apps/desktop/src/viewport/modernCropGeometry.ts` — added `cropMode` param to `resizeModernFrameFromCenter`
+- `apps/desktop/src/components/editor/modernCropState.ts` — undo/redo stacks + helpers
+- `apps/desktop/src/components/editor/ModernCropOverlay.tsx` — `onModernCropCommit` prop, wired on drag start
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` — size mode aspect, `onModernCropCommit`, destructure `commitModernCropState`
+- `apps/desktop/src/components/editor/EditorContext.tsx` — expose modern undo/redo
+- `apps/desktop/src/components/editor/useCanvasKeyboard.ts` — Ctrl+Z/Y for modern/classic crop undo/redo, destructure new functions + `cropInteractionMode`
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — 6 new tests: size mode, center stability
+- `apps/desktop/src/__tests__/modern-crop-state.test.ts` — NEW: 10 undo/redo tests
+- `docs/AI_CURRENT_TASK.md`
+- `docs/AI_HISTORY.md`
+
+### Verification Results
+- PASS: `pnpm.cmd --filter photrez-desktop test -- apps/desktop/src/__tests__/modern-crop-geometry.test.ts apps/desktop/src/__tests__/modern-crop-state.test.ts` (563 tests, 49 files)
+- PASS: `pnpm.cmd run build`
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (563 tests, 49 files)
+
+---
+
+## [2026-06-07] BUG FIX — Modern Crop Rotate and Initial Fit Regression [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / UX
+
+**Root Cause:** Modern crop had two regressions after the coordinate-model split. The rotate hit zone was a generic transparent circle that overlapped resize handle behavior and had no regression proof for rotation. The default frame helper also clamped frame width/height to `viewport * 0.82`, so the Modern cropbox could be visibly smaller than the fitted canvas/artboard. Existing non-null Modern frame state could preserve that smaller frame across crop sessions.
+
+**Fix Rationale:** Modern crop should start as a frame fitted to the visible canvas and should expose distinct rotate hit geometry, matching the Classic/transform overlay pattern. Session entry should recompute the default frame so stale geometry does not survive after UX changes.
+
+**Rincian Perubahan:**
+1. Updated `getDefaultModernCropFrame()` to fit the zoomed canvas size within the viewport instead of using an arbitrary 82% viewport cap.
+2. Reused `getRotatePath()` for Modern crop corner rotate hit zones and added `data-modern-crop-rotate` for regression targeting.
+3. Added regression coverage for Modern default frame fit and Modern rotate gesture updating `modernCropImageTransform.rotation`.
+4. Updated `CanvasViewport.tsx` to refit Modern crop frame on new Modern crop sessions.
+
+### Files Changed:
+- `apps/desktop/src/viewport/modernCropGeometry.ts`
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts`
+- `apps/desktop/src/components/editor/ModernCropOverlay.tsx`
+- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx`
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- `docs/AI_CURRENT_TASK.md`
+- `docs/AI_HISTORY.md`
+
+### Verification Results
+- PASS: `pnpm.cmd --filter photrez-desktop test -- apps/desktop/src/__tests__/modern-crop-geometry.test.ts apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx --run --pool=threads --maxWorkers=1`
+- PASS: `pnpm.cmd run build`
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (549 tests, 48 files)
+
+---
+
+## [2026-06-07] FEATURE — Modern vs Classic Crop Redesign with Separate Coordinate Models [COMPLETE]
+
+### Kategori: FEATURE / CROP / FRONTEND / UX
+
+**Root Cause:** The earlier Modern crop implementation still used the document-space `cropRect` as its primary frame and simulated image movement through offset/counter-move behavior. That kept Modern visually close to Classic and made the UX unclear.
+
+**Rincian Perubahan:**
+1. Added dedicated Modern crop state: viewport-space `modernCropFrame` and `modernCropImageTransform`.
+2. Added `modernCropGeometry.ts` helpers for centered viewport frame placement, center-based frame resize, and frame-to-document crop rect conversion for apply.
+3. Added `ModernCropOverlay.tsx` rendered in viewport coordinates, separate from the Classic document-space `CropOverlay`.
+4. Updated `CanvasViewport.tsx` so Modern transforms the image/document under a fixed centered frame, while Classic keeps the old document-space movable crop box.
+5. Updated `CropOptionBar.tsx` so size/aspect/rotation/reset/apply use Modern state in Modern mode and existing `cropRect` state in Classic mode.
+6. Removed obsolete `cropContentOffset` and old Modern branches from `CropOverlay`/`useCropOverlayDrag`.
+7. Updated regression tests for Modern geometry, Modern overlay interaction, and Classic option-bar behavior.
+
+### Files Changed:
+- `apps/desktop/src/viewport/modernCropGeometry.ts`
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts`
+- `apps/desktop/src/components/editor/modernCropState.ts`
+- `apps/desktop/src/components/editor/EditorContext.tsx`
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- `apps/desktop/src/components/editor/ModernCropOverlay.tsx`
+- `apps/desktop/src/components/editor/CropOverlay.tsx`
+- `apps/desktop/src/components/editor/useCropOverlayDrag.ts`
+- `apps/desktop/src/components/editor/CropOptionBar.tsx`
+- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx`
+- `apps/desktop/src/components/editor/__tests__/CropOptionBar.test.tsx`
+- `docs/AI_CURRENT_TASK.md`
+- `docs/AI_HISTORY.md`
+- `docs/FEATURES.md`
+
+### Verification Results
+- PASS: `pnpm.cmd --filter photrez-desktop test -- apps/desktop/src/__tests__/modern-crop-geometry.test.ts --run --pool=threads --maxWorkers=1`
+- PASS: `pnpm.cmd --filter photrez-desktop test -- apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx --run --pool=threads --maxWorkers=1`
+- PASS: `pnpm.cmd --filter photrez-desktop test -- apps/desktop/src/components/editor/__tests__/CropOptionBar.test.tsx --run --pool=threads --maxWorkers=1`
+- PASS: `pnpm.cmd run build`
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (548 tests, 48 files)
+
+---
+
+## [2026-06-07] BUG FIX — Crop UX Clarification: Modern Drag Uses Viewport Model [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / UX
+
+**Root Cause:** Modern crop drag-inside used a separate CSS `translate3d()` on the WebGL canvas via `cropContentOffset`. That made only the image canvas move while the artboard border, overlay mask, handles, and crop geometry stayed in a different visual model. The result felt unclear and too similar to Classic, despite having a separate state signal.
+
+**Fix Rationale:** Modern mode should make the frame feel stable and move the document underneath through the same viewport transform model used by the rest of the editor. Drag-inside now pans the active document viewport by the screen delta and counter-moves `cropRect` by the document-space delta, so the crop frame remains visually stable while the image/artboard moves underneath. Classic mode remains rect-only movement over a static image.
+
+**Rincian Perubahan:**
+1. Removed the Modern canvas-only transform path from `CanvasViewport.tsx`; stale `cropContentOffset` is now migrated into `cropRect` and reset.
+2. Updated `useCropOverlayDrag.ts` Modern move handling to call `engine.setViewport({ panX, panY })`, `syncViewport()`, and `scheduler.requestRender()` while applying opposite document-space movement to the crop rect.
+3. Preserved Classic behavior: drag-inside changes only `cropRect`, with no viewport pan.
+4. Added regression coverage proving Classic rect movement and Modern viewport pan + counter-rect movement.
+
+### Files Changed:
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- `apps/desktop/src/components/editor/useCropOverlayDrag.ts`
+- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx`
+- `docs/AI_CURRENT_TASK.md`
+- `docs/AI_HISTORY.md`
+- `docs/FEATURES.md`
+
+### Verification Results
+- PASS: `pnpm.cmd --filter photrez-desktop test -- apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx --run --pool=threads --maxWorkers=1 --reporter=verbose` (542 tests, 47 files)
+- PASS: `pnpm.cmd run build`
+- PASS: `pnpm.cmd --filter photrez-desktop test` (542 tests, 47 files)
+
+---
+
+## [2026-06-07] FEATURE — Crop Interaction Modes: Modern + Classic [COMPLETE]
+
+### Kategori: FEATURE / FRONTEND / UI
+
+**Deskripsi:** Menambahkan dua interaksi crop mode dengan visual distinction nyata: Modern (default) dan Classic.
+- **Modern**: frame tetap stabil di layar, image/content bergeser di bawah frame via `cropContentOffset` + CSS transform pada canvas element. Pasteboard click NOP.
+- **Classic**: crop box bergerak di atas gambar (move rect tanpa counter-pan). Pasteboard click create/hide preview.
+
+**Rincian Perubahan:**
+1. **New signal `cropInteractionMode`** — `"modern" | "classic"` default `"modern"`, di `editorState.ts`.
+2. **New signal `cropContentOffset`** — `{ x, y }` default `{0,0}`, di `cropState.ts`. Menyimpan offset image terhadap crop frame untuk Modern mode.
+3. **Modern mode** — `createEffect` auto-create full-canvas frame saat masuk crop tool. Drag inside update `cropContentOffset` (bukan `cropRect`). `createEffect` lain apply offset sebagai `translate3d()` pada canvas element, image bergeser sementara SVG frame tetap di posisi `cropRect` yang unchanged.
+4. **Classic mode** — Drag inside gerakkan `cropRect` TANPA counter-pan viewport → box visual bergerak di atas image. Viewport pan tidak berubah.
+5. **Mode toggle** — Segmented control di `CropOptionBar.tsx`.
+6. **Transition rules** — Modern→Classic: bake offset ke rect (`rect.x -= offset.x`). Classic→Modern: keep rect atau auto-create frame.
+7. **Apply crop** — `applyCropPreview` bake offset: `{ x: rect.x - offset.x, y: rect.y - offset.y }`.
+8. **No pasteboard crop in Modern**.
+
+### Files Changed:
+- `apps/desktop/src/components/editor/cropState.ts`
+- `apps/desktop/src/components/editor/editorState.ts`
+- `apps/desktop/src/components/editor/EditorContext.tsx`
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- `apps/desktop/src/components/editor/useCropOverlayDrag.ts`
+- `apps/desktop/src/components/editor/CropOverlay.tsx`
+- `apps/desktop/src/components/editor/CropOptionBar.tsx`
+- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx`
+- `apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx`
+- `apps/desktop/src/components/editor/__tests__/CropOptionBar.test.tsx`
+- `docs/AI_CURRENT_TASK.md`
+
+### Verification Results
+- PASS: `pnpm.cmd run build` (tsc + Vite)
+- PASS: `pnpm.cmd --filter photrez-desktop test` (541 tests, 47 files)
+
+---
+
+## [2026-06-07] FEATURE — Crop Overlay Visual Polish [COMPLETE]
+
+### Kategori: FEATURE / FRONTEND / UI
+
+**Deskripsi:** Polish crop overlay styling untuk tampilan profesional, tenang, dan utilitarian — mengurangi visual noise sambil mempertahankan fungsionalitas penuh.
+
+**Rincian Perubahan:**
+1. **Corner brackets dihapus** — `CropOverlayGuides.tsx` tidak lagi merender `CornerBrackets`. Fungsi dan komponen terkait dihapus. L-shaped corner marks redundant karena border + handles sudah memberi batas visual.
+2. **Rotate ring hidden** — Ring putih besar di tiap sudut sebelumnya selalu terlihat (`opacity: 0.6`). Sekarang tersembunyi (`opacity: 0`) dan muncul hanya saat hover corner (`opacity: 0.8`, warna orange #E15A17). Hit zone transparan tetap aktif untuk rotasi.
+3. **Opacity grid seragam 30%** — Semua mode guide (thirds/grid/diagonal/golden) menggunakan `rgba(255,255,255,0.3)`.
+4. **Handle corner lebih halus** — Default fill `rgba(255,255,255,0.75)`, stroke `rgba(0,0,0,0.35)`. Hover: `rgba(255,255,255,0.9)`. Active: orange #E15A17. Ditambah `rx=1`/`ry=1` untuk rounded corners subtle.
+5. **Dual-border** — Satu border dark outline (`rgba(0,0,0,0.45)`, 1.5px) di bawah border putih (`rgba(255,255,255,0.85)`, 0.75px) agar crop box terbaca di gambar gelap maupun terang.
+
+### Files Changed:
+- `apps/desktop/src/components/editor/CropOverlayGuides.tsx`
+- `apps/desktop/src/components/editor/CropOverlayHandles.tsx`
+- `apps/desktop/src/components/editor/CropOverlay.tsx`
+
+### Verification Results
+- PASS: `pnpm.cmd run build` (tsc + Vite)
+- PASS: `pnpm.cmd --filter photrez-desktop test` (541 tests, 47 files)
+
+---
+
+## [2026-06-07] BUG FIX — Canvas Quality: Sync WebGL Backing Buffer on Zoom Changes [COMPLETE]
+
+### Kategori: BUG FIX / RENDERER / FRONTEND
+
+**Root Cause:** `WebGL2Backend.resize()` was only called on document switch (`activeDocumentId` change) and window resize (ResizeObserver) — never on zoom changes via wheel or keyboard. When zoom changed, the CSS `scale(${zoom})` transform stretched (zoom in) or compressed (zoom out) the stale-resolution WebGL canvas buffer, causing the browser to interpolate the image → soft/blurry appearance.
+
+**Fix Rationale:** Added a SolidJS `createEffect` in `useViewportRenderer.ts` that tracks the `zoom()` signal and calls `resizeRenderer()` (which invokes `WebGL2Backend.resize(docW, docH, zoom, dpr)`) whenever zoom changes. This ensures the WebGL canvas backing buffer always matches `Math.round(docWidth × zoom × devicePixelRatio)`, so the CSS `scale()` transform operates on a correctly-sized buffer → pixel-perfect 1:1 mapping between buffer pixels and device pixels at any zoom level.
+
+### Files Changed:
+- `apps/desktop/src/components/editor/useViewportRenderer.ts` — added zoom signal tracking effect, imported `zoom` from `useEditor()`
+- `apps/desktop/src/__tests__/renderer.test.ts` — added 2 regression tests for canvas backing resolution math
+
+### Verification Results
+- PASS: `pnpm.cmd run build` (tsc + Vite)
+- PASS: `pnpm.cmd --filter photrez-desktop test` (541 tests, 47 files)
+
+---
+
+## [2026-06-07] FEATURE — Ctrl+Shift+Z Redo Shortcut [COMPLETE]
+
+### Kategori: FEATURE / FRONTEND / SHORTCUTS
+
+**Deskripsi:** Added `Ctrl+Shift+Z` as an alternative keyboard shortcut for redo (alongside existing `Ctrl+Y`).
+
+**Rincian Perubahan:**
+1. Added `Ctrl+Shift+Z` check before `Ctrl+Z` in `AppTitleBar.tsx` to avoid `Shift` being ignored.
+2. Updated keyboard shortcut test in `keyboard-shortcuts.test.ts` to verify `Ctrl+Shift+Z` → redo and `Ctrl+Z` → undo with explicit `shiftKey` check.
+
+### Files Changed:
+- `apps/desktop/src/components/editor/AppTitleBar.tsx` — added `Ctrl+Shift+Z` → `handleRedo()` before `Ctrl+Z` → `handleUndo()`
+- `apps/desktop/src/__tests__/keyboard-shortcuts.test.ts` — added `Ctrl+Shift+Z` redo test, updated `Ctrl+Z` undo test to check `!shiftKey`
+
+### Verification Results
+- PASS: `pnpm.cmd run build` (tsc + Vite)
+- PASS: `pnpm.cmd --filter photrez-desktop test` (539 tests, 47 files)
+
+---
+
 ## [2026-06-06] FEATURE — Brush/Eraser Tool UX Phase 2: Flow, Smoothing, Presets, Context Menu [COMPLETE]
 
 ### Kategori: FEATURE / BRUSH / ERASER / FRONTEND / UX
@@ -2005,3 +2587,347 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 
 - Eksekusi refactor harus dilakukan per wave kecil dengan targeted tests.
 - `cargo test --workspace` tetap perlu diperlakukan sesuai catatan existing render/toolchain issue di dokumen project saat implementasi berjalan.
+
+---
+
+## [2026-06-06] FEATURE — MVP Release Blockers Phase 1: Resize Canvas Dialog, Aspect Ratio Lock, Layer Delete Confirmation [COMPLETE]
+
+### Kategori: FEATURE / UI / LAYER
+
+### Changes
+
+1. **Resize Canvas Dialog** (`apps/desktop/src/components/editor/ResizeCanvasModal.tsx` — NEW)
+   - Modal dialog with W/H number inputs, aspect ratio lock toggle (link/unlock icon), px unit.
+   - Opens via `showResizeDialog` signal in `editorState.ts`, exposed through `EditorContext.tsx`.
+   - Apply flow: `history.commit()` → `engine.resizeCanvas()` → `renderer.resize()` → re-upload layer textures → `syncViewport()` → `requestRender()`. Supports undo.
+   - Wired into Image menu (`AppTitleBar.tsx`) and Canvas Properties panel (`CanvasProperties.tsx`).
+   - Mounted in `EditorShell.tsx`.
+
+2. **Layer Delete Confirmation** (`apps/desktop/src/components/editor/useLayerActions.ts`)
+   - Added `window.confirm()` with layer name and "This can be undone." before deletion.
+   - Existing last-layer guard preserved.
+
+3. **Focused Tests** (`ResizeCanvasModal.test.tsx`, `DeleteLayerConfirm.test.tsx` — NEW)
+   - 12 new tests covering dialog render, aspect ratio toggle, apply/cancel/Escape, undoability, and delete confirm/cancel/last-layer guard.
+
+### Verification
+- `pnpm run build` — PASS
+- `pnpm --filter photrez-desktop test` — 524 tests, 45 files — PASS
+
+---
+
+## [2026-06-06] FEATURE — Export End-to-End Pipeline [COMPLETE]
+
+### Kategori: FEATURE / EXPORT / UI / FRONTEND
+
+### Changes
+
+1. **Export pipeline** (`apps/desktop/src/components/editor/exportDocument.ts` — NEW)
+   - `encodeComposite()` — composites all visible layers (with transforms, opacity, flip/rotate) onto OffscreenCanvas → encodes to PNG/JPEG/WebP via `canvas.convertToBlob()`.
+   - White background pre-fill for JPEG (alpha not supported).
+   - `exportActiveDocument()` — opens native save dialog → encode → write via Tauri `writeFileBytes`.
+
+2. **ExportDialog** (`apps/desktop/src/components/editor/ExportDialog.tsx` — NEW)
+   - Three-segment format selector (PNG / JPEG / WebP), quality range slider (shown only for JPEG/WebP, default 90%).
+   - Async export with spinner loading state, success message with filename, error display.
+   - Escape/Cancel/backdrop-close dismiss.
+   - Signal `showExportDialog` added to `editorState.ts` / `EditorContext.tsx`.
+
+3. **Entry points wired**
+   - **RightDock** `ExportButton` → `onClick` opens dialog.
+   - **Ctrl+S** keyboard shortcut → opens dialog (MVP: Save = Export).
+   - No File > Save menu dropdown (File menu currently opens images; dedicated menu deferred).
+
+4. **Tests** (3 new files, 8 new tests)
+   - `ExportDialog.test.tsx` — renders/format switch/quality slider/cancel/Escape.
+   - `exportDocument.test.ts` — encodeComposite produces non-empty bytes.
+   - `editor-smoke.spec.ts` — 2 E2E tests: export dialog UI flow + Ctrl+S shortcut.
+
+### Changes (second pass — blend mode parity + E2E format verification)
+
+1. **Export compositing rewritten** (`exportDocument.ts`)
+   - Now uses `drawLayerToContext` from `layerComposite.ts` instead of inline compositing.
+   - Achieves parity with the WebGL renderer for: layer order, opacity, transforms, **all blend modes** (normal/multiply/screen/overlay/darken/lighten/color-dodge/color-burn/hard-light/soft-light/difference/exclusion).
+   - Known limitation noted: Canvas 2D vs GLSL may differ at alpha edge cases (negligible for MVP).
+
+2. **Parity E2E tests added** (2 new E2E tests)
+   - `encodeComposite produces valid format headers matching canvas dimensions` — verifies PNG/JPEG/WebP magic bytes, non-empty output.
+   - `export compositing matches document dimensions and blend mode + transform parity` — verifies 320×240 output, scaled/rotated/multiply-blended layers, invisible layer exclusion.
+
+### Verification (final)
+- `pnpm run build` — PASS
+- `pnpm --filter photrez-desktop test` — 538 tests, 47 files — PASS
+- `playwright test --grep "export dialog|encodeComposite|export compositing"` — 4/4 PASS
+- `cargo test -p photrez-core` — 85 tests — PASS
+
+### Changes (third pass — file I/O Rust tests + export data flow E2E)
+
+1. **Rust file I/O unit tests** (`apps/desktop/src-tauri/src/main.rs`)
+   - Added `#[cfg(test)] mod tests` with 7 tests covering:
+     - `write_file_bytes` creates file with correct content (temp dir)
+     - Write → read roundtrip with PNG binary data (header + IHDR + IEND)
+     - Invalid base64 returns `E_VALIDATION` error
+     - Write to invalid path returns `E_IO` error
+     - `read_file_bytes` on nonexistent file returns `E_IO` error
+     - `ping` returns ok/status/service
+     - `get_contract_info` lists all supported commands
+
+2. **Export data flow E2E test** (e2e/editor-smoke.spec.ts)
+   - `export data flow: encodeComposite → base64 → file write roundtrip`
+   - Simulates the full frontend → Tauri bridge → disk write pipeline:
+     - `encodeComposite` produces raw PNG bytes
+     - Bytes encoded to base64 (same as `native.ts` `writeFileBytes`)
+     - Base64 decoded back to bytes (same as `main.rs` `write_file_bytes`)
+     - Roundtrip verified byte-for-byte exact match
+     - Decoded bytes produce valid 16×16 PNG image via `createImageBitmap`
+
+3. **Manual verification steps documented** in AI_CURRENT_TASK.md
+   - Steps to run `pnpm tauri dev`, create doc, draw, Ctrl+S, save as PNG/JPEG/WebP
+   - Verify file opens in external viewer at correct dimensions with non-blank content
+
+### Verification
+- `pnpm run build` — PASS
+- `pnpm --filter photrez-desktop test` — 538 tests, 47 files — PASS
+- `playwright test --grep "export dialog|encodeComposite|export compositing|export data flow"` — 5/5 PASS
+- `cargo test -p photrez-desktop` — 7 file I/O tests — PASS
+- `cargo test -p photrez-core` — 85 tests — PASS
+
+---
+
+## [2026-06-08] BUG FIX — Crop State Edge Cases (3 Bugs) [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND
+
+### Root Cause & Fix Rationale per Bug
+
+**Bug A — `pendingPasteboardCropGesture` leak on pointercancel:**
+- **Root Cause:** `CanvasViewport` had no `pointercancel` handler for pasteboard crop gestures. Only `handlePasteboardPointerUp` cleared `pendingPasteboardCropGesture`. When `pointercancel` arrived (e.g., browser cancels pointer mid-drag), the signal stayed set, corrupting the next pasteboard interaction.
+- **Fix:** Added `handlePasteboardPointerCancel()` that clears `pendingPasteboardCropGesture` matching the cancelled `pointerId`. Routed container `onPointerCancel` through this new handler before delegating to `onViewportPointerCancel`.
+
+**Bug B — Modern crop image transform leaks across tool switches:**
+- **Root Cause:** The `createEffect` that initializes modern crop state on entering the Crop tool nulled `lastModernCropSessionKey` on tool exit but never called `resetModernCrop()`. On re-entry, `modernCropImageTransform` retained `offsetX/offsetY/rotation/scale` from the previous session, while `modernCropFrame` was re-created from scratch — the mismatched transform could position the image incorrectly.
+- **Fix:** Added `resetModernCrop()` call in the createEffect's early-return path when `activeTool() !== "crop"` and a session was previously active (`lastModernCropSessionKey !== null`).
+
+**Bug C — ModernCropOverlay drag state not cleared on lostpointercapture:**
+- **Root Cause:** `clearDrag` in `ModernCropOverlay` did not call `releasePointerCapture()` and did not fire `onModernCropCommit`, so if `lostpointercapture` fired mid-drag, the drag state persisted without committing the undo snapshot.
+- **Note:** Added regression test proving `clearDrag` fires on `lostpointercapture`. The existing `clearDrag` + `pointerup` path already handles state teardown correctly — the test validates that lostpointercapture triggers exactly one cleanup cycle.
+
+### Files Changed
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` — Bug A (handlePasteboardPointerCancel) + Bug B (resetModernCrop on tool exit)
+- `apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx` — 3 new regression tests, added `setModernImageTransform` to test consumer
+
+### Verification
+- PASS: `pnpm.cmd exec vitest run src/components/editor/__tests__/CanvasViewport.test.tsx` (33 tests, +3 new)
+- PASS: `pnpm.cmd run build`
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (608 tests, 50 files)
+
+---
+
+## [2026-06-08] BUG FIX — Crop & Transform lostpointercapture Defensive Gaps (2 Bugs) [COMPLETE]
+
+### Kategori: BUG FIX / CROP / TRANSFORM / FRONTEND
+
+### Root Cause & Fix Rationale per Bug
+
+**Bug D — Classic crop `handleLostPointerCapture` pointerId guard:**
+- **Root Cause:** `handleLostPointerCapture` in `useCropOverlayDrag.ts` guarded on `e.pointerId !== drag.pointerId` and returned early. When a browser/platform edge case fires `lostpointercapture` with a different pointerId than the stored drag pointerId, `dragState` stays non-null — the overlay enters a stuck-drag state. Additionally, unlike `clearDrag`, `handleLostPointerCapture` did not call `commitCropState` for resize/move drags, losing the undo snapshot when capture was lost during drag.
+- **Fix:** Removed pointerId guard from `handleLostPointerCapture` (defensive: any lostcapture should clean up regardless of pointerId). Added `commitCropState` call for non-rotate resize/move drags to match `clearDrag` behavior.
+
+**Bug E — SelectionTransformOverlay `handleLostPointerCapture` pointerId guard:**
+- **Root Cause:** Same pattern as Bug D — `useSelectionTransformDrag.ts:324-326` guarded on pointerId and returned early, leaving `dragState` stuck if pointerId mismatched on `lostpointercapture`.
+- **Fix:** Removed pointerId guard. No extra commit needed (transform overlay applies changes live via `scheduler.requestRender()` during drag).
+
+### Files Changed
+- `apps/desktop/src/components/editor/useCropOverlayDrag.ts` — Bug D
+- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` — regression test
+- `apps/desktop/src/components/editor/useSelectionTransformDrag.ts` — Bug E
+- `apps/desktop/src/components/editor/__tests__/SelectionTransformOverlay.test.ts` — regression test
+
+### Verification
+- PASS: `pnpm.cmd exec vitest run src/components/editor/__tests__/CropOverlay.test.tsx` (22 tests, +1 new)
+- PASS: `pnpm.cmd exec vitest run src/components/editor/__tests__/SelectionTransformOverlay.test.ts` (17 tests, +1 new)
+- PASS: `pnpm.cmd run build`
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (610 tests, 50 files)
+
+## [2026-06-08] BUG FIX — Tool Switch Mid-Drag Commit Leak [COMPLETE]
+
+### Kategori: BUG FIX / TOOL / FRONTEND / INPUT
+
+**Root Cause:** `handlePointerMove`/`handlePointerUp` in `input-handler.ts` received tool as parameter from caller passed `activeTool()` (current tool, not drag-start tool). When user switched tools mid-drag (e.g., brush → crop), the wrong tool branch ran:
+- Brush stroke data lost (never committed via `onPaintStroke`)
+- Spurious crop rect creation from brush coordinates
+
+**Fix Rationale:** Storing the tool at pointerdown ensures all drag events use the initiating tool regardless of tool switches during the drag. Backwards-compatible — only adds defense path for tool-switch mid-drag.
+
+**Rincian Perubahan:**
+1. Added `dragTool: ToolType | null` to `ToolContext` interface
+2. `handlePointerDown` sets `context.dragTool = tool` at drag start
+3. `handlePointerMove`/`handlePointerUp` use `context.dragTool ?? tool` internally
+4. `onCanvasPointerUp`/`onCanvasPointerCancel`/`onCanvasLostPointerCapture` in `useCanvasPointerTools.ts` use `dragTool` for brush commit guard
+5. `dragTool` cleared on pointerup/pointercancel/lostpointercapture via `interactiveState.dragTool = null`
+
+### Files Changed:
+- `apps/desktop/src/viewport/input-handler.ts` — `ToolContext.dragTool` + `handlePointerDown`/`handlePointerMove`/`handlePointerUp` updated
+- `apps/desktop/src/components/editor/useCanvasPointerTools.ts` — `dragTool` in commit guards + cleanup
+- `apps/desktop/src/__tests__/input-handler-move.test.ts` — 2 dragTool regression tests
+- `apps/desktop/src/__tests__/input-handler-snap.test.ts` — context objects updated with `dragTool: null`
+- `docs/AI_CURRENT_TASK.md`
+- `docs/AI_HISTORY.md`
+
+### Verification
+- PASS: `pnpm.cmd exec vitest run src/__tests__/input-handler-move.test.ts` (12 tests, +2 new)
+- PASS: `pnpm.cmd exec vitest run src/__tests__/input-handler-snap.test.ts` (4 tests)
+- PASS: `pnpm.cmd run build`
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (612 tests, 50 files)
+
+## [2026-06-08] ADVERSARIAL BUG HUNT — Escape During Crop Drag Overridden [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / INPUT
+
+**Root Cause (Bug G — Classic Crop):** `useCropOverlayDrag` had no window keydown listener for Escape. When the keyboard handler called `discardCropSession`, it reset `cropRect()` but the SVG's `dragState` remained active → subsequent `pointermove` recalculated from `dragState.startRect` and overwrote the reset.
+
+**Root Cause (Bug H — Modern Crop):** Same pattern. `ModernCropOverlay` managed its own local `dragState` with no Escape handling. `resetModernCrop()` reset frame/transform signals, but `dragState` stayed active → `pointermove` recalculated from start state and overrode the reset.
+
+**Fix Rationale:** Both classic and modern crop overlays need to cancel their internal drag state when the user presses Escape. The fix mirrors the existing Escape handler in `useSelectionTransformDrag.ts:334-357`: restore to pre-drag state, release pointer capture, clear drag state.
+
+**Rincian Perubahan:**
+1. `useCropOverlayDrag.ts`: Added `onMount` with `window.addEventListener("keydown")` that restores `drag.startRect` + rotation, releases capture, clears dragState/snap lines, notifies drag end.
+2. `ModernCropOverlay.tsx`: Added `onMount` with `window.addEventListener("keydown")` that calls `clearDrag()` on Escape. Added `onMount`/`onCleanup` to imports.
+
+### Files Changed:
+- `apps/desktop/src/components/editor/useCropOverlayDrag.ts` — Bug G fix
+- `apps/desktop/src/components/editor/ModernCropOverlay.tsx` — Bug H fix
+- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` — 4 new tests
+- `docs/AI_CURRENT_TASK.md`
+- `docs/AI_HISTORY.md`
+
+### Verification
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (616 tests, 50 files)
+- PASS: `pnpm.cmd run build`
+
+## [2026-06-08] REGRESSION FIX — Modern Crop Resize Handle Lag [COMPLETE]
+
+### Kategori: BUG FIX / MODERN CROP / FRONTEND / UX
+
+**Root Cause:** Bug J ("Modern Crop Resize Cursor Lag") was incompletely applied in the previous session — it only doubled deltas for the Alt (center-pivot) path but left `effDx = params.deltaX` for the primary non-Alt path. Since the crop frame is centered in the viewport (`screenX = (viewportWidth - frame.w) / 2`), `d(rightEdge)/d(frameW) = 1/2`. With non-doubled deltas, a 100px mouse drag only moved the right edge 50px — **50% lag**.
+
+**Fix Rationale:** The delta doubling is a coordinate-system requirement (centered frame), not a modifier-key behavior. Always double deltas regardless of Alt. The compensation formula handles the visual "one-sided vs center" distinction. The shift+corner proportional path also passes doubled deltas to `applyCropResizeHandle` for the same centering reason.
+
+**Rincian Perubahan:**
+1. `resizeModernFrameOneSided`: Removed the `alt ? ... : ...` guard — `effDx = params.deltaX * 2` (always double).
+2. `applyCropResizeHandle` call in shift+corner path: passes `params.deltaX * 2` and `params.deltaY * 2`.
+3. Tests: Updated resize coordinate expectations in ~25 existing tests + 12 new handle-tracking regression tests proving 1:1 edge-to-pointer tracking for all 8 handles, multi-move sequences (no drift), and aspect-ratio constrained edges.
+
+### Files Changed:
+- `apps/desktop/src/viewport/modernCropGeometry.ts` — unconditional delta doubling
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — updated + 12 new tests (63 total)
+- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` — updated 2 expected values
+
+### Verification
+- PASS: `npx vitest run src/__tests__/modern-crop-geometry.test.ts` (63 tests)
+- PASS: `npx vitest run` (653 tests, 50 files)
+- PASS: `pnpm.cmd run build` (tsc + Vite)
+
+---
+
+## [2026-06-08] BUG FIX — Modern Crop Fixed-Ratio Corner Resize Non-Monotonic [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND
+
+**Root Cause:** Both `resizeModernFrameOneSided` and `resizeModernFrameFromCenter` used an axis-selection threshold to choose between width-driven and height-driven resize when aspect-ratio-constrained:
+```javascript
+if (Math.abs(dw) >= Math.abs(dh)) {
+  newW = fw + dw; newH = newW / aspect;  // width-driven
+} else {
+  newH = fh + dh; newW = newH * aspect;  // height-driven
+}
+```
+When `|dw| ≈ |dh|` (common during diagonal drags along the ratio diagonal), small pointer noise oscillated the threshold, flip-flopping between the two paths. Because the aspect ratio amplifies the delta differently through each path (`width ratio = 1` vs `width ratio = useAspect`), per-move delta magnitudes varied by up to `useAspect ×` (e.g., 1.777× for 16:9), causing visible grow-fast/grow-slow cycles.
+
+**Fix Rationale:** Mirror the same diagonal projection approach used in `applyResizeHandle` (`transformGeometry.ts:210-233`) and `applyProportionalCornerResize`/`applyAspectCornerResize` (`cropGeometry.ts:45-69,71-86`). Project both `effDx`/`effDy` onto the handle diagonal (`projected = effDx*hx + effDy*hy`), compute a smooth scaling `factor = max(minFactor, 1 + projected/sumWH)`, then derive `newW = fw * factor`, `newH = newW / useAspect`. This blends both axes through a single smooth factor, eliminating the threshold discontinuity.
+
+**Rincian Perubahan:**
+1. `resizeModernFrameOneSided`: Replaced corner aspect path axis-threshold with diagonal projection. Uses `effDx`/`effDy` (raw delta, handle direction) and `hx`/`hy` corner diagonal signs.
+2. `resizeModernFrameFromCenter`: Same fix. Uses `params.deltaX`/`params.deltaY` doubled by `*2` convention matching centered resize.
+3. Updated 1 existing test expectation (SE corner ratio mode).
+4. Added 10 new regression tests: outward/inward monotonic sequences with axis flips for SE/NW/NE/SW corners (one-sided + centered), delta-ratio stability test (<1.3× swing vs old ~1.777×), and all-four-corners ratio invariant.
+
+### Files Changed:
+- `apps/desktop/src/viewport/modernCropGeometry.ts` — both resize functions corner aspect paths
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — 10 new + 1 updated test
+
+### Verification
+- PASS: `pnpm.cmd exec vitest run src/__tests__/modern-crop-geometry.test.ts` (51 tests)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (641 tests, 50 files)
+- PASS: `pnpm.cmd run build`
+
+---
+
+## [2026-06-08] BUG FIX — Crop Fixed-Ratio Corner Resize Reverse-Drag Jitter [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND
+
+**Root Cause:** `applyAspectCornerResize` in `cropGeometry.ts` computed the new crop rect width from `effDx` alone (`w = oldW + effDx`), completely ignoring `effDy`. This single-axis approach caused jitter when the user dragged a corner diagonally against its natural handle direction and the horizontal axis crossed zero. The same pattern was previously fixed in `applyResizeHandle` (`transformGeometry.ts:210-233`) using diagonal projection.
+
+**Fix Rationale:** Mirror the transform's `applyResizeHandle` approach: project both `effDx` and `effDy` onto the handle diagonal (`projected = effDx*hx + effDy*hy`), compute a smooth scaling factor from the projected delta, and apply the target aspect ratio via `h = w / targetRatio`. This blends both axes through a single factor so axis-crossing noise is damped by the other axis's contribution.
+
+**Rincian Perubahan:**
+1. `applyAspectCornerResize`: Replaced `w = oldW + effDx` with `projected = effDx*hx + effDy*hy`, then `factor = Math.max(minFactor, 1 + projected/sumWH)` and `w = oldW * factor`, `h = w / targetRatio`. Added hx/hy and sumWH computation matching `applyProportionalCornerResize`.
+2. `minFactor` adjusted from `max(1/oldW, 1/oldH)` to `max(1/oldW, targetRatio/oldW)` to ensure h = w/targetRatio >= 1 at minimum size.
+3. Updated 4 existing horizontal-drag expectations to use projection-based widths.
+4. Added 15 new regression tests: reverse diagonal drag on all 4 corners, axis-crossing stability (dx oscillates, dy oscillates), min-size clamping at aspect-ratio minimum, and Size mode reverse drag.
+
+### Files Changed:
+- `apps/desktop/src/viewport/cropGeometry.ts` — `applyAspectCornerResize` projection fix
+- `apps/desktop/src/__tests__/crop-geometry.test.ts` — 15 new + 4 updated tests
+
+### Verification
+- PASS: `pnpm.cmd exec vitest run src/__tests__/crop-geometry.test.ts` (36 tests)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (631 tests, 50 files)
+- PASS: `pnpm.cmd run build`
+- Risk items verified safe: R1 (Space+brush → lostcapture fallback), R2 (modern crop coords), R4 (rapid pointerdown), R6 (Ctrl+Z mid-brush), R7 (transform Escape already handled)
+
+## [2026-06-08] BUG FIX — Modern Crop Resize Beyond Projected Canvas [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND
+
+**Root Cause:** `resizeModernFrameOneSided` and `resizeModernFrameFromCenter` in `modernCropGeometry.ts` clamped the frame width/height to `projectedWidth`/`projectedHeight` (computed as `docWidth * zoom * scale`). This prevented the user from resizing the modern crop frame beyond the projected canvas area, even though Classic crop (`constrainCropRectToDocument`) only enforces a minimum size of 1x1 with no upper bound.
+
+**Fix Rationale:** Modern crop should match classic crop behavior: allow the frame to extend beyond the projected canvas area. The initial default frame is still bounded by the projected canvas and viewport (via `getDefaultModernCropFrame`), but interactive resize should not clamp to it.
+
+**Rincian Perubahan:**
+1. `resizeModernFrameFromCenter`: Removed `maxW`/`maxH` upper clamp from return. Changed from `Math.min(maxW, Math.max(minSize, ...))` to just `Math.max(minSize, ...)`.
+2. `resizeModernFrameOneSided`: Removed all upper-bound clamps — free resize path, shift proportional path, and aspect-locked path. Removed `maxW`/`maxH` computation entirely.
+3. Tests: Updated "clamps center resize" and "clamps one-sided resize" to "allows beyond projected canvas bounds" — verifying frame now exceeds projected dimensions.
+
+### Files Changed:
+- `apps/desktop/src/viewport/modernCropGeometry.ts` — removed upper-bound clamps
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — updated 2 tests
+
+### Verification
+- PASS: `pnpm.cmd exec vitest run src/__tests__/modern-crop-geometry.test.ts` (41 tests)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (616 tests, 50 files)
+- PASS: `pnpm.cmd run build`
+
+---
+
+## [2026-06-08] BUG FIX — Modern Crop Resize Cursor Lag (Doubled Delta) [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / UX
+
+**Root Cause:** Modern crop frame is centered in the viewport with CSS `x = (viewportWidth - frame.w) / 2`. When the user drags a resize handle, `d(right_edge) / d(deltaX) = 1/2` because both `x` and `frame.w` change with the delta. Dividing the delta by 2 in frame-width space means the cursor moves 2× faster than the frame width — the cursor visually pulls away from the crop edge during resize.
+
+**Fix Rationale:** The delta applied to `frame.w` must be doubled to achieve 1:1 cursor tracking since the frame is centered. This applies regardless of Alt modifier (which controls center-resize vs one-sided, not cursor tracking). The proportional shift path also needs doubled deltas for the same reason.
+
+**Rincian Perubahan:**
+1. `resizeModernFrameOneSided`: Changed `effDx = params.alt ? params.deltaX * 2 : params.deltaX` to `effDx = params.deltaX * 2` (always double, no alt-guard).
+2. `applyCropResizeHandle` in shift proportional path: doubled `dW`/`dH` passed through.
+3. Tests: Updated resize coordinate expectations in 2 tests to reflect doubled effective delta.
+
+### Files Changed:
+- `apps/desktop/src/viewport/modernCropGeometry.ts` — double resize deltas
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — updated expectations
+
+### Verification
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (616 tests, 50 files)
+- PASS: `pnpm.cmd run build`

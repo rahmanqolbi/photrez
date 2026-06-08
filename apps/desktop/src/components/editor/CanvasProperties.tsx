@@ -13,10 +13,7 @@ export function CanvasProperties() {
     syncViewport,
     viewportWidth,
     viewportHeight,
-    setActiveTool,
-    setCropRect,
-    setCropRotation,
-    setHiddenCropPreview,
+    setShowResizeDialog,
   } = useEditor();
 
   const engine = () => workspace.getActiveEngine();
@@ -32,10 +29,7 @@ export function CanvasProperties() {
   };
 
   const handleResizeCanvas = () => {
-    setCropRotation(0);
-    setHiddenCropPreview(null);
-    setCropRect({ x: 0, y: 0, w: w(), h: h() });
-    setActiveTool("crop");
+    setShowResizeDialog(true);
   };
 
   return (

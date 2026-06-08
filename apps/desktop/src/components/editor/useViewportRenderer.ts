@@ -13,6 +13,7 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
     renderer,
     scheduler,
     activeDocumentId,
+    zoom,
     syncViewport,
     setViewportWidth,
     setViewportHeight,
@@ -107,6 +108,16 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
     } catch (err) {
       console.error("Viewport sync failed:", err);
     }
+  });
+
+  // Reactive zoom sync — resize WebGL canvas buffer when zoom changes.
+  // Without this, the canvas backing buffer stays at the old zoom resolution,
+  // causing CSS scale(zoom) to stretch/compress a stale buffer → blurry image.
+  createEffect(() => {
+    const _z = zoom();
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+    resizeRenderer();
   });
 
   return {

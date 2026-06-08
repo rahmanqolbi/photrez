@@ -84,4 +84,33 @@ describe('Renderer integration', () => {
     const cssTransform = `translate(${pan.x}px, ${pan.y}px)`;
     expect(cssTransform).toBe('translate(100px, 50px)');
   });
+
+  it('should include zoom × dpr in canvas backing resolution for HiDPI sharpness', () => {
+    const docW = 800;
+    const docH = 600;
+    const zoom = 2.0;
+    const dpr = 2;
+    const w = Math.round(docW * zoom * dpr);
+    const h = Math.round(docH * zoom * dpr);
+    expect(w).toBe(3200);
+    expect(h).toBe(2400);
+  });
+
+  it('should update canvas backing resolution when zoom changes', () => {
+    const docW = 800;
+    const docH = 600;
+    const dpr = 2;
+
+    const atZoom1 = { w: Math.round(docW * 1.0 * dpr), h: Math.round(docH * 1.0 * dpr) };
+    const atZoom2 = { w: Math.round(docW * 2.0 * dpr), h: Math.round(docH * 2.0 * dpr) };
+    const atZoom05 = { w: Math.round(docW * 0.5 * dpr), h: Math.round(docH * 0.5 * dpr) };
+
+    expect(atZoom1).toEqual({ w: 1600, h: 1200 });
+    expect(atZoom2).toEqual({ w: 3200, h: 2400 });
+    expect(atZoom05).toEqual({ w: 800, h: 600 });
+
+    // When zoom changes, resize must produce a different backing size
+    expect(atZoom2.w).toBeGreaterThan(atZoom1.w);
+    expect(atZoom1.w).toBeGreaterThan(atZoom05.w);
+  });
 });

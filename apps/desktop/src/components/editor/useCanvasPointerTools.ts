@@ -100,6 +100,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     dragStart: { x: 0, y: 0 },
     dragCurrent: { x: 0, y: 0 },
     strokePoints: [],
+    dragTool: null,
   };
 
   const setHudInfo = (hud: HudData | null) => {
@@ -315,11 +316,15 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const canvas = params.getCanvasRef();
     if (canvas) canvas.releasePointerCapture(e.pointerId);
 
-    const tool = activeTool() as ToolType;
+    const tool = (interactiveState.dragTool ?? activeTool()) as ToolType;
     if (tool === "brush" || tool === "eraser") {
       const layerId = engine.getActiveLayerId();
-      if (layerId) params.commitBrushStroke(engine, layerId, tool === "eraser");
+      if (layerId && interactiveState.strokePoints.length > 0) {
+        params.commitBrushStroke(engine, layerId, tool === "eraser");
+      }
     }
+
+    interactiveState.dragTool = null;
 
     if (tool === "crop" && isPendingCropClick) {
       const dx = Math.abs(coords.x - interactiveState.dragStart.x);
@@ -356,7 +361,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       // Capture may already have been released — ignore
     }
 
-    const tool = activeTool() as ToolType;
+    const tool = (interactiveState.dragTool ?? activeTool()) as ToolType;
     if (tool === "brush" || tool === "eraser") {
       const layerId = engine.getActiveLayerId();
       if (layerId && interactiveState.strokePoints.length > 0) {
@@ -366,6 +371,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
 
     interactiveState.strokePoints = [];
     interactiveState.isDragging = false;
+    interactiveState.dragTool = null;
   };
 
   const onCanvasLostPointerCapture = (e: PointerEvent) => {
@@ -374,7 +380,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const engine = workspace.getActiveEngine();
     if (!engine) return;
 
-    const tool = activeTool() as ToolType;
+    const tool = (interactiveState.dragTool ?? activeTool()) as ToolType;
     if (tool === "brush" || tool === "eraser") {
       const layerId = engine.getActiveLayerId();
       if (layerId && interactiveState.strokePoints.length > 0) {
@@ -384,6 +390,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
 
     interactiveState.strokePoints = [];
     interactiveState.isDragging = false;
+    interactiveState.dragTool = null;
   };
 
   return {

@@ -49,6 +49,7 @@ describe("cropToolActions", () => {
     const setCropRotation = vi.fn();
     const setHiddenCropPreview = vi.fn();
     const setActiveTool = vi.fn();
+    const recenterViewport = vi.fn();
     const snapshot = { dummy: "snapshot" };
     
     const engine = {
@@ -94,6 +95,7 @@ describe("cropToolActions", () => {
       setCropRotation,
       setHiddenCropPreview,
       setActiveTool,
+      recenterViewport,
     });
 
     expect(history.commit).toHaveBeenCalledWith(snapshot);
@@ -105,6 +107,7 @@ describe("cropToolActions", () => {
     expect(renderer.resize).toHaveBeenCalledWith(300, 200, 1, 1);
     expect(renderer.uploadImage).toHaveBeenCalledWith("layer-with-bitmap", { width: 300, height: 400 });
     expect(renderer.uploadImage).toHaveBeenCalledTimes(1);
+    expect(recenterViewport).toHaveBeenCalledOnce();
     expect(scheduler.requestRender).toHaveBeenCalled();
     expect(setCropRect).toHaveBeenCalledWith(null);
     expect(setCropRotation).toHaveBeenCalledWith(0);

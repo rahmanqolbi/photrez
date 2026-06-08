@@ -70,9 +70,9 @@ export function LeftToolRail(props: { disabled?: boolean }) {
             <button
               onClick={() => handleToolChange(tool.id)}
               class={clsx(
-                "flex size-9 shrink-0 items-center justify-center rounded-[5px] transition-all duration-100 relative",
+                "flex size-9 shrink-0 items-center justify-center rounded-[5px] transition-all duration-100 relative focus-visible:!outline-none",
                 activeTool() === tool.id
-                  ? "bg-white/[0.08] text-editor-text"
+                  ? "bg-white/5 text-editor-text"
                   : "text-editor-icon hover:bg-white/5 hover:text-editor-text"
               )}
               aria-label={tool.label}

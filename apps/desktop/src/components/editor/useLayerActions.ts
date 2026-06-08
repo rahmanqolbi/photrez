@@ -174,7 +174,10 @@ export function useLayerActions() {
     const history = workspace.getActiveHistory();
     const activeId = activeLayerId();
     if (engine && history && activeId) {
-      if (engine.getLayers().length <= 1) return; // prevent last
+      if (engine.getLayers().length <= 1) return;
+      const layer = engine.getLayer(activeId);
+      const name = layer?.name || "Untitled";
+      if (!confirm(`Delete layer "${name}"? This can be undone.`)) return;
       history.commit(engine.snapshot());
       engine.deleteLayer(activeId);
       scheduler.requestRender();

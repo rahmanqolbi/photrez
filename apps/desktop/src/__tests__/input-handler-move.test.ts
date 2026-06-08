@@ -29,6 +29,7 @@ function createContext(overrides: Record<string, any> = {}) {
     dragCurrent: { x: 0, y: 0 },
     selectedLayerId: "layer-1",
     strokePoints: [],
+    dragTool: null,
     setFgColor: vi.fn(),
     setBgColor: vi.fn(),
     onPaintStroke: undefined,
@@ -126,6 +127,44 @@ describe("input-handler: move tool", () => {
     const history = { commit: vi.fn() };
     const context = createContext();
     handlePointerDown("brush", 150, 80, engine as any, history as any, vi.fn(), context);
+    expect(engine.moveLayer).not.toHaveBeenCalled();
+  });
+
+  it("handlePointerUp uses dragTool from pointerdown even when called with different tool", () => {
+    const context = createContext({ isDragging: false });
+    const requestRender = vi.fn();
+    const onSnapLines = vi.fn();
+    context.onSnapLines = onSnapLines;
+
+    // Start a brush drag — sets dragTool to "brush"
+    handlePointerDown("brush", 50, 50, {} as any, {} as any, requestRender, context);
+    expect(context.dragTool).toBe("brush");
+
+    // Call handlePointerUp with "move" (simulating tool switch mid-drag)
+    // Internally uses context.dragTool === "brush", so it should not trigger move cleanup
+    handlePointerUp("move", 55, 55, {} as any, {} as any, requestRender, context);
+
+    // The brush tool branch in handlePointerUp does not call onSnapLines
+    expect(onSnapLines).not.toHaveBeenCalled();
+
+    // dragTool should still be set (cleared by caller, not by handlePointerUp)
+    expect(context.dragTool).toBe("brush");
+  });
+
+  it("handlePointerMove uses dragTool from pointerdown even when called with different tool", () => {
+    const context = createContext({ isDragging: false });
+    const requestRender = vi.fn();
+
+    // Start a brush drag
+    handlePointerDown("brush", 50, 50, {} as any, {} as any, requestRender, context);
+    expect(context.dragTool).toBe("brush");
+    expect(context.isDragging).toBe(true);
+
+    // Move with "move" tool param — internally uses dragTool "brush"
+    const engine = createMockEngine();
+    handlePointerMove("move", 60, 60, engine as any, requestRender, context);
+
+    // Should NOT call engine.moveLayer because brush branch doesn't move layers
     expect(engine.moveLayer).not.toHaveBeenCalled();
   });
 });

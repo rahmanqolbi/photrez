@@ -8,6 +8,8 @@ import { OptionBar } from "./OptionBar";
 import { RightDock } from "./RightDock";
 import { useDesktopGuards, useDesktopShortcuts } from "@/lib/desktop";
 import { EmptyWorkspace } from "./EmptyWorkspace";
+import { ResizeCanvasModal } from "./ResizeCanvasModal";
+import { ExportDialog } from "./ExportDialog";
 
 // Core singletons import
 import { WorkspaceManager } from "@/engine/workspace";
@@ -53,6 +55,8 @@ function EditorLayout(props: {
       </main>
 
       <BottomStatusBar />
+      <ResizeCanvasModal />
+      <ExportDialog />
     </div>
   );
 }

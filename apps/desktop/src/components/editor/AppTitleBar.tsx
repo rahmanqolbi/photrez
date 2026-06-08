@@ -13,7 +13,7 @@ type AppTitleBarProps = {
 };
 
 export function AppTitleBar(props: AppTitleBarProps) {
-  const { workspace, renderer, scheduler, activeDocumentId, documents, activeTool, undoLastCrop, canCropUndo, redoCrop, canCropRedo, setCropRect, setCropRotation, layerTransformSession, setLayerTransformSession } = useEditor();
+  const { workspace, renderer, scheduler, activeDocumentId, documents, activeTool, undoLastCrop, canCropUndo, redoCrop, canCropRedo, setCropRect, setCropRotation, layerTransformSession, setLayerTransformSession, setShowResizeDialog, setShowExportDialog } = useEditor();
 
   const cancelActiveTransformSession = (): boolean => {
     const engine = workspace.getActiveEngine();
@@ -129,6 +129,14 @@ export function AppTitleBar(props: AppTitleBarProps) {
   const handleMenuClick = (item: string) => {
     if (item === "File") {
       handleOpenImage();
+    } else if (item === "Image") {
+      setShowResizeDialog(true);
+    }
+  };
+
+  const handleSave = () => {
+    if (activeDocumentId()) {
+      setShowExportDialog(true);
     }
   };
 
@@ -137,7 +145,10 @@ export function AppTitleBar(props: AppTitleBarProps) {
     const active = document.activeElement;
     if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;
 
-    if (e.ctrlKey && e.key.toLowerCase() === "z") {
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "z") {
+      e.preventDefault();
+      handleRedo();
+    } else if (e.ctrlKey && e.key.toLowerCase() === "z") {
       e.preventDefault();
       handleUndo();
     } else if (e.ctrlKey && e.key.toLowerCase() === "y") {
@@ -146,6 +157,9 @@ export function AppTitleBar(props: AppTitleBarProps) {
     } else if (e.ctrlKey && e.key.toLowerCase() === "o") {
       e.preventDefault();
       handleOpenImage();
+    } else if ((e.ctrlKey && e.key.toLowerCase() === "s")) {
+      e.preventDefault();
+      handleSave();
     }
   };
 

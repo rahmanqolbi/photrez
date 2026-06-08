@@ -323,7 +323,7 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
 
   const handleLostPointerCapture = (e: PointerEvent) => {
     const drag = dragState();
-    if (!drag || e.pointerId !== drag.pointerId) return;
+    if (!drag) return;
     props.onSnapClear?.();
     props.onHudUpdate?.(null);
     if (drag.type === "rotate") setHoverPos(null);

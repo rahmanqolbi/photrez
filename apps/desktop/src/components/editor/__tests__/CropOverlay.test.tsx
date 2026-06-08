@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render } from "solid-js/web";
 import { createSignal } from "solid-js";
 import { CropOverlay } from "../CropOverlay";
+import { ModernCropOverlay } from "../ModernCropOverlay";
 import * as EditorContextModule from "../EditorContext";
 
 describe("CropOverlay pointer capture", () => {
@@ -322,6 +323,66 @@ describe("CropOverlay pointer capture", () => {
     dispose();
     container.parentNode?.removeChild(container);
   });
+
+  it("clears dragState on lostpointercapture even with mismatched pointerId", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onCropRectChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <CropOverlay
+          cropRect={{ x: 10, y: 10, w: 100, h: 100 }}
+          guideMode="thirds"
+          canvasWidth={800}
+          canvasHeight={600}
+          zoom={1}
+          cropMode="free"
+          cropAspect={null}
+          onCropRectChange={onCropRectChange}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const moveZone = container.querySelector("[data-crop-move]")!;
+
+    moveZone.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 5, bubbles: true, cancelable: true, clientX: 50, clientY: 50,
+      }),
+    );
+
+    onCropRectChange.mockClear();
+
+    // Browser sends lostpointercapture with a DIFFERENT pointerId than the drag
+    svgEl.dispatchEvent(
+      new PointerEvent("lostpointercapture", {
+        pointerId: 999, bubbles: true, cancelable: true,
+      }),
+    );
+
+    // Subsequent moves with the ORIGINAL pointerId should NOT fire onCropRectChange
+    // because dragState should have been cleared regardless of which pointer was lost
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 5, bubbles: true, cancelable: true, clientX: 70, clientY: 70,
+      }),
+    );
+
+    expect(onCropRectChange).not.toHaveBeenCalled();
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
 });
 
 describe("CropOverlay handle hit detection", () => {
@@ -385,6 +446,69 @@ describe("CropOverlay handle hit detection", () => {
     );
 
     expect(onCropRectChange).toHaveBeenCalled();
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("starts rotate from the outside rotate band without moving or resizing", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onCropRectChange = vi.fn();
+    const onCropRotationChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <div style={{ position: "relative", width: "800px", height: "600px" }}>
+          <CropOverlay
+            cropRect={{ x: 100, y: 100, w: 200, h: 200 }}
+            guideMode="thirds"
+            canvasWidth={800}
+            canvasHeight={600}
+            zoom={1}
+            cropMode="free"
+            cropAspect={null}
+            onCropRectChange={onCropRectChange}
+            onCropRotationChange={onCropRotationChange}
+          />
+        </div>
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const rotateBand = container.querySelector("[data-crop-rotate-band]")!;
+    expect(rotateBand).not.toBeNull();
+
+    rotateBand.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 31,
+        bubbles: true,
+        cancelable: true,
+        clientX: 310,
+        clientY: 200,
+      }),
+    );
+
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 31,
+        bubbles: true,
+        cancelable: true,
+        clientX: 200,
+        clientY: 310,
+      }),
+    );
+
+    expect(onCropRotationChange).toHaveBeenCalled();
+    expect(onCropRectChange).not.toHaveBeenCalled();
 
     SVGElement.prototype.setPointerCapture = origSet;
     SVGElement.prototype.releasePointerCapture = origRelease;
@@ -632,7 +756,7 @@ describe("CropOverlay new crop box drawing", () => {
 });
 
 describe("CropOverlay viewport panning", () => {
-  it("pans the viewport in the opposite direction on move drag", () => {
+  it("moves the crop rect without panning in Classic mode", () => {
     const origSet = SVGElement.prototype.setPointerCapture;
     SVGElement.prototype.setPointerCapture = vi.fn();
     const origRelease = SVGElement.prototype.releasePointerCapture;
@@ -711,17 +835,1161 @@ describe("CropOverlay viewport panning", () => {
       }),
     );
 
-    // zoom = 1.5. actualDx = 20 / 1.5. actualDy = 30 / 1.5.
-    // viewport shift should be: panX = 100 - actualDx * 1.5 = 100 - 20 = 80
-    // viewport shift should be: panY = 100 - actualDy * 1.5 = 100 - 30 = 70
-    expect(setViewportSpy).toHaveBeenCalledTimes(1);
-    const callArgs = setViewportSpy.mock.calls[0][0];
-    expect(callArgs.panX).toBeCloseTo(80, 5);
-    expect(callArgs.panY).toBeCloseTo(70, 5);
-    expect(syncViewportSpy).toHaveBeenCalled();
-    expect(requestRenderSpy).toHaveBeenCalled();
+    // In Classic mode, drag inside moves the crop rect without counter-panning the viewport.
+    // zoom = 1.5, delta = (20, 30) screen → (20/1.5, 30/1.5) = (13.33, 20) document-space
+    // new rect should be { x: 10 + 13.33, y: 10 + 20, w: 100, h: 100 }
+    expect(setViewportSpy).not.toHaveBeenCalled();
+    expect(onCropRectChange).toHaveBeenCalled();
+    const callArgs = onCropRectChange.mock.calls[onCropRectChange.mock.calls.length - 1][0];
+    expect(callArgs.x).toBeCloseTo(23.33, 1);
+    expect(callArgs.y).toBeCloseTo(30, 1);
+    expect(callArgs.w).toBe(100);
+    expect(callArgs.h).toBe(100);
 
     useEditorSpy.mockRestore();
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("keeps the Modern crop frame centered and moves the image underneath it", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onFrameChange = vi.fn();
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 300, h: 200 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="thirds"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={onFrameChange}
+          onImageTransformChange={onImageTransformChange}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg");
+    expect(svgEl).not.toBeNull();
+
+    const frameRect = container.querySelector("rect[stroke='rgba(255,255,255,0.9)']");
+    expect(frameRect?.getAttribute("x")).toBe("350");
+    expect(frameRect?.getAttribute("y")).toBe("300");
+
+    const moveZone = container.querySelector("[data-modern-crop-move]");
+    expect(moveZone).not.toBeNull();
+
+    moveZone!.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 13,
+        bubbles: true,
+        cancelable: true,
+        clientX: 50,
+        clientY: 50,
+      }),
+    );
+
+    svgEl!.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 13,
+        bubbles: true,
+        cancelable: true,
+        clientX: 70,
+        clientY: 90,
+      }),
+    );
+
+    expect(onImageTransformChange).toHaveBeenCalledWith({
+      offsetX: 20,
+      offsetY: 40,
+      rotation: 0,
+      scale: 1,
+    });
+
+    const eastHandle = container.querySelector("[data-modern-crop-handle='e']");
+    expect(eastHandle).not.toBeNull();
+    eastHandle!.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 14,
+        bubbles: true,
+        cancelable: true,
+        clientX: 650,
+        clientY: 400,
+      }),
+    );
+    svgEl!.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 14,
+        bubbles: true,
+        cancelable: true,
+        clientX: 670,
+        clientY: 400,
+      }),
+    );
+    expect(onFrameChange).toHaveBeenCalledWith({ w: 340, h: 200 });
+
+    onImageTransformChange.mockClear();
+    const rotateRing = container.querySelector("[data-modern-crop-rotate='ring']");
+    expect(rotateRing).not.toBeNull();
+    rotateRing!.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 15,
+        bubbles: true,
+        cancelable: true,
+        clientX: 350,
+        clientY: 300,
+      }),
+    );
+    svgEl!.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 15,
+        bubbles: true,
+        cancelable: true,
+        clientX: 650,
+        clientY: 300,
+      }),
+    );
+    expect(onImageTransformChange).toHaveBeenCalledWith({
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 112.61986494804044,
+      scale: 1,
+    });
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("keeps Modern crop move drag screen-aligned when the image is rotated", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 300, h: 200 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 90, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="thirds"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={vi.fn()}
+          onImageTransformChange={onImageTransformChange}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg");
+    const moveZone = container.querySelector("[data-modern-crop-move]");
+    expect(svgEl).not.toBeNull();
+    expect(moveZone).not.toBeNull();
+
+    moveZone!.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 16,
+      bubbles: true,
+      cancelable: true,
+      clientX: 50,
+      clientY: 50,
+    }));
+    svgEl!.dispatchEvent(new PointerEvent("pointermove", {
+      pointerId: 16,
+      bubbles: true,
+      cancelable: true,
+      clientX: 70,
+      clientY: 50,
+    }));
+
+    const moved = onImageTransformChange.mock.calls[0][0];
+    expect(moved.offsetX).toBeCloseTo(0);
+    expect(moved.offsetY).toBeCloseTo(-20);
+    expect(moved.rotation).toBe(90);
+    expect(moved.scale).toBe(1);
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("dragging from the top rotate ring changes rotation", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 300, h: 200 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="none"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={vi.fn()}
+          onImageTransformChange={onImageTransformChange}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const rotateRing = container.querySelector("[data-modern-crop-rotate='ring']")!;
+    const centerX = 500;
+    const centerY = 400;
+
+    rotateRing.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 20,
+        bubbles: true,
+        cancelable: true,
+        clientX: centerX,
+        clientY: centerY - 150,
+      }),
+    );
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 20,
+        bubbles: true,
+        cancelable: true,
+        clientX: centerX + 150,
+        clientY: centerY,
+      }),
+    );
+
+    const lastCall = onImageTransformChange.mock.calls[onImageTransformChange.mock.calls.length - 1][0];
+    expect(lastCall.rotation).not.toBe(0);
+    expect(lastCall.offsetX).toBe(0);
+    expect(lastCall.offsetY).toBe(0);
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("dragging from the side rotate ring changes rotation", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 300, h: 200 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="none"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={vi.fn()}
+          onImageTransformChange={onImageTransformChange}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const rotateRing = container.querySelector("[data-modern-crop-rotate='ring']")!;
+    const centerX = 500;
+    const centerY = 400;
+
+    rotateRing.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 21,
+        bubbles: true,
+        cancelable: true,
+        clientX: centerX + 200,
+        clientY: centerY,
+      }),
+    );
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 21,
+        bubbles: true,
+        cancelable: true,
+        clientX: centerX,
+        clientY: centerY - 200,
+      }),
+    );
+
+    const lastCall = onImageTransformChange.mock.calls[onImageTransformChange.mock.calls.length - 1][0];
+    expect(lastCall.rotation).not.toBe(0);
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("rotation uses cropbox center as pivot", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 400, h: 300 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="none"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={vi.fn()}
+          onImageTransformChange={onImageTransformChange}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const rotateRing = container.querySelector("[data-modern-crop-rotate='ring']")!;
+    const centerX = 500;
+    const centerY = 400;
+
+    rotateRing.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 22,
+        bubbles: true,
+        cancelable: true,
+        clientX: centerX,
+        clientY: centerY - 200,
+      }),
+    );
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 22,
+        bubbles: true,
+        cancelable: true,
+        clientX: centerX + 200,
+        clientY: centerY,
+      }),
+    );
+
+    const lastCall = onImageTransformChange.mock.calls[onImageTransformChange.mock.calls.length - 1][0];
+    expect(lastCall.rotation).toBeCloseTo(90, 0);
+    expect(lastCall.offsetX).toBe(0);
+    expect(lastCall.offsetY).toBe(0);
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("resize handle still triggers resize, not rotate", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onFrameChange = vi.fn();
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 300, h: 200 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="none"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={onFrameChange}
+          onImageTransformChange={onImageTransformChange}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const eastHandle = container.querySelector("[data-modern-crop-handle='e']")!;
+    eastHandle.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 23,
+        bubbles: true,
+        cancelable: true,
+        clientX: 650,
+        clientY: 400,
+      }),
+    );
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 23,
+        bubbles: true,
+        cancelable: true,
+        clientX: 670,
+        clientY: 400,
+      }),
+    );
+
+    expect(onFrameChange).toHaveBeenCalled();
+    const resizeCall = onImageTransformChange.mock.calls[onImageTransformChange.mock.calls.length - 1][0];
+    expect(resizeCall.rotation).toBe(0);
+    expect(resizeCall.scale).toBe(1);
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("Modern free corner resize uses Shift to preserve the current frame aspect", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onFrameChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 400, h: 300 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="none"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={onFrameChange}
+          onImageTransformChange={vi.fn()}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const seHandle = container.querySelector("[data-modern-crop-handle='se']")!;
+    seHandle.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 24,
+      bubbles: true,
+      cancelable: true,
+      clientX: 700,
+      clientY: 550,
+    }));
+    svgEl.dispatchEvent(new PointerEvent("pointermove", {
+      pointerId: 24,
+      bubbles: true,
+      cancelable: true,
+      clientX: 780,
+      clientY: 550,
+      shiftKey: true,
+    }));
+
+    const frame = onFrameChange.mock.calls.at(-1)?.[0];
+    expect(frame.w / frame.h).toBeCloseTo(4 / 3);
+    expect(frame.h).toBeGreaterThan(300);
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("Modern ratio corner resize uses Shift to temporarily free resize", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onFrameChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 400, h: 300 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="none"
+          cropMode="ratio"
+          cropAspect={{ w: 1, h: 1 }}
+          onFrameChange={onFrameChange}
+          onImageTransformChange={vi.fn()}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const seHandle = container.querySelector("[data-modern-crop-handle='se']")!;
+    seHandle.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 25,
+      bubbles: true,
+      cancelable: true,
+      clientX: 700,
+      clientY: 550,
+    }));
+    svgEl.dispatchEvent(new PointerEvent("pointermove", {
+      pointerId: 25,
+      bubbles: true,
+      cancelable: true,
+      clientX: 780,
+      clientY: 570,
+      shiftKey: true,
+    }));
+
+    expect(onFrameChange.mock.calls.at(-1)?.[0]).toEqual({ w: 560, h: 340 });
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("Modern Alt resize grows from center without image compensation", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onFrameChange = vi.fn();
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 400, h: 300 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="none"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={onFrameChange}
+          onImageTransformChange={onImageTransformChange}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const eastHandle = container.querySelector("[data-modern-crop-handle='e']")!;
+    eastHandle.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 26,
+      bubbles: true,
+      cancelable: true,
+      clientX: 700,
+      clientY: 400,
+    }));
+    svgEl.dispatchEvent(new PointerEvent("pointermove", {
+      pointerId: 26,
+      bubbles: true,
+      cancelable: true,
+      clientX: 740,
+      clientY: 400,
+      altKey: true,
+    }));
+
+    expect(onFrameChange.mock.calls.at(-1)?.[0]).toEqual({ w: 480, h: 300 });
+    expect(onImageTransformChange).not.toHaveBeenCalled();
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("Modern Shift+Alt corner resize preserves aspect from center", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onFrameChange = vi.fn();
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 400, h: 300 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="none"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={onFrameChange}
+          onImageTransformChange={onImageTransformChange}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const seHandle = container.querySelector("[data-modern-crop-handle='se']")!;
+    seHandle.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 27,
+      bubbles: true,
+      cancelable: true,
+      clientX: 700,
+      clientY: 550,
+    }));
+    svgEl.dispatchEvent(new PointerEvent("pointermove", {
+      pointerId: 27,
+      bubbles: true,
+      cancelable: true,
+      clientX: 740,
+      clientY: 550,
+      shiftKey: true,
+      altKey: true,
+    }));
+
+    const frame = onFrameChange.mock.calls.at(-1)?.[0];
+    expect(frame.w / frame.h).toBeCloseTo(4 / 3);
+    expect(frame.w).toBeGreaterThan(400);
+    expect(onImageTransformChange).not.toHaveBeenCalled();
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("classic crop: Escape during handle resize cancels drag and restores rect", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onCropRectChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <div style={{ position: "relative", width: "800px", height: "600px" }}>
+          <CropOverlay
+            cropRect={{ x: 100, y: 100, w: 200, h: 200 }}
+            guideMode="thirds"
+            canvasWidth={800}
+            canvasHeight={600}
+            zoom={1}
+            cropMode="free"
+            cropAspect={null}
+            onCropRectChange={onCropRectChange}
+          />
+        </div>
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const seHandle = container.querySelector('[data-crop-handle="se"]')!;
+    const rect = svgEl!.getBoundingClientRect();
+    onCropRectChange.mockClear();
+
+    seHandle.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 10, bubbles: true, cancelable: true,
+        clientX: rect.left + 300, clientY: rect.top + 300,
+      }),
+    );
+
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 10, bubbles: true, cancelable: true,
+        clientX: rect.left + 320, clientY: rect.top + 320,
+      }),
+    );
+
+    expect(onCropRectChange).toHaveBeenCalled();
+
+    onCropRectChange.mockClear();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+
+    expect(onCropRectChange).toHaveBeenCalled();
+    const calledArg = onCropRectChange.mock.calls.at(-1)?.[0];
+    expect(calledArg).toEqual({ x: 100, y: 100, w: 200, h: 200 });
+
+    onCropRectChange.mockClear();
+
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 10, bubbles: true, cancelable: true,
+        clientX: rect.left + 340, clientY: rect.top + 340,
+      }),
+    );
+
+    expect(onCropRectChange).not.toHaveBeenCalled();
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("classic crop: Escape during move drag cancels drag and restores rect", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onCropRectChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <CropOverlay
+          cropRect={{ x: 10, y: 10, w: 100, h: 100 }}
+          guideMode="thirds"
+          canvasWidth={800}
+          canvasHeight={600}
+          zoom={1}
+          cropMode="free"
+          cropAspect={null}
+          onCropRectChange={onCropRectChange}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const moveZone = container.querySelector("[data-crop-move]")!;
+    onCropRectChange.mockClear();
+
+    moveZone.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 11, bubbles: true, cancelable: true,
+        clientX: 50, clientY: 50,
+      }),
+    );
+
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 11, bubbles: true, cancelable: true,
+        clientX: 70, clientY: 70,
+      }),
+    );
+
+    expect(onCropRectChange).toHaveBeenCalled();
+    onCropRectChange.mockClear();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+
+    expect(onCropRectChange).toHaveBeenCalled();
+    expect(onCropRectChange.mock.calls.at(-1)?.[0]).toEqual({ x: 10, y: 10, w: 100, h: 100 });
+
+    onCropRectChange.mockClear();
+
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 11, bubbles: true, cancelable: true,
+        clientX: 90, clientY: 90,
+      }),
+    );
+
+    expect(onCropRectChange).not.toHaveBeenCalled();
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("modern crop: Escape during resize drag clears dragState", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onFrameChange = vi.fn();
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 300, h: 200 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="thirds"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={onFrameChange}
+          onImageTransformChange={onImageTransformChange}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const eastHandle = container.querySelector("[data-modern-crop-handle='e']")!;
+
+    eastHandle.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 12, bubbles: true, cancelable: true,
+        clientX: 700, clientY: 400,
+      }),
+    );
+
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 12, bubbles: true, cancelable: true,
+        clientX: 720, clientY: 400,
+      }),
+    );
+
+    expect(onFrameChange).toHaveBeenCalled();
+    onFrameChange.mockClear();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 12, bubbles: true, cancelable: true,
+        clientX: 740, clientY: 400,
+      }),
+    );
+
+    expect(onFrameChange).not.toHaveBeenCalled();
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("modern crop: Escape during move drag clears dragState", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onFrameChange = vi.fn();
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 300, h: 200 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="thirds"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={onFrameChange}
+          onImageTransformChange={onImageTransformChange}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const moveZone = container.querySelector("[data-modern-crop-move]")!;
+
+    moveZone.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 13, bubbles: true, cancelable: true,
+        clientX: 500, clientY: 400,
+      }),
+    );
+
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 13, bubbles: true, cancelable: true,
+        clientX: 520, clientY: 420,
+      }),
+    );
+
+    expect(onImageTransformChange).toHaveBeenCalled();
+    onImageTransformChange.mockClear();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 13, bubbles: true, cancelable: true,
+        clientX: 540, clientY: 440,
+      }),
+    );
+
+    expect(onImageTransformChange).not.toHaveBeenCalled();
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("modern crop: lostpointercapture during move drag stops further updates", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onFrameChange = vi.fn();
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 300, h: 200 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="thirds"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={onFrameChange}
+          onImageTransformChange={onImageTransformChange}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const moveZone = container.querySelector("[data-modern-crop-move]")!;
+
+    moveZone.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 20, bubbles: true, cancelable: true,
+        clientX: 500, clientY: 400,
+      }),
+    );
+
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 20, bubbles: true, cancelable: true,
+        clientX: 520, clientY: 420,
+      }),
+    );
+
+    expect(onImageTransformChange).toHaveBeenCalled();
+    onImageTransformChange.mockClear();
+
+    svgEl.dispatchEvent(new PointerEvent("lostpointercapture", { bubbles: false, pointerId: 20 }));
+
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 20, bubbles: true, cancelable: true,
+        clientX: 540, clientY: 440,
+      }),
+    );
+
+    expect(onImageTransformChange).not.toHaveBeenCalled();
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("modern crop: lostpointercapture during resize drag stops further updates", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onFrameChange = vi.fn();
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 300, h: 200 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="thirds"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={onFrameChange}
+          onImageTransformChange={onImageTransformChange}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const eastHandle = container.querySelector("[data-modern-crop-handle='e']")!;
+
+    eastHandle.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 21, bubbles: true, cancelable: true,
+        clientX: 700, clientY: 400,
+      }),
+    );
+
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 21, bubbles: true, cancelable: true,
+        clientX: 720, clientY: 400,
+      }),
+    );
+
+    expect(onFrameChange).toHaveBeenCalled();
+    onFrameChange.mockClear();
+
+    svgEl.dispatchEvent(new PointerEvent("lostpointercapture", { bubbles: false, pointerId: 21 }));
+
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 21, bubbles: true, cancelable: true,
+        clientX: 740, clientY: 400,
+      }),
+    );
+
+    expect(onFrameChange).not.toHaveBeenCalled();
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("modern crop: lostpointercapture during rotate drag stops further updates", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onFrameChange = vi.fn();
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 300, h: 200 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="thirds"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={onFrameChange}
+          onImageTransformChange={onImageTransformChange}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+    const rotateZone = container.querySelector("[data-modern-crop-rotate]")!;
+
+    rotateZone.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        pointerId: 22, bubbles: true, cancelable: true,
+        clientX: 500, clientY: 300,
+      }),
+    );
+
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 22, bubbles: true, cancelable: true,
+        clientX: 520, clientY: 300,
+      }),
+    );
+
+    expect(onImageTransformChange).toHaveBeenCalled();
+    onImageTransformChange.mockClear();
+
+    svgEl.dispatchEvent(new PointerEvent("lostpointercapture", { bubbles: false, pointerId: 22 }));
+
+    svgEl.dispatchEvent(
+      new PointerEvent("pointermove", {
+        pointerId: 22, bubbles: true, cancelable: true,
+        clientX: 540, clientY: 300,
+      }),
+    );
+
+    expect(onImageTransformChange).not.toHaveBeenCalled();
+
     SVGElement.prototype.setPointerCapture = origSet;
     SVGElement.prototype.releasePointerCapture = origRelease;
     dispose();

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, assert } from "vitest";
 import { render } from "solid-js/web";
 import { EditorProvider, useEditor } from "../EditorContext";
 import { CanvasViewport } from "../CanvasViewport";
@@ -69,6 +69,19 @@ let getCropRotation: () => number = () => 0;
 let setCropRotation: (rot: number) => void = () => {};
 let getHiddenCropPreview: () => any = () => null;
 let setHiddenCropPreview: (preview: any) => void = () => {};
+let setCropInteractionMode: (mode: "modern" | "classic") => void = () => {};
+let getModernImageTransform: () => any = () => ({ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 });
+let setModernImageTransform: (t: any) => void = () => {};
+let getModernFrame: () => any = () => null;
+let resetModernCropState: () => void = () => {};
+let getCropMode: () => string = () => "free";
+let setCropModeState: (mode: any) => void = () => {};
+let getCropAspect: () => any = () => null;
+let setCropAspectState: (aspect: any) => void = () => {};
+let getCropSizeTarget: () => any = () => null;
+let setCropSizeTargetState: (target: any) => void = () => {};
+let getActiveDocId: () => string | null = () => null;
+let clearCropStacksState: () => void = () => {};
 
 const TestConsumer = () => {
   const editor = useEditor();
@@ -80,6 +93,19 @@ const TestConsumer = () => {
   setCropRotation = editor.setCropRotation;
   getHiddenCropPreview = editor.hiddenCropPreview;
   setHiddenCropPreview = editor.setHiddenCropPreview;
+  setCropInteractionMode = editor.setCropInteractionMode;
+  getModernImageTransform = editor.modernCropImageTransform;
+  setModernImageTransform = editor.setModernCropImageTransform;
+  getModernFrame = editor.modernCropFrame;
+  resetModernCropState = editor.resetModernCrop;
+  getCropMode = editor.cropMode;
+  setCropModeState = editor.setCropMode;
+  getCropAspect = editor.cropAspect;
+  setCropAspectState = editor.setCropAspect;
+  getCropSizeTarget = editor.cropSizeTarget;
+  setCropSizeTargetState = editor.setCropSizeTarget;
+  getActiveDocId = editor.activeDocumentId;
+  clearCropStacksState = editor.clearCropStacks;
   return null;
 };
 
@@ -129,6 +155,7 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     );
 
     dispose = result;
+    setCropInteractionMode("classic");
     return { session };
   }
 
@@ -722,5 +749,575 @@ describe("Space+pan global override across all tools", () => {
     expect(mockOnViewportPointerDown).toHaveBeenCalledWith(
       expect.objectContaining({ pointerId: 20, button: 1 })
     );
+  });
+});
+
+// -----------------------------------------------------------------------
+// Bug Hunt: Edge case regression tests
+// -----------------------------------------------------------------------
+
+describe("Bug Hunt: Pasteboard pointercancel clears pending gesture", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    ws = new WorkspaceManager();
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    mockOnViewportPointerDown.mockClear();
+    mockOnViewportPointerUp.mockClear();
+    mockOnViewportPointerCancel.mockClear();
+    mockOnViewportLostPointerCapture.mockClear();
+    mockCommitBrushStroke.mockClear();
+    mockSpacePressed = false;
+    mockPanningActive = false;
+
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+  });
+
+  afterEach(() => {
+    if (dispose) dispose();
+    container.parentNode?.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  function renderViewport() {
+    const session = WorkspaceManager.createBlankDocument("bug-doc", "Bug Doc", 800, 600);
+    ws.addDocument(session);
+    const result = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer} scheduler={scheduler}>
+          <TestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+    dispose = result;
+    setCropInteractionMode("classic");
+    return { session };
+  }
+
+  function getContainer(): HTMLDivElement {
+    const c = container.querySelector("[data-viewport-container]") as HTMLDivElement;
+    if (!c) throw new Error("Viewport container not found");
+    return c;
+  }
+
+  it("clears pendingPasteboardCropGesture on pointercancel after pasteboard pointerdown in Crop mode", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("crop");
+
+    const containerEl = getContainer();
+
+    // Start a pasteboard gesture (pointerdown on pasteboard)
+    containerEl.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10, clientX: 5, clientY: 5,
+    }));
+
+    // Give effects time to run
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Now pointercancel fires (e.g., system dialog, tab switch)
+    containerEl.dispatchEvent(new PointerEvent("pointercancel", {
+      bubbles: false, pointerId: 10,
+    }));
+
+    // Give effects time to run
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // The pending gesture should have been cleaned up.
+    // Verify by checking that a subsequent small movement on pasteboard
+    // does NOT trigger a crop replacement (it should be ignored).
+    // If pending gesture leaked, the move handler would try to create a replacement crop.
+    const setRectSpy = vi.spyOn(renderer, "uploadImage");
+
+    setCrop({ x: 50, y: 50, w: 200, h: 150 });
+    const prevCrop = getCrop();
+
+    // Dispatch a small move — should not create a new replacement if gesture is cleared
+    containerEl.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10, clientX: 10, clientY: 10,
+    }));
+
+    // Crop rect should NOT have changed since the pending gesture was cancelled
+    expect(getCrop()).toEqual(prevCrop);
+  });
+});
+
+describe("Bug Hunt: Modern crop state leak across tool switches", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    ws = new WorkspaceManager();
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    mockOnViewportPointerDown.mockClear();
+    mockOnViewportPointerUp.mockClear();
+    mockOnViewportPointerCancel.mockClear();
+    mockOnViewportLostPointerCapture.mockClear();
+    mockCommitBrushStroke.mockClear();
+    mockSpacePressed = false;
+    mockPanningActive = false;
+
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+  });
+
+  afterEach(() => {
+    if (dispose) dispose();
+    container.parentNode?.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  function renderViewport() {
+    const session = WorkspaceManager.createBlankDocument("leak-doc", "Leak Doc", 800, 600);
+    ws.addDocument(session);
+    const result = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer} scheduler={scheduler}>
+          <TestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+    dispose = result;
+    setCropInteractionMode("modern");
+    return { session };
+  }
+
+  it("resets modernCropImageTransform when leaving Crop tool", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(getModernFrame()).not.toBeNull();
+
+    // Simulate user interaction by setting non-default transform
+    setModernImageTransform({ offsetX: 55, offsetY: 33, rotation: 25, scale: 1.2 });
+
+    // Switch to another tool
+    setTool("move");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // After switching away from crop, modern crop state should be reset
+    const afterExitTransform = getModernImageTransform();
+    expect(afterExitTransform.offsetX).toBe(0);
+    expect(afterExitTransform.offsetY).toBe(0);
+    expect(afterExitTransform.rotation).toBe(0);
+    expect(afterExitTransform.scale).toBe(1);
+
+    // Frame should also be null when not in crop mode
+    expect(getModernFrame()).toBeNull();
+  });
+});
+
+describe("Bug Hunt: Modern Crop pointercancel releases capture", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    ws = new WorkspaceManager();
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    mockOnViewportPointerDown.mockClear();
+    mockOnViewportPointerUp.mockClear();
+    mockOnViewportPointerCancel.mockClear();
+    mockOnViewportLostPointerCapture.mockClear();
+    mockCommitBrushStroke.mockClear();
+    mockSpacePressed = false;
+    mockPanningActive = false;
+
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+  });
+
+  afterEach(() => {
+    if (dispose) dispose();
+    container.parentNode?.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  function renderViewport() {
+    const session = WorkspaceManager.createBlankDocument("cap-doc", "Cap Doc", 800, 600);
+    ws.addDocument(session);
+    const result = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer} scheduler={scheduler}>
+          <TestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+    dispose = result;
+    setCropInteractionMode("modern");
+    return { session };
+  }
+
+  it("clears drag state on ModernCropOverlay onLostPointerCapture", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const moveZone = container.querySelector("[data-modern-crop-move]") as SVGRectElement;
+    if (!moveZone) throw new Error("Modern crop move zone not found");
+
+    // Register a listener to track drag state changes
+    const dragStateSpy = vi.fn();
+    const svg = container.querySelector("[data-modern-crop-overlay]") as SVGSVGElement;
+    if (!svg) throw new Error("Modern crop overlay SVG not found");
+
+    svg.addEventListener("pointerup", () => {
+      dragStateSpy("cleared");
+    });
+
+    // Start a move drag on modern crop frame
+    moveZone.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, pointerId: 5, clientX: 400, clientY: 300,
+    }));
+
+    expect(Element.prototype.setPointerCapture).toHaveBeenCalledWith(5);
+
+    // Simulate lostpointercapture — should trigger clearDrag
+    svg.dispatchEvent(new PointerEvent("lostpointercapture", { bubbles: false, pointerId: 5 }));
+
+    // Allow effects/enqueued state setters to flush
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Now dispatch pointerup — if clearDrag was already called above,
+    // the dragState should be null and pointerup should be a no-op (no additional "cleared")
+    svg.dispatchEvent(new PointerEvent("pointerup", { bubbles: false, pointerId: 5 }));
+
+    // The lostpointercapture handler should have fired clearDrag once
+    // pointerup should not fire clearDrag again because dragState is null
+    expect(dragStateSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Bug Hunt: Crop state leaks across document switch", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    ws = new WorkspaceManager();
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    mockOnViewportPointerDown.mockClear();
+    mockOnViewportPointerUp.mockClear();
+    mockOnViewportPointerCancel.mockClear();
+    mockOnViewportLostPointerCapture.mockClear();
+    mockCommitBrushStroke.mockClear();
+    mockSpacePressed = false;
+    mockPanningActive = false;
+
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+  });
+
+  afterEach(() => {
+    if (dispose) dispose();
+    container.parentNode?.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  function renderViewportWithDocs() {
+    const session1 = WorkspaceManager.createBlankDocument("doc-1", "Doc 1", 800, 600);
+    const session2 = WorkspaceManager.createBlankDocument("doc-2", "Doc 2", 1600, 400);
+    ws.addDocument(session1);
+    ws.addDocument(session2);
+
+    const result = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer} scheduler={scheduler}>
+          <TestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+    dispose = result;
+    setCropInteractionMode("classic");
+    return { session1, session2 };
+  }
+
+  it("resets Classic crop rect when switching to another document", async () => {
+    renderViewportWithDocs();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // After render, active doc is doc-2 (last added). Switch to doc-1 first.
+    ws.switchDocument("doc-1");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Set up crop state on doc-1
+    setTool("crop");
+    setCrop({ x: 50, y: 50, w: 200, h: 150 });
+    setCropRotation(15);
+    setCropModeState("ratio");
+    setCropAspectState({ w: 16, h: 9 });
+    setCropSizeTargetState({ w: 800, h: 600 });
+    setHiddenCropPreview({ rect: { x: 10, y: 10, w: 100, h: 100 }, rotation: 0 });
+
+    expect(getCrop()).not.toBeNull();
+    expect(getCropRotation()).toBe(15);
+
+    // Switch to doc-2
+    ws.switchDocument("doc-2");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Crop state should be reset
+    expect(getCrop()).toBeNull();
+    expect(getCropRotation()).toBe(0);
+    expect(getCropMode()).toBe("free");
+    expect(getCropAspect()).toBeNull();
+    expect(getCropSizeTarget()).toBeNull();
+    expect(getHiddenCropPreview()).toBeNull();
+  });
+
+  it("resets Classic crop rect when switching back to original document", async () => {
+    renderViewportWithDocs();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Switch to doc-1 first (active is doc-2 after render)
+    ws.switchDocument("doc-1");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    setTool("crop");
+    setCrop({ x: 100, y: 100, w: 300, h: 200 });
+    setCropRotation(45);
+
+    // Switch to doc-2 then back to doc-1
+    ws.switchDocument("doc-2");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    ws.switchDocument("doc-1");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Crop state should be reset (from doc-2 switch), not restored to old values
+    expect(getCrop()).toBeNull();
+    expect(getCropRotation()).toBe(0);
+  });
+
+  it("recomputes Modern crop frame when switching documents", async () => {
+    renderViewportWithDocs();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Switch to doc-1 first (800x600)
+    ws.switchDocument("doc-1");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    setCropInteractionMode("modern");
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const frame1 = getModernFrame();
+    expect(frame1).not.toBeNull();
+
+    // Switch to doc-2 (1600x400 — different aspect ratio from doc-1's 800x600)
+    ws.switchDocument("doc-2");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Frame should be recomputed for the new document dimensions/aspect ratio
+    const frame2 = getModernFrame();
+    expect(frame2).not.toBeNull();
+    // Different aspect ratio means different frame shape
+    const ratio1 = frame1.w / frame1.h;
+    const ratio2 = frame2.w / frame2.h;
+    expect(ratio2).not.toBeCloseTo(ratio1, 1);
+  });
+
+  it("does not reset crop state when switching between non-crop tools", async () => {
+    renderViewportWithDocs();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Switch to doc-1 first (active is doc-2 after render)
+    ws.switchDocument("doc-1");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Set crop state but stay in move tool
+    setCrop({ x: 50, y: 50, w: 200, h: 150 });
+    setCropRotation(15);
+
+    // Switch documents — crop state should still reset even though not in crop tool
+    ws.switchDocument("doc-2");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(getCrop()).toBeNull();
+    expect(getCropRotation()).toBe(0);
+  });
+});
+
+describe("Crop re-entry syncs preview with option bar values", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    ws = new WorkspaceManager();
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    mockOnViewportPointerDown.mockClear();
+    mockOnViewportPointerUp.mockClear();
+    mockOnViewportPointerCancel.mockClear();
+    mockOnViewportLostPointerCapture.mockClear();
+    mockCommitBrushStroke.mockClear();
+    mockSpacePressed = false;
+    mockPanningActive = false;
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+  });
+
+  afterEach(() => {
+    if (dispose) dispose();
+    container.parentNode?.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  function renderViewport() {
+    const session = WorkspaceManager.createBlankDocument("doc-1", "Doc 1", 800, 600);
+    ws.addDocument(session);
+    const result = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer} scheduler={scheduler}>
+          <TestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+    dispose = result;
+  }
+
+  it("Modern: entering Crop in Size mode initializes frame at target aspect ratio", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Set Size mode values while in Move tool
+    setCropSizeTargetState({ w: 300, h: 600 });
+    setCropModeState("size");
+
+    // Enter crop in Modern mode
+    setCropInteractionMode("modern");
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const frame = getModernFrame();
+    expect(frame).not.toBeNull();
+    // Frame should fill canvas at target 300:600 (0.5) aspect
+    expect(frame.w / frame.h).toBeCloseTo(300 / 600, 1);
+    expect(frame.w).toBeGreaterThan(0);
+    expect(frame.h).toBeGreaterThan(0);
+  });
+
+  it("Classic: entering Crop in Size mode initializes rect at target aspect ratio", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // No cropRect set, set Size mode values
+    setCropSizeTargetState({ w: 200, h: 600 });
+    setCropModeState("size");
+
+    // Enter crop in Classic mode
+    setCropInteractionMode("classic");
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const rect = getCrop();
+    expect(rect).not.toBeNull();
+    // Rect should fill document at target 200:600 (1:3) aspect
+    expect(rect.w / rect.h).toBeCloseTo(200 / 600, 1);
+  });
+
+  it("Classic: entering Crop in Ratio mode initializes rect at cropAspect", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Set Ratio mode values
+    setCropAspectState({ w: 16, h: 9 });
+    setCropModeState("ratio");
+
+    // Enter crop in Classic mode
+    setCropInteractionMode("classic");
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const rect = getCrop();
+    expect(rect).not.toBeNull();
+    expect(rect.w / rect.h).toBeCloseTo(16 / 9, 1);
+  });
+
+  it("Classic: entering Crop in Free mode does not auto-create rect", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setCropModeState("free");
+    setCropInteractionMode("classic");
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Free mode should NOT auto-create a rect
+    expect(getCrop()).toBeNull();
+  });
+
+  it("Switching mode after entering Crop refits the Modern frame", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Enter crop in Free mode (Modern)
+    setCropInteractionMode("modern");
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const frameFree = getModernFrame();
+    expect(frameFree).not.toBeNull();
+
+    // Switch to Size mode
+    setCropSizeTargetState({ w: 400, h: 300 });
+    setCropModeState("size");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const frameSize = getModernFrame();
+    expect(frameSize).not.toBeNull();
+    expect(frameSize.w / frameSize.h).toBeCloseTo(400 / 300, 1);
+
+    // Switch to Ratio mode
+    setCropAspectState({ w: 3, h: 2 });
+    setCropModeState("ratio");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const frameRatio = getModernFrame();
+    expect(frameRatio).not.toBeNull();
+    expect(frameRatio.w / frameRatio.h).toBeCloseTo(3 / 2, 1);
   });
 });

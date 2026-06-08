@@ -12,6 +12,21 @@ export interface CropResizeOptions {
   alt?: boolean;
 }
 
+export function screenDeltaToRotatedCropLocalDelta(
+  dx: number,
+  dy: number,
+  rotationDeg: number,
+): { dx: number; dy: number } {
+  if (rotationDeg === 0) return { dx, dy };
+  const rad = (-rotationDeg * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  return {
+    dx: dx * cos - dy * sin,
+    dy: dx * sin + dy * cos,
+  };
+}
+
 function minSize(n: number): number {
   return Math.max(1, n);
 }
@@ -77,12 +92,24 @@ function applyAspectCornerResize(
 ): CropRect {
   const oldW = rect.w;
   const oldH = rect.h;
+  const hx = handle === "se" || handle === "ne" ? 1 : -1;
+  const hy = handle === "se" || handle === "sw" ? 1 : -1;
+  const sumWH = oldW + oldH;
   let { x, y } = rect;
-  let w = minSize(handle.includes("e") ? oldW + effDx : oldW - effDx);
-  let h = w / targetRatio;
-  if (handle.includes("w")) x = rect.x + oldW - w;
-  if (handle.includes("n")) y = rect.y + oldH - h;
-  return { x, y, w: minSize(w), h: minSize(h) };
+
+  if (sumWH > 0) {
+    const projected = effDx * hx + effDy * hy;
+    // Ensure w >= 1 AND h = w/targetRatio >= 1
+    const minFactor = Math.max(1 / oldW, targetRatio / oldW);
+    const factor = Math.max(minFactor, 1 + projected / sumWH);
+    const w = oldW * factor;
+    const h = w / targetRatio;
+    if (handle.includes("w")) x = rect.x + oldW - w;
+    if (handle.includes("n")) y = rect.y + oldH - h;
+    return { x, y, w: minSize(w), h: minSize(h) };
+  }
+
+  return { x, y, w: minSize(oldW), h: minSize(oldH) };
 }
 
 function applyCenterResize(rect: CropRect, w: number, h: number): CropRect {

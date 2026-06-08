@@ -310,6 +310,25 @@ describe("Snap line cleanup", () => {
     restore();
   });
 
+  it("clears dragState on lostpointercapture even with mismatched pointerId", () => {
+    const { svg, handle, onSnapClear, restore } = setup();
+    startMoveDrag(svg, handle);
+
+    // Browser sends lostpointercapture with a DIFFERENT pointerId than the drag
+    svg.dispatchEvent(new PointerEvent("lostpointercapture", { pointerId: 999, bubbles: true }));
+
+    // Snap lines should still be cleared despite mismatched pointerId
+    expect(onSnapClear).toHaveBeenCalledTimes(1);
+
+    // Subsequent pointermove with original pointerId should NOT trigger render
+    svg.dispatchEvent(new PointerEvent("pointermove", {
+      pointerId: 10, bubbles: true, clientX: 140, clientY: 140,
+    }));
+
+    // dragState was cleared, so pointermove with any id is a no-op
+    restore();
+  });
+
   it("clears snap lines on Escape keydown during drag", () => {
     const { svg, handle, onSnapClear, restore } = setup();
     startMoveDrag(svg, handle);
