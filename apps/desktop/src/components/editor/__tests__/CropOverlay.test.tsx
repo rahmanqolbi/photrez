@@ -1995,4 +1995,264 @@ describe("CropOverlay viewport panning", () => {
     dispose();
     container.parentNode?.removeChild(container);
   });
+
+  it("modern crop: double-click on move zone calls onApplyCrop", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+    const origElementFromPoint = document.elementFromPoint;
+    document.elementFromPoint = vi.fn();
+
+    const onApplyCrop = vi.fn();
+    const onFrameChange = vi.fn();
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 300, h: 200 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="thirds"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={onFrameChange}
+          onImageTransformChange={onImageTransformChange}
+          onApplyCrop={onApplyCrop}
+        />
+      ),
+      container,
+    );
+
+    const moveZone = container.querySelector("[data-modern-crop-move]")!;
+    expect(moveZone).not.toBeNull();
+
+    const svgEl = container.querySelector("svg")!;
+
+    // Mock elementFromPoint to return the move zone
+    (document.elementFromPoint as any).mockReturnValue(moveZone);
+
+    // First click: pointerdown + pointerup on move zone
+    moveZone.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 50, bubbles: true, cancelable: true,
+      clientX: 500, clientY: 400,
+    }));
+    svgEl.dispatchEvent(new PointerEvent("pointerup", {
+      pointerId: 50, bubbles: true, cancelable: true,
+      clientX: 500, clientY: 400,
+    }));
+
+    expect(onApplyCrop).not.toHaveBeenCalled();
+
+    // Second click: pointerdown + pointerup → browser generates dblclick on SVG
+    moveZone.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 51, bubbles: true, cancelable: true,
+      clientX: 500, clientY: 400,
+    }));
+    svgEl.dispatchEvent(new PointerEvent("pointerup", {
+      pointerId: 51, bubbles: true, cancelable: true,
+      clientX: 500, clientY: 400,
+    }));
+
+    // Simulate dblclick on SVG (browser would generate this after two clicks)
+    svgEl.dispatchEvent(new MouseEvent("dblclick", {
+      bubbles: true, cancelable: true,
+      clientX: 500, clientY: 400,
+    }));
+
+    expect(onApplyCrop).toHaveBeenCalledTimes(1);
+
+    document.elementFromPoint = origElementFromPoint;
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("modern crop: double-click outside move zone does NOT call onApplyCrop", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+    const origElementFromPoint = document.elementFromPoint;
+    document.elementFromPoint = vi.fn();
+
+    const onApplyCrop = vi.fn();
+    const onFrameChange = vi.fn();
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 300, h: 200 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="thirds"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={onFrameChange}
+          onImageTransformChange={onImageTransformChange}
+          onApplyCrop={onApplyCrop}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+
+    // Mock elementFromPoint to return a non-move-zone element
+    const outsideEl = document.createElement("div");
+    (document.elementFromPoint as any).mockReturnValue(outsideEl);
+
+    // dblclick outside move zone
+    svgEl.dispatchEvent(new MouseEvent("dblclick", {
+      bubbles: true, cancelable: true,
+      clientX: 50, clientY: 50,
+    }));
+
+    expect(onApplyCrop).not.toHaveBeenCalled();
+
+    document.elementFromPoint = origElementFromPoint;
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("modern crop: double-click during drag does NOT call onApplyCrop", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+    const origElementFromPoint = document.elementFromPoint;
+    document.elementFromPoint = vi.fn();
+
+    const onApplyCrop = vi.fn();
+    const onFrameChange = vi.fn();
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 300, h: 200 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="thirds"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={onFrameChange}
+          onImageTransformChange={onImageTransformChange}
+          onApplyCrop={onApplyCrop}
+        />
+      ),
+      container,
+    );
+
+    const moveZone = container.querySelector("[data-modern-crop-move]")!;
+    const svgEl = container.querySelector("svg")!;
+
+    // Start a drag
+    moveZone.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 60, bubbles: true, cancelable: true,
+      clientX: 500, clientY: 400,
+    }));
+
+    // dblclick during active drag should be ignored
+    svgEl.dispatchEvent(new MouseEvent("dblclick", {
+      bubbles: true, cancelable: true,
+      clientX: 500, clientY: 400,
+    }));
+
+    expect(onApplyCrop).not.toHaveBeenCalled();
+
+    // Cleanup drag
+    svgEl.dispatchEvent(new PointerEvent("pointerup", {
+      pointerId: 60, bubbles: true, cancelable: true,
+      clientX: 500, clientY: 400,
+    }));
+
+    document.elementFromPoint = origElementFromPoint;
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("modern crop: single click does NOT call onApplyCrop", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+    const origElementFromPoint = document.elementFromPoint;
+    document.elementFromPoint = vi.fn();
+
+    const onApplyCrop = vi.fn();
+    const onFrameChange = vi.fn();
+    const onImageTransformChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <ModernCropOverlay
+          frame={{ w: 300, h: 200 }}
+          imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
+          viewportWidth={1000}
+          viewportHeight={800}
+          projectedWidth={1000}
+          projectedHeight={800}
+          guideMode="thirds"
+          cropMode="free"
+          cropAspect={null}
+          onFrameChange={onFrameChange}
+          onImageTransformChange={onImageTransformChange}
+          onApplyCrop={onApplyCrop}
+        />
+      ),
+      container,
+    );
+
+    const moveZone = container.querySelector("[data-modern-crop-move]")!;
+    const svgEl = container.querySelector("svg")!;
+
+    // Single click: pointerdown + pointerup, no second click
+    moveZone.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 70, bubbles: true, cancelable: true,
+      clientX: 500, clientY: 400,
+    }));
+    svgEl.dispatchEvent(new PointerEvent("pointerup", {
+      pointerId: 70, bubbles: true, cancelable: true,
+      clientX: 500, clientY: 400,
+    }));
+
+    // Dispatch a single click event (not dblclick)
+    svgEl.dispatchEvent(new MouseEvent("click", {
+      bubbles: true, cancelable: true,
+      clientX: 500, clientY: 400,
+    }));
+
+    expect(onApplyCrop).not.toHaveBeenCalled();
+
+    document.elementFromPoint = origElementFromPoint;
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
 });

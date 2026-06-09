@@ -191,6 +191,7 @@ export function CanvasViewport() {
   });
 
   const {
+    cropDragPreview,
     snapLines,
     setSnapLines,
     selectionBox,
@@ -742,6 +743,22 @@ export function CanvasViewport() {
               }}
             />);
           }}
+        </Show>
+
+        {/* Crop drag preview — screen-space selection rectangle */}
+        <Show when={cropDragPreview()}>
+          {(box) => (
+            <div style={{
+              position: "absolute",
+              left: `${box().x}px`,
+              top: `${box().y}px`,
+              width: `${box().w}px`,
+              height: `${box().h}px`,
+              outline: "1.5px dashed #E15A17",
+              "pointer-events": "none",
+              "z-index": 45,
+            }} />
+          )}
         </Show>
       </Show>
       <BrushContextMenu />

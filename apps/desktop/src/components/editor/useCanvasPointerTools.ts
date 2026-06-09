@@ -15,8 +15,11 @@ import { PaintSmoother } from "./paintSmoothing";
 import { getLayerAabb } from "@/viewport/transformGeometry";
 import { computeSnapAdjustment, type SnapRect } from "@/viewport/smartGuides";
 import type { HudMode } from "./TransformHud";
-import { getDefaultModernCropFrame } from "@/viewport/modernCropGeometry";
+import { getDefaultModernCropFrame, getProjectedCanvasSize, clampFrameToProjectedBounds } from "@/viewport/modernCropGeometry";
 import { resetCropPreviewToCanvas, restoreHiddenCropPreview, createCropRectFromDocumentPoints } from "./cropToolActions";
+
+const DRAG_CREATE_THRESHOLD = 5;
+const MIN_CROP_SIZE = 100;
 
 interface UseCanvasPointerToolsParams {
   getCanvasContainerRef: () => HTMLDivElement | undefined;
@@ -67,6 +70,8 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     cropInteractionMode,
     modernCropFrame,
     setModernCropFrame,
+    modernCropImageTransform,
+    setModernCropImageTransform,
     viewportWidth,
     viewportHeight,
     docWidth,
@@ -87,6 +92,16 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   } = useEditor();
 
   let isPendingCropClick = false;
+  let modernDragStart: { x: number; y: number } | null = null;
+  let modernDragExceededThreshold = false;
+  let modernDragEnd: { x: number; y: number } | null = null;
+
+  function resetModernDragState() {
+    modernDragStart = null;
+    modernDragExceededThreshold = false;
+    modernDragEnd = null;
+  }
+
   const paintSmoother = new PaintSmoother();
 
   const [snapLines, setSnapLines] = createSignal<{ x1: number; y1: number; x2: number; y2: number }[]>([]);
@@ -98,6 +113,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   } | null>(null);
 
   const [hudInfo, setHudInfoInner] = createSignal<HudData | null>(null);
+
+  const [cropDragPreview, setCropDragPreview] = createSignal<{
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  } | null>(null);
 
   const interactiveState: ToolContext = {
     fgColor: "",
@@ -240,26 +262,20 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
 
     if (activeTool() === "crop" && e.button === 0) {
       if (cropInteractionMode() === "modern") {
-        if (!modernCropFrame()) {
-          const mode = cropMode();
-          const ratioAspect = cropAspect();
-          const sizeTarget = cropSizeTarget();
-          const aspect = mode === "ratio" && ratioAspect
-            ? ratioAspect
-            : mode === "size" && sizeTarget && sizeTarget.w > 0 && sizeTarget.h > 0
-              ? { w: sizeTarget.w, h: sizeTarget.h }
-              : null;
-          setModernCropFrame(getDefaultModernCropFrame({
-            viewportWidth: viewportWidth(),
-            viewportHeight: viewportHeight(),
-            docWidth: docWidth(),
-            docHeight: docHeight(),
-            zoom: zoom(),
-            aspect,
-          }));
-          scheduler.requestRender();
+        if (modernCropFrame()) {
+          isPendingCropClick = false;
+        } else {
+          // Defer frame creation — track drag start, create on threshold or pointerup
+          const viewport = params.getCanvasContainerRef();
+          if (!viewport) return;
+          const rect = viewport.getBoundingClientRect();
+          modernDragStart = {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
+          };
+          modernDragExceededThreshold = false;
+          isPendingCropClick = false;
         }
-        isPendingCropClick = false;
       } else {
         isPendingCropClick = !cropRect();
       }
@@ -291,6 +307,11 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       history.commit(engine.snapshot());
     }
 
+    // If modern crop mode with no frame and no dragStart, bail
+    if (activeTool() === "crop" && cropInteractionMode() === "modern" && !modernCropFrame() && !modernDragStart) {
+      return;
+    }
+
     prepareToolContext();
     setSnapLines([]);
     const canvas = params.getCanvasRef();
@@ -313,6 +334,37 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
 
   const onCanvasPointerMove = (e: PointerEvent) => {
     if (params.isPanning()) return;
+
+    // Modern crop drag-to-create: show selection preview rect
+    if (
+      activeTool() === "crop" &&
+      cropInteractionMode() === "modern" &&
+      modernDragStart
+    ) {
+      const container = params.getCanvasContainerRef();
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const ex = e.clientX - rect.left;
+      const ey = e.clientY - rect.top;
+      const dx = ex - modernDragStart.x;
+      const dy = ey - modernDragStart.y;
+
+      if (!modernDragExceededThreshold) {
+        if (Math.abs(dx) < DRAG_CREATE_THRESHOLD && Math.abs(dy) < DRAG_CREATE_THRESHOLD) {
+          setCropDragPreview(null);
+          return;
+        }
+        modernDragExceededThreshold = true;
+      }
+
+      modernDragEnd = { x: ex, y: ey };
+
+      // Show selection preview rect (screen-space)
+      const sx = Math.min(modernDragStart.x, ex);
+      const sy = Math.min(modernDragStart.y, ey);
+      setCropDragPreview({ x: sx, y: sy, w: Math.abs(dx), h: Math.abs(dy) });
+      return; // Don't dispatch to handlePointerMove
+    }
 
     const engine = workspace.getActiveEngine();
     if (!engine) return;
@@ -364,6 +416,42 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
 
     interactiveState.dragTool = null;
 
+    // Modern crop: handle drag end or click fallback
+    if (
+      activeTool() === "crop" &&
+      cropInteractionMode() === "modern" &&
+      modernDragStart
+    ) {
+      if (modernDragExceededThreshold && modernDragEnd) {
+        commitDragCreateFrame(
+          modernDragStart.x, modernDragStart.y,
+          modernDragEnd.x, modernDragEnd.y,
+          e.shiftKey,
+        );
+      } else if (!modernCropFrame()) {
+        // Click behavior — create default frame
+        const mode = cropMode();
+        const ratioAspect = cropAspect();
+        const sizeTarget = cropSizeTarget();
+        const aspect = mode === "ratio" && ratioAspect
+          ? ratioAspect
+          : mode === "size" && sizeTarget && sizeTarget.w > 0 && sizeTarget.h > 0
+            ? { w: sizeTarget.w, h: sizeTarget.h }
+            : null;
+        setModernCropFrame(getDefaultModernCropFrame({
+          viewportWidth: viewportWidth(),
+          viewportHeight: viewportHeight(),
+          docWidth: docWidth(),
+          docHeight: docHeight(),
+          zoom: zoom(),
+          aspect,
+        }));
+        scheduler.requestRender();
+      }
+      setCropDragPreview(null);
+      resetModernDragState();
+    }
+
     if (tool === "crop" && isPendingCropClick) {
       const dx = Math.abs(coords.x - interactiveState.dragStart.x);
       const dy = Math.abs(coords.y - interactiveState.dragStart.y);
@@ -386,6 +474,71 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
 
     setSelectionBoxSignal(null);
   };
+
+  function commitDragCreateFrame(
+    startX: number, startY: number, endX: number, endY: number, shiftKey: boolean,
+  ) {
+    const vw = viewportWidth();
+    const vh = viewportHeight();
+    const selW = Math.abs(endX - startX);
+    const selH = Math.abs(endY - startY);
+    const selCenterX = Math.min(startX, endX) + selW / 2;
+    const selCenterY = Math.min(startY, endY) + selH / 2;
+
+    const mode = cropMode();
+    const ratioAspect = cropAspect();
+    const sizeTarget = cropSizeTarget();
+
+    let frameW: number;
+    let frameH: number;
+
+    if (mode === "free" && shiftKey) {
+      const size = Math.max(selW, selH);
+      frameW = size;
+      frameH = size;
+    } else if (mode === "free") {
+      frameW = selW;
+      frameH = selH;
+    } else if (mode === "ratio" && ratioAspect && ratioAspect.w > 0 && ratioAspect.h > 0) {
+      const ar = ratioAspect.w / ratioAspect.h;
+      const area = Math.max(selW * selH, MIN_CROP_SIZE * MIN_CROP_SIZE);
+      frameW = Math.sqrt(area * ar);
+      frameH = frameW / ar;
+    } else if (mode === "size" && sizeTarget && sizeTarget.w > 0 && sizeTarget.h > 0) {
+      frameW = sizeTarget.w;
+      frameH = sizeTarget.h;
+    } else {
+      frameW = selW;
+      frameH = selH;
+    }
+
+    frameW = Math.max(MIN_CROP_SIZE, frameW);
+    frameH = Math.max(MIN_CROP_SIZE, frameH);
+
+    const projected = getProjectedCanvasSize({
+      docWidth: docWidth(),
+      docHeight: docHeight(),
+      zoom: zoom(),
+    });
+
+    const frame = clampFrameToProjectedBounds(
+      { w: frameW, h: frameH },
+      projected,
+      MIN_CROP_SIZE,
+    );
+
+    setModernCropFrame(frame);
+
+    // Shift image so selection center maps to viewport center
+    const vpCenterX = vw / 2;
+    const vpCenterY = vh / 2;
+    setModernCropImageTransform({
+      ...modernCropImageTransform(),
+      offsetX: vpCenterX - selCenterX,
+      offsetY: vpCenterY - selCenterY,
+    });
+    scheduler.requestRender();
+  }
 
   const onCanvasPointerCancel = (e: PointerEvent) => {
     paintSmoother.reset();
@@ -410,6 +563,8 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     interactiveState.strokePoints = [];
     interactiveState.isDragging = false;
     interactiveState.dragTool = null;
+    setCropDragPreview(null);
+    resetModernDragState();
   };
 
   const onCanvasLostPointerCapture = (e: PointerEvent) => {
@@ -429,9 +584,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     interactiveState.strokePoints = [];
     interactiveState.isDragging = false;
     interactiveState.dragTool = null;
+    setCropDragPreview(null);
+    resetModernDragState();
   };
 
   return {
+    cropDragPreview,
+    setCropDragPreview,
     snapLines,
     setSnapLines,
     selectionBox,

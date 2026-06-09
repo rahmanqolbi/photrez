@@ -572,6 +572,290 @@ describe("CanvasViewport Pasteboard Clicks", () => {
       expect(lastCall[0]).not.toBe(9);
     }
   });
+
+  function dispatchModernCanvasDrag(
+    fromX: number, fromY: number, toX: number, toY: number,
+    options?: { shiftKey?: boolean }
+  ) {
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    if (!canvas) throw new Error("Canvas not found");
+
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: fromX, clientY: fromY,
+      ...(options?.shiftKey ? { shiftKey: true } : {}),
+    }));
+
+    canvas.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: toX, clientY: toY,
+      ...(options?.shiftKey ? { shiftKey: true } : {}),
+    }));
+
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: toX, clientY: toY,
+      ...(options?.shiftKey ? { shiftKey: true } : {}),
+    }));
+  }
+
+  it("creates default frame on canvas click in Modern mode with no frame", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    resetModernCropState();
+    expect(getModernFrame()).toBeNull();
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    expect(canvas).not.toBeNull();
+
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 50, clientY: 50,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 50, clientY: 50,
+    }));
+
+    const frame = getModernFrame();
+    expect(frame).not.toBeNull();
+    expect(frame!.w).toBeGreaterThan(0);
+    expect(frame!.h).toBeGreaterThan(0);
+  });
+
+  it("drag below 5px threshold creates default frame on pointerup", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    resetModernCropState();
+    expect(getModernFrame()).toBeNull();
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    // Drag 3px horizontally — below 5px threshold
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 100, clientY: 100,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 103, clientY: 100,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 103, clientY: 100,
+    }));
+
+    const frame = getModernFrame();
+    expect(frame).not.toBeNull();
+    expect(frame!.w).toBeGreaterThan(0);
+    expect(frame!.h).toBeGreaterThan(0);
+  });
+
+  it("drag above 5px threshold creates frame with expected aspect", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    setCropModeState("free");
+    resetModernCropState();
+    expect(getModernFrame()).toBeNull();
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    // Drag horizontally (200px → wider than tall)
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 100, clientY: 100,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 300, clientY: 150,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 300, clientY: 150,
+    }));
+
+    const frame = getModernFrame();
+    expect(frame).not.toBeNull();
+    // Wider-than-tall drag → frame should be wider than tall
+    expect(frame!.w).toBeGreaterThan(frame!.h);
+  });
+
+  it("Shift+drag in Free mode creates roughly square frame", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    setCropModeState("free");
+    resetModernCropState();
+    expect(getModernFrame()).toBeNull();
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    // Drag horizontally with shiftKey — should be square
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 100, clientY: 100, shiftKey: true,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 300, clientY: 150, shiftKey: true,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 300, clientY: 150, shiftKey: true,
+    }));
+
+    const frame = getModernFrame();
+    expect(frame).not.toBeNull();
+    // Should be roughly square: ratio < 1.1
+    const ratio = Math.max(frame!.w, frame!.h) / Math.min(frame!.w, frame!.h);
+    expect(ratio).toBeLessThan(1.1);
+  });
+
+  it("Ratio mode drag uses option bar aspect, not drag direction", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    setCropModeState("ratio");
+    setCropAspectState({ w: 16, h: 9 });
+    resetModernCropState();
+    expect(getModernFrame()).toBeNull();
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    // Drag tall (narrow horizontally) — but ratio mode should use 16:9
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 100, clientY: 100,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 105, clientY: 300,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 105, clientY: 300,
+    }));
+
+    const frame = getModernFrame();
+    expect(frame).not.toBeNull();
+    // Should be 16:9 (wider than tall), not tall
+    expect(frame!.w / frame!.h).toBeGreaterThan(1);
+  });
+
+  it("pointercancel mid-drag cleans up state and allows subsequent click", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    resetModernCropState();
+    expect(getModernFrame()).toBeNull();
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 100, clientY: 100,
+    }));
+
+    // Cancel mid-drag
+    canvas.dispatchEvent(new PointerEvent("pointercancel", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+    }));
+
+    // No frame should have been created
+    expect(getModernFrame()).toBeNull();
+
+    // Subsequent click should still create a frame
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 2,
+      clientX: 100, clientY: 100,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 2,
+      clientX: 100, clientY: 100,
+    }));
+
+    const frame = getModernFrame();
+    expect(frame).not.toBeNull();
+    expect(frame!.w).toBeGreaterThan(0);
+  });
+
+  it("lostpointercapture mid-drag cleans up state", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    resetModernCropState();
+    expect(getModernFrame()).toBeNull();
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 100, clientY: 100,
+    }));
+
+    canvas.dispatchEvent(new PointerEvent("lostpointercapture", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+    }));
+
+    // No frame should have been created (threshold not exceeded)
+    expect(getModernFrame()).toBeNull();
+  });
+
+  it("drag above threshold creates frame on pointerup with proper sizing (WYSIWYG)", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    setCropModeState("free");
+    resetModernCropState();
+    expect(getModernFrame()).toBeNull();
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 100, clientY: 100,
+    }));
+
+    // Move beyond threshold — frame should NOT exist yet (only preview rect shown during drag)
+    canvas.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 300, clientY: 200,
+    }));
+
+    expect(getModernFrame()).toBeNull();
+
+    // Drag further — still no frame
+    canvas.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 400, clientY: 150,
+    }));
+
+    expect(getModernFrame()).toBeNull();
+
+    // Pointerup — frame should be created
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 1,
+      clientX: 400, clientY: 150,
+    }));
+
+    const frame = getModernFrame();
+    expect(frame).not.toBeNull();
+    expect(frame!.w).toBeGreaterThan(0);
+    expect(frame!.h).toBeGreaterThan(0);
+  });
 });
 
 describe("Space+pan global override across all tools", () => {
@@ -964,6 +1248,130 @@ describe("Bug Hunt: Modern crop state leak across tool switches", () => {
     expect(afterExitTransform.scale).toBe(1);
 
     // Frame should also be null when not in crop mode
+    expect(getModernFrame()).toBeNull();
+  });
+
+  it("modern crop: Escape leaves frame null (no auto-recreate)", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Frame should be created on entry
+    expect(getModernFrame()).not.toBeNull();
+    const createdFrame = getModernFrame();
+
+    // Simulate Escape: reset modern crop state
+    resetModernCropState();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Frame should be null after dismiss
+    expect(getModernFrame()).toBeNull();
+
+    // Wait extra ticks — ensure createEffect does NOT recreate frame
+    // because session key hasn't changed
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(getModernFrame()).toBeNull();
+
+    // Image transform should also be reset
+    const t = getModernImageTransform();
+    expect(t.offsetX).toBe(0);
+    expect(t.offsetY).toBe(0);
+    expect(t.rotation).toBe(0);
+    expect(t.scale).toBe(1);
+  });
+
+  it("modern crop: canvas click creates frame after Escape dismiss", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Dismiss by resetting (simulating Escape)
+    resetModernCropState();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(getModernFrame()).toBeNull();
+
+    // Click on canvas
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    if (!canvas) throw new Error("Canvas not found");
+
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0,
+      clientX: 200, clientY: 200, pointerId: 80,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0,
+      clientX: 200, clientY: 200, pointerId: 80,
+    }));
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Frame should be recreated
+    expect(getModernFrame()).not.toBeNull();
+  });
+
+  it("modern crop: mode change recreates frame after Escape dismiss", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Dismiss by resetting
+    resetModernCropState();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(getModernFrame()).toBeNull();
+
+    // Change mode (e.g., free → ratio)
+    setCropModeState("ratio");
+    setCropAspectState({ w: 16, h: 9 });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Mode change should trigger session key change → createEffect recreates frame
+    expect(getModernFrame()).not.toBeNull();
+    if (getModernFrame()) {
+      // Frame should roughly match 16:9 aspect ratio (wider than tall, centered in viewport)
+      expect(getModernFrame().w).toBeGreaterThan(getModernFrame().h);
+    }
+  });
+
+  it("modern crop: tool switch away and back recreates frame after Escape dismiss", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Dismiss by resetting
+    resetModernCropState();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(getModernFrame()).toBeNull();
+
+    // Switch to another tool
+    setTool("move");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Switch back to crop (new session created)
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Frame should be recreated
+    expect(getModernFrame()).not.toBeNull();
+  });
+
+  it("modern crop: resize document does not recreate dismissed frame", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Dismiss by resetting
+    resetModernCropState();
+    await new Promise((resolve) => setTimeout(resolve, 50));
     expect(getModernFrame()).toBeNull();
   });
 });

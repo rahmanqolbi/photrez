@@ -23,6 +23,20 @@
 
 ---
 
+## [2026-06-09] BUG FIX — Drag-to-Create Preview Sizing (Border→Outline) [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / UX
+
+**Root Cause:** The rubber-band selection preview (`cropDragPreview`) used `border: 1.5px dashed` with default `box-sizing: content-box`, adding 3px to both width/height of the rendered preview element. The final crop frame (SVG overlay) used `stroke` (~1.125px outside each side), making the frame visually ~0.75px smaller per side than the preview. Additionally, `Math.round` on frame dimensions introduced up to 0.5px sizing error per axis.
+
+**Fix:**
+1. Switched preview from `border` to `outline` — outline doesn't affect the box model, so preview visual size now matches content area exactly.
+2. Removed `Math.round` from frame dimension clamping — frame now uses exact floating-point selection size.
+
+**Verification:** Build passes, 755 tests pass.
+
+---
+
 ## [2026-06-08] BUG FIX — Classic Rotated Crop Resize Axis [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX

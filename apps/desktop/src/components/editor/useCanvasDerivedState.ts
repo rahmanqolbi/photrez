@@ -31,6 +31,8 @@ export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
     docWidth,
     docHeight,
     clearCropStacks,
+    cropInteractionMode,
+    modernCropFrame,
   } = useEditor();
 
   const isLayerLocked = createMemo(() => {
@@ -124,6 +126,14 @@ export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
       if (h && h.startsWith("rotate")) {
         setHoverHandle(null);
       }
+    }
+  });
+
+  // Clear hover state when modern crop frame is dismissed
+  createEffect(() => {
+    if (activeTool() === "crop" && cropInteractionMode() === "modern" && !modernCropFrame()) {
+      setHoverHandle(null);
+      setHoverPos(null);
     }
   });
 
