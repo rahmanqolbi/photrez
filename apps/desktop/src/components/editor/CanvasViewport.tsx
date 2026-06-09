@@ -264,7 +264,7 @@ export function CanvasViewport() {
 
     const aspectKey = aspect ? `${aspect.w}x${aspect.h}` : "";
     const sessionKey = `${activeDocumentId() ?? "none"}:${viewportWidth()}x${viewportHeight()}:${zoom()}:${mode}:${aspectKey}`;
-    if (lastModernCropSessionKey !== sessionKey || !modernCropFrame()) {
+    if (lastModernCropSessionKey !== sessionKey) {
       lastModernCropSessionKey = sessionKey;
       setModernCropFrame(getDefaultModernCropFrame({
         viewportWidth: viewportWidth(),
@@ -712,8 +712,10 @@ export function CanvasViewport() {
               onDragStateChange={setIsCropDragging}
               onModernCropCommit={() => commitModernCropState()}
               onApplyCrop={() => {
+                const f = modernCropFrame();
+                if (!f) return;
                 const rect = modernFrameToCropRect({
-                  frame: frame(),
+                  frame: f,
                   viewport: {
                     width: viewportWidth(),
                     height: viewportHeight(),

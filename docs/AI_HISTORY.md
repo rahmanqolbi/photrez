@@ -2830,6 +2830,45 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 
 ---
 
+## [2026-06-09] BUG FIX — Modern Crop Double-Click Commit, Escape Cancel, Click-to-Create Frame [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / UX
+
+**User Goal:** (1) Escape/Cancel must clear crop box but stay in crop tool. (2) After dismiss, clicking canvas must create a new default crop frame. (3) Double-click on crop box must commit crop preview.
+
+**Root Cause 1 — `createEffect` auto-recreates frame after Escape:**
+`CanvasViewport.tsx` had `if (isModernCrop && (!modernCropFrame() || shouldRefresh))`. When `resetModernCrop()` nulled the frame on Escape, the `!modernCropFrame()` condition immediately recreated it, undoing the user's dismissal.
+
+**Fix 1:** Changed condition to `if (isModernCrop && shouldRefresh)` — only recreate on session key change (document, zoom, mode, aspect), not when frame is null.
+
+**Root Cause 2 — No canvas click handler for modern crop mode:**
+When the frame is null (user dismissed by Escape), clicking the canvas did nothing because `useCanvasPointerTools.ts` had no modern crop handler — only Classic crop pasteboard logic.
+
+**Fix 2:** Added a canvas click handler for modern mode (no frame) that calls `setModernCropFrame(getDefaultModernCropFrame(...))` with the current crop mode aspect, same logic as the `createEffect`.
+
+**Root Cause 3 — `e.preventDefault()` in `capture()` suppresses mouse events including `dblclick`:**
+`ModernCropOverlay.tsx` `capture()` called `e.preventDefault()` which, per the Pointer Events spec, prevents the browser from synthesizing `mousedown`/`mouseup`/`click`/`dblclick` from pointer events. Since both clicks during a double-click are dispatched through pointer capture (redirected to SVG via `setPointerCapture`), and `mouseup` generates `click`, and two `click`s generate `dblclick` — but `preventDefault()` killed `mousedown` at the source. Combined with `e.stopPropagation()` which prevented the second `pointerdown` from firing SVG's handler, no detection path existed.
+
+**Fix 3:** Removed `e.preventDefault()` from `capture()`, keeping `stopPropagation()` and pointer capture. Now the browser naturally generates `mousedown`/`mouseup`/`click`/`dblclick` from pointer events. Both `click` events fire on `<svg>` (nearest common ancestor of `mousedown` on `<rect>` and `mouseup` on SVG via capture). Browser detects two `click`s on same element → fires `dblclick` on `<svg>`. Added `onDblClick` to `<svg>` that calls `props.onApplyCrop?.()` after `elementFromPoint` verifies cursor is over `[data-modern-crop-move]`.
+
+### Rincian Perubahan:
+1. `CanvasViewport.tsx` — `createEffect`: `!modernCropFrame()` removed from refresh guard
+2. `useCanvasPointerTools.ts` — Added modern crop canvas click handler that creates default frame
+3. `ModernCropOverlay.tsx` — `capture()`: removed `e.preventDefault()`, added `onDblClick` to `<svg>` with `elementFromPoint` verification
+4. `modernCropState.ts` — reverted (no `modernCropDismissed` signal needed)
+5. `EditorContext.tsx` — reverted
+
+### Files Changed:
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- `apps/desktop/src/components/editor/useCanvasPointerTools.ts`
+- `apps/desktop/src/components/editor/ModernCropOverlay.tsx`
+
+### Verification Results
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (738 tests, 52 files)
+- PASS: `pnpm.cmd --filter photrez-desktop build`
+
+---
+
 ## [2026-06-09] FEATURE — Post-Crop Move Tool Clean State [COMPLETE]
 
 ### Kategori: FEATURE / MOVE / FRONTEND / UX
@@ -2877,31 +2916,37 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 - PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (737 tests, 52 files)
 - PASS: `pnpm.cmd run build` (tsc + Vite)
 
-## [2026-06-09] BUG FIX — Crop Fill Background Disappears After Deselect [COMPLETE]
+## [2026-06-09] BUG FIX — Crop Fill Background Disappears After Deselect + Canvas Select Not Working [COMPLETE]
 
-### Kategori: BUG FIX / RENDERER / WEBGL / COMPOSITING
+### Kategori: BUG FIX / RENDERER / WEBGL / COMPOSITING / UI
 
-**User Goal:** After crop with fill background applied, deselecting the active layer (click pasteboard, press Escape) must not change the rendered composition. The fill background layer must remain visible.
+**User Goal:** After crop with fill background applied, deselecting the active layer (click pasteboard, press Escape) must not change the rendered composition. The fill background layer must remain visible. Clicking a layer on the canvas must auto-select it (transform box appears).
 
 **Root Causes:**
 
-1. **GL_INVALID_OPERATION: Feedback loop (stale TEXTURE1 binding).** After each render frame completes, TEXTURE1 is left bound to `pingPongTextures[prevFboIndex]`. On the next render, when drawing the first layer to FBO 0 (color attachment = `pingPongTextures[0]`), TEXTURE1 still references `pingPongTextures[0]` from the previous frame. WebGL detects the feedback loop at draw time (even though `u_useBackdrop=0` means the shader never branches to read TEXTURE1) and **silently drops the entire draw call** — no pixels written. This is what caused the fill to intermittently disappear. Zooming triggers `resize()` which recreates all FBOs/textures, clearing the stale bindings and fixing it temporarily.
+1. **GL_INVALID_OPERATION: Intra-frame feedback loop (stale TEXTURE1 binding in compositing loop).** In `webgl2.ts render()`, the FBO compositing loop's composite pass binds TEXTURE1 to `pingPongTextures[prevFboIndex]`. After the FBO swap (prevFboIndex = currFboIndex), the next iteration's COPY pass executes with TEXTURE1 still bound to the OLD prevFboIndex — which is now the CURRENT FBO's color attachment. WebGL detects the feedback loop at draw time and **silently drops the draw call**. This occurs with 3+ layers. Initial fix (unbind TEXTURE0/1 at render start) addressed cross-frame stale bindings but missed this intra-frame case.
 
-2. **GL_BLEND double-compositing.** `gl.enable(gl.BLEND)` with `gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)` was set during initialization and never disabled during FBO compositing. The shader already performs manual `src OVER dst` compositing via `u_useBackdrop` and `blendColors()`. With GL_BLEND also active, every draw to the FBO was double-blended. For opaque alpha=1 pixels the double-blend cancels out, but any alpha<1 pixel (transparent crop areas, semi-transparent image edges) accumulates premultiplied-alpha corruption.
+2. **GL_BLEND double-compositing.** `gl.enable(gl.BLEND)` with `gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)` was set during initialization and never disabled during FBO compositing. The shader already performs manual `src OVER dst` compositing via `u_useBackdrop` and `blendColors()`. With GL_BLEND also active, every draw to the FBO was double-blended.
+
+3. **Brush overlay `<div>` blocks canvas pointer events.** In `CanvasViewport.tsx`, the brush overlay `<div>` (line 527) is positioned above the main canvas in DOM order with no `pointer-events: none`. All clicks within the document area hit this div instead of the canvas, so `onCanvasPointerDown` is never called — auto-select cannot work.
 
 **Fix Rationale:**
-1. Unbind TEXTURE0 and TEXTURE1 to null at the start of every render frame, preventing stale cross-frame binding feedback loops.
-2. Disable GL_BLEND during all FBO compositing (the shader handles it). Re-enable BLEND only for the final screen render pass (compositing the document FBO over the checkerboard background).
+1. Unbind TEXTURE1 to null after each composite pass (before the FBO swap) to prevent stale intra-frame bindings.
+2. Disable GL_BLEND during all FBO compositing (the shader handles it). Re-enable BLEND only for the final screen render pass.
+3. Add `"pointer-events": "none"` to the brush overlay div so pointer events reach the main canvas.
 
 **Rincian Perubahan:**
-1. `webgl2.ts render()` — Added `gl.activeTexture(gl.TEXTURE0/1); gl.bindTexture(gl.TEXTURE_2D, null)` at start to clear stale bindings.
-2. `webgl2.ts render()` — Added `gl.disable(gl.BLEND)` before FBO compositing loop.
-3. `webgl2.ts render()` — Added `gl.enable(gl.BLEND)` before final screen render pass.
-4. `cropApply.ts` — Added `ctx.clearRect(0, 0, finalW, finalH)` before `drawImage` (defensive).
-5. `postCropAlignment.test.ts` — Added `clearRect` to mock OffscreenCanvas context.
+1. `webgl2.ts render()` — Unbind TEXTURE1 after each composite draw (line 304), before FBO swap, preventing intra-frame feedback loop.
+2. `webgl2.ts render()` — Added `gl.activeTexture(gl.TEXTURE0/1); gl.bindTexture(gl.TEXTURE_2D, null)` at start to clear stale cross-frame bindings.
+3. `webgl2.ts render()` — Added `gl.disable(gl.BLEND)` before FBO compositing loop.
+4. `webgl2.ts render()` — Added `gl.enable(gl.BLEND)` before final screen render pass.
+5. `CanvasViewport.tsx` — Added `"pointer-events": "none"` to brush overlay div style.
+6. `cropApply.ts` — Added `ctx.clearRect(0, 0, finalW, finalH)` before `drawImage` (defensive).
+7. `postCropAlignment.test.ts` — Added `clearRect` to mock OffscreenCanvas context.
 
 ### Files Changed:
 - `apps/desktop/src/renderer/webgl2.ts`
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`
 - `apps/desktop/src/engine/cropApply.ts`
 - `apps/desktop/src/engine/__tests__/postCropAlignment.test.ts`
 

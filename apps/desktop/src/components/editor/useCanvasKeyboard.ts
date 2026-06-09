@@ -230,18 +230,13 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         }
         if (e.key === "Escape") {
           e.preventDefault();
+          setCropRect(null);
+          setCropRotation(0);
+          setHiddenCropPreview(null);
           if (cropInteractionMode() === "modern") {
             resetModernCrop();
-          } else {
-            discardCropSession({
-              cropRect: () => cropRect(),
-              cropRotation: () => cropRotation(),
-              hiddenCropPreview,
-              setCropRect,
-              setCropRotation,
-              setHiddenCropPreview,
-            });
           }
+          scheduler.requestRender();
           return;
         }
         if (e.key.startsWith("Arrow") && (cropRect() || modernCropFrame())) {

@@ -15,6 +15,7 @@ import { PaintSmoother } from "./paintSmoothing";
 import { getLayerAabb } from "@/viewport/transformGeometry";
 import { computeSnapAdjustment, type SnapRect } from "@/viewport/smartGuides";
 import type { HudMode } from "./TransformHud";
+import { getDefaultModernCropFrame } from "@/viewport/modernCropGeometry";
 import { resetCropPreviewToCanvas, restoreHiddenCropPreview, createCropRectFromDocumentPoints } from "./cropToolActions";
 
 interface UseCanvasPointerToolsParams {
@@ -53,6 +54,9 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     setBgColor,
     zoom,
     cropRect,
+    cropMode,
+    cropAspect,
+    cropSizeTarget,
     setCropRect,
     cropRotation,
     setCropRotation,
@@ -60,6 +64,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     setHiddenCropPreview,
     setSelectedLayerId,
     setHoverHandle,
+    cropInteractionMode,
+    modernCropFrame,
+    setModernCropFrame,
+    viewportWidth,
+    viewportHeight,
+    docWidth,
+    docHeight,
     moveAutoSelect,
     moveSnapEnabled,
     setHoverPos,
@@ -227,8 +238,31 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const history = workspace.getActiveHistory();
     if (!engine || !history) return;
 
-    if (activeTool() === "crop" && !cropRect() && e.button === 0) {
-      isPendingCropClick = true;
+    if (activeTool() === "crop" && e.button === 0) {
+      if (cropInteractionMode() === "modern") {
+        if (!modernCropFrame()) {
+          const mode = cropMode();
+          const ratioAspect = cropAspect();
+          const sizeTarget = cropSizeTarget();
+          const aspect = mode === "ratio" && ratioAspect
+            ? ratioAspect
+            : mode === "size" && sizeTarget && sizeTarget.w > 0 && sizeTarget.h > 0
+              ? { w: sizeTarget.w, h: sizeTarget.h }
+              : null;
+          setModernCropFrame(getDefaultModernCropFrame({
+            viewportWidth: viewportWidth(),
+            viewportHeight: viewportHeight(),
+            docWidth: docWidth(),
+            docHeight: docHeight(),
+            zoom: zoom(),
+            aspect,
+          }));
+          scheduler.requestRender();
+        }
+        isPendingCropClick = false;
+      } else {
+        isPendingCropClick = !cropRect();
+      }
     } else {
       isPendingCropClick = false;
     }

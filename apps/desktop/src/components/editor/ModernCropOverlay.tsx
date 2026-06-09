@@ -66,6 +66,8 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
   const [hoverPos, setHoverPos] = createSignal<{ x: number; y: number } | null>(null);
   const [dragState, setDragState] = createSignal<DragState | null>(null);
   const [tooltip, setTooltip] = createSignal<{ x: number; y: number; w: number; h: number } | null>(null);
+  let lastPointerDownTime = 0;
+  let pendingApply: ReturnType<typeof setTimeout> | null = null;
 
   const navMode = () => props.isNavigationMode ?? false;
   const screenRect = createMemo(() =>
@@ -129,7 +131,6 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
 
   const capture = (e: PointerEvent) => {
     svgRef.setPointerCapture(e.pointerId);
-    e.preventDefault();
     e.stopPropagation();
     props.onDragStateChange?.(true);
   };
@@ -281,6 +282,12 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
       onPointerCancel={clearDrag}
       onLostPointerCapture={() => clearDrag()}
       onPointerLeave={() => { if (!dragState()) { setHover(null); setHoverPos(null); } }}
+      onDblClick={(e) => {
+        if (navMode() || dragState()) return;
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        if (!el || !el.closest('[data-modern-crop-move]')) return;
+        props.onApplyCrop?.();
+      }}
     >
       <defs>
         <mask id="modern-crop-shield">
@@ -348,10 +355,6 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
         onPointerDown={startMove}
         onPointerEnter={() => setHover("move")}
         onPointerLeave={() => { if (!dragState()) setHover(null); }}
-        onDblClick={(e) => {
-          e.stopPropagation();
-          props.onApplyCrop?.();
-        }}
       />
       <For each={handles()}>
         {(h) => (
