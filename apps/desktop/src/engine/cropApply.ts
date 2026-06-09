@@ -1,4 +1,5 @@
 import type { LayerNode } from "./types";
+import { createMergedLayerNode } from "./layerFactory";
 
 function normalizeRotation(angleDeg: number): number {
   let angle = angleDeg % 360;
@@ -26,6 +27,7 @@ export function performApplyCrop(
     deleteCroppedPixels?: boolean;
     targetSize?: { w: number; h: number } | null;
     rotation?: number;
+    fillBackgroundColor?: string | null;
   }
 ): void {
   const deleteCropped = options?.deleteCroppedPixels ?? false;
@@ -43,6 +45,7 @@ export function performApplyCrop(
   const finalH = targetSize ? targetSize.h : height;
   const exportScaleX = finalW / width;
   const exportScaleY = finalH / height;
+  const fillBackgroundColor = options?.fillBackgroundColor ?? null;
 
   for (const layer of layers) {
     if (layer.locked) continue;
@@ -82,6 +85,7 @@ export function performApplyCrop(
         const offscreen = new OffscreenCanvas(finalW, finalH);
         const ctx = offscreen.getContext("2d");
         if (ctx) {
+          ctx.clearRect(0, 0, finalW, finalH);
           ctx.save();
           ctx.translate(finalCX, finalCY);
           ctx.rotate((finalRotation * Math.PI) / 180);
@@ -118,6 +122,29 @@ export function performApplyCrop(
       layer.transform.scaleY = finalScaleY;
       layer.transform.rotation = finalRotation;
       // flipH and flipV remain unchanged
+    }
+  }
+
+  if (fillBackgroundColor) {
+    try {
+      const offscreen = new OffscreenCanvas(finalW, finalH);
+      const ctx = offscreen.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = fillBackgroundColor;
+        ctx.fillRect(0, 0, finalW, finalH);
+        const bitmap = offscreen.transferToImageBitmap();
+        const fillLayer = createMergedLayerNode(
+          "Crop Fill Background",
+          finalW,
+          finalH,
+          bitmap,
+          false,
+          "normal",
+        );
+        layers.push(fillLayer);
+      }
+    } catch (err) {
+      console.error("Failed to create crop fill background:", err);
     }
   }
 }

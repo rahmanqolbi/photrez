@@ -486,6 +486,7 @@ export class DocumentEngine {
       deleteCroppedPixels?: boolean;
       targetSize?: { w: number; h: number } | null;
       rotation?: number;
+      fillBackgroundColor?: string | null;
     },
   ): void {
     if (width <= 0 || height <= 0) return;

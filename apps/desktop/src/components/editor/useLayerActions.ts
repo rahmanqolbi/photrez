@@ -11,6 +11,7 @@ export function useLayerActions() {
     scheduler,
     layerTransformSession,
     setLayerTransformSession,
+    setSelectedLayerId,
   } = useEditor();
 
   const cancelActiveTransformSession = () => {
@@ -62,6 +63,7 @@ export function useLayerActions() {
   const handleSelectLayer = (id: string) => {
     const engine = workspace.getActiveEngine();
     engine?.setActiveLayer(id);
+    setSelectedLayerId(id);
   };
 
   const handleToggleVisibility = (e: MouseEvent, id: string) => {

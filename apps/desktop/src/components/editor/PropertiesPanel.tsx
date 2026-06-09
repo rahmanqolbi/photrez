@@ -22,17 +22,17 @@ const COLLAPSED_SECTIONS: readonly {
 ] as const;
 
 export function PropertiesPanel() {
-  const { workspace, layers, activeLayerId, scheduler, activeDocumentId } = useEditor();
+  const { workspace, layers, selectedLayerId, scheduler, activeDocumentId } = useEditor();
 
   const activeLayer = () => {
-    const id = activeLayerId();
+    const id = selectedLayerId();
     if (!id) return null;
     return layers().find(l => l.id === id) || null;
   };
 
   const handleOpacityChange = (val: number) => {
     const engine = workspace.getActiveEngine();
-    const id = activeLayerId();
+    const id = selectedLayerId();
     if (engine && id) {
       // Direct update for live performance (no history commit on every drag segment, just update)
       engine.setLayerOpacity(id, val / 100);

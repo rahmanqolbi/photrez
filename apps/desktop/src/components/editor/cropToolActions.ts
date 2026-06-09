@@ -64,12 +64,14 @@ export function applyCropPreview(params: {
   cropMode: "free" | "ratio" | "size";
   cropSizeTarget: { w: number; h: number } | null;
   cropDeletePixels: boolean;
+  cropFillColor?: string | null;
   cropRotation: number;
   scheduler: RenderScheduler;
   setCropRect: (rect: CropPreview["rect"] | null) => void;
   setCropRotation: (rot: number) => void;
   setHiddenCropPreview: (preview: CropPreview | null) => void;
   setActiveTool: (tool: string) => void;
+  setSelectedLayerId: (id: string | null) => void;
   recenterViewport?: () => void;
 }) {
   const engine = params.workspace.getActiveEngine();
@@ -79,13 +81,28 @@ export function applyCropPreview(params: {
   const history = params.workspace.getActiveHistory();
   history?.commit(engine.snapshot());
 
-  engine.applyCrop(rect.x, rect.y, rect.w, rect.h, {
+  const cropOptions: {
+    deleteCroppedPixels: boolean;
+    targetSize: { w: number; h: number } | null;
+    rotation: number;
+    fillBackgroundColor?: string;
+  } = {
     deleteCroppedPixels: params.cropDeletePixels,
     targetSize: params.cropMode === "size" && params.cropSizeTarget
       ? { w: Math.round(params.cropSizeTarget.w), h: Math.round(params.cropSizeTarget.h) }
       : null,
     rotation: params.cropRotation,
-  });
+  };
+  if (params.cropFillColor) {
+    cropOptions.fillBackgroundColor = params.cropFillColor;
+  }
+  engine.applyCrop(
+    Math.round(rect.x),
+    Math.round(rect.y),
+    Math.round(rect.w),
+    Math.round(rect.h),
+    cropOptions,
+  );
 
   params.recenterViewport?.();
 
@@ -108,6 +125,8 @@ export function applyCropPreview(params: {
     setHiddenCropPreview: params.setHiddenCropPreview,
   });
   params.setActiveTool("move");
+  params.setSelectedLayerId(null);
+  engine.setActiveLayer(null);
 }
 
 export const CROP_REPLACEMENT_DRAG_THRESHOLD_PX = 3;

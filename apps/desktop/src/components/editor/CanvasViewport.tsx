@@ -41,6 +41,7 @@ export function CanvasViewport() {
     viewportHeight,
     docWidth,
     docHeight,
+    bgColor,
     setHoverHandle,
     syncViewport,
     moveSnapEnabled,
@@ -56,12 +57,16 @@ export function CanvasViewport() {
     commitModernCropState,
     hiddenCropPreview, setHiddenCropPreview,
     cropDeletePixels,
+    cropFillEnabled,
+    cropFillSource,
+    cropFillCustomColor,
     cropSizeTarget,
     setCropAspect,
     setCropMode,
     setCropSizeTarget,
     clearCropStacks,
     setActiveTool,
+    setSelectedLayerId,
     layerTransformSession,
     scheduler,
   } = useEditor();
@@ -133,6 +138,40 @@ export function CanvasViewport() {
       `scale(${zoom() * transform.scale})`,
       `translate3d(${-pivot.document.x}px, ${-pivot.document.y}px, 0)`,
     ].join(" ");
+  });
+
+  const resolvedCropFillColor = createMemo(() => (
+    cropFillSource() === "background" ? bgColor() : cropFillCustomColor()
+  ));
+
+  const classicCropFillPreviewStyle = createMemo(() => {
+    const rect = cropRect();
+    if (!rect) return {};
+    return {
+      position: "absolute" as const,
+      left: `${pan().x + rect.x * zoom()}px`,
+      top: `${pan().y + rect.y * zoom()}px`,
+      width: `${rect.w * zoom()}px`,
+      height: `${rect.h * zoom()}px`,
+      "background-color": resolvedCropFillColor(),
+      transform: `rotate(${cropRotation()}deg)`,
+      "transform-origin": "center",
+      "pointer-events": "none" as const,
+    };
+  });
+
+  const modernCropFillPreviewStyle = createMemo(() => {
+    const frame = modernCropFrame();
+    if (!frame) return {};
+    return {
+      position: "absolute" as const,
+      left: `${(viewportWidth() - frame.w) / 2}px`,
+      top: `${(viewportHeight() - frame.h) / 2}px`,
+      width: `${frame.w}px`,
+      height: `${frame.h}px`,
+      "background-color": resolvedCropFillColor(),
+      "pointer-events": "none" as const,
+    };
   });
 
   const screenToDocumentPoint = (e: PointerEvent) => {
@@ -321,6 +360,7 @@ export function CanvasViewport() {
 
     if (action === "clear-active-layer" && engine) {
       engine.setActiveLayer(null);
+      setSelectedLayerId(null);
       setHoverHandle(null);
       setSnapLines([]);
       setHudInfo(null);
@@ -442,6 +482,18 @@ export function CanvasViewport() {
             "visible thin gap" at high zoom. By placing the canvas outside, its CSS
             dimensions exactly match its pixel buffer (at dpr=1), eliminating the
             filtering artifact. */}
+        <Show when={activeTool() === "crop" && cropFillEnabled() && cropInteractionMode() === "classic" && cropRect()}>
+          <div
+            data-crop-fill-preview="classic"
+            style={classicCropFillPreviewStyle()}
+          />
+        </Show>
+        <Show when={activeTool() === "crop" && cropFillEnabled() && cropInteractionMode() === "modern" && modernCropFrame()}>
+          <div
+            data-crop-fill-preview="modern"
+            style={modernCropFillPreviewStyle()}
+          />
+        </Show>
         <canvas
           ref={canvasRef}
           onPointerDown={onCanvasPointerDown}
@@ -482,6 +534,7 @@ export function CanvasViewport() {
             position: "absolute",
             width: `${docWidth()}px`,
             height: `${docHeight()}px`,
+            "pointer-events": "none",
           }}
         >
 
@@ -615,23 +668,25 @@ export function CanvasViewport() {
               onDragStateChange={setIsCropDragging}
               hiddenCropPreview={hiddenCropPreview()}
               onHiddenCropPreviewChange={setHiddenCropPreview}
-              onApplyCrop={() => {
-                applyCropPreview({
-                  workspace,
-                  renderer,
-                  cropRect: cropRect(),
-                  cropMode: cropMode(),
-                  cropSizeTarget: cropSizeTarget(),
-                  cropDeletePixels: cropDeletePixels(),
-                  cropRotation: cropRotation(),
-                  scheduler,
-                  setCropRect,
-                  setCropRotation,
-                  setHiddenCropPreview,
-                  setActiveTool,
-                  recenterViewport: () => fitToScreenAndRender(),
-                });
-              }}
+                  onApplyCrop={() => {
+                    applyCropPreview({
+                      workspace,
+                      renderer,
+                      cropRect: cropRect(),
+                      cropMode: cropMode(),
+                      cropSizeTarget: cropSizeTarget(),
+                      cropDeletePixels: cropDeletePixels(),
+                      cropFillColor: cropFillEnabled() ? resolvedCropFillColor() : null,
+                      cropRotation: cropRotation(),
+                      scheduler,
+                      setCropRect,
+                      setCropRotation,
+                      setHiddenCropPreview,
+                      setActiveTool,
+                      setSelectedLayerId,
+                      recenterViewport: () => fitToScreenAndRender(),
+                    });
+                  }}
             />
           </Show>
         </div>
@@ -674,9 +729,11 @@ export function CanvasViewport() {
                   cropMode: cropMode(),
                   cropSizeTarget: cropSizeTarget(),
                   cropDeletePixels: cropDeletePixels(),
+                  cropFillColor: cropFillEnabled() ? resolvedCropFillColor() : null,
                   cropRotation: getModernCropApplyRotation(modernCropImageTransform().rotation),
                   scheduler,
                   setCropRect, setCropRotation, setHiddenCropPreview, setActiveTool,
+                  setSelectedLayerId,
                   recenterViewport: () => fitToScreenAndRender(),
                 });
                 resetModernCrop();

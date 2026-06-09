@@ -49,12 +49,14 @@ describe("cropToolActions", () => {
     const setCropRotation = vi.fn();
     const setHiddenCropPreview = vi.fn();
     const setActiveTool = vi.fn();
+    const setSelectedLayerId = vi.fn();
     const recenterViewport = vi.fn();
     const snapshot = { dummy: "snapshot" };
     
     const engine = {
       snapshot: () => snapshot,
       applyCrop: vi.fn(),
+      setActiveLayer: vi.fn(),
       getWidth: () => 300,
       getHeight: () => 200,
       getViewport: () => ({ zoom: 1 }),
@@ -95,6 +97,7 @@ describe("cropToolActions", () => {
       setCropRotation,
       setHiddenCropPreview,
       setActiveTool,
+      setSelectedLayerId,
       recenterViewport,
     });
 
@@ -113,6 +116,44 @@ describe("cropToolActions", () => {
     expect(setCropRotation).toHaveBeenCalledWith(0);
     expect(setHiddenCropPreview).toHaveBeenCalledWith(null);
     expect(setActiveTool).toHaveBeenCalledWith("move");
+    expect(setSelectedLayerId).toHaveBeenCalledWith(null);
+    expect(engine.setActiveLayer).toHaveBeenCalledWith(null);
+  });
+
+  it("rounds fractional crop rect to integers before committing", () => {
+    const engine = {
+      snapshot: () => ({}),
+      applyCrop: vi.fn(),
+      setActiveLayer: vi.fn(),
+      getWidth: () => 300,
+      getHeight: () => 200,
+      getViewport: () => ({ zoom: 1 }),
+      getLayers: () => [],
+    };
+    const workspace = {
+      getActiveEngine: () => engine,
+      getActiveHistory: () => ({ commit: vi.fn() }),
+    };
+    const scheduler = { requestRender: vi.fn() };
+    const renderer = { uploadImage: vi.fn(), resize: vi.fn() };
+
+    applyCropPreview({
+      workspace: workspace as any,
+      renderer: renderer as any,
+      cropRect: { x: 10.3, y: 20.7, w: 100.9, h: 200.1 },
+      cropMode: "free",
+      cropSizeTarget: null,
+      cropDeletePixels: false,
+      cropRotation: 0,
+      scheduler: scheduler as any,
+      setCropRect: vi.fn(),
+      setCropRotation: vi.fn(),
+      setHiddenCropPreview: vi.fn(),
+      setActiveTool: vi.fn(),
+      setSelectedLayerId: vi.fn(),
+    });
+
+    expect(engine.applyCrop).toHaveBeenCalledWith(10, 21, 101, 200, expect.any(Object));
   });
 });
 

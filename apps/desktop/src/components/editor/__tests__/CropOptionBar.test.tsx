@@ -27,10 +27,17 @@ const MAX_H = 600; // min(viewportHeight=600, docHeight=1200 * zoom=1)
 
 const modernContextBase = {
   workspace: {}, setActiveTool: vi.fn(), scheduler: {},
+  bgColor: () => "#ffffff", setBgColor: vi.fn(),
   cropRect: () => null, setCropRect: vi.fn(),
   cropInteractionMode: () => "modern" as const, setCropInteractionMode: vi.fn(),
+  cropMode: () => "free" as const, setCropMode: vi.fn(),
+  cropAspect: () => null, setCropAspect: vi.fn(),
+  cropSizeTarget: () => null, setCropSizeTarget: vi.fn(),
   cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
   cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+  cropFillEnabled: () => true, setCropFillEnabled: vi.fn(),
+  cropFillSource: () => "background" as const, setCropFillSource: vi.fn(),
+  cropFillCustomColor: () => "#ffffff", setCropFillCustomColor: vi.fn(),
   cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
   cropRotation: () => 0, setCropRotation: vi.fn(),
   hiddenCropPreview: () => null, setHiddenCropPreview: vi.fn(),
@@ -38,6 +45,7 @@ const modernContextBase = {
   viewportWidth: () => MAX_W, viewportHeight: () => MAX_H,
   zoom: () => 1,
   pan: () => ({ x: 0, y: 0 }),
+  modernCropFrame: () => ({ x: 200, y: 150, w: 400, h: 300 }), setModernCropFrame: vi.fn(),
   modernCropImageTransform: () => ({ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }),
   setModernCropImageTransform: vi.fn(),
   resetModernCrop: vi.fn(),
@@ -70,6 +78,90 @@ function renderOptionBar(mockValue: any, container: HTMLElement) {
 describe("CropOptionBar", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe("fill background controls", () => {
+    it("defaults to the editor background color in Use Background Color mode", () => {
+      runWithContainer((container, done) => {
+        renderOptionBar({
+          ...modernContextBase,
+          bgColor: () => "#224466",
+          cropFillEnabled: () => true,
+          cropFillSource: () => "background",
+          cropFillCustomColor: () => "#ff00ff",
+        }, container);
+
+        const colorInput = container.querySelector("[data-crop-fill-color]") as HTMLInputElement | null;
+        expect(colorInput).not.toBeNull();
+        expect(colorInput!.value).toBe("#224466");
+        expect(container.querySelector("[data-crop-fill-source='background']")).not.toBeNull();
+        done();
+      });
+    });
+
+    it("changing the background color updates crop fill while using background mode", () => {
+      runWithContainer((container, done) => {
+        const [bgColor, setBgColor] = createSignal("#111111");
+        renderOptionBar({
+          ...modernContextBase,
+          bgColor,
+          cropFillEnabled: () => true,
+          cropFillSource: () => "background",
+        }, container);
+
+        const colorInput = container.querySelector("[data-crop-fill-color]") as HTMLInputElement | null;
+        expect(colorInput!.value).toBe("#111111");
+        setBgColor("#445566");
+        expect(colorInput!.value).toBe("#445566");
+        done();
+      });
+    });
+
+    it("custom crop fill overrides background color without mutating the global swatch", () => {
+      runWithContainer((container, done) => {
+        const setCropFillSource = vi.fn();
+        const setCropFillCustomColor = vi.fn();
+        const setBgColor = vi.fn();
+        renderOptionBar({
+          ...modernContextBase,
+          bgColor: () => "#111111",
+          setBgColor,
+          cropFillEnabled: () => true,
+          cropFillSource: () => "background",
+          setCropFillSource,
+          setCropFillCustomColor,
+        }, container);
+
+        const colorInput = container.querySelector("[data-crop-fill-color]") as HTMLInputElement;
+        colorInput.value = "#778899";
+        colorInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+        expect(setCropFillSource).toHaveBeenCalledWith("custom");
+        expect(setCropFillCustomColor).toHaveBeenCalledWith("#778899");
+        expect(setBgColor).not.toHaveBeenCalled();
+        done();
+      });
+    });
+
+    it("can return a custom fill to Use Background Color", () => {
+      runWithContainer((container, done) => {
+        const setCropFillSource = vi.fn();
+        renderOptionBar({
+          ...modernContextBase,
+          bgColor: () => "#111111",
+          cropFillEnabled: () => true,
+          cropFillSource: () => "custom",
+          cropFillCustomColor: () => "#778899",
+          setCropFillSource,
+        }, container);
+
+        const useBgButton = container.querySelector("[data-crop-fill-use-bg]") as HTMLButtonElement | null;
+        expect(useBgButton).not.toBeNull();
+        useBgButton!.click();
+        expect(setCropFillSource).toHaveBeenCalledWith("background");
+        done();
+      });
+    });
   });
 
   describe("crop box always fits inside canvas after changes", () => {
@@ -290,6 +382,9 @@ describe("CropOptionBar", () => {
           cropMode, setCropMode: setCropModeSpy,
           cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
           cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+          cropFillEnabled: () => true, setCropFillEnabled: vi.fn(),
+          cropFillSource: () => "background" as const, setCropFillSource: vi.fn(),
+          cropFillCustomColor: () => "#ffffff", setCropFillCustomColor: vi.fn(),
           cropAspect, setCropAspect,
           cropSizeTarget, setCropSizeTarget,
           cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
@@ -343,6 +438,9 @@ describe("CropOptionBar", () => {
         cropMode, setCropMode: setCropModeSpy,
         cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
         cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+          cropFillEnabled: () => true, setCropFillEnabled: vi.fn(),
+          cropFillSource: () => "background" as const, setCropFillSource: vi.fn(),
+          cropFillCustomColor: () => "#ffffff", setCropFillCustomColor: vi.fn(),
         cropAspect, setCropAspect: setCropAspectSpy,
         cropSizeTarget: () => null, setCropSizeTarget: vi.fn(),
         cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
@@ -388,6 +486,9 @@ describe("CropOptionBar", () => {
         cropMode, setCropMode: setCropModeSpy,
         cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
         cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+          cropFillEnabled: () => true, setCropFillEnabled: vi.fn(),
+          cropFillSource: () => "background" as const, setCropFillSource: vi.fn(),
+          cropFillCustomColor: () => "#ffffff", setCropFillCustomColor: vi.fn(),
         cropAspect, setCropAspect: setCropAspectSpy,
         cropSizeTarget: () => null, setCropSizeTarget: vi.fn(),
         cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
@@ -441,6 +542,9 @@ describe("CropOptionBar", () => {
         cropMode, setCropMode: setCropModeSpy,
         cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
         cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+          cropFillEnabled: () => true, setCropFillEnabled: vi.fn(),
+          cropFillSource: () => "background" as const, setCropFillSource: vi.fn(),
+          cropFillCustomColor: () => "#ffffff", setCropFillCustomColor: vi.fn(),
         cropAspect: () => null, setCropAspect: vi.fn(),
         cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
         cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
@@ -493,6 +597,9 @@ describe("CropOptionBar", () => {
         cropMode, setCropMode: setCropModeSpy,
         cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
         cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+          cropFillEnabled: () => true, setCropFillEnabled: vi.fn(),
+          cropFillSource: () => "background" as const, setCropFillSource: vi.fn(),
+          cropFillCustomColor: () => "#ffffff", setCropFillCustomColor: vi.fn(),
         cropAspect: () => null, setCropAspect: vi.fn(),
         cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
         cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
@@ -535,6 +642,9 @@ describe("CropOptionBar", () => {
         cropMode, setCropMode: setCropModeSpy,
         cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
         cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+          cropFillEnabled: () => true, setCropFillEnabled: vi.fn(),
+          cropFillSource: () => "background" as const, setCropFillSource: vi.fn(),
+          cropFillCustomColor: () => "#ffffff", setCropFillCustomColor: vi.fn(),
         cropAspect: () => ({ w: 16, h: 9 }), setCropAspect: vi.fn(),
         cropSizeTarget: () => null, setCropSizeTarget: vi.fn(),
         cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
@@ -571,6 +681,9 @@ describe("CropOptionBar", () => {
         cropMode, setCropMode: setCropModeSpy,
         cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
         cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+          cropFillEnabled: () => true, setCropFillEnabled: vi.fn(),
+          cropFillSource: () => "background" as const, setCropFillSource: vi.fn(),
+          cropFillCustomColor: () => "#ffffff", setCropFillCustomColor: vi.fn(),
         cropAspect: () => ({ w: 16, h: 9 }), setCropAspect: vi.fn(),
         cropSizeTarget: () => null, setCropSizeTarget: vi.fn(),
         cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
@@ -622,6 +735,9 @@ describe("CropOptionBar", () => {
         cropMode, setCropMode: setCropModeSpy,
         cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
         cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+          cropFillEnabled: () => true, setCropFillEnabled: vi.fn(),
+          cropFillSource: () => "background" as const, setCropFillSource: vi.fn(),
+          cropFillCustomColor: () => "#ffffff", setCropFillCustomColor: vi.fn(),
         cropAspect: () => ({ w: 16, h: 9 }), setCropAspect: vi.fn(),
         cropSizeTarget, setCropSizeTarget: setCropSizeTargetSpy,
         cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
@@ -664,6 +780,9 @@ describe("CropOptionBar", () => {
         cropMode, setCropMode: setCropModeSpy,
         cropGuideMode: () => "none", setCropGuideMode: vi.fn(),
         cropDeletePixels: () => false, setCropDeletePixels: vi.fn(),
+          cropFillEnabled: () => true, setCropFillEnabled: vi.fn(),
+          cropFillSource: () => "background" as const, setCropFillSource: vi.fn(),
+          cropFillCustomColor: () => "#ffffff", setCropFillCustomColor: vi.fn(),
         cropAspect: () => null, setCropAspect: vi.fn(),
         cropSizeTarget: () => ({ w: 800, h: 600 }), setCropSizeTarget: vi.fn(),
         cropSizeUnit: () => "px" as const, setCropSizeUnit: vi.fn(),
@@ -713,6 +832,12 @@ describe("CropOptionBar", () => {
       setCropGuideMode: vi.fn(),
       cropDeletePixels: () => false,
       setCropDeletePixels: vi.fn(),
+      cropFillEnabled: () => true,
+      setCropFillEnabled: vi.fn(),
+      cropFillSource: () => "background" as const,
+      setCropFillSource: vi.fn(),
+      cropFillCustomColor: () => "#ffffff",
+      setCropFillCustomColor: vi.fn(),
       cropAspect,
       setCropAspect,
       cropSizeTarget: () => ({ w: 800, h: 600 }),
@@ -787,6 +912,12 @@ describe("CropOptionBar", () => {
       setCropGuideMode: vi.fn(),
       cropDeletePixels: () => false,
       setCropDeletePixels: vi.fn(),
+      cropFillEnabled: () => true,
+      setCropFillEnabled: vi.fn(),
+      cropFillSource: () => "background" as const,
+      setCropFillSource: vi.fn(),
+      cropFillCustomColor: () => "#ffffff",
+      setCropFillCustomColor: vi.fn(),
       cropAspect: () => null,
       setCropAspect: vi.fn(),
       cropSizeTarget,
@@ -860,6 +991,12 @@ describe("CropOptionBar", () => {
       setCropGuideMode: vi.fn(),
       cropDeletePixels: () => false,
       setCropDeletePixels: vi.fn(),
+      cropFillEnabled: () => true,
+      setCropFillEnabled: vi.fn(),
+      cropFillSource: () => "background" as const,
+      setCropFillSource: vi.fn(),
+      cropFillCustomColor: () => "#ffffff",
+      setCropFillCustomColor: vi.fn(),
       cropAspect,
       setCropAspect,
       cropSizeTarget: () => null,
@@ -933,6 +1070,12 @@ describe("CropOptionBar", () => {
       setCropGuideMode: vi.fn(),
       cropDeletePixels: () => false,
       setCropDeletePixels: vi.fn(),
+      cropFillEnabled: () => true,
+      setCropFillEnabled: vi.fn(),
+      cropFillSource: () => "background" as const,
+      setCropFillSource: vi.fn(),
+      cropFillCustomColor: () => "#ffffff",
+      setCropFillCustomColor: vi.fn(),
       cropAspect: () => null,
       setCropAspect: vi.fn(),
       cropSizeTarget: () => null,

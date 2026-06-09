@@ -1,5 +1,28 @@
 # AI History — Photrez
 
+## [2026-06-08] FEATURE — Crop Fill Background WYSIWYG Preview [COMPLETE]
+
+### Kategori: FEATURE / CROP / FRONTEND / ENGINE / UX
+
+**User Goal:** Crop should support a Fill BG option that defaults to the editor Background Color swatch, allows a per-crop custom color override, previews the fill immediately, and bakes the same color into empty/new crop output areas on apply.
+
+**Implementation Rationale:** Treat fill as crop-local state so custom crop fill does not mutate the global background swatch. Resolve the actual fill color at apply time and pass it through all crop commit paths. Bake the fill as a bottom raster layer so undo/redo and exports see real pixels instead of a renderer-only preview.
+
+**Rincian Perubahan:**
+1. `cropState.ts` / `EditorContext.tsx` — Added crop fill enabled/source/custom color state to the editor context.
+2. `CropOptionBar.tsx` — Added Fill BG toggle, color input, and "Use BG" return action. Background-source mode follows the live editor background swatch; custom mode stays crop-local.
+3. `CanvasViewport.tsx` — Added Classic and Modern fill preview layers behind the WebGL canvas/crop output so empty areas show the selected fill immediately.
+4. `cropToolActions.ts`, `CanvasViewport.tsx`, `useCanvasKeyboard.ts` — Routed option-bar Apply, overlay apply, and Enter-key apply through the same resolved crop fill color.
+5. `cropApply.ts` / `document.ts` — Extended apply options and bake the selected fill color into a bottom `Crop Fill Background` raster layer.
+6. Tests — Added coverage for default background source, live background color updates, custom override without global swatch mutation, preview presence for Modern/Classic, apply baking for canvas expansion and rotated crop corners, and undo/redo restoration.
+
+### Verification Results
+- PASS: `pnpm --filter photrez-desktop exec vitest run src/engine/__tests__/postCropAlignment.test.ts src/engine/__tests__/cropUndoIntegration.test.ts src/components/editor/__tests__/CropOptionBar.test.tsx src/components/editor/__tests__/CanvasViewport.test.tsx --pool=threads --maxWorkers=1` (103 tests)
+- PASS: `pnpm run build`
+- PASS: `pnpm --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (737 tests)
+
+---
+
 ## [2026-06-08] BUG FIX — Classic Rotated Crop Resize Axis [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX
@@ -2804,6 +2827,87 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 ### Verification
 - PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (616 tests, 50 files)
 - PASS: `pnpm.cmd run build`
+
+---
+
+## [2026-06-09] FEATURE — Post-Crop Move Tool Clean State [COMPLETE]
+
+### Kategori: FEATURE / MOVE / FRONTEND / UX
+
+**User Goal:** After applying crop, switching to Move Tool should show a completely clean state — no transform bounding box, no handles, no layer-specific UI — until the user explicitly clicks a layer.
+
+**Root Cause:** `activeLayerId` was the sole signal driving both engine working-layer logic and UI selection display. After crop apply, the engine active layer was set to null, but the UI had no way to distinguish "no layer selected" from "layer is selected, waiting for workspace sync."
+
+**Fix Rationale:** Introduced `selectedLayerId` as a dedicated UI-level selection signal, independent from `activeLayerId` (engine-level working layer). After crop apply, both are cleared to null. Layer click, auto-select, and Escape all update `selectedLayerId` appropriately.
+
+**Rincian Perubahan:**
+1. `editorState.ts` — Added `selectedLayerId` signal, initialized to null.
+2. `EditorContext.tsx` — Exposed `selectedLayerId` + `setSelectedLayerId` in interface and context value. Added `createEffect` that initializes `selectedLayerId` from `activeLayerId` when null.
+3. `cropToolActions.ts` — `applyCropPreview` now accepts `setSelectedLayerId` param and calls `setSelectedLayerId(null)` + `engine.setActiveLayer(null)` after crop.
+4. `CanvasViewport.tsx` — Passes `setSelectedLayerId` to all crop apply callers (Classic apply, Modern apply, pasteboard clear-active-layer).
+5. `CropOptionBar.tsx` — Passes `setSelectedLayerId` in `applyCurrentCrop`.
+6. `useCanvasKeyboard.ts` — Escape deselect clears both `selectedLayerId` and engine active layer for Move tool. Passes `setSelectedLayerId` to both Modern and Classic crop Enter handlers.
+7. `useLayerActions.ts` — `handleSelectLayer` calls both `engine.setActiveLayer(id)` and `setSelectedLayerId(id)`.
+8. `useCanvasPointerTools.ts` — Auto-select sets `selectedLayerId` on hit; empty canvas click clears both.
+9. `useSelectionTransformDrag.ts` — Uses `selectedLayerId` instead of `activeLayerId` for transform overlay layer lookup.
+10. `PropertiesPanel.tsx` — Uses `selectedLayerId` for layer/opacity display.
+11. `MoveOptionBar.tsx` — Uses `selectedLayerId`; wraps layer-specific controls (X/Y/W/H/R, Align, Flip, Reset) in `<Show when={selectedLayerId()}>`.
+12. `LayersPanel.tsx` — Uses `selectedLayerId` for `isActive` on LayerItem.
+13. `BottomStatusBar.tsx` — Uses `selectedLayerId` for layer name display.
+
+### Files Changed:
+- `apps/desktop/src/components/editor/editorState.ts`
+- `apps/desktop/src/components/editor/EditorContext.tsx`
+- `apps/desktop/src/components/editor/cropToolActions.ts`
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- `apps/desktop/src/components/editor/CropOptionBar.tsx`
+- `apps/desktop/src/components/editor/useCanvasKeyboard.ts`
+- `apps/desktop/src/components/editor/useLayerActions.ts`
+- `apps/desktop/src/components/editor/useCanvasPointerTools.ts`
+- `apps/desktop/src/components/editor/useSelectionTransformDrag.ts`
+- `apps/desktop/src/components/editor/PropertiesPanel.tsx`
+- `apps/desktop/src/components/editor/MoveOptionBar.tsx`
+- `apps/desktop/src/components/editor/LayersPanel.tsx`
+- `apps/desktop/src/components/editor/BottomStatusBar.tsx`
+- `apps/desktop/src/components/editor/__tests__/cropToolActions.test.ts`
+- `apps/desktop/src/components/editor/__tests__/MoveOptionBar.test.tsx`
+- `apps/desktop/src/components/editor/__tests__/SelectionTransformOverlay.test.ts`
+
+### Verification
+- PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (737 tests, 52 files)
+- PASS: `pnpm.cmd run build` (tsc + Vite)
+
+## [2026-06-09] BUG FIX — Crop Fill Background Disappears After Deselect [COMPLETE]
+
+### Kategori: BUG FIX / RENDERER / WEBGL / COMPOSITING
+
+**User Goal:** After crop with fill background applied, deselecting the active layer (click pasteboard, press Escape) must not change the rendered composition. The fill background layer must remain visible.
+
+**Root Causes:**
+
+1. **GL_INVALID_OPERATION: Feedback loop (stale TEXTURE1 binding).** After each render frame completes, TEXTURE1 is left bound to `pingPongTextures[prevFboIndex]`. On the next render, when drawing the first layer to FBO 0 (color attachment = `pingPongTextures[0]`), TEXTURE1 still references `pingPongTextures[0]` from the previous frame. WebGL detects the feedback loop at draw time (even though `u_useBackdrop=0` means the shader never branches to read TEXTURE1) and **silently drops the entire draw call** — no pixels written. This is what caused the fill to intermittently disappear. Zooming triggers `resize()` which recreates all FBOs/textures, clearing the stale bindings and fixing it temporarily.
+
+2. **GL_BLEND double-compositing.** `gl.enable(gl.BLEND)` with `gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)` was set during initialization and never disabled during FBO compositing. The shader already performs manual `src OVER dst` compositing via `u_useBackdrop` and `blendColors()`. With GL_BLEND also active, every draw to the FBO was double-blended. For opaque alpha=1 pixels the double-blend cancels out, but any alpha<1 pixel (transparent crop areas, semi-transparent image edges) accumulates premultiplied-alpha corruption.
+
+**Fix Rationale:**
+1. Unbind TEXTURE0 and TEXTURE1 to null at the start of every render frame, preventing stale cross-frame binding feedback loops.
+2. Disable GL_BLEND during all FBO compositing (the shader handles it). Re-enable BLEND only for the final screen render pass (compositing the document FBO over the checkerboard background).
+
+**Rincian Perubahan:**
+1. `webgl2.ts render()` — Added `gl.activeTexture(gl.TEXTURE0/1); gl.bindTexture(gl.TEXTURE_2D, null)` at start to clear stale bindings.
+2. `webgl2.ts render()` — Added `gl.disable(gl.BLEND)` before FBO compositing loop.
+3. `webgl2.ts render()` — Added `gl.enable(gl.BLEND)` before final screen render pass.
+4. `cropApply.ts` — Added `ctx.clearRect(0, 0, finalW, finalH)` before `drawImage` (defensive).
+5. `postCropAlignment.test.ts` — Added `clearRect` to mock OffscreenCanvas context.
+
+### Files Changed:
+- `apps/desktop/src/renderer/webgl2.ts`
+- `apps/desktop/src/engine/cropApply.ts`
+- `apps/desktop/src/engine/__tests__/postCropAlignment.test.ts`
+
+### Verification
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (738 tests, 52 files)
+- PASS: `pnpm.cmd run build` (tsc + Vite)
 
 ## [2026-06-08] REGRESSION FIX — Modern Crop Resize Handle Lag [COMPLETE]
 

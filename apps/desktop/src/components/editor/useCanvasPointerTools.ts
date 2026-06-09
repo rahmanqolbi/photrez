@@ -58,6 +58,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     setCropRotation,
     hiddenCropPreview,
     setHiddenCropPreview,
+    setSelectedLayerId,
     setHoverHandle,
     moveAutoSelect,
     moveSnapEnabled,
@@ -238,7 +239,10 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       const hit = hitTestLayers(coords, allLayers as LayerInfo[]);
       if (hit && hit.id !== engine.getActiveLayerId()) {
         engine.setActiveLayer(hit.id);
+        setSelectedLayerId(hit.id);
         scheduler.requestRender();
+      } else if (!hit) {
+        setSelectedLayerId(null);
       }
     }
 

@@ -1,11 +1,11 @@
-import { createContext, useContext, onMount } from "solid-js";
+import { createContext, useContext, onMount, createEffect } from "solid-js";
 import { WorkspaceManager } from "@/engine/workspace";
 import { WebGL2Backend } from "@/renderer/webgl2";
 import { RenderScheduler } from "@/renderer/scheduler";
 import { LayerNode, DocumentTabSummary } from "@/engine/types";
 import { Accessor, Setter } from "solid-js";
 import { createEditorState, LayerTransformSession } from "./editorState";
-import { createCropState, CropPreview } from "./cropState";
+import { createCropState, CropPreview, CropFillSource } from "./cropState";
 import {
   createModernCropState,
   type ModernCropFrame,
@@ -46,6 +46,8 @@ export interface EditorContextValue {
   activeDocumentId: Accessor<string | null>;
   layers: Accessor<LayerNode[]>;
   activeLayerId: Accessor<string | null>;
+  selectedLayerId: Accessor<string | null>;
+  setSelectedLayerId: Setter<string | null>;
   hoveredLayerId: Accessor<string | null>;
   setHoveredLayerId: Setter<string | null>;
   hoverHandle: Accessor<string | null>;
@@ -76,6 +78,12 @@ export interface EditorContextValue {
   setCropGuideMode: Setter<"none" | "thirds" | "grid" | "diagonal" | "golden">;
   cropDeletePixels: Accessor<boolean>;
   setCropDeletePixels: Setter<boolean>;
+  cropFillEnabled: Accessor<boolean>;
+  setCropFillEnabled: Setter<boolean>;
+  cropFillSource: Accessor<CropFillSource>;
+  setCropFillSource: Setter<CropFillSource>;
+  cropFillCustomColor: Accessor<string>;
+  setCropFillCustomColor: Setter<string>;
   cropAspect: Accessor<{ w: number; h: number } | null>;
   setCropAspect: Setter<{ w: number; h: number } | null>;
   cropSizeTarget: Accessor<{ w: number; h: number } | null>;
@@ -188,6 +196,14 @@ export function EditorProvider(props: {
       syncState();
     } catch (e) {
       console.error("Workspace sync failed during bootstrap:", e);
+    }
+  });
+
+  createEffect(() => {
+    const id = editorState.activeLayerId();
+    const sel = editorState.selectedLayerId();
+    if (id && !sel) {
+      editorState.setSelectedLayerId(id);
     }
   });
 

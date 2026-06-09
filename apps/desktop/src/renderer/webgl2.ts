@@ -176,9 +176,25 @@ export class WebGL2Backend implements RenderBackend {
       }
     }
 
+    // Clear stale texture unit bindings from previous frame.
+    // TEXTURE1 can retain a reference to the previous frame's pingPong texture.
+    // If the current FBO's color attachment is the same texture, WebGL detects
+    // a feedback loop and silently drops the draw — even if the shader never
+    // reads from that sampler (the driver checks at draw time, not per-branch).
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.activeTexture(gl.TEXTURE0);
+
     let activeFboIndex = 0;
 
     if (visibleLayers.length > 0 && this.layerProgram && this.layerUniforms) {
+      // Disable BLEND during FBO compositing — the shader does its own
+      // src-over-dst compositing. GL_BLEND would double-blend and corrupt
+      // any pixel with alpha < 1.0 (premultiplied-alpha corruption).
+      gl.disable(gl.BLEND);
+
       gl.useProgram(this.layerProgram);
       gl.bindVertexArray(this.vao);
       
@@ -287,6 +303,16 @@ export class WebGL2Backend implements RenderBackend {
 
           gl.drawArrays(gl.TRIANGLES, 0, 6);
 
+          // Unbind TEXTURE1 to prevent an intra-frame feedback loop.
+          // After the composite pass, TEXTURE1 holds pingPongTextures[prevFboIndex].
+          // The FBO swap below makes prevFboIndex = old currFboIndex, so the
+          // next iteration's copy pass would bind the CURRENT FBO's color
+          // attachment to TEXTURE1 — WebGL detects this as a feedback loop
+          // (even though the copy shader uses useBackdrop=0 and never reads it).
+          gl.activeTexture(gl.TEXTURE1);
+          gl.bindTexture(gl.TEXTURE_2D, null);
+          gl.activeTexture(gl.TEXTURE0);
+
           activeFboIndex = currFboIndex;
           prevFboIndex = currFboIndex;
           currFboIndex = 1 - currFboIndex;
@@ -302,6 +328,9 @@ export class WebGL2Backend implements RenderBackend {
     const [bgR, bgG, bgB, bgA] = state.backgroundColor;
     gl.clearColor(bgR, bgG, bgB, bgA);
     gl.clear(gl.COLOR_BUFFER_BIT);
+
+    // Re-enable BLEND for compositing document content over the background
+    gl.enable(gl.BLEND);
 
     gl.bindVertexArray(this.vao);
 

@@ -31,6 +31,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     zoom,
     docWidth,
     docHeight,
+    bgColor,
     activeLayerId,
     cropRect,
     setCropRect,
@@ -50,6 +51,9 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     commitModernCropState,
     commitCropState,
     cropDeletePixels,
+    cropFillEnabled,
+    cropFillSource,
+    cropFillCustomColor,
     modernCropFrame,
     modernCropImageTransform,
     setModernCropImageTransform,
@@ -57,6 +61,8 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     viewportWidth,
     viewportHeight,
     pan,
+    selectedLayerId,
+    setSelectedLayerId,
     layerTransformSession,
     setLayerTransformSession,
     brushSize,
@@ -74,6 +80,15 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     eraserFlow,
     eraserSmoothing,
   } = useEditor();
+
+  const resolvedCropFillColor = () => (
+    cropFillSource() === "background"
+      ? (typeof bgColor === "function" ? bgColor() : "#ffffff")
+      : cropFillCustomColor()
+  );
+  const isCropFillEnabled = () => (
+    typeof cropFillEnabled === "function" ? cropFillEnabled() : false
+  );
 
   onMount(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -184,9 +199,11 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
               cropMode: cropMode(),
               cropSizeTarget: cropSizeTarget(),
               cropDeletePixels: cropDeletePixels(),
+              cropFillColor: isCropFillEnabled() ? resolvedCropFillColor() : null,
               cropRotation: getModernCropApplyRotation(modernCropImageTransform().rotation),
               scheduler,
               setCropRect, setCropRotation, setHiddenCropPreview, setActiveTool,
+              setSelectedLayerId,
               recenterViewport: options.fitToScreenAndRender,
             });
             resetModernCrop();
@@ -198,12 +215,14 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
               cropMode: cropMode(),
               cropSizeTarget: cropSizeTarget(),
               cropDeletePixels: cropDeletePixels(),
+              cropFillColor: isCropFillEnabled() ? resolvedCropFillColor() : null,
               cropRotation: cropRotation(),
               scheduler,
               setCropRect,
               setCropRotation,
               setHiddenCropPreview,
               setActiveTool,
+              setSelectedLayerId,
               recenterViewport: options.fitToScreenAndRender,
             });
           }
@@ -372,6 +391,15 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         if (!options.isSpacePressed()) {
           options.setIsSpacePressed(true);
         }
+        return;
+      }
+
+      // Escape deselects layer in Move tool
+      if (activeTool() === "move" && e.key === "Escape" && selectedLayerId()) {
+        e.preventDefault();
+        engine.setActiveLayer(null);
+        setSelectedLayerId(null);
+        scheduler.requestRender();
         return;
       }
 

@@ -82,6 +82,10 @@ let getCropSizeTarget: () => any = () => null;
 let setCropSizeTargetState: (target: any) => void = () => {};
 let getActiveDocId: () => string | null = () => null;
 let clearCropStacksState: () => void = () => {};
+let setBgColorState: (color: string) => void = () => {};
+let setCropFillEnabledState: (enabled: boolean) => void = () => {};
+let setCropFillSourceState: (source: "background" | "custom") => void = () => {};
+let setCropFillCustomColorState: (color: string) => void = () => {};
 
 const TestConsumer = () => {
   const editor = useEditor();
@@ -106,6 +110,10 @@ const TestConsumer = () => {
   setCropSizeTargetState = editor.setCropSizeTarget;
   getActiveDocId = editor.activeDocumentId;
   clearCropStacksState = editor.clearCropStacks;
+  setBgColorState = editor.setBgColor;
+  setCropFillEnabledState = editor.setCropFillEnabled;
+  setCropFillSourceState = editor.setCropFillSource;
+  setCropFillCustomColorState = editor.setCropFillCustomColor;
   return null;
 };
 
@@ -180,6 +188,38 @@ describe("CanvasViewport Pasteboard Clicks", () => {
       clientY: 10,
     }));
   }
+
+  it("renders Classic crop fill preview from the current background color", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("classic");
+    setCrop({ x: -20, y: -10, w: 120, h: 90 });
+    setBgColorState("#224466");
+    setCropFillEnabledState(true);
+    setCropFillSourceState("background");
+
+    const preview = container.querySelector("[data-crop-fill-preview='classic']") as HTMLElement | null;
+    expect(preview).not.toBeNull();
+    expect(preview!.style.backgroundColor).toBe("rgb(34, 68, 102)");
+  });
+
+  it("renders Modern crop fill preview with custom fill color", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    setCropFillEnabledState(true);
+    setCropFillSourceState("custom");
+    setCropFillCustomColorState("#778899");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const preview = container.querySelector("[data-crop-fill-preview='modern']") as HTMLElement | null;
+    expect(preview).not.toBeNull();
+    expect(preview!.style.backgroundColor).toBe("rgb(119, 136, 153)");
+  });
 
   it("clears the active layer when pasteboard is clicked in Move tool mode", async () => {
     const { session } = renderViewport();

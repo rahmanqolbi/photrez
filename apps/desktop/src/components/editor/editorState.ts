@@ -49,11 +49,13 @@ export function createEditorState() {
   const [brushPresetId, setBrushPresetId] = createSignal<string | null>(null);
   const [eraserPresetId, setEraserPresetId] = createSignal<string | null>(null);
 
+  const [selectedLayerId, setSelectedLayerId] = createSignal<string | null>(null);
   const [showResizeDialog, setShowResizeDialog] = createSignal(false);
   const [showExportDialog, setShowExportDialog] = createSignal(false);
 
   return {
     activeTool, setActiveTool,
+    selectedLayerId, setSelectedLayerId,
     fgColor, setFgColor,
     bgColor, setBgColor,
     zoom, setZoom,

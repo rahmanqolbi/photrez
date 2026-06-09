@@ -16,11 +16,15 @@ export function CropOptionBar() {
     setActiveTool,
     scheduler,
     syncViewport,
+    bgColor,
     cropRect, setCropRect,
     cropInteractionMode, setCropInteractionMode,
     cropMode, setCropMode,
     cropGuideMode, setCropGuideMode,
     cropDeletePixels, setCropDeletePixels,
+    cropFillEnabled, setCropFillEnabled,
+    cropFillSource, setCropFillSource,
+    cropFillCustomColor, setCropFillCustomColor,
     cropAspect, setCropAspect,
     cropSizeTarget, setCropSizeTarget,
     cropSizeUnit, setCropSizeUnit,
@@ -29,6 +33,7 @@ export function CropOptionBar() {
     modernCropImageTransform, setModernCropImageTransform,
     resetModernCrop,
     hiddenCropPreview, setHiddenCropPreview,
+    setSelectedLayerId,
     docWidth, docHeight,
     viewportWidth, viewportHeight,
     zoom, pan,
@@ -97,6 +102,10 @@ export function CropOptionBar() {
 
   const unitLabel = () => cropSizeUnit();
 
+  const resolvedCropFillColor = () => cropFillSource() === "background"
+    ? (typeof bgColor === "function" ? bgColor() : "#ffffff")
+    : cropFillCustomColor();
+
   const displayedFrame = () => cropInteractionMode() === "modern"
     ? modernCropFrame()
     : cropRect();
@@ -155,12 +164,14 @@ export function CropOptionBar() {
       cropMode: cropMode(),
       cropSizeTarget: cropSizeTarget(),
       cropDeletePixels: cropDeletePixels(),
+      cropFillColor: cropFillEnabled() ? resolvedCropFillColor() : null,
       cropRotation: cropInteractionMode() === "modern" ? getModernCropApplyRotation(modernTransform.rotation) : cropRotation(),
       scheduler,
       setCropRect,
       setCropRotation,
       setHiddenCropPreview,
       setActiveTool,
+      setSelectedLayerId,
       recenterViewport: () => {
         const engine = workspace.getActiveEngine();
         if (!engine) return;
@@ -533,6 +544,44 @@ export function CropOptionBar() {
         label="Delete Cropped"
         title={cropDeletePixels() ? "Delete Cropped Pixels (Destructive)" : "Keep Cropped Pixels (Non-Destructive)"}
       />
+
+      <Divider />
+
+      <ToggleBtn
+        active={cropFillEnabled()}
+        onChange={setCropFillEnabled}
+        icon="paint-bucket"
+        label="Fill BG"
+        title={cropFillEnabled() ? "Fill empty crop areas" : "Leave empty crop areas transparent"}
+      />
+
+      <Show when={cropFillEnabled()}>
+        <div
+          class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1"
+          data-crop-fill-source={cropFillSource()}
+        >
+          <input
+            data-crop-fill-color
+            type="color"
+            value={resolvedCropFillColor()}
+            onInput={(e) => {
+              setCropFillSource("custom");
+              setCropFillCustomColor(e.currentTarget.value);
+            }}
+            class="h-[18px] w-[22px] cursor-pointer rounded-[2px] border border-editor-field-border bg-transparent p-0"
+            title="Crop fill color"
+          />
+          <button
+            data-crop-fill-use-bg
+            type="button"
+            onClick={() => setCropFillSource("background")}
+            class="h-[18px] rounded-[2px] px-1.5 text-[10px] text-editor-text-dim hover:bg-editor-hover hover:text-editor-text"
+            title="Use Background Color"
+          >
+            Use BG
+          </button>
+        </div>
+      </Show>
 
       <Divider />
 

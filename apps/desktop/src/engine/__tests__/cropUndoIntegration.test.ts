@@ -2,6 +2,20 @@ import { describe, it, expect, vi } from "vitest";
 import { DocumentEngine } from "../../engine/document";
 import { CommandHistory } from "../../engine/history";
 
+function setupOffscreenCanvasMock() {
+  const MockConstructor = function (this: any, w: number, h: number) {
+    this.width = w;
+    this.height = h;
+    this.ctx = {
+      fillStyle: "",
+      fillRect: vi.fn(),
+    };
+    this.getContext = vi.fn(() => this.ctx);
+    this.transferToImageBitmap = vi.fn(() => ({ width: this.width, height: this.height } as ImageBitmap));
+  };
+  vi.stubGlobal("OffscreenCanvas", MockConstructor as unknown as typeof OffscreenCanvas);
+}
+
 describe("crop + undo integration", () => {
   it("undo restores document dimensions after crop", () => {
     const engine = new DocumentEngine("doc-crop-und-1", "Crop Undo", 800, 600);
@@ -150,6 +164,33 @@ describe("crop + undo integration", () => {
     }
 
     expect(resizeMock).toHaveBeenCalledWith(preCropWidth, preCropHeight);
+  });
+
+  it("undo and redo restore crop fill background layer state", () => {
+    setupOffscreenCanvasMock();
+    const engine = new DocumentEngine("doc-fill-undo", "Fill Undo", 100, 100);
+    engine.addLayer("Photo", 100, 100);
+    const history = new CommandHistory();
+
+    history.commit(engine.snapshot());
+    const preCropSnap = engine.snapshot();
+    engine.applyCrop(-10, -10, 120, 120, { fillBackgroundColor: "#123456" });
+    const postCropSnap = engine.snapshot();
+
+    expect(engine.getLayers().at(-1)?.name).toBe("Crop Fill Background");
+    expect(engine.getLayers().length).toBe(2);
+
+    const restored = history.undo(postCropSnap);
+    engine.restore(restored!);
+    expect(engine.getWidth()).toBe(100);
+    expect(engine.getHeight()).toBe(100);
+    expect(engine.getLayers().map((layer) => layer.name)).toEqual(["Photo"]);
+
+    const redone = history.redo(preCropSnap);
+    engine.restore(redone!);
+    expect(engine.getWidth()).toBe(120);
+    expect(engine.getHeight()).toBe(120);
+    expect(engine.getLayers().at(-1)?.name).toBe("Crop Fill Background");
   });
 
   it("crop undo stack clear when leaving crop tool", () => {

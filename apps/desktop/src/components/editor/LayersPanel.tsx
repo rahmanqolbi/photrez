@@ -17,6 +17,7 @@ export function LayersPanel() {
     renderer,
     layers,
     activeLayerId,
+    selectedLayerId,
     scheduler,
     zoom,
     activeDocumentId,
@@ -348,7 +349,7 @@ export function LayersPanel() {
               <LayerItem
                 layer={layer}
                 idx={idx()}
-                isActive={activeLayerId() === layer.id}
+                isActive={selectedLayerId() === layer.id}
                 isDragged={draggedIndex() === idx()}
                 isDragOver={dragOverIndex() === idx()}
                 dropPosition={dropPosition()}

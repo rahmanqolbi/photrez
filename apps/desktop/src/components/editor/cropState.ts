@@ -5,11 +5,16 @@ export type CropPreview = {
   rotation: number;
 };
 
+export type CropFillSource = "background" | "custom";
+
 export function createCropState() {
   const [cropRect, setCropRect] = createSignal<{ x: number; y: number; w: number; h: number } | null>(null);
   const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("free");
   const [cropGuideMode, setCropGuideMode] = createSignal<"none" | "thirds" | "grid" | "diagonal" | "golden">("thirds");
   const [cropDeletePixels, setCropDeletePixels] = createSignal<boolean>(true);
+  const [cropFillEnabled, setCropFillEnabled] = createSignal<boolean>(true);
+  const [cropFillSource, setCropFillSource] = createSignal<CropFillSource>("background");
+  const [cropFillCustomColor, setCropFillCustomColor] = createSignal<string>("#ffffff");
   const [cropAspect, setCropAspect] = createSignal<{ w: number; h: number } | null>(null);
   const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
   const [cropSizeUnit, setCropSizeUnit] = createSignal<"px" | "cm" | "mm" | "in">("px");
@@ -63,6 +68,9 @@ export function createCropState() {
     cropMode, setCropMode,
     cropGuideMode, setCropGuideMode,
     cropDeletePixels, setCropDeletePixels,
+    cropFillEnabled, setCropFillEnabled,
+    cropFillSource, setCropFillSource,
+    cropFillCustomColor, setCropFillCustomColor,
     cropAspect, setCropAspect,
     cropSizeTarget, setCropSizeTarget,
     cropSizeUnit, setCropSizeUnit,

@@ -10,7 +10,7 @@ export function MoveOptionBar() {
     workspace,
     activeTool,
     layers,
-    activeLayerId,
+    selectedLayerId,
     scheduler,
     moveAutoSelect,
     setMoveAutoSelect,
@@ -28,13 +28,13 @@ export function MoveOptionBar() {
   };
 
   const activeLayer = () => {
-    const id = activeLayerId();
+    const id = selectedLayerId();
     if (!id) return null;
     return layers().find(l => l.id === id) || null;
   };
 
   const activeLayerSafe = () => {
-    const id = activeLayerId();
+    const id = selectedLayerId();
     if (!id) return null;
     const engine = workspace.getActiveEngine();
     if (!engine) return null;
@@ -49,7 +49,7 @@ export function MoveOptionBar() {
   const handleFlip = (axis: "h" | "v") => {
     if (isLocked()) return;
     const engine = workspace.getActiveEngine();
-    const id = activeLayerId();
+    const id = selectedLayerId();
     if (engine && id) {
       const history = workspace.getActiveHistory();
       history?.commit(engine.snapshot());
@@ -61,7 +61,7 @@ export function MoveOptionBar() {
   const handleResetTransform = () => {
     if (isLocked()) return;
     const engine = workspace.getActiveEngine();
-    const id = activeLayerId();
+    const id = selectedLayerId();
     if (engine && id) {
       const history = workspace.getActiveHistory();
       history?.commit(engine.snapshot());
@@ -80,7 +80,7 @@ export function MoveOptionBar() {
 
   const handlePositionField = (axis: "x" | "y") => (val: number) => {
     const engine = workspace.getActiveEngine();
-    const id = activeLayerId();
+    const id = selectedLayerId();
     if (engine && id) {
       const layer = engine.getLayer(id);
       if (!layer || layer.locked) return;
@@ -95,7 +95,7 @@ export function MoveOptionBar() {
 
   const handleRotateField = (val: number) => {
     const engine = workspace.getActiveEngine();
-    const id = activeLayerId();
+    const id = selectedLayerId();
     if (engine && id) {
       const layer = engine.getLayer(id);
       if (!layer || layer.locked) return;
@@ -108,7 +108,7 @@ export function MoveOptionBar() {
 
   const handleAlign = (type: "left" | "center-h" | "right" | "top" | "center-v" | "bottom") => {
     const engine = workspace.getActiveEngine();
-    const id = activeLayerId();
+    const id = selectedLayerId();
     if (engine && id) {
       const layer = engine.getLayer(id);
       if (!layer || layer.locked) return;
@@ -177,102 +177,104 @@ export function MoveOptionBar() {
         )}
       </Show>
 
-      <Divider />
-
-      <Show when={isLocked()}>
-        <div class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-editor-accent/20 bg-editor-accent/5 px-2 text-[11px] text-editor-accent/70">
-          <Icon name="lock" class="size-3" strokeWidth={1.5} />
-          Locked
-        </div>
+      <Show when={selectedLayerId()}>
         <Divider />
-      </Show>
 
-      <Show when={activeLayer()}>
-        {(layer) => {
-          const d = isLocked();
-          return (
-            <>
-              <div class="flex shrink-0 items-center gap-1">
+        <Show when={isLocked()}>
+          <div class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-editor-accent/20 bg-editor-accent/5 px-2 text-[11px] text-editor-accent/70">
+            <Icon name="lock" class="size-3" strokeWidth={1.5} />
+            Locked
+          </div>
+          <Divider />
+        </Show>
+
+        <Show when={activeLayer()}>
+          {(layer) => {
+            const d = isLocked();
+            return (
+              <>
+                <div class="flex shrink-0 items-center gap-1">
+                  <EditableNumField
+                    label="X"
+                    value={layer().transform.x}
+                    disabled={d}
+                    onSubmit={handlePositionField("x")}
+                    class="w-[62px]"
+                  />
+                  <EditableNumField
+                    label="Y"
+                    value={layer().transform.y}
+                    disabled={d}
+                    onSubmit={handlePositionField("y")}
+                    class="w-[62px]"
+                  />
+                </div>
+
+                <div class="flex shrink-0 items-center gap-1">
+                  <NumField label="W" value={`${Math.round(layer().width * layer().transform.scaleX)}`} suffix="px" class="w-[70px]" />
+                  <NumField label="H" value={`${Math.round(layer().height * layer().transform.scaleY)}`} suffix="px" class="w-[70px]" />
+                </div>
+
                 <EditableNumField
-                  label="X"
-                  value={layer().transform.x}
+                  label="R"
+                  value={layer().transform.rotation}
+                  suffix="°"
                   disabled={d}
-                  onSubmit={handlePositionField("x")}
-                  class="w-[62px]"
+                  onSubmit={handleRotateField}
+                  class="w-[58px]"
                 />
-                <EditableNumField
-                  label="Y"
-                  value={layer().transform.y}
-                  disabled={d}
-                  onSubmit={handlePositionField("y")}
-                  class="w-[62px]"
-                />
-              </div>
+              </>
+            );
+          }}
+        </Show>
 
-              <div class="flex shrink-0 items-center gap-1">
-                <NumField label="W" value={`${Math.round(layer().width * layer().transform.scaleX)}`} suffix="px" class="w-[70px]" />
-                <NumField label="H" value={`${Math.round(layer().height * layer().transform.scaleY)}`} suffix="px" class="w-[70px]" />
-              </div>
+        <Divider />
 
-              <EditableNumField
-                label="R"
-                value={layer().transform.rotation}
-                suffix="°"
-                disabled={d}
-                onSubmit={handleRotateField}
-                class="w-[58px]"
-              />
-            </>
-          );
-        }}
+        <div class={clsx("flex shrink-0 items-center gap-1 text-editor-icon", isLocked() && "opacity-30 pointer-events-none")}>
+          <span class="text-[11px] text-editor-text-dim">Align</span>
+          <button onClick={() => handleAlign("left")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align left" title="Align Left">
+            <Icon name="align-left" class="size-4" strokeWidth={1.5} />
+          </button>
+          <button onClick={() => handleAlign("center-h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center horizontal" title="Align Horizontal Center">
+            <Icon name="align-h" class="size-4" strokeWidth={1.5} />
+          </button>
+          <button onClick={() => handleAlign("right")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align right" title="Align Right">
+            <Icon name="align-right" class="size-4" strokeWidth={1.5} />
+          </button>
+          <button onClick={() => handleAlign("top")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align top" title="Align Top">
+            <Icon name="align-top" class="size-4" strokeWidth={1.5} />
+          </button>
+          <button onClick={() => handleAlign("center-v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center vertical" title="Align Vertical Center">
+            <Icon name="align-v" class="size-4" strokeWidth={1.5} />
+          </button>
+          <button onClick={() => handleAlign("bottom")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align bottom" title="Align Bottom">
+            <Icon name="align-bottom" class="size-4" strokeWidth={1.5} />
+          </button>
+        </div>
+
+        <Divider />
+
+        <div class={clsx("flex shrink-0 items-center gap-1 text-editor-icon", isLocked() && "opacity-30 pointer-events-none")}>
+          <span class="text-[11px] text-editor-text-dim">Flip</span>
+          <button onClick={() => handleFlip("h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip horizontal" title="Flip Horizontal">
+            <Icon name="flip-h" class="size-4" strokeWidth={1.5} />
+          </button>
+          <button onClick={() => handleFlip("v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip vertical" title="Flip Vertical">
+            <Icon name="flip-v" class="size-4" strokeWidth={1.5} />
+          </button>
+        </div>
+
+        <Divider />
+
+        <button onClick={handleResetTransform} disabled={isLocked()} class={clsx(
+          "flex h-[24px] shrink-0 items-center rounded-[3px] border border-transparent px-2 text-[11px]",
+          isLocked()
+            ? "text-editor-text-dim/30 cursor-default"
+            : "text-editor-text-dim hover:border-editor-field-border hover:text-editor-text",
+        )}>
+          Reset
+        </button>
       </Show>
-
-      <Divider />
-
-      <div class={clsx("flex shrink-0 items-center gap-1 text-editor-icon", isLocked() && "opacity-30 pointer-events-none")}>
-        <span class="text-[11px] text-editor-text-dim">Align</span>
-        <button onClick={() => handleAlign("left")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align left" title="Align Left">
-          <Icon name="align-left" class="size-4" strokeWidth={1.5} />
-        </button>
-        <button onClick={() => handleAlign("center-h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center horizontal" title="Align Horizontal Center">
-          <Icon name="align-h" class="size-4" strokeWidth={1.5} />
-        </button>
-        <button onClick={() => handleAlign("right")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align right" title="Align Right">
-          <Icon name="align-right" class="size-4" strokeWidth={1.5} />
-        </button>
-        <button onClick={() => handleAlign("top")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align top" title="Align Top">
-          <Icon name="align-top" class="size-4" strokeWidth={1.5} />
-        </button>
-        <button onClick={() => handleAlign("center-v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center vertical" title="Align Vertical Center">
-          <Icon name="align-v" class="size-4" strokeWidth={1.5} />
-        </button>
-        <button onClick={() => handleAlign("bottom")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align bottom" title="Align Bottom">
-          <Icon name="align-bottom" class="size-4" strokeWidth={1.5} />
-        </button>
-      </div>
-
-      <Divider />
-
-      <div class={clsx("flex shrink-0 items-center gap-1 text-editor-icon", isLocked() && "opacity-30 pointer-events-none")}>
-        <span class="text-[11px] text-editor-text-dim">Flip</span>
-        <button onClick={() => handleFlip("h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip horizontal" title="Flip Horizontal">
-          <Icon name="flip-h" class="size-4" strokeWidth={1.5} />
-        </button>
-        <button onClick={() => handleFlip("v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip vertical" title="Flip Vertical">
-          <Icon name="flip-v" class="size-4" strokeWidth={1.5} />
-        </button>
-      </div>
-
-      <Divider />
-
-      <button onClick={handleResetTransform} disabled={isLocked()} class={clsx(
-        "flex h-[24px] shrink-0 items-center rounded-[3px] border border-transparent px-2 text-[11px]",
-        isLocked()
-          ? "text-editor-text-dim/30 cursor-default"
-          : "text-editor-text-dim hover:border-editor-field-border hover:text-editor-text",
-      )}>
-        Reset
-      </button>
     </>
   );
 }

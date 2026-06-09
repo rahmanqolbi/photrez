@@ -37,10 +37,10 @@ interface UseSelectionTransformDragParams {
 }
 
 export function useSelectionTransformDrag(props: UseSelectionTransformDragParams) {
-  const { workspace, activeLayerId, layers, zoom, pan, scheduler, activeTool, hoverHandle, setHoverHandle, moveSnapEnabled, setHoverPos, hoverPos, layerTransformSession, setLayerTransformSession } = useEditor();
+  const { workspace, selectedLayerId, layers, zoom, pan, scheduler, activeTool, hoverHandle, setHoverHandle, moveSnapEnabled, setHoverPos, hoverPos, layerTransformSession, setLayerTransformSession } = useEditor();
 
   const activeLayer = createMemo(() => {
-    const id = activeLayerId();
+    const id = selectedLayerId();
     if (!id) return null;
     return layers().find((l) => l.id === id) || null;
   });

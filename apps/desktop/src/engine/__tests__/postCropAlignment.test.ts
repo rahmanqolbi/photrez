@@ -11,13 +11,17 @@ interface MockOffscreenCanvas {
   width: number;
   height: number;
   drawCalls: MockDrawCall[];
+  fillCalls: { fillStyle: string; x: number; y: number; w: number; h: number }[];
   ctx: {
     save: ReturnType<typeof vi.fn>;
     restore: ReturnType<typeof vi.fn>;
+    clearRect: ReturnType<typeof vi.fn>;
     translate: ReturnType<typeof vi.fn>;
     rotate: ReturnType<typeof vi.fn>;
     scale: ReturnType<typeof vi.fn>;
     drawImage: ReturnType<typeof vi.fn>;
+    fillStyle: string;
+    fillRect: ReturnType<typeof vi.fn>;
   };
   getContext: ReturnType<typeof vi.fn>;
   transferToImageBitmap: ReturnType<typeof vi.fn>;
@@ -31,15 +35,22 @@ function setupOffscreenCanvasMock(): () => MockOffscreenCanvas[] {
     this.width = w;
     this.height = h;
     const drawCalls: MockDrawCall[] = [];
+    const fillCalls: { fillStyle: string; x: number; y: number; w: number; h: number }[] = [];
     this.drawCalls = drawCalls;
+    this.fillCalls = fillCalls;
     this.ctx = {
       save: vi.fn(),
       restore: vi.fn(),
+      clearRect: vi.fn(),
       translate: vi.fn(),
       rotate: vi.fn(),
       scale: vi.fn(),
       drawImage: vi.fn((img: unknown, dx: number, dy: number) => {
         drawCalls.push({ img, dx, dy });
+      }),
+      fillStyle: "",
+      fillRect: vi.fn((x: number, y: number, w: number, h: number) => {
+        fillCalls.push({ fillStyle: this.ctx.fillStyle, x, y, w, h });
       }),
     };
     this.getContext = vi.fn(() => this.ctx);
@@ -321,5 +332,59 @@ describe("post-crop alignment for odd crop sizes", () => {
     const state = engine.getRenderState();
     expect(state.documentSize.width).toBe(113);
     expect(state.documentSize.height).toBe(151);
+  });
+
+  it("bakes crop fill background into a bottom layer for canvas expansion", () => {
+    const getInstances = setupOffscreenCanvasMock();
+    const engine = new DocumentEngine("doc-fill-expand", "Fill Expand", 100, 100);
+    const layer = engine.addLayer("Photo", 100, 100);
+    engine.setLayerImageBitmap(layer.id, { width: 100, height: 100 } as ImageBitmap);
+
+    engine.applyCrop(-25, -25, 150, 150, {
+      deleteCroppedPixels: true,
+      fillBackgroundColor: "#123456",
+    });
+
+    expect(engine.getWidth()).toBe(150);
+    expect(engine.getHeight()).toBe(150);
+    const layers = engine.getLayers();
+    expect(layers.at(-1)?.name).toBe("Crop Fill Background");
+    expect(layers.at(-1)?.width).toBe(150);
+    expect(layers.at(-1)?.height).toBe(150);
+    expect(layers.at(-1)?.transform.x).toBe(0);
+    expect(layers.at(-1)?.transform.y).toBe(0);
+
+    const fillCanvas = getInstances().find((canvas) => canvas.fillCalls.length > 0);
+    expect(fillCanvas).toBeDefined();
+    expect(fillCanvas!.fillCalls[0]).toEqual({
+      fillStyle: "#123456",
+      x: 0,
+      y: 0,
+      w: 150,
+      h: 150,
+    });
+  });
+
+  it("bakes crop fill background for rotated crop empty corners", () => {
+    const getInstances = setupOffscreenCanvasMock();
+    const engine = new DocumentEngine("doc-fill-rotate", "Fill Rotate", 100, 100);
+    const layer = engine.addLayer("Photo", 100, 100);
+    engine.setLayerImageBitmap(layer.id, { width: 100, height: 100 } as ImageBitmap);
+
+    engine.applyCrop(0, 0, 100, 100, {
+      deleteCroppedPixels: true,
+      rotation: 30,
+      fillBackgroundColor: "#abcdef",
+    });
+
+    const fillLayer = engine.getLayers().at(-1);
+    expect(fillLayer?.name).toBe("Crop Fill Background");
+    expect(fillLayer?.width).toBe(100);
+    expect(fillLayer?.height).toBe(100);
+    expect(fillLayer?.imageBitmap?.width).toBe(100);
+    expect(fillLayer?.imageBitmap?.height).toBe(100);
+
+    const fillCanvas = getInstances().find((canvas) => canvas.fillCalls.length > 0);
+    expect(fillCanvas?.fillCalls[0].fillStyle).toBe("#abcdef");
   });
 });

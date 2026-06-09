@@ -38,6 +38,7 @@
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Rectangular selection (marquee)            |
 | ✅ DONE      | Move selection/layer                       |
+| ✅ DONE      | Post-crop Move Tool enters clean no-selection state (selectedLayerId independent from activeLayerId) |
 | ✅ DONE      | Scale transform (bounding box resize handles) |
 | ✅ DONE      | Rotate transform (rotation handle drag)    |
 | ✅ DONE      | Flip horizontal/vertical (buttons + Ctrl+G / Ctrl+Shift+G) |
@@ -71,6 +72,7 @@
 | ✅ DONE      | Resize canvas dialog + aspect ratio lock toggle |
 | ✅ DONE      | Crop overlay/guide UI                      |
 | ✅ DONE      | Interactive crop option bar (mode dropdown, editable ratio/size, guide overlay selector, delete toggle, swap W/H, reset/apply/cancel) |
+| ✅ DONE      | Crop Fill BG — defaults to editor Background Color, supports crop-local custom color override, previews fill in Modern/Classic crop, and bakes fill into empty crop output areas on apply |
 | ✅ DONE      | Crop box resize reactivity (overlay updates live during drag) |
 | ✅ DONE      | Crop snapping — canvas edges/centers + layer edges (Smart Guides, Alt disables) |
 | ✅ DONE      | Crop rotation — rotatable crop boundaries with screen-aligned visual box (canvas rotates behind), dynamic cursor, snap to 15° with Shift, angle readout, layer offset/rotation update, and local-axis resize after rotation |
