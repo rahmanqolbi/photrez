@@ -856,6 +856,257 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     expect(frame!.w).toBeGreaterThan(0);
     expect(frame!.h).toBeGreaterThan(0);
   });
+
+  it("WYSIWYG: frame size matches selection exactly in Free mode", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    setCropModeState("free");
+    resetModernCropState();
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    const fromX = 100, fromY = 100, toX = 400, toY = 300;
+    const expectedW = Math.abs(toX - fromX); // 300
+    const expectedH = Math.abs(toY - fromY); // 200
+
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: fromX, clientY: fromY,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: toX, clientY: toY,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: toX, clientY: toY,
+    }));
+
+    const frame = getModernFrame();
+    expect(frame).not.toBeNull();
+    expect(frame!.w).toBe(expectedW);
+    expect(frame!.h).toBe(expectedH);
+  });
+
+  it("reverse drag direction produces same frame size", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    setCropModeState("free");
+    resetModernCropState();
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    // Drag right-to-left then bottom-to-top — same |dx|,|dy|
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 400, clientY: 200,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 150, clientY: 100,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 150, clientY: 100,
+    }));
+
+    const frame = getModernFrame();
+    expect(frame).not.toBeNull();
+    expect(frame!.w).toBe(250);
+    expect(frame!.h).toBe(100);
+  });
+
+  it("image transform offset shifts selection center to viewport center", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    setCropModeState("free");
+    resetModernCropState();
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    // Selection from (100,100) to (400,350)
+    // selCenter = (250, 225), vpCenter = (400, 300)
+    // offset = (400-250, 300-225) = (150, 75)
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 100, clientY: 100,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 400, clientY: 350,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 400, clientY: 350,
+    }));
+
+    const t = getModernImageTransform();
+    expect(t.offsetX).toBe(150);
+    expect(t.offsetY).toBe(75);
+  });
+
+  it("Size mode drag creates frame at target size regardless of selection", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    setCropModeState("size");
+    setCropSizeTargetState({ w: 200, h: 150 });
+    resetModernCropState();
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    // Drag a 400x300 selection — frame should still be 200x150
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 100, clientY: 100,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 500, clientY: 400,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 500, clientY: 400,
+    }));
+
+    const frame = getModernFrame();
+    expect(frame).not.toBeNull();
+    expect(frame!.w).toBe(200);
+    expect(frame!.h).toBe(150);
+  });
+
+  it("preview rect shown during drag, hidden after pointerup", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    setCropModeState("free");
+    resetModernCropState();
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+
+    // Pointerdown — no preview yet
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 100, clientY: 100,
+    }));
+
+    // Move beyond threshold — preview should appear
+    canvas.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 300, clientY: 200,
+    }));
+
+    const previewDuringDrag = container.querySelector("[data-crop-drag-preview]");
+    expect(previewDuringDrag).not.toBeNull();
+
+    // Pointerup — preview should be removed
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 300, clientY: 200,
+    }));
+
+    // Let SolidJS batch settle
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const previewAfter = container.querySelector("[data-crop-drag-preview]");
+    expect(previewAfter).toBeNull();
+  });
+
+  it("modern crop: drag-dismiss-redrag cycle works", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    setCropModeState("free");
+    resetModernCropState();
+    expect(getModernFrame()).toBeNull();
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+
+    // First drag — create frame
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 100, clientY: 100,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 300, clientY: 200,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 300, clientY: 200,
+    }));
+
+    expect(getModernFrame()).not.toBeNull();
+    const firstW = getModernFrame()!.w;
+
+    // Dismiss via Escape
+    resetModernCropState();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(getModernFrame()).toBeNull();
+
+    // Second drag with different direction
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 20,
+      clientX: 50, clientY: 50,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 20,
+      clientX: 350, clientY: 300,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 20,
+      clientX: 350, clientY: 300,
+    }));
+
+    const frame = getModernFrame();
+    expect(frame).not.toBeNull();
+    expect(frame!.w).toBe(300);
+    expect(frame!.h).toBe(250);
+    // Different from first frame's size (which was 200x100)
+    expect(frame!.w).not.toBe(firstW);
+  });
+
+  it("vertical drag creates taller-than-wide frame", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    setCropModeState("free");
+    resetModernCropState();
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+
+    // Drag vertically — 100px wide, 300px tall
+    canvas.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 200, clientY: 100,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 300, clientY: 400,
+    }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId: 10,
+      clientX: 300, clientY: 400,
+    }));
+
+    const frame = getModernFrame();
+    expect(frame).not.toBeNull();
+    expect(frame!.h).toBeGreaterThan(frame!.w);
+    expect(frame!.w).toBe(100);
+    expect(frame!.h).toBe(300);
+  });
 });
 
 describe("Space+pan global override across all tools", () => {

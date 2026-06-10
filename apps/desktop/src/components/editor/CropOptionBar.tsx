@@ -1,7 +1,7 @@
 import { Show, For, createMemo, createSignal, createEffect, onMount, on, untrack } from "solid-js";
 import { NumField, EditableNumField } from "./primitives";
 import { useEditor } from "./EditorContext";
-import { CROP_PRESETS } from "@/viewport/cropPresets";
+import { CROP_PRESETS, PILL_PRESETS } from "@/viewport/cropPresets";
 import { toUnit, fromUnit } from "@/viewport/unitConversion";
 import { fitCropRectToAspect } from "@/viewport/cropAutoFit";
 import { getDefaultModernCropFrame, getModernCropApplyRotation, modernFrameToCropRect } from "@/viewport/modernCropGeometry";
@@ -41,20 +41,10 @@ export function CropOptionBar() {
     commitCropState,
   } = useEditor();
 
-  const initialPreset = () => {
-    if (cropMode() !== "ratio") return "custom";
-    const a = cropAspect();
-    if (!a) return "custom";
-    const match = CROP_PRESETS.find(p => p.aspect.w === a.w && p.aspect.h === a.h);
-    return match ? match.value : "custom";
-  };
+  const [showCustomRatio, setShowCustomRatio] = createSignal(false);
 
-  const [selectedPreset, setSelectedPreset] = createSignal(initialPreset());
-
-  createEffect(() => {
-    activeDocumentId();
-    setSelectedPreset(untrack(() => initialPreset()));
-  });
+  const [customWVal, setCustomWVal] = createSignal(16);
+  const [customHVal, setCustomHVal] = createSignal(9);
 
   // Local display values for Size mode — preserve user-entered physical values
   // without round-trip through pixel conversion (avoids drift like 3 cm → 2.99 cm)
@@ -78,16 +68,39 @@ export function CropOptionBar() {
     },
   ));
 
-  const cropModeLabel = () => {
-    const m = cropMode();
-    return m === "free" ? "Free" : m === "ratio" ? "Ratio" : "Size";
+  const isActivePill = (preset: { w: number; h: number }) => {
+    if (cropMode() !== "ratio") return false;
+    const a = cropAspect();
+    return a?.w === preset.w && a?.h === preset.h;
   };
 
-  const presetLabel = () => {
-    const pVal = selectedPreset();
-    if (pVal === "custom") return "Custom";
-    const preset = CROP_PRESETS.find(p => p.value === pVal);
-    return preset ? preset.label : "Custom";
+  const isCustomActive = () => cropMode() === "ratio" && showCustomRatio();
+
+  const handlePillClick = (preset: { w: number; h: number }) => {
+    setShowCustomRatio(false);
+    setCropMode("ratio");
+    setCropAspect({ w: preset.w, h: preset.h });
+    setCropFrameToAspect(preset);
+  };
+
+  const handleFreeClick = () => {
+    setShowCustomRatio(false);
+    setCropMode("free");
+    if (cropInteractionMode() === "modern" && modernCropFrame()) {
+      setModernCropFrame(fitFrameToMaxBounds(modernCropFrame()!.w, modernCropFrame()!.h));
+    }
+  };
+
+  const handleSizeModeClick = () => {
+    setShowCustomRatio(false);
+    setCropMode("size");
+    const target = cropSizeTarget() ?? { w: 800, h: 600 };
+    setCropSizeTarget(target);
+    if (cropInteractionMode() === "modern") {
+      setModernFrameToAspect({ w: target.w, h: target.h });
+    } else if (cropRect()) {
+      setCropRect(fitCropRectToAspect(target, docWidth(), docHeight(), cropRotation()));
+    }
   };
 
   const guideModeLabel = () => {
@@ -105,10 +118,6 @@ export function CropOptionBar() {
   const resolvedCropFillColor = () => cropFillSource() === "background"
     ? (typeof bgColor === "function" ? bgColor() : "#ffffff")
     : cropFillCustomColor();
-
-  const displayedFrame = () => cropInteractionMode() === "modern"
-    ? modernCropFrame()
-    : cropRect();
 
   const maxModernFrame = () => ({
     w: Math.min(viewportWidth(), docWidth() * zoom()),
@@ -182,27 +191,6 @@ export function CropOptionBar() {
     if (cropInteractionMode() === "modern") resetModernCrop();
   };
 
-  const handlePresetChange = (value: string) => {
-    setSelectedPreset(value);
-    if (value === "custom") {
-      setCropMode("ratio");
-      const aspect = cropAspect() ?? { w: 16, h: 9 };
-      setCropAspect(aspect);
-      if (cropInteractionMode() === "modern" && modernCropFrame()) {
-        setModernFrameToAspect(aspect);
-      } else if (cropRect()) {
-        setCropRect(fitCropRectToAspect(aspect, docWidth(), docHeight(), cropRotation()));
-      }
-      return;
-    }
-      const preset = CROP_PRESETS.find(p => p.value === value);
-      if (preset) {
-        setCropMode("ratio");
-        setCropAspect({ w: preset.aspect.w, h: preset.aspect.h });
-      setCropFrameToAspect(preset.aspect);
-    }
-  };
-
   return (
     <>
       {/* Interaction Mode Toggle */}
@@ -231,117 +219,94 @@ export function CropOptionBar() {
 
       <Divider />
 
-      {/* Crop Mode Selector */}
-      <div class="relative flex h-[24px] shrink-0 items-center rounded-[3px] border border-editor-field-border bg-editor-field px-2 hover:border-editor-field-border/80 transition-all cursor-pointer focus-ring-within">
-        <span class="text-[11px] text-editor-text mr-4 select-none">
-          {cropModeLabel()}
-        </span>
-        <div class="ml-auto pointer-events-none text-editor-text-dim">
-          <Icon name="chevron-down" class="size-3" strokeWidth={1.5} />
-        </div>
-        <select
-          value={cropMode()}
-          onChange={(e) => {
-            const mode = e.currentTarget.value as "free" | "ratio" | "size";
-            setCropMode(mode);
-
-            if (mode === "free") {
-              setSelectedPreset("custom");
-              if (cropInteractionMode() === "modern" && modernCropFrame()) {
-                setModernCropFrame(fitFrameToMaxBounds(modernCropFrame()!.w, modernCropFrame()!.h));
-              }
-              return;
-            }
-
-            if (mode === "ratio") {
-              const aspect = cropAspect() ?? { w: 16, h: 9 };
-              setCropAspect(aspect);
-              const match = CROP_PRESETS.find(p => p.aspect.w === aspect.w && p.aspect.h === aspect.h);
-              setSelectedPreset(match ? match.value : "custom");
-
-              if (cropInteractionMode() === "modern" && modernCropFrame()) {
-                setModernFrameToAspect(aspect);
-              } else if (cropRect()) {
-                setCropRect(fitCropRectToAspect(aspect, docWidth(), docHeight(), cropRotation()));
-              }
-              return;
-            }
-
-            if (mode === "size") {
-              const target = cropSizeTarget() ?? { w: 800, h: 600 };
-              setCropSizeTarget(target);
-
-              if (cropInteractionMode() === "modern") {
-                setModernFrameToAspect({ w: target.w, h: target.h });
-              } else if (cropRect()) {
-                setCropRect(fitCropRectToAspect(target, docWidth(), docHeight(), cropRotation()));
-              }
-              return;
-            }
-          }}
-          class="absolute inset-0 h-full w-full opacity-0 cursor-pointer text-[11px]"
+      {/* Mode Toggle (always visible) */}
+      <div class="flex shrink-0 items-center gap-0.5 overflow-x-auto">
+        <button
+          onClick={handleFreeClick}
+          class={`flex h-[24px] shrink-0 items-center rounded-[3px] border px-2 text-[11px] transition-colors ${
+            cropMode() === "free"
+              ? "bg-editor-accent text-white border-editor-accent shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
+              : "border-dashed border-editor-field-border bg-editor-field text-editor-text-dim hover:text-editor-text hover:border-editor-field-border/80"
+          }`}
         >
-          <option value="free" class="bg-editor-panel text-editor-text">Free</option>
-          <option value="ratio" class="bg-editor-panel text-editor-text">Ratio</option>
-          <option value="size" class="bg-editor-panel text-editor-text">Size</option>
-        </select>
+          Free
+        </button>
+        {/* Ratio pills — hidden in Size mode */}
+        <Show when={cropMode() !== "size"}>
+          <For each={PILL_PRESETS}>
+            {(preset) => (
+              <button
+                onClick={() => handlePillClick(preset.aspect)}
+                class={`flex h-[24px] shrink-0 items-center rounded-[3px] border px-2 text-[11px] transition-colors ${
+                  isActivePill(preset.aspect)
+                    ? "bg-editor-accent text-white border-editor-accent shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
+                    : "border-editor-field-border bg-editor-field text-editor-text-dim hover:text-editor-text hover:border-editor-field-border/80"
+                }`}
+              >
+                {preset.label}
+              </button>
+            )}
+          </For>
+          <button
+            onClick={() => {
+              if (!showCustomRatio()) {
+                const cur = cropAspect();
+                setCustomWVal(cur?.w ?? 16);
+                setCustomHVal(cur?.h ?? 9);
+              }
+              setShowCustomRatio(!showCustomRatio());
+            }}
+            class={`flex h-[24px] shrink-0 items-center rounded-[3px] border px-2 text-[11px] transition-colors ${
+              showCustomRatio()
+                ? "bg-editor-accent text-white border-editor-accent shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
+                : "border-editor-field-border bg-editor-field text-editor-text-dim hover:text-editor-text hover:border-editor-field-border/80"
+            }`}
+          >
+            +
+          </button>
+        </Show>
+        <button
+          onClick={handleSizeModeClick}
+          class={`flex h-[24px] shrink-0 items-center rounded-[3px] border px-2 text-[11px] transition-colors ${
+            cropMode() === "size"
+              ? "bg-editor-accent text-white border-editor-accent shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
+              : "border-editor-field-border bg-editor-field text-editor-text-dim hover:text-editor-text hover:border-editor-field-border/80"
+          }`}
+        >
+          Size
+        </button>
       </div>
 
-      <Divider />
-
-      {/* Mode-specific Fields */}
-      <Show when={cropMode() === "free"}>
-        <div class="flex shrink-0 items-center gap-1.5">
-          <NumField label="W" value={`${Math.round(displayedFrame()?.w ?? 0)} px`} class="w-[82px]" />
-          <NumField label="H" value={`${Math.round(displayedFrame()?.h ?? 0)} px`} class="w-[82px]" />
-        </div>
-      </Show>
-
-      <Show when={cropMode() === "ratio"}>
-        <div class="flex items-center gap-1.5">
-          <div class="relative flex h-[24px] shrink-0 items-center rounded-[3px] border border-editor-field-border bg-editor-field px-2 hover:border-editor-field-border/80 transition-all cursor-pointer focus-ring-within">
-            <span class="text-[11px] text-editor-text mr-4 select-none">
-              {presetLabel()}
-            </span>
-            <div class="ml-auto pointer-events-none text-editor-text-dim">
-              <Icon name="chevron-down" class="size-3" strokeWidth={1.5} />
-            </div>
-            <select
-              value={selectedPreset()}
-              onChange={(e) => handlePresetChange(e.currentTarget.value)}
-              class="absolute inset-0 h-full w-full opacity-0 cursor-pointer text-[11px]"
-            >
-              <For each={CROP_PRESETS}>
-                {(p) => <option value={p.value} class="bg-editor-panel text-editor-text">{p.label}</option>}
-              </For>
-              <option value="custom" class="bg-editor-panel text-editor-text">Custom</option>
-            </select>
-          </div>
-          <Show when={selectedPreset() === "custom"}>
-            <div class="flex shrink-0 items-center gap-1">
-              <EditableNumField
-                label="W"
-                value={cropAspect()?.w ?? 1}
-                onSubmit={(v) => {
-                  const nextAspect = { w: v, h: cropAspect()?.h ?? 1 };
-                  setCropAspect(nextAspect);
-                  setCropFrameToAspect(nextAspect);
-                }}
-                class="w-[62px]"
-              />
-              <span class="text-[11px] text-editor-text-dim font-bold">:</span>
-              <EditableNumField
-                label="H"
-                value={cropAspect()?.h ?? 1}
-                onSubmit={(v) => {
-                  const nextAspect = { w: cropAspect()?.w ?? 1, h: v };
-                  setCropAspect(nextAspect);
-                  setCropFrameToAspect(nextAspect);
-                }}
-                class="w-[62px]"
-              />
-            </div>
-          </Show>
+      {/* Custom W:H fields — visible when "+" is expanded */}
+      <Show when={showCustomRatio()}>
+        <div class="flex shrink-0 items-center gap-1">
+          <EditableNumField
+            label="W"
+            value={customWVal()}
+            onSubmit={(v) => {
+              setCustomWVal(v);
+              const aspect = { w: v, h: customHVal() };
+              setCropAspect(aspect);
+              setShowCustomRatio(false);
+              setCropMode("ratio");
+              setCropFrameToAspect(aspect);
+            }}
+            class="w-[62px]"
+          />
+          <span class="text-[11px] text-editor-text-dim font-bold">:</span>
+          <EditableNumField
+            label="H"
+            value={customHVal()}
+            onSubmit={(v) => {
+              setCustomHVal(v);
+              const aspect = { w: customWVal(), h: v };
+              setCropAspect(aspect);
+              setShowCustomRatio(false);
+              setCropMode("ratio");
+              setCropFrameToAspect(aspect);
+            }}
+            class="w-[62px]"
+          />
         </div>
       </Show>
 
@@ -468,8 +433,6 @@ export function CropOptionBar() {
             if (cropMode() === "ratio" && cropAspect()) {
               const nextAspect = { w: cropAspect()!.h, h: cropAspect()!.w };
               setCropAspect(nextAspect);
-              const match = CROP_PRESETS.find(p => p.aspect.w === nextAspect.w && p.aspect.h === nextAspect.h);
-              setSelectedPreset(match ? match.value : "custom");
               setCropFrameToAspect(nextAspect);
             } else if (cropMode() === "size" && cropSizeTarget()) {
               const nextTarget = { w: cropSizeTarget()!.h, h: cropSizeTarget()!.w };

@@ -89,6 +89,10 @@
 | ✅ DONE      | Crop apply viewport recentering — after crop commit, the new canvas/artboard is fitted back to the viewport center before renderer resize/upload |
 | ✅ DONE      | Crop mode pasteboard panning guard — Space+drag navigation stays available while Crop tool is active |
 | ✅ DONE      | Crop interaction modes — Modern (dedicated viewport-fixed centered frame; frame size tracks projected canvas bounds `docWidth × zoom × scale`, clamped by viewport; frame recomputes on zoom changes; resize clamps to projected bounds; drag/rotate transforms the image under the frame; rotation pivots around the rendered cropbox center in screen coordinates so the frame center stays visually pinned; apply uses the visual frame size and pivot rather than a rotated AABB and converts preview rotation to the crop engine convention so committed orientation matches the visual preview; drag/resize compensation stays screen-aligned under rotation; Shift/Alt/Shift+Alt resize modifiers match Classic Crop conventions where applicable; Enter applies, Esc cancels, Arrow/Shift+Arrow nudges image with undo commit, Ctrl+Z/Ctrl+Y/Ctrl+Shift+Z undo/redo; resize changes frame size from center; size mode preserves target aspect ratio during resize; dedicated undo/redo stack for frame/transform operations; state resets on tool exit to prevent transform leak; canvas click creates default centered frame; canvas drag creates frame sized to selection with WYSIWYG preview; image shifts so selection content aligns with viewport-centered frame) and Classic (document-space crop box can move/resize/rotate over static image; pasteboard click creates/hides rect) toggleable via option bar |
+| ✅ DONE      | Ratio Pill Bar — Replace mode selector + preset dropdown with pill bar in Option Bar. Pills: Free, 1:1, 16:9, 4:3, 3:2, 21:9 + Custom. Spec: `docs/superpowers/specs/2026-06-09-ratio-pill-bar-design.md` |
+| ⬜ DESIGN    | Smart Guides (Crop) — Snap to document edges, center, rule-of-thirds during drag-create |
+| ⬜ DESIGN    | Center-Out Drag — Alt = center-out, Shift = square, Alt+Shift = both. Mid-drag modifier flip |
+| ⬜ DESIGN    | Canvas Expansion — Directional expansion when crop frame > canvas. Auto-trigger, expand on apply |
 
 
 ---
@@ -266,7 +270,7 @@
 | ⬜ TODO      | CI pipeline (GitHub Actions)               |
 | ✅ DONE      | Unit tests (core crate) — 69 tests         |
 | ✅ DONE      | Contract tests (IPC commands) — 13 tests   |
-| ✅ DONE      | Frontend tests — 681 passing tests (50 files) |
+| ✅ DONE      | Frontend tests — 762 passing tests (52 files) |
 | ✅ DONE      | M6 Perf Gate (all metrics PASS)            |
 | ✅ DONE      | Native Vite tsconfig paths (removed `vite-tsconfig-paths` plugin) |
 | ✅ DONE      | Release candidate (MSI + NSIS installers)  |

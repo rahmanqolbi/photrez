@@ -20,6 +20,18 @@ Fixed two root causes in `webgl2.ts render()`:
 
 ---
 
-## Next Tasks (locked scope)
+### [2026-06-09] Ratio Pill Bar Implementation [COMPLETE]
 
-See `docs/FEATURES.md` for pending items (Context menu, Tooltip system, Dialog system).
+Replaced crop mode `<select>` (Free/Ratio/Size) and ratio preset `<select>` (CROP_PRESETS + Custom) with a pill bar in `CropOptionBar.tsx`. Added `4:3` and `21:9` presets to `cropPresets.ts`. Free + Size buttons are always visible; ratio pills and "+" hidden in Size mode. "+" pill toggles inline W:H fields initialized from current cropAspect.
+
+Updated 17+ tests to use `clickPill(container, label)` replacing `fireModeChange`/`firePresetChange`. All 37 tests pass.
+
+### Verification
+- PASS: `npx vitest run` (762 tests, 52 files)
+- PASS: `pnpm.cmd run build` (tsc + Vite)
+
+## Next Task
+
+- Smart Guides (#2) — design spec TBD
+- Center-Out Drag (#3) — design spec TBD
+- Canvas Expansion (#4) — design spec TBD

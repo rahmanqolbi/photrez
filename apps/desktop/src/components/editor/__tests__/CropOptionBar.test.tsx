@@ -4,22 +4,10 @@ import { createSignal } from "solid-js";
 import { CropOptionBar } from "../CropOptionBar";
 import * as EditorContextModule from "../EditorContext";
 
-function fireModeChange(container: HTMLElement, mode: string) {
-  const selects = container.querySelectorAll("select");
-  const modeSelect = selects[0];
-  modeSelect.value = mode;
-  modeSelect.dispatchEvent(new Event("change", { bubbles: true }));
-}
-
-function firePresetChange(container: HTMLElement, value: string) {
-  const selects = container.querySelectorAll("select");
-  // selects[0]=mode, selects[1]=preset (visible in ratio mode),
-  // selects[2]=guide (always visible), selects[3]=unit (visible in size mode)
-  const presetSelect = selects[1];
-  if (presetSelect) {
-    presetSelect.value = value;
-    presetSelect.dispatchEvent(new Event("change", { bubbles: true }));
-  }
+function clickPill(container: HTMLElement, label: string) {
+  const buttons = container.querySelectorAll("button");
+  const pill = Array.from(buttons).find(b => b.textContent?.trim() === label);
+  if (pill) pill.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 }
 
 const MAX_W = 800; // min(viewportWidth=800, docWidth=1600 * zoom=1)
@@ -185,26 +173,26 @@ describe("CropOptionBar", () => {
         }, container);
 
         // Free→Ratio: frame should be max at 16:9
-        fireModeChange(container, "ratio");
+        clickPill(container, "16:9");
         let frame = setModernFrameSpy.mock.lastCall?.[0];
         expect(frame.w).toBeLessThanOrEqual(MAX_W);
         expect(frame.h).toBeLessThanOrEqual(MAX_H);
         expect(frame.w / frame.h).toBeCloseTo(16 / 9, 1);
 
         // Ratio→Size (800x600): frame at target zoom
-        fireModeChange(container, "size");
+        clickPill(container, "Size");
         frame = setModernFrameSpy.mock.lastCall?.[0];
         expect(frame.w).toBeLessThanOrEqual(MAX_W);
         expect(frame.h).toBeLessThanOrEqual(MAX_H);
 
         // Size→Free: frame unchanged
-        fireModeChange(container, "free");
+        clickPill(container, "Free");
         frame = setModernFrameSpy.mock.lastCall?.[0];
         expect(frame.w).toBeLessThanOrEqual(MAX_W);
         expect(frame.h).toBeLessThanOrEqual(MAX_H);
 
         // Free→Ratio again: frame re-fitted
-        fireModeChange(container, "ratio");
+        clickPill(container, "16:9");
         frame = setModernFrameSpy.mock.lastCall?.[0];
         expect(frame.w).toBeLessThanOrEqual(MAX_W);
         expect(frame.h).toBeLessThanOrEqual(MAX_H);
@@ -232,7 +220,7 @@ describe("CropOptionBar", () => {
           modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
         }, container);
 
-        fireModeChange(container, "free");
+        clickPill(container, "Free");
 
         const frame = setModernFrameSpy.mock.lastCall?.[0];
         expect(frame.w).toBeLessThanOrEqual(MAX_W);
@@ -263,7 +251,7 @@ describe("CropOptionBar", () => {
         }, container);
 
         // Switch to Size mode — frame fills canvas at target 800x600 (4:3) aspect
-        fireModeChange(container, "size");
+        clickPill(container, "Size");
         let frame = setModernFrameSpy.mock.lastCall?.[0];
         expect(frame.w).toBeLessThanOrEqual(MAX_W);
         expect(frame.h).toBeLessThanOrEqual(MAX_H);
@@ -292,7 +280,7 @@ describe("CropOptionBar", () => {
 
         // Switch to Size mode — frame fills canvas at target 800x600 (4:3) aspect
         // Even at zoom=0.5, the frame should fill the max canvas bounds
-        fireModeChange(container, "size");
+        clickPill(container, "Size");
         let frame = setModernFrameSpy.mock.lastCall?.[0];
         expect(frame.w).toBeLessThanOrEqual(MAX_W);
         expect(frame.h).toBeLessThanOrEqual(MAX_H);
@@ -320,7 +308,7 @@ describe("CropOptionBar", () => {
         }, container);
 
         // Change preset from 16:9 to 3:2
-        firePresetChange(container, "3:2");
+        clickPill(container, "3:2");
 
         expect(setCropAspectSpy).toHaveBeenCalledWith({ w: 3, h: 2 });
         const frame = setModernFrameSpy.mock.lastCall?.[0];
@@ -334,34 +322,43 @@ describe("CropOptionBar", () => {
     });
 
     it("re-fits frame when switching to custom ratio 'preset' in Modern mode", () => {
-      runWithContainer((container, done) => {
-        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("ratio");
-        const [cropAspect, setCropAspect] = createSignal<{ w: number; h: number } | null>(null);
-        const [cropSizeTarget, setCropSizeTarget] = createSignal<{ w: number; h: number } | null>(null);
-        const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 600, h: 400 });
-        const setCropAspectSpy = vi.fn((a) => setCropAspect(a));
-        const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
+      const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("ratio");
+      const [cropAspect, setCropAspect] = createSignal<{ w: number; h: number } | null>(null);
+      const [modernFrame, setModernFrame] = createSignal<{ w: number; h: number }>({ w: 600, h: 400 });
+      const setCropAspectSpy = vi.fn((a) => setCropAspect(a));
+      const setModernFrameSpy = vi.fn((f) => setModernFrame(f));
 
-        renderOptionBar({
-          ...modernContextBase,
-          cropMode, setCropMode: vi.fn(),
-          cropAspect, setCropAspect: setCropAspectSpy,
-          cropSizeTarget, setCropSizeTarget: vi.fn(),
-          modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
-        }, container);
+      const mockValue = {
+        ...modernContextBase,
+        cropMode, setCropMode: vi.fn(),
+        cropAspect, setCropAspect: setCropAspectSpy,
+        modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
+      };
 
-        // Select "custom" preset in Ratio mode — initialPreset() returns "custom" when cropAspect is null
-        firePresetChange(container, "custom");
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+      const dispose = render(() => <CropOptionBar />, container);
 
-        // cropAspect was null, so it defaults to 16:9
-        expect(setCropAspectSpy).toHaveBeenCalledWith({ w: 16, h: 9 });
-        const frame = setModernFrameSpy.mock.lastCall?.[0];
-        expect(frame.w).toBeLessThanOrEqual(MAX_W);
-        expect(frame.h).toBeLessThanOrEqual(MAX_H);
-        expect(frame.w / frame.h).toBeCloseTo(16 / 9, 1);
+      // Click "+" to expand custom W:H fields, then submit W=5 H=4
+      clickPill(container, "+");
 
-        done();
-      });
+      // Query inputs after clicking "+" (custom W, custom H, Angle)
+      const inputs = container.querySelectorAll("input");
+      const wInput = inputs[0] as HTMLInputElement;
+      wInput.focus();
+      wInput.value = "5";
+      wInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+      wInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, keyCode: 13 }));
+
+      expect(setCropAspectSpy).toHaveBeenCalledWith({ w: 5, h: 9 });
+      const frame = setModernFrameSpy.mock.lastCall?.[0];
+      expect(frame.w).toBeLessThanOrEqual(MAX_W);
+      expect(frame.h).toBeLessThanOrEqual(MAX_H);
+      expect(frame.w / frame.h).toBeCloseTo(5 / 9, 1);
+
+      dispose();
+      document.body.removeChild(container);
     });
 
     it("keeps frame within canvas bounds in Classic mode after mode changes", () => {
@@ -395,7 +392,7 @@ describe("CropOptionBar", () => {
         }, container);
 
         // Free→Ratio: fits to 16:9 within 1600x1200 doc
-        fireModeChange(container, "ratio");
+        clickPill(container, "16:9");
         let rect = setCropRectSpy.mock.lastCall?.[0];
         expect(rect.x).toBeGreaterThanOrEqual(0);
         expect(rect.y).toBeGreaterThanOrEqual(0);
@@ -404,14 +401,14 @@ describe("CropOptionBar", () => {
         expect(rect.w / rect.h).toBeCloseTo(16 / 9, 1);
 
         // Ratio→Size (800x600): fits within doc
-        fireModeChange(container, "size");
+        clickPill(container, "Size");
         rect = setCropRectSpy.mock.lastCall?.[0];
         expect(rect.x).toBeGreaterThanOrEqual(0);
         expect(rect.x + rect.w).toBeLessThanOrEqual(1600);
         expect(rect.y + rect.h).toBeLessThanOrEqual(1200);
 
         // Size→Free: no rect change expected
-        fireModeChange(container, "free");
+        clickPill(container, "Free");
         // Only 2 calls so far (Ratio + Size), Free doesn't change rect in Classic
         expect(setCropRectSpy).toHaveBeenCalledTimes(2);
 
@@ -454,7 +451,7 @@ describe("CropOptionBar", () => {
       document.body.appendChild(container);
       const dispose = render(() => <CropOptionBar />, container);
 
-      fireModeChange(container, "ratio");
+      clickPill(container, "16:9");
 
       expect(setCropModeSpy).toHaveBeenCalledWith("ratio");
       expect(setCropAspectSpy).toHaveBeenCalledWith({ w: 16, h: 9 });
@@ -510,7 +507,7 @@ describe("CropOptionBar", () => {
       document.body.appendChild(container);
       const dispose = render(() => <CropOptionBar />, container);
 
-      fireModeChange(container, "ratio");
+      clickPill(container, "16:9");
 
       expect(setCropModeSpy).toHaveBeenCalledWith("ratio");
       expect(setCropAspectSpy).toHaveBeenCalledWith({ w: 16, h: 9 });
@@ -566,7 +563,7 @@ describe("CropOptionBar", () => {
       document.body.appendChild(container);
       const dispose = render(() => <CropOptionBar />, container);
 
-      fireModeChange(container, "size");
+      clickPill(container, "Size");
 
       expect(setCropModeSpy).toHaveBeenCalledWith("size");
       expect(setCropSizeTargetSpy).toHaveBeenCalledWith({ w: 800, h: 600 });
@@ -613,7 +610,7 @@ describe("CropOptionBar", () => {
       document.body.appendChild(container);
       const dispose = render(() => <CropOptionBar />, container);
 
-      fireModeChange(container, "size");
+      clickPill(container, "Size");
 
       expect(setCropModeSpy).toHaveBeenCalledWith("size");
       expect(setCropSizeTargetSpy).toHaveBeenCalledWith({ w: 800, h: 600 });
@@ -658,7 +655,7 @@ describe("CropOptionBar", () => {
       document.body.appendChild(container);
       const dispose = render(() => <CropOptionBar />, container);
 
-      fireModeChange(container, "free");
+      clickPill(container, "Free");
 
       expect(setCropModeSpy).toHaveBeenCalledWith("free");
       // Rect should NOT be changed when going to Free
@@ -705,7 +702,7 @@ describe("CropOptionBar", () => {
       document.body.appendChild(container);
       const dispose = render(() => <CropOptionBar />, container);
 
-      fireModeChange(container, "free");
+      clickPill(container, "Free");
 
       expect(setCropModeSpy).toHaveBeenCalledWith("free");
       // Free mode clamps frame to max bounds (600x400 already fits, so unchanged)
@@ -751,7 +748,7 @@ describe("CropOptionBar", () => {
       document.body.appendChild(container);
       const dispose = render(() => <CropOptionBar />, container);
 
-      fireModeChange(container, "size");
+      clickPill(container, "Size");
 
       expect(setCropModeSpy).toHaveBeenCalledWith("size");
       expect(setCropSizeTargetSpy).toHaveBeenCalledWith({ w: 800, h: 600 });
@@ -796,7 +793,7 @@ describe("CropOptionBar", () => {
       document.body.appendChild(container);
       const dispose = render(() => <CropOptionBar />, container);
 
-      fireModeChange(container, "free");
+      clickPill(container, "Free");
 
       expect(setCropModeSpy).toHaveBeenCalledWith("free");
       expect(setCropRectSpy).not.toHaveBeenCalled();
@@ -851,6 +848,7 @@ describe("CropOptionBar", () => {
       docWidth: () => 1600,
       docHeight: () => 1200,
       activeDocumentId: () => "mock-doc-id",
+      commitCropState: vi.fn(),
     };
 
     vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
@@ -860,10 +858,13 @@ describe("CropOptionBar", () => {
 
     const dispose = render(() => <CropOptionBar />, container);
 
+    // Click "+" to expand custom W:H fields
+    clickPill(container, "+");
+
     const inputs = container.querySelectorAll("input");
     expect(inputs.length).toBeGreaterThan(0);
 
-    const wInput = inputs[0]; // W EditableNumField input
+    const wInput = inputs[0]; // Custom W EditableNumField input
     wInput.focus();
     wInput.value = "3";
     wInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
@@ -1133,7 +1134,7 @@ describe("CropOptionBar", () => {
           modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
         }, container);
 
-        fireModeChange(container, "size");
+        clickPill(container, "Size");
 
         const frame = setModernFrameSpy.mock.lastCall?.[0];
         expect(frame.w).toBeLessThanOrEqual(fitMaxW);
@@ -1162,7 +1163,7 @@ describe("CropOptionBar", () => {
           modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
         }, container);
 
-        fireModeChange(container, "size");
+        clickPill(container, "Size");
 
         const frame = setModernFrameSpy.mock.lastCall?.[0];
         expect(frame.w).toBeLessThanOrEqual(fitMaxW);
@@ -1190,7 +1191,7 @@ describe("CropOptionBar", () => {
           modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
         }, container);
 
-        fireModeChange(container, "size");
+        clickPill(container, "Size");
 
         const frame = setModernFrameSpy.mock.lastCall?.[0];
         expect(frame.w).toBeLessThanOrEqual(fitMaxW);

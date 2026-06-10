@@ -748,7 +748,7 @@ export function CanvasViewport() {
         {/* Crop drag preview — screen-space selection rectangle */}
         <Show when={cropDragPreview()}>
           {(box) => (
-            <div style={{
+            <div data-crop-drag-preview="" style={{
               position: "absolute",
               left: `${box().x}px`,
               top: `${box().y}px`,

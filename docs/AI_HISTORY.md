@@ -1,5 +1,24 @@
 # AI History — Photrez
 
+## [2026-06-10] FEATURE — Ratio Pill Bar [COMPLETE]
+
+### Kategori: FEATURE / CROP / UX / FRONTEND
+
+**User Goal:** Replace the crop mode `<select>` dropdown and ratio preset `<select>` with a row of quick-access pills in the Option Bar for one-click mode/aspect switching.
+
+**Implementation:**
+1. Replaced `<select>` mode selector (Free/Ratio/Size) and `<select>` preset dropdown with pill bar
+2. Pills: Free (always), 1:1, 4:3, 16:9, 3:2, 21:9, + (custom), Size (always)
+3. Added `4:3` and `21:9` to `CROP_PRESETS` and `PILL_PRESETS`
+4. "+" pill toggles inline W:H `EditableNumField` fields, initialized from current `cropAspect()`
+5. Custom W:H submit auto-closes fields and switches to Ratio mode
+6. 17+ tests migrated from `fireModeChange`/`firePresetChange` to `clickPill(container, label)`
+7. Fixed: `createSignal(() => cropAspect()?.w ?? 16)` evaluated lambda as value → used plain value + `onClick` initializer
+
+**Fixes:**
+- Custom W:H signals initialized from `cropAspect()` on "+" click (not stale defaults)
+- W/H `EditableNumField` only submits when value differs from `props.value` (+/- 0.0001)
+
 ## [2026-06-08] FEATURE — Crop Fill Background WYSIWYG Preview [COMPLETE]
 
 ### Kategori: FEATURE / CROP / FRONTEND / ENGINE / UX
@@ -20,6 +39,32 @@
 - PASS: `pnpm --filter photrez-desktop exec vitest run src/engine/__tests__/postCropAlignment.test.ts src/engine/__tests__/cropUndoIntegration.test.ts src/components/editor/__tests__/CropOptionBar.test.tsx src/components/editor/__tests__/CanvasViewport.test.tsx --pool=threads --maxWorkers=1` (103 tests)
 - PASS: `pnpm run build`
 - PASS: `pnpm --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (737 tests)
+
+---
+
+## [2026-06-09] FEATURE — Brainstorm: Modern Crop Power Features [COMPLETE]
+
+### Kategori: FEATURE / CROP / DESIGN / UX
+
+**User Goal:** Brainstorm 4 power features for the drag-to-create crop workflow after basic implementation was complete.
+
+**Sesi Brainstorming (Visual Companion):**
+1. **Ratio Pill Bar** — Replace mode selector + preset dropdown with pill bar in Option Bar. Pills: Free, 1:1, 16:9, 4:3, 3:2, 21:9 + Custom. Visible in Free/Ratio mode, hidden in Size mode. Pill click auto-switches mode. Shift temporary overrides to 1:1.
+2. **Center-Out Drag** — Alt = center-out (symmetric growth from center). Shift = square constrains. Alt+Shift = center-out square. Mid-drag flip between modifiers.
+3. **Smart Guides** — Snap to document edges, document center (V+H), rule of thirds (⅓ + ⅔). Cyan dashed lines, ~5px threshold.
+4. **Canvas Expansion** — Directional (match drag direction). Auto-trigger when crop frame exceeds document bounds. On apply, canvas resizes to expanded bounding box.
+
+**Keputusan Design:**
+- Pill bar pertama (value tertinggi, scope terkecil), lalu Smart Guides, Center-Out Drag, Canvas Expansion.
+- Alt/Shift sebagai orthogonal modifiers — Alt = center-out, Shift = square, Alt+Shift = keduanya.
+- Smart guides hanya document-level (tidak multi-frame atau golden ratio untuk MVP).
+- Semua rasio selalu tersedia regardless of orientation.
+- Custom rasio via inline W:H fields (post-MVP untuk kustomisasi lebih lanjut).
+- Design spec written: `docs/superpowers/specs/2026-06-09-ratio-pill-bar-design.md`
+
+### Verification Results
+- PASS: design doc reviewed and accepted by user
+- PASS: visual mockups presented via browser companion (port 54415)
 
 ---
 
