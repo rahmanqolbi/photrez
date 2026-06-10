@@ -25,6 +25,8 @@ interface ModernCropOverlayProps {
   viewportHeight: number;
   projectedWidth: number;
   projectedHeight: number;
+  /** Screen-space rect of the projected canvas (non-rotated) */
+  canvasScreenRect?: { x: number; y: number; w: number; h: number } | null;
   cropMode: "free" | "ratio" | "size";
   cropAspect: { w: number; h: number } | null;
   guideMode: "none" | "thirds" | "grid" | "diagonal" | "golden";
@@ -294,7 +296,37 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
           <rect x={0} y={0} width={props.viewportWidth} height={props.viewportHeight} fill="white" />
           <rect x={screenRect().x} y={screenRect().y} width={screenRect().w} height={screenRect().h} fill="black" />
         </mask>
+        <mask id="modern-expansion-mask">
+          <rect x={screenRect().x} y={screenRect().y} width={screenRect().w} height={screenRect().h} fill="white" />
+          {(() => {
+            const cr = props.canvasScreenRect;
+            if (!cr) return null;
+            const ix = Math.max(screenRect().x, cr.x);
+            const iy = Math.max(screenRect().y, cr.y);
+            const ix2 = Math.min(screenRect().x + screenRect().w, cr.x + cr.w);
+            const iy2 = Math.min(screenRect().y + screenRect().h, cr.y + cr.h);
+            if (ix < ix2 && iy < iy2) {
+              return <rect x={ix} y={iy} width={ix2 - ix} height={iy2 - iy} fill="black" />;
+            }
+            return null;
+          })()}
+        </mask>
       </defs>
+      {/* Canvas expansion fill — checkerboard pattern in areas where frame exceeds canvas */}
+      <Show when={(() => {
+        const cr = props.canvasScreenRect;
+        if (!cr) return false;
+        const sr = screenRect();
+        return sr.x < cr.x || sr.y < cr.y || (sr.x + sr.w) > (cr.x + cr.w) || (sr.y + sr.h) > (cr.y + cr.h);
+      })()}>
+        <rect
+          x={screenRect().x} y={screenRect().y}
+          width={screenRect().w} height={screenRect().h}
+          fill="rgba(255,255,255,0.08)"
+          mask="url(#modern-expansion-mask)"
+          style={{ "pointer-events": "none" }}
+        />
+      </Show>
       <rect
         x={0}
         y={0}
@@ -324,6 +356,26 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
         stroke-width={0.75}
         style={{ "pointer-events": "none" }}
       />
+      {/* Canvas expansion indicator — dashed outline of original canvas when frame exceeds it */}
+      <Show when={(() => {
+        const sr = screenRect();
+        const cr = props.canvasScreenRect;
+        if (!cr) return false;
+        return sr.x < cr.x || sr.y < cr.y || (sr.x + sr.w) > (cr.x + cr.w) || (sr.y + sr.h) > (cr.y + cr.h);
+      })()}>
+        <rect
+          x={props.canvasScreenRect!.x}
+          y={props.canvasScreenRect!.y}
+          width={props.canvasScreenRect!.w}
+          height={props.canvasScreenRect!.h}
+          fill="none"
+          stroke="rgba(255,255,255,0.5)"
+          stroke-width={1}
+          stroke-dasharray="6,4"
+          style={{ "pointer-events": "none" }}
+        />
+      </Show>
+
       <CropOverlayGuides
         x={screenRect().x}
         y={screenRect().y}

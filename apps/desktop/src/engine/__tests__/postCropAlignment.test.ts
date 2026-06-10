@@ -387,4 +387,23 @@ describe("post-crop alignment for odd crop sizes", () => {
     const fillCanvas = getInstances().find((canvas) => canvas.fillCalls.length > 0);
     expect(fillCanvas?.fillCalls[0].fillStyle).toBe("#abcdef");
   });
+
+  it("expands canvas directionally when crop frame exceeds bounds (no fill)", () => {
+    setupOffscreenCanvasMock();
+    const engine = new DocumentEngine("doc-expand", "Expand", 100, 100);
+    const layer = engine.addLayer("Photo", 100, 100);
+    engine.setLayerImageBitmap(layer.id, { width: 100, height: 100 } as ImageBitmap);
+    engine.transformLayer(layer.id, { x: 10, y: 10 });
+
+    engine.applyCrop(-25, -30, 150, 160, { deleteCroppedPixels: true });
+
+    expect(engine.getWidth()).toBe(150);
+    expect(engine.getHeight()).toBe(160);
+
+    const [photo] = engine.getLayers();
+    expect(photo.transform.x).toBe(0);
+    expect(photo.transform.y).toBe(0);
+    expect(photo.width).toBe(150);
+    expect(photo.height).toBe(160);
+  });
 });

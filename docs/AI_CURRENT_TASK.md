@@ -83,22 +83,38 @@ Implemented snap to document edges, center, and rule-of-thirds during crop drag-
 
 ---
 
-## Current Task
+### [2026-06-10] Modern Mode Pasteboard Drag & Frame Bounds [COMPLETE]
 
-### [2026-06-10] Canvas Expansion — Directional expansion when crop frame > canvas [IN PROGRESS]
+**Problems Fixed:**
+1. Pasteboard clicks in Modern mode never reached drag-create handler — SVG overlay captured events, `isPasteboardPointerDown` didn't recognize them
+2. Snap conversion used stale `pan.x/pan.y` (Classic origin) instead of Modern mode CSS transform origin
+3. `clampFrameToProjectedBounds` capped frame dimensions at projected canvas, preventing frame > canvas
+4. No crosshair cursor on pasteboard when no frame existed
+5. Existing frame wasn't cleared during drag-create, causing visual confusion
 
-When the crop frame extends beyond the document canvas, the canvas should expand directionally to accommodate the uncropped content. Auto-trigger on frame exceed, commit on apply.
-
-**Scope (MVP):**
-- Detect when crop frame exceeds canvas bounds in any direction
-- Expand canvas in the overflow direction(s) with new transparent pixels
-- Auto-trigger during resize/create (no user action needed)
-- Content re-centering on apply
-
-**Open Questions:**
-- Expand during drag or only on apply?
-- Expand incrementally per-pixel or in fixed steps?
-- Preview feedback during drag?
+**Changes:**
+- `CanvasViewport.tsx` — `isPasteboardPointerDown` detects SVG overlay clicks, routes Modern mode to `onCanvasPointerDown`, crosshair cursor on viewport container
+- `useCanvasPointerTools.ts` — snap conversion uses `canvasRect - containerRect` offset, `commitDragCreateFrame` uses raw viewport selection, clears frame on drag threshold
+- `modernCropGeometry.ts` — removed upper cap from `clampFrameToProjectedBounds`
+- Test: updated `clampFrameToProjectedBounds` test name and expectations
 
 ### Verification
-- [ ] TBD
+- PASS: `pnpm run build`
+- PASS: `pnpm --filter photrez-desktop test` (774 tests, 52 files)
+- PASS: `cargo test -p photrez-core` (85 tests)
+
+---
+
+### [2026-06-10] Canvas Expansion — Visual Indicator + Tests [COMPLETE]
+
+**Implementation:**
+1. **Visual indicator** (`ModernCropOverlay.tsx`): When crop frame exceeds projected canvas, renders dashed white canvas boundary + subtle fill in expansion areas. Gated on rotation=0.
+2. **`canvasScreenRect` prop**: Passed from `CanvasViewport.tsx` as `{ x: panX + offsetX, y: panY + offsetY, w: projectedW, h: projectedH }`. Null when rotated.
+3. **Engine test** (`postCropAlignment.test.ts`): Verifies non-fill directional expansion.
+
+**Key insight:** The engine pipeline (`performApplyCrop`) already handled canvas expansion implicitly — it never references `model.width/height`, only the passed `x, y, width, height`. Negative x/y naturally produces directionally larger document. The only missing pieces were the visual indicator during preview and explicit test coverage.
+
+### Verification
+- PASS: `pnpm run build`
+- PASS: `npx vitest run` (775 tests, 52 files)
+- PASS: `cargo test -p photrez-core` (85 tests)

@@ -732,6 +732,12 @@ export function CanvasViewport() {
               viewportHeight={viewportHeight()}
               projectedWidth={docWidth() * zoom() * (modernCropImageTransform().scale ?? 1)}
               projectedHeight={docHeight() * zoom() * (modernCropImageTransform().scale ?? 1)}
+              canvasScreenRect={modernCropImageTransform().rotation === 0 ? {
+                x: pan().x + modernCropImageTransform().offsetX,
+                y: pan().y + modernCropImageTransform().offsetY,
+                w: docWidth() * zoom() * (modernCropImageTransform().scale ?? 1),
+                h: docHeight() * zoom() * (modernCropImageTransform().scale ?? 1),
+              } : null}
               cropMode={cropMode()}
               cropAspect={ea()}
               guideMode={cropGuideMode()}

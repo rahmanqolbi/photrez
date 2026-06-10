@@ -2904,6 +2904,54 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 - PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (616 tests, 50 files)
 - PASS: `pnpm.cmd run build`
 
+## [2026-06-10] BUG FIX — Modern Mode Pasteboard Drag & Frame Bounds [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / UX
+
+**Root Cause:** 
+1. Pasteboard clicks (outside canvas) in Modern mode never reached the drag-create handler because the SVG overlay (`pointer-events: auto`, z-index: 40) captured clicks and `isPasteboardPointerDown` only checked `e.target === canvasContainerRef`.
+2. Snap conversion used `pan.x/pan.y` (Classic mode doc origin) to convert screen→doc coords, but Modern mode uses CSS transforms at `left: 0, top: 0`. Stale `pan` values from Classic mode caused wrong snap positions.
+3. `clampFrameToProjectedBounds` capped frame dimensions at projected canvas size (`docWidth * zoom`), preventing frame from exceeding the document.
+
+**User Requirements:**
+- Drag from outside canvas should start a new crop
+- Frame should be able to exceed canvas bounds (for canvas expansion)
+- Existing frame should clear once drag exceeds threshold
+- Crosshair cursor on pasteboard when no frame exists
+
+**Rincian Perubahan:**
+1. `CanvasViewport.tsx` — `isPasteboardPointerDown` now detects clicks on `[data-modern-crop-overlay]` outside interactive children (handles, move rect, rotate ring). Routes Modern mode pasteboard clicks to `onCanvasPointerDown`. Adds crosshair cursor style on viewport container when `crop + modern + !frame`.
+2. `useCanvasPointerTools.ts` — Snap conversion uses `docOriginX/Y = canvasRect - containerRect` instead of `pan.x/pan.y`. `commitDragCreateFrame` uses raw viewport selection (no document clamp). Clears `modernCropFrame` once drag exceeds threshold.
+3. `modernCropGeometry.ts` — Removed `Math.min(projected.w, ...)` upper cap from `clampFrameToProjectedBounds`.
+
+### Files Changed:
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`
+- `apps/desktop/src/components/editor/useCanvasPointerTools.ts`
+- `apps/desktop/src/viewport/modernCropGeometry.ts`
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — updated test name + expectations
+
+### Verification
+- PASS: `pnpm run build`
+- PASS: `pnpm --filter photrez-desktop test` (774 tests, 52 files)
+- PASS: `cargo test -p photrez-core` (85 tests)
+
+## [2026-06-10] Canvas Expansion — Visual Indicator + Tests [COMPLETE]
+
+### Implementasi
+1. **Visual indicator** — `ModernCropOverlay.tsx`: When crop frame exceeds projected canvas, renders a dashed white rect at canvas boundary + subtle `rgba(255,255,255,0.08)` fill in expansion areas (masked to frame minus canvas intersection). Gated on rotation=0 (non-rotated).
+2. **`canvasScreenRect` prop** — passed from `CanvasViewport.tsx:733-741`: computed as `{ x: panX + offsetX, y: panY + offsetY, w: projectedW, h: projectedH }`. Null when rotation !== 0.
+3. **Engine test** — `postCropAlignment.test.ts:391-408`: verifies canvas expands directionally without fill (`applyCrop(-25, -30, 150, 160)` on 100×100 doc → doc becomes 150×160, photo layer bakes to new size).
+
+### Files Changed:
+- `apps/desktop/src/components/editor/ModernCropOverlay.tsx` — expansion mask + dashed boundary + subtle fill
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` — passes `canvasScreenRect` prop
+- `apps/desktop/src/engine/__tests__/postCropAlignment.test.ts` — new canvas expansion test without fill
+
+### Verification
+- PASS: `pnpm run build` (tsc + Vite)
+- PASS: `npx vitest run` (775 tests, 52 files)
+- PASS: `cargo test -p photrez-core` (85 tests)
+
 ## [2026-06-10] — Center-Out Drag Verified + Modern Snap Bug Fix
 
 ### Kategori: INVESTIGATION / CROP / SNAP / BUG FIX

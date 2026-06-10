@@ -92,7 +92,10 @@
 | ✅ DONE      | Ratio Pill Bar — Replace mode selector + preset dropdown with pill bar in Option Bar. Pills: Free, 1:1, 16:9, 4:3, 3:2, 21:9 + Custom. Spec: `docs/superpowers/specs/2026-06-09-ratio-pill-bar-design.md` |
 | ✅ DONE      | Smart Guides (Crop) — Snap to document edges, center, rule-of-thirds during drag-create + cyan dashed snap lines (Classic + Modern) |
 | ✅ DONE      | Center-Out Drag — Alt = center-out (compensation=0, center stays fixed), Shift = square, Alt+Shift = both. Mid-drag modifier flip. Classic and Modern both verified + 9 regression tests |
-| ⬜ DESIGN    | Canvas Expansion — Directional expansion when crop frame > canvas. Auto-trigger, expand on apply |
+| ✅ DONE      | Modern mode pasteboard drag-create — drag from outside canvas creates new crop frame in Modern mode. SVG overlay clicks routed to drag handler. Crosshair cursor on pasteboard when no frame |
+| ✅ DONE      | Modern mode frame can exceed canvas bounds — `clampFrameToProjectedBounds` no longer caps at projected canvas size. Frame dimensions from viewport selection preserved (min size enforced). Enables canvas expansion workflow |
+| ✅ DONE      | Modern mode drag-create clears existing frame — frame removed once drag exceeds threshold, providing clear visual feedback that a new crop is being created |
+| ✅ DONE      | Canvas Expansion — Directional expansion when crop frame > canvas. Auto-trigger, expand on apply. Engine handles negative x/y crop rects (+ fill bg). Visual indicator: dashed canvas boundary + subtle expansion fill in frame overlay. Tested with fill/transparent expansion |
 
 
 ---
