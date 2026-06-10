@@ -214,6 +214,8 @@ export function CanvasViewport() {
     fitToScreenAndRender,
     commitBrushStroke,
     onPaintStroke,
+    cropSnapTargets: () => cropSnapTargets(),
+    moveSnapEnabled: () => moveSnapEnabled(),
   });
 
   const {

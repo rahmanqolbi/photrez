@@ -32,7 +32,7 @@ Updated 17+ tests to use `clickPill(container, label)` replacing `fireModeChange
 
 ## Current Task
 
-### [2026-06-10] Smart Guides (Crop) — Classic [COMPLETE]
+### [2026-06-10] Smart Guides (Crop) — Classic + Modern [COMPLETE]
 
 Implemented snap to document edges, center, and rule-of-thirds during crop drag-create + cyan dashed snap lines.
 
@@ -45,8 +45,15 @@ Implemented snap to document edges, center, and rule-of-thirds during crop drag-
 6. Added 3 new tests (rule-of-thirds, "new" handle snap, rule-of-thirds snap + cyan color) — all 8 pass
 7. Full test suite: 765 pass (52 files)
 
-**Not in scope:**
-- Smart Guides for Modern mode (needs screen→doc coordinate conversion)
+**Added Modern mode:**
+- Added `cropSnapTargets` and `moveSnapEnabled` params to `useCanvasPointerTools`
+- During drag-create, converts screen rect → doc-space → `snapCropRect("new")` → screen-space
+- Draws cyan snap lines during Modern drag-create
+- Clears snap lines on pointer up / cancel
+- Added `pan` access via editor context
+
+**Still not in scope:**
+- Snap during Modern resize/move (only drag-create)
 - Horizontal center snap target (already worked via `docW/2` and `docH/2`)
 
 ### Verification

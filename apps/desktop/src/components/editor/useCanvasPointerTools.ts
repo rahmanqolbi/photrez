@@ -1,6 +1,7 @@
 import { createSignal } from "solid-js";
 import { useEditor } from "./EditorContext";
-import { screenToDocument } from "@/viewport/coords";
+import { screenToDocument, documentToScreen } from "@/viewport/coords";
+import { snapCropRect, type CropSnapTargets } from "@/viewport/cropSnap";
 import { hitTestLayers, type LayerInfo } from "@/viewport/layerHitTest";
 import type { DocumentEngine } from "@/engine/document";
 import {
@@ -31,6 +32,8 @@ interface UseCanvasPointerToolsParams {
   fitToScreenAndRender: () => void;
   commitBrushStroke: (engine: DocumentEngine, id: string, isEraser: boolean) => void;
   onPaintStroke?: (points: { x: number; y: number }[], isEraser: boolean, settings: PaintToolSettings) => void;
+  cropSnapTargets?: () => CropSnapTargets | undefined;
+  moveSnapEnabled?: () => boolean;
 }
 
 type HudData = {
@@ -56,6 +59,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     setFgColor,
     setBgColor,
     zoom,
+    pan,
     cropRect,
     cropMode,
     cropAspect,
@@ -359,10 +363,43 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
 
       modernDragEnd = { x: ex, y: ey };
 
-      // Show selection preview rect (screen-space)
+      // Build screen-space rect
       const sx = Math.min(modernDragStart.x, ex);
       const sy = Math.min(modernDragStart.y, ey);
-      setCropDragPreview({ x: sx, y: sy, w: Math.abs(dx), h: Math.abs(dy) });
+      const sw = Math.abs(dx);
+      const sh = Math.abs(dy);
+
+      // Apply snap if enabled
+      const z = zoom();
+      const p = pan();
+      const cst = params.cropSnapTargets?.();
+      if (
+        cst &&
+        params.moveSnapEnabled?.() !== false &&
+        !e.altKey
+      ) {
+        const snapTargets = cst;
+        // Convert screen rect to doc-space for snapping
+        const docRect = {
+          x: (sx - p.x) / z,
+          y: (sy - p.y) / z,
+          w: sw / z,
+          h: sh / z,
+        };
+        const threshold = 12 / z;
+        const snapped = snapCropRect(docRect, "new", snapTargets, threshold);
+        setSnapLines(snapped.lines);
+        // Convert snapped doc rect back to screen-space
+        setCropDragPreview({
+          x: snapped.rect.x * z + p.x,
+          y: snapped.rect.y * z + p.y,
+          w: snapped.rect.w * z,
+          h: snapped.rect.h * z,
+        });
+      } else {
+        setSnapLines([]);
+        setCropDragPreview({ x: sx, y: sy, w: sw, h: sh });
+      }
       return; // Don't dispatch to handlePointerMove
     }
 
@@ -563,6 +600,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     interactiveState.strokePoints = [];
     interactiveState.isDragging = false;
     interactiveState.dragTool = null;
+    setSnapLines([]);
     setCropDragPreview(null);
     resetModernDragState();
   };

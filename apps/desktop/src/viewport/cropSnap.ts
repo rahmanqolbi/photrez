@@ -131,6 +131,7 @@ function snapAxis(
   axis: "x" | "y",
   isMove: boolean,
 ): { rect: CropRect; line: SnapLine | null } {
+  if (!targets || !Array.isArray(targets)) return { rect, line: null };
   let bestDist = threshold + 1;
   let bestEdge: EdgeSnap | null = null;
   let bestTarget = 0;
