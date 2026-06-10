@@ -99,11 +99,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   let modernDragStart: { x: number; y: number } | null = null;
   let modernDragExceededThreshold = false;
   let modernDragEnd: { x: number; y: number } | null = null;
+  let modernDragSnappedPreview: { x: number; y: number; w: number; h: number } | null = null;
 
   function resetModernDragState() {
     modernDragStart = null;
     modernDragExceededThreshold = false;
     modernDragEnd = null;
+    modernDragSnappedPreview = null;
   }
 
   const paintSmoother = new PaintSmoother();
@@ -390,15 +392,18 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
         const snapped = snapCropRect(docRect, "new", snapTargets, threshold);
         setSnapLines(snapped.lines);
         // Convert snapped doc rect back to screen-space
-        setCropDragPreview({
+        const screenSnapped = {
           x: snapped.rect.x * z + p.x,
           y: snapped.rect.y * z + p.y,
           w: snapped.rect.w * z,
           h: snapped.rect.h * z,
-        });
+        };
+        setCropDragPreview(screenSnapped);
+        modernDragSnappedPreview = screenSnapped;
       } else {
         setSnapLines([]);
         setCropDragPreview({ x: sx, y: sy, w: sw, h: sh });
+        modernDragSnappedPreview = null;
       }
       return; // Don't dispatch to handlePointerMove
     }
@@ -517,10 +522,15 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   ) {
     const vw = viewportWidth();
     const vh = viewportHeight();
-    const selW = Math.abs(endX - startX);
-    const selH = Math.abs(endY - startY);
-    const selCenterX = Math.min(startX, endX) + selW / 2;
-    const selCenterY = Math.min(startY, endY) + selH / 2;
+    const snappedPreview = modernDragSnappedPreview;
+    const selW = snappedPreview ? snappedPreview.w : Math.abs(endX - startX);
+    const selH = snappedPreview ? snappedPreview.h : Math.abs(endY - startY);
+    const selCenterX = snappedPreview
+      ? snappedPreview.x + snappedPreview.w / 2
+      : Math.min(startX, endX) + selW / 2;
+    const selCenterY = snappedPreview
+      ? snappedPreview.y + snappedPreview.h / 2
+      : Math.min(startY, endY) + selH / 2;
 
     const mode = cropMode();
     const ratioAspect = cropAspect();

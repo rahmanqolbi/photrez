@@ -504,6 +504,97 @@ describe("modern crop one-sided resize", () => {
     expect(result.compensation.x).toBe(40);
   });
 
+  describe("center-out resize (alt)", () => {
+    it("E handle + alt: frame expands same as non-alt, but compensation is zero", () => {
+      const result = resizeModernFrameOneSided({
+        frame: { w: 400, h: 300 }, handle: "e", deltaX: 60, deltaY: 0,
+        viewportWidth: 1200, viewportHeight: 800, alt: true,
+      });
+      expect(result.frame.w).toBe(520);
+      expect(result.compensation.x).toBe(0);
+    });
+
+    it("W handle + alt: frame shrinks, compensation is zero", () => {
+      const result = resizeModernFrameOneSided({
+        frame: { w: 400, h: 300 }, handle: "w", deltaX: 60, deltaY: 0,
+        viewportWidth: 1200, viewportHeight: 800, alt: true,
+      });
+      expect(result.frame.w).toBe(280);
+      expect(result.compensation.x).toBe(0);
+    });
+
+    it("S handle + alt: height expands, compensation is zero", () => {
+      const result = resizeModernFrameOneSided({
+        frame: { w: 400, h: 300 }, handle: "s", deltaX: 0, deltaY: 60,
+        viewportWidth: 1200, viewportHeight: 800, alt: true,
+      });
+      expect(result.frame.h).toBe(420);
+      expect(result.compensation.y).toBe(0);
+    });
+
+    it("N handle + alt: height shrinks, compensation is zero", () => {
+      const result = resizeModernFrameOneSided({
+        frame: { w: 400, h: 300 }, handle: "n", deltaX: 0, deltaY: 60,
+        viewportWidth: 1200, viewportHeight: 800, alt: true,
+      });
+      expect(result.frame.h).toBe(180);
+      expect(result.compensation.y).toBe(0);
+    });
+
+    it("zero delta + alt: no change", () => {
+      const result = resizeModernFrameOneSided({
+        frame: { w: 400, h: 300 }, handle: "e", deltaX: 0, deltaY: 0,
+        viewportWidth: 1200, viewportHeight: 800, alt: true,
+      });
+      expect(result.frame).toEqual({ w: 400, h: 300 });
+      expect(result.compensation).toEqual({ x: 0, y: 0 });
+    });
+
+    it("SE corner + alt: both axes expand, compensation is zero", () => {
+      const result = resizeModernFrameOneSided({
+        frame: { w: 400, h: 300 }, handle: "se", deltaX: 60, deltaY: 50,
+        viewportWidth: 1200, viewportHeight: 800, alt: true,
+      });
+      expect(result.frame.w).toBe(520);
+      expect(result.frame.h).toBe(400);
+      expect(result.compensation.x).toBe(0);
+      expect(result.compensation.y).toBe(0);
+    });
+
+    it("NW corner + alt: both axes shrink, compensation is zero", () => {
+      const result = resizeModernFrameOneSided({
+        frame: { w: 400, h: 300 }, handle: "nw", deltaX: 60, deltaY: 50,
+        viewportWidth: 1200, viewportHeight: 800, alt: true,
+      });
+      expect(result.frame.w).toBe(280);
+      expect(result.frame.h).toBe(200);
+      expect(result.compensation.x).toBe(0);
+      expect(result.compensation.y).toBe(0);
+    });
+
+    it("E handle + alt + aspect constraint: frame follows aspect, compensation zero", () => {
+      const result = resizeModernFrameOneSided({
+        frame: { w: 400, h: 300 }, handle: "e", deltaX: 60, deltaY: 0,
+        viewportWidth: 1200, viewportHeight: 800,
+        aspect: { w: 16, h: 9 }, cropMode: "ratio", alt: true,
+      });
+      expect(result.frame.w).toBe(520);
+      expect(result.frame.h).toBeCloseTo(292.5, 1);
+      expect(result.compensation.x).toBe(0);
+      expect(result.compensation.y).toBe(0);
+    });
+
+    it("corner + shift + alt: classic center-out proportional resize", () => {
+      const result = resizeModernFrameOneSided({
+        frame: { w: 400, h: 300 }, handle: "se", deltaX: 60, deltaY: 50,
+        viewportWidth: 1200, viewportHeight: 800,
+        shift: true, alt: true,
+      });
+      expect(result.compensation.x).toBe(0);
+      expect(result.compensation.y).toBe(0);
+    });
+  });
+
   describe("one-sided corner resize with aspect ratio — monotonic stability (regression)", () => {
     const opts = {
       viewportWidth: 1200, viewportHeight: 800,

@@ -59,3 +59,46 @@ Implemented snap to document edges, center, and rule-of-thirds during crop drag-
 ### Verification
 - PASS: `npx vitest run` (765 tests, 52 files)
 - PASS: `pnpm.cmd run build` (tsc + Vite)
+
+---
+
+### [2026-06-10] Center-Out Drag Verified + Modern Snap Bug Fix [COMPLETE]
+
+**Center-Out Drag Investigation:**
+- Classic mode: `applyCropResizeHandle` already correct.
+- Modern mode: `effDx = params.deltaX * 2` is correct for both modes (edge position = center + w/2, so 2× delta = 1:1 cursor tracking). Alt only changes compensation: `params.alt ? 0 : ...`.
+- Added 9 new alt=center-out tests proving Modern behavior is correct.
+
+**Modern Snap Bug Fix:**
+- `commitDragCreateFrame` used UNSNAPPED `modernDragEnd` while preview showed SNAPPED rect
+- Fix: store snapped preview in `modernDragSnappedPreview` variable, use it on drag-end
+
+**Files Changed:**
+- `useCanvasPointerTools.ts` — snap-to-commit consistency
+- `modern-crop-geometry.test.ts` — 9 new center-out tests
+
+### Verification
+- PASS: `npx vitest run` (774 tests, 52 files)
+- PASS: `pnpm.cmd run build`
+
+---
+
+## Current Task
+
+### [2026-06-10] Canvas Expansion — Directional expansion when crop frame > canvas [IN PROGRESS]
+
+When the crop frame extends beyond the document canvas, the canvas should expand directionally to accommodate the uncropped content. Auto-trigger on frame exceed, commit on apply.
+
+**Scope (MVP):**
+- Detect when crop frame exceeds canvas bounds in any direction
+- Expand canvas in the overflow direction(s) with new transparent pixels
+- Auto-trigger during resize/create (no user action needed)
+- Content re-centering on apply
+
+**Open Questions:**
+- Expand during drag or only on apply?
+- Expand incrementally per-pixel or in fixed steps?
+- Preview feedback during drag?
+
+### Verification
+- [ ] TBD

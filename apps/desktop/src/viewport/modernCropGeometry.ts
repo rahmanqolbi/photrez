@@ -212,8 +212,8 @@ export function resizeModernFrameOneSided(params: {
     const resized = applyCropResizeHandle(
       startRect,
       params.handle,
-      params.deltaX * 2,
-      params.deltaY * 2,
+      effDx,
+      effDy,
       {
         constraint: "free",
         aspect: null,

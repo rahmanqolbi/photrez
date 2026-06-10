@@ -2904,6 +2904,28 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 - PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (616 tests, 50 files)
 - PASS: `pnpm.cmd run build`
 
+## [2026-06-10] — Center-Out Drag Verified + Modern Snap Bug Fix
+
+### Kategori: INVESTIGATION / CROP / SNAP / BUG FIX
+
+**Center-Out Drag Investigation:**
+- Classic mode: `applyCropResizeHandle` already correct — `effDx = _alt ? dx * 2 : dx` + `applyCenterResize`
+- Modern mode: `effDx = params.deltaX * 2` is CORRECT for both center-out and one-sided (edge position = center + w/2, so 2× delta keeps 1:1 cursor tracking). The alt difference is in compensation: `params.alt ? 0 : ...` (alt = no compensation, center stays fixed).
+- No code change needed. Added 9 new tests proving alt=center-out behavior.
+
+**Modern Snap Bug Fix:**
+- During drag-create, preview (`cropDragPreview`) showed the SNAPPED rect, but final frame (`commitDragCreateFrame`) used UNSNAPPED `modernDragEnd` coordinates
+- On mouse-up, the crop frame jumped back to the raw cursor position
+- Fix: store snapped preview rect in `modernDragSnappedPreview`, use it in `commitDragCreateFrame` when available, fallback to raw coordinates otherwise
+
+**Files Changed:**
+- `apps/desktop/src/components/editor/useCanvasPointerTools.ts` — snap-to-commit consistency
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — 9 new center-out tests
+
+### Verification
+- PASS: `npx vitest run` (774 tests, 52 files)
+- PASS: `pnpm.cmd run build`
+
 ---
 
 ## [2026-06-09] BUG FIX — Modern Crop Double-Click Commit, Escape Cancel, Click-to-Create Frame [COMPLETE]
