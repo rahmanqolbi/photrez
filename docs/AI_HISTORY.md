@@ -1,5 +1,22 @@
 # AI History — Photrez
 
+## [2026-06-10] FEATURE — Smart Guides (Crop Classic) [COMPLETE]
+
+### Kategori: FEATURE / CROP / UX / SNAP
+
+**User Goal:** Snap to document edges, center, and rule-of-thirds during crop drag-create + visual cyan dashed snap lines.
+
+**Implementation:**
+1. Added rule-of-thirds targets (`docW/3`, `2*docW/3`, `docH/3`, `2*docH/3`) to `buildCropSnapTargets` in `cropSnap.ts`
+2. Fixed `edgesForHandle("new")` to return all 6 edges (was returning `[]`, so no snap during drag-to-create)
+3. Added `color?: string` to `SnapLine` interface in `smartGuides.ts`
+4. Updated `SmartGuides.tsx` to render `line.color` (default magenta #ff00ff for move tool, cyan #00ffff with dasharray `"4 2"` for crop)
+5. Added 3 new tests covering rule-of-thirds targets, "new" handle snap, and cyan line color
+
+**No changes needed elsewhere** — `onSnapLines` flow from `CropOverlay` → `CanvasViewport` → `SmartGuides` already wired correctly.
+
+**Modern mode** snap still separate (needs screen→doc coordinate conversion).
+
 ## [2026-06-10] FEATURE — Ratio Pill Bar [COMPLETE]
 
 ### Kategori: FEATURE / CROP / UX / FRONTEND

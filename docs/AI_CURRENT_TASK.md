@@ -30,8 +30,25 @@ Updated 17+ tests to use `clickPill(container, label)` replacing `fireModeChange
 - PASS: `npx vitest run` (762 tests, 52 files)
 - PASS: `pnpm.cmd run build` (tsc + Vite)
 
-## Next Task
+## Current Task
 
-- Smart Guides (#2) — design spec TBD
-- Center-Out Drag (#3) — design spec TBD
-- Canvas Expansion (#4) — design spec TBD
+### [2026-06-10] Smart Guides (Crop) — Classic [COMPLETE]
+
+Implemented snap to document edges, center, and rule-of-thirds during crop drag-create + cyan dashed snap lines.
+
+**Done:**
+1. Added rule-of-thirds targets to `buildCropSnapTargets` in `cropSnap.ts`
+2. Fixed `edgesForHandle("new")` to return all 6 edges (was `[]`, no snap during drag-create)
+3. Crop snap lines render cyan (#00ffff) with dashed style vs move-tool magenta (#ff00ff)
+4. Added optional `color` field to `SnapLine` in `smartGuides.ts`
+5. Updated `SmartGuides.tsx` to use `line.color` and dash array for cyan lines
+6. Added 3 new tests (rule-of-thirds, "new" handle snap, rule-of-thirds snap + cyan color) — all 8 pass
+7. Full test suite: 765 pass (52 files)
+
+**Not in scope:**
+- Smart Guides for Modern mode (needs screen→doc coordinate conversion)
+- Horizontal center snap target (already worked via `docW/2` and `docH/2`)
+
+### Verification
+- PASS: `npx vitest run` (765 tests, 52 files)
+- PASS: `pnpm.cmd run build` (tsc + Vite)

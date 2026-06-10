@@ -15,6 +15,14 @@ describe("buildCropSnapTargets", () => {
     expect(targets.y).toContain(600);
     expect(targets.y).toContain(200);
   });
+
+  it("includes rule-of-thirds snap targets", () => {
+    const targets = buildCropSnapTargets(900, 600, []);
+    expect(targets.x).toContain(300);
+    expect(targets.x).toContain(600);
+    expect(targets.y).toContain(200);
+    expect(targets.y).toContain(400);
+  });
 });
 
 describe("snapCropRect", () => {
@@ -49,5 +57,25 @@ describe("snapCropRect", () => {
     const { rect: snapped, lines } = snapCropRect(rect, "move", canvasOnly, 5);
     expect(snapped).toEqual(rect);
     expect(lines).toEqual([]);
+  });
+
+  it("snaps during drag-create (handle 'new') to canvas edges", () => {
+    const rect = { x: 8, y: 100, w: 200, h: 150 };
+    const { rect: snapped } = snapCropRect(rect, "new", canvasOnly, 12);
+    expect(snapped.x).toBe(0);
+    expect(snapped.y).toBe(100);
+  });
+
+  it("snaps to rule-of-thirds targets during drag-create", () => {
+    const targets = buildCropSnapTargets(900, 600, []);
+    const rect = { x: 297, y: 198, w: 100, h: 100 };
+    const { rect: snapped, lines } = snapCropRect(rect, "new", targets, 12);
+    // Left edge at 297 should snap to 300 (1/3 of 900)
+    expect(snapped.x).toBe(300);
+    // Top edge at 198 should snap to 200 (1/3 of 600)
+    expect(snapped.y).toBe(200);
+    // Lines should have cyan color for crop snap
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines[0].color).toBe("#00ffff");
   });
 });

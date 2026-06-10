@@ -32,6 +32,11 @@ export function buildCropSnapTargets(
     snapTargetsY.add(layer.y + layer.h / 2);
   }
 
+  for (const third of [1, 2]) {
+    snapTargetsX.add((docW * third) / 3);
+    snapTargetsY.add((docH * third) / 3);
+  }
+
   return {
     x: [...snapTargetsX],
     y: [...snapTargetsY],
@@ -41,14 +46,14 @@ export function buildCropSnapTargets(
 type EdgeSnap = "left" | "right" | "top" | "bottom" | "centerX" | "centerY";
 
 function edgesForHandle(handle: string): EdgeSnap[] {
+  if (handle === "new" || handle === "move") {
+    return ["left", "right", "centerX", "top", "bottom", "centerY"];
+  }
   const isLeft = handle.includes("w");
   const isRight = handle.includes("e");
   const isTop = handle.includes("n");
   const isBottom = handle.includes("s");
 
-  if (handle === "move") {
-    return ["left", "right", "centerX", "top", "bottom", "centerY"];
-  }
   if (handle === "n" || handle === "s") {
     return [isTop ? "top" : "bottom", "centerX"];
   }
@@ -158,12 +163,14 @@ function snapAxis(
           y1: -MIN_GUIDE_EXTENT,
           x2: bestTarget,
           y2: MIN_GUIDE_EXTENT,
+          color: "#00ffff",
         }
       : {
           x1: -MIN_GUIDE_EXTENT,
           y1: bestTarget,
           x2: MIN_GUIDE_EXTENT,
           y2: bestTarget,
+          color: "#00ffff",
         };
 
   return { rect: snapped, line };
