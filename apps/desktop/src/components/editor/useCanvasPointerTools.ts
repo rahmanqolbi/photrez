@@ -268,20 +268,20 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
 
     if (activeTool() === "crop" && e.button === 0) {
       if (cropInteractionMode() === "modern") {
-        if (modernCropFrame()) {
-          isPendingCropClick = false;
-        } else {
-          // Defer frame creation — track drag start, create on threshold or pointerup
-          const viewport = params.getCanvasContainerRef();
-          if (!viewport) return;
-          const rect = viewport.getBoundingClientRect();
-          modernDragStart = {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top,
-          };
-          modernDragExceededThreshold = false;
-          isPendingCropClick = false;
-        }
+        // Track drag start for drag-to-create even when frame exists.
+        // The ModernCropOverlay SVG on top catches clicks on the frame
+        // (move rect, handles, rotate ring) with stopPropagation().
+        // Clicks on the mask area (outside the frame) fall through to
+        // the canvas — those start a new drag-create.
+        const viewport = params.getCanvasContainerRef();
+        if (!viewport) return;
+        const rect = viewport.getBoundingClientRect();
+        modernDragStart = {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+        };
+        modernDragExceededThreshold = false;
+        isPendingCropClick = false;
       } else {
         isPendingCropClick = !cropRect();
       }
@@ -313,8 +313,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       history.commit(engine.snapshot());
     }
 
-    // If modern crop mode with no frame and no dragStart, bail
-    if (activeTool() === "crop" && cropInteractionMode() === "modern" && !modernCropFrame() && !modernDragStart) {
+    // If modern crop mode — skip engine handlePointerDown (it would call
+    // onCropCreated and leak state into the Classic crop rect). Modern
+    // crop has its own drag-to-create handling via modernDragStart.
+    if (activeTool() === "crop" && cropInteractionMode() === "modern") {
+      const canvas = params.getCanvasRef();
+      if (canvas) canvas.setPointerCapture(e.pointerId);
+      setSnapLines([]);
       return;
     }
 
@@ -373,7 +378,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
 
       // Apply snap if enabled
       const z = zoom();
-      const p = pan();
+      const canvasEl = params.getCanvasRef();
+      const canvasRect = canvasEl?.getBoundingClientRect();
+      // Document origin in viewport space. In Modern mode the canvas uses
+      // CSS transforms (not left/top from pan), so compute visual offset
+      // directly from element bounds.
+      const docOriginX = canvasRect ? canvasRect.left - rect.left : 0;
+      const docOriginY = canvasRect ? canvasRect.top - rect.top : 0;
       const cst = params.cropSnapTargets?.();
       if (
         cst &&
@@ -383,8 +394,8 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
         const snapTargets = cst;
         // Convert screen rect to doc-space for snapping
         const docRect = {
-          x: (sx - p.x) / z,
-          y: (sy - p.y) / z,
+          x: (sx - docOriginX) / z,
+          y: (sy - docOriginY) / z,
           w: sw / z,
           h: sh / z,
         };
@@ -393,8 +404,8 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
         setSnapLines(snapped.lines);
         // Convert snapped doc rect back to screen-space
         const screenSnapped = {
-          x: snapped.rect.x * z + p.x,
-          y: snapped.rect.y * z + p.y,
+          x: snapped.rect.x * z + docOriginX,
+          y: snapped.rect.y * z + docOriginY,
           w: snapped.rect.w * z,
           h: snapped.rect.h * z,
         };

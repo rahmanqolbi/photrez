@@ -322,7 +322,20 @@ export function CanvasViewport() {
 
 
   const isPasteboardPointerDown = (e: PointerEvent) => {
-    return e.target === canvasContainerRef;
+    if (e.target === canvasContainerRef) return true;
+    // In Modern crop mode, the SVG overlay (z-index 40, full viewport)
+    // captures pasteboard clicks. Route them to the canvas handler.
+    if (activeTool() === "crop" && cropInteractionMode() === "modern") {
+      const target = e.target as Element | null;
+      if (!target?.closest) return false;
+      if (!target.closest("[data-modern-crop-overlay]")) return false;
+      // If the click hit an interactive child (handle, move rect, rotate ring),
+      // it's a frame interaction, not a pasteboard click.
+      return !target.closest(
+        "[data-modern-crop-handle], [data-modern-crop-move], [data-modern-crop-rotate]"
+      );
+    }
+    return false;
   };
 
   const handlePasteboardPointerDown = (e: PointerEvent) => {
@@ -331,7 +344,15 @@ export function CanvasViewport() {
 
     if (activeTool() === "crop") {
       if (isSpacePressed() || isPanning()) return;
-      if (cropInteractionMode() === "modern") return;
+      if (cropInteractionMode() === "modern") {
+        // Route to canvas handler — it calls canvas.setPointerCapture()
+        // and tracks modernDragStart for drag-to-create. After canvas
+        // captures the pointer, subsequent events go to canvas handlers.
+        onCanvasPointerDown(e);
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
 
       const startDocument = screenToDocumentPoint(e);
       setPendingPasteboardCropGesture({
@@ -443,6 +464,11 @@ export function CanvasViewport() {
       id="canvas-container"
       data-viewport-container
       class="flex-1 relative overflow-hidden bg-editor-canvas"
+      style={{
+        cursor: activeTool() === "crop" && cropInteractionMode() === "modern" && !modernCropFrame()
+          ? "crosshair"
+          : undefined,
+      }}
       onWheel={handleWheel}
       onDblClick={handleDoubleClick}
       onPointerDown={(e) => {

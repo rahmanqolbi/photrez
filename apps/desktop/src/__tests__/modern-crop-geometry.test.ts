@@ -21,8 +21,8 @@ describe("modern crop geometry", () => {
     expect(getProjectedCanvasSize({ docWidth: 1600, docHeight: 900, zoom: 2, scale: 2 })).toEqual({ w: 6400, h: 3600 });
   });
 
-  it("clamps frame to projected canvas bounds", () => {
-    expect(clampFrameToProjectedBounds({ w: 500, h: 300 }, { w: 400, h: 300 })).toEqual({ w: 400, h: 300 });
+  it("enforces minimum frame size but does not cap at projected bounds", () => {
+    expect(clampFrameToProjectedBounds({ w: 500, h: 300 }, { w: 400, h: 300 })).toEqual({ w: 500, h: 300 });
     expect(clampFrameToProjectedBounds({ w: 200, h: 100 }, { w: 400, h: 300 })).toEqual({ w: 200, h: 100 });
     expect(clampFrameToProjectedBounds({ w: 10, h: 10 }, { w: 400, h: 300 })).toEqual({ w: 24, h: 24 });
   });

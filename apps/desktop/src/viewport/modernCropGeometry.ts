@@ -84,13 +84,13 @@ export function getModernCropImagePivot(params: {
 
 export function clampFrameToProjectedBounds(
   frame: ModernCropFrame,
-  projected: { w: number; h: number },
+  _projected: { w: number; h: number },
   minSize?: number,
 ): ModernCropFrame {
   const min = minSize ?? 24;
   return {
-    w: Math.min(projected.w, Math.max(min, frame.w)),
-    h: Math.min(projected.h, Math.max(min, frame.h)),
+    w: Math.max(min, frame.w),
+    h: Math.max(min, frame.h),
   };
 }
 
