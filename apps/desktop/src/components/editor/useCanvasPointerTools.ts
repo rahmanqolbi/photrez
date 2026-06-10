@@ -366,6 +366,9 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
           return;
         }
         modernDragExceededThreshold = true;
+        // Clear existing frame once drag exceeds threshold — visual
+        // feedback that a new crop is being created instead of moved.
+        setModernCropFrame(null);
       }
 
       modernDragEnd = { x: ex, y: ey };
