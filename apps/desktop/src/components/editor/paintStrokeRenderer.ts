@@ -5,6 +5,13 @@ export interface StrokePoint {
   y: number;
 }
 
+export interface RgbaColor {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+
 export function colorToRgbString(color: string): string {
   const rgbaMatch = color.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
   if (rgbaMatch) {
@@ -21,6 +28,37 @@ export function colorToRgbString(color: string): string {
     return `${r},${g},${b}`;
   }
   return "0,0,0";
+}
+
+export function parsePaintColor(color: string): RgbaColor {
+  const rgba = color.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)/);
+  if (rgba) {
+    return {
+      r: Math.max(0, Math.min(255, Number(rgba[1]))),
+      g: Math.max(0, Math.min(255, Number(rgba[2]))),
+      b: Math.max(0, Math.min(255, Number(rgba[3]))),
+      a: rgba[4] === undefined ? 1 : Math.max(0, Math.min(1, Number(rgba[4]))),
+    };
+  }
+
+  const hex = color.replace("#", "");
+  if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+    return {
+      r: parseInt(hex.slice(0, 2), 16),
+      g: parseInt(hex.slice(2, 4), 16),
+      b: parseInt(hex.slice(4, 6), 16),
+      a: 1,
+    };
+  }
+  if (/^[0-9a-fA-F]{3}$/.test(hex)) {
+    return {
+      r: parseInt(hex[0] + hex[0], 16),
+      g: parseInt(hex[1] + hex[1], 16),
+      b: parseInt(hex[2] + hex[2], 16),
+      a: 1,
+    };
+  }
+  return { r: 0, g: 0, b: 0, a: 1 };
 }
 
 export function getDabSpacing(size: number): number {
@@ -86,6 +124,95 @@ export function distanceToSegment(
   return Math.hypot(px - cx, py - cy);
 }
 
+interface Bounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+function getStrokeBounds(points: StrokePoint[], radius: number, canvasWidth: number, canvasHeight: number): Bounds | null {
+  if (points.length === 0) return null;
+  let minX = points[0].x;
+  let minY = points[0].y;
+  let maxX = points[0].x;
+  let maxY = points[0].y;
+  for (const point of points) {
+    minX = Math.min(minX, point.x);
+    minY = Math.min(minY, point.y);
+    maxX = Math.max(maxX, point.x);
+    maxY = Math.max(maxY, point.y);
+  }
+  return {
+    minX: Math.max(0, Math.floor(minX - radius - 1)),
+    minY: Math.max(0, Math.floor(minY - radius - 1)),
+    maxX: Math.min(canvasWidth, Math.ceil(maxX + radius + 1)),
+    maxY: Math.min(canvasHeight, Math.ceil(maxY + radius + 1)),
+  };
+}
+
+function distanceToStrokePath(px: number, py: number, points: StrokePoint[]): number {
+  if (points.length === 1) return Math.hypot(px - points[0].x, py - points[0].y);
+  let minDistance = Number.POSITIVE_INFINITY;
+  for (let i = 1; i < points.length; i += 1) {
+    const prev = points[i - 1];
+    const next = points[i];
+    minDistance = Math.min(minDistance, distanceToSegment(px, py, prev.x, prev.y, next.x, next.y));
+  }
+  return minDistance;
+}
+
+function renderSoftStrokeToImageData(
+  ctx: CanvasRenderingContext2D,
+  points: StrokePoint[],
+  settings: PaintToolSettings,
+  color: string,
+  isEraser: boolean,
+): void {
+  const canvas = ctx.canvas;
+  const radius = settings.size / 2;
+  const bounds = getStrokeBounds(points, radius, canvas.width, canvas.height);
+  if (!bounds || bounds.maxX <= bounds.minX || bounds.maxY <= bounds.minY) return;
+
+  const imageData = ctx.getImageData(bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
+  const data = imageData.data;
+  const paint = parsePaintColor(color);
+  const strokeAlpha = Math.max(0, Math.min(1, settings.opacity * settings.flow * paint.a));
+
+  for (let y = 0; y < imageData.height; y += 1) {
+    for (let x = 0; x < imageData.width; x += 1) {
+      const docX = bounds.minX + x + 0.5;
+      const docY = bounds.minY + y + 0.5;
+      const distance = distanceToStrokePath(docX, docY, points);
+      const alpha = brushAlphaAtDistance(distance, radius, settings.hardness) * strokeAlpha;
+      if (alpha <= 0) continue;
+
+      const idx = (y * imageData.width + x) * 4;
+      if (isEraser) {
+        data[idx + 3] = Math.round(data[idx + 3] * (1 - alpha));
+        continue;
+      }
+
+      const dstA = data[idx + 3] / 255;
+      const outA = alpha + dstA * (1 - alpha);
+      if (outA <= 0) {
+        data[idx] = 0;
+        data[idx + 1] = 0;
+        data[idx + 2] = 0;
+        data[idx + 3] = 0;
+        continue;
+      }
+
+      data[idx] = Math.round((paint.r * alpha + data[idx] * dstA * (1 - alpha)) / outA);
+      data[idx + 1] = Math.round((paint.g * alpha + data[idx + 1] * dstA * (1 - alpha)) / outA);
+      data[idx + 2] = Math.round((paint.b * alpha + data[idx + 2] * dstA * (1 - alpha)) / outA);
+      data[idx + 3] = Math.round(outA * 255);
+    }
+  }
+
+  ctx.putImageData(imageData, bounds.minX, bounds.minY);
+}
+
 export function renderPaintStrokeToContext(
   ctx: CanvasRenderingContext2D,
   points: StrokePoint[],
@@ -123,36 +250,7 @@ export function renderPaintStrokeToContext(
       ctx.stroke();
     }
   } else {
-    const offsetX = -20000;
-    // Core width and shadow blur calculated to keep the center of the brush opaque
-    // and make the visible diameter match the cursor diameter exactly (coreWidth + 3 * blur = size).
-    const coreWidth = Math.round(size * (0.4 + 0.6 * hardness) * 100) / 100;
-    const blur = Math.round(size * 0.2 * (1 - hardness) * 100) / 100;
-
-    ctx.shadowColor = color;
-    ctx.shadowBlur = blur;
-    ctx.shadowOffsetX = -offsetX;
-    ctx.shadowOffsetY = 0;
-
-    ctx.strokeStyle = color;
-    ctx.lineWidth = coreWidth;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    ctx.beginPath();
-    ctx.moveTo(points[0].x + offsetX, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i].x + offsetX, points[i].y);
-    }
-
-    if (points.length === 1) {
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(points[0].x + offsetX, points[0].y, coreWidth / 2, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      ctx.stroke();
-    }
+    renderSoftStrokeToImageData(ctx, points, settings, color, isEraser);
   }
 
   ctx.restore();

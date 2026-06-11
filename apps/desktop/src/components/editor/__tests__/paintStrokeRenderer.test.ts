@@ -251,49 +251,58 @@ describe("renderPaintStrokeToContext", () => {
     expect(ctx.stroke).toHaveBeenCalled();
   });
 
-  it("uses shadow offset when hardness is less than 1", () => {
+  function createImageDataMock(width: number, height: number): ImageData {
+    return {
+      width,
+      height,
+      data: new Uint8ClampedArray(width * height * 4),
+      colorSpace: "srgb",
+    } as ImageData;
+  }
+
+  it("renders soft brush without Canvas shadowBlur", () => {
+    const imageData = createImageDataMock(80, 80);
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),
       globalCompositeOperation: "",
       globalAlpha: 1,
-      strokeStyle: "",
-      lineWidth: 0,
-      shadowColor: "",
-      shadowBlur: 0,
-      shadowOffsetX: 0,
-      shadowOffsetY: 0,
+      canvas: { width: 80, height: 80 },
+      getImageData: vi.fn(() => imageData),
+      putImageData: vi.fn(),
       beginPath: vi.fn(),
       moveTo: vi.fn(),
       lineTo: vi.fn(),
       stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
+      shadowBlur: 0,
     } as unknown as CanvasRenderingContext2D;
 
-    renderPaintStrokeToContext(ctx, [{ x: 50, y: 50 }, { x: 100, y: 50 }], { size: 20, hardness: 0.5, opacity: 1, flow: 1, smoothing: 0 }, "#ff0000", false);
+    renderPaintStrokeToContext(
+      ctx,
+      [{ x: 20, y: 40 }, { x: 60, y: 40 }],
+      { size: 20, hardness: 0, opacity: 1, flow: 1, smoothing: 0 },
+      "#ff0000",
+      false,
+    );
 
-    expect(ctx.shadowColor).toBe("#ff0000");
-    expect(ctx.shadowBlur).toBe(2); // size 20 * 0.2 * 0.5 = 2
-    expect(ctx.shadowOffsetX).toBe(20000);
-    expect(ctx.lineWidth).toBe(14); // coreWidth = 20 * (0.4 + 0.6 * 0.5) = 14
-    expect(ctx.moveTo).toHaveBeenCalledWith(-20000 + 50, 50);
-    expect(ctx.lineTo).toHaveBeenCalledWith(-20000 + 100, 50);
-    expect(ctx.stroke).toHaveBeenCalled();
+    expect(ctx.putImageData).toHaveBeenCalledTimes(1);
+    expect(ctx.stroke).not.toHaveBeenCalled();
+    expect((ctx as unknown as { shadowBlur: number }).shadowBlur).toBe(0);
   });
 
-  it("sets core width and blur when hardness is 0", () => {
+  it("keeps hardness 0 visible across the full brush diameter", () => {
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),
       globalCompositeOperation: "",
       globalAlpha: 1,
-      strokeStyle: "",
-      lineWidth: 0,
-      shadowColor: "",
-      shadowBlur: 0,
-      shadowOffsetX: 0,
-      shadowOffsetY: 0,
+      canvas: { width: 40, height: 40 },
+      getImageData: vi.fn((x: number, y: number, w: number, h: number) => {
+        return createImageDataMock(w, h);
+      }),
+      putImageData: vi.fn(),
       beginPath: vi.fn(),
       moveTo: vi.fn(),
       lineTo: vi.fn(),
@@ -302,12 +311,27 @@ describe("renderPaintStrokeToContext", () => {
       fill: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
 
-    renderPaintStrokeToContext(ctx, [{ x: 50, y: 50 }, { x: 100, y: 50 }], { size: 20, hardness: 0, opacity: 1, flow: 1, smoothing: 0 }, "#00ff00", false);
+    renderPaintStrokeToContext(
+      ctx,
+      [{ x: 20, y: 20 }],
+      { size: 20, hardness: 0, opacity: 1, flow: 1, smoothing: 0 },
+      "#ff0000",
+      false,
+    );
 
-    expect(ctx.shadowColor).toBe("#00ff00");
-    expect(ctx.shadowBlur).toBe(4); // size 20 * 0.2 * 1 = 4
-    expect(ctx.lineWidth).toBe(8); // coreWidth = 20 * 0.4 = 8
-    expect(ctx.stroke).toHaveBeenCalled();
+    const putCalls = (ctx.putImageData as unknown as ReturnType<typeof vi.fn>).mock.calls;
+    const img = putCalls[0][0] as ImageData;
+    const ox = putCalls[0][1] as number;
+    const oy = putCalls[0][2] as number;
+    const alphaAt = (cx: number, cy: number) => {
+      const lx = cx - ox;
+      const ly = cy - oy;
+      return img.data[(ly * img.width + lx) * 4 + 3];
+    };
+    expect(alphaAt(20, 20)).toBeGreaterThan(245);
+    expect(alphaAt(25, 20)).toBeGreaterThan(90);
+    expect(alphaAt(29, 20)).toBeGreaterThan(0);
+    expect(alphaAt(30, 20)).toBe(0);
   });
 
   it("draws a single dot using arc for 1-point stroke (hardness=1)", () => {
@@ -328,33 +352,6 @@ describe("renderPaintStrokeToContext", () => {
     renderPaintStrokeToContext(ctx, [{ x: 100, y: 200 }], { size: 50, hardness: 1, opacity: 0.5, flow: 1, smoothing: 0 }, "#ff0000", false);
 
     expect(ctx.arc).toHaveBeenCalledWith(100, 200, 25, 0, Math.PI * 2);
-    expect(ctx.fillStyle).toBe("#ff0000");
-    expect(ctx.fill).toHaveBeenCalledTimes(1);
-    expect(ctx.stroke).not.toHaveBeenCalled();
-  });
-
-  it("draws a single dot using arc with offset for 1-point stroke (hardness=0.5)", () => {
-    const ctx = {
-      save: vi.fn(),
-      restore: vi.fn(),
-      globalCompositeOperation: "",
-      globalAlpha: 1,
-      fillStyle: "",
-      shadowColor: "",
-      shadowBlur: 0,
-      shadowOffsetX: 0,
-      shadowOffsetY: 0,
-      beginPath: vi.fn(),
-      moveTo: vi.fn(),
-      lineTo: vi.fn(),
-      stroke: vi.fn(),
-      arc: vi.fn(),
-      fill: vi.fn(),
-    } as unknown as CanvasRenderingContext2D;
-
-    renderPaintStrokeToContext(ctx, [{ x: 100, y: 200 }], { size: 50, hardness: 0.5, opacity: 0.5, flow: 1, smoothing: 0 }, "#ff0000", false);
-
-    expect(ctx.arc).toHaveBeenCalledWith(-20000 + 100, 200, 17.5, 0, Math.PI * 2); // coreWidth is 50 * 0.7 = 35, radius is 17.5
     expect(ctx.fillStyle).toBe("#ff0000");
     expect(ctx.fill).toHaveBeenCalledTimes(1);
     expect(ctx.stroke).not.toHaveBeenCalled();
