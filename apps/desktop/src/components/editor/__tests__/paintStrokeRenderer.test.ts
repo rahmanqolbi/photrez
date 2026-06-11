@@ -382,6 +382,52 @@ describe("renderPaintStrokeToContext", () => {
     expect(ctx.globalAlpha).toBe(0.5);
   });
 
+  it("does not accumulate alpha where one stroke path overlaps itself", () => {
+    const ctx = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      globalCompositeOperation: "",
+      globalAlpha: 1,
+      canvas: { width: 80, height: 80 },
+      getImageData: vi.fn((x: number, y: number, w: number, h: number) => {
+        return createImageDataMock(w, h);
+      }),
+      putImageData: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      arc: vi.fn(),
+      fill: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+
+    renderPaintStrokeToContext(
+      ctx,
+      [
+        { x: 20, y: 40 },
+        { x: 60, y: 40 },
+        { x: 20, y: 40 },
+        { x: 60, y: 40 },
+      ],
+      { size: 20, hardness: 0, opacity: 0.5, flow: 1, smoothing: 0 },
+      "#ff0000",
+      false,
+    );
+
+    const putCalls = (ctx.putImageData as unknown as ReturnType<typeof vi.fn>).mock.calls;
+    const img = putCalls[0][0] as ImageData;
+    const ox = putCalls[0][1] as number;
+    const oy = putCalls[0][2] as number;
+    const alphaAt = (cx: number, cy: number) => {
+      const lx = cx - ox;
+      const ly = cy - oy;
+      if (lx < 0 || lx >= img.width || ly < 0 || ly >= img.height) return 0;
+      return img.data[(ly * img.width + lx) * 4 + 3];
+    };
+    expect(alphaAt(40, 40)).toBeLessThanOrEqual(128);
+    expect(alphaAt(40, 40)).toBeGreaterThan(110);
+  });
+
   it("restores context after drawing", () => {
     const ctx = {
       save: vi.fn(),
