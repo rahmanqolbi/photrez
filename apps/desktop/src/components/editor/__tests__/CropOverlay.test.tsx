@@ -2255,4 +2255,285 @@ describe("CropOverlay viewport panning", () => {
     dispose();
     container.parentNode?.removeChild(container);
   });
+
+  it("classic crop east handle resize with 45 degree rotation", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onCropRectChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <CropOverlay
+          cropRect={{ x: 100, y: 100, w: 200, h: 100 }}
+          guideMode="none"
+          canvasWidth={800}
+          canvasHeight={600}
+          zoom={1}
+          cropMode="free"
+          cropAspect={null}
+          cropRotation={45}
+          onCropRectChange={onCropRectChange}
+          onCropRotationChange={vi.fn()}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+
+    // East handle at unrotated SVG position: (300, 150)
+    // Visually rotated 45° about center (200, 150): (270.7, 220.7)
+    const cx = 200, cy = 150;
+    const ox = 300 - cx, oy = 150 - cy;
+    const vx = cx + ox * 0.70710678 - oy * 0.70710678;
+    const vy = cy + ox * 0.70710678 + oy * 0.70710678;
+
+    const eastHandle = container.querySelector("[data-crop-handle='e']")!;
+    expect(eastHandle).not.toBeNull();
+    eastHandle.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 50, bubbles: true, cancelable: true,
+      clientX: vx, clientY: vy,
+    }));
+    svgEl.dispatchEvent(new PointerEvent("pointermove", {
+      pointerId: 50, bubbles: true, cancelable: true,
+      clientX: vx + 20, clientY: vy,
+    }));
+    const lastRect = onCropRectChange.mock.calls.at(-1)?.[0];
+
+    // East handle at 45° rotation should resize along local X axis.
+    // local dx = 20 * cos(-45) = 14.14
+    expect(lastRect.w).toBeCloseTo(214.14, 1);
+    expect(lastRect.h).toBe(100);
+    expect(lastRect.x).toBeCloseTo(97.93, 1);
+    expect(lastRect.y).toBe(105);
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("classic crop east handle resize with 90 degree rotation", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onCropRectChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <CropOverlay
+          cropRect={{ x: 100, y: 100, w: 200, h: 100 }}
+          guideMode="none"
+          canvasWidth={800}
+          canvasHeight={600}
+          zoom={1}
+          cropMode="free"
+          cropAspect={null}
+          cropRotation={90}
+          onCropRectChange={onCropRectChange}
+          onCropRotationChange={vi.fn()}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+
+    // East handle at 90°: drag DOWN should increase w (local width) because East handle is rotated to bottom
+    const eastHandle = container.querySelector("[data-crop-handle='e']")!;
+    expect(eastHandle).not.toBeNull();
+    eastHandle.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 60, bubbles: true, cancelable: true,
+      clientX: 200, clientY: 250,
+    }));
+    svgEl.dispatchEvent(new PointerEvent("pointermove", {
+      pointerId: 60, bubbles: true, cancelable: true,
+      clientX: 200, clientY: 260,
+    }));
+    const lastRect = onCropRectChange.mock.calls.at(-1)?.[0];
+    // local delta: dx = 10, dy = 0 → w += 10
+    expect(lastRect.h).toBe(100);
+    expect(lastRect.w).toBe(210);
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("classic crop south handle resize with 90 degree rotation", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onCropRectChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <CropOverlay
+          cropRect={{ x: 100, y: 100, w: 200, h: 100 }}
+          guideMode="none"
+          canvasWidth={800}
+          canvasHeight={600}
+          zoom={1}
+          cropMode="free"
+          cropAspect={null}
+          cropRotation={90}
+          onCropRectChange={onCropRectChange}
+          onCropRotationChange={vi.fn()}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+
+    // South handle at 90°: drag LEFT should increase h (local height) because South handle is rotated to left
+    const southHandle = container.querySelector("[data-crop-handle='s']")!;
+    expect(southHandle).not.toBeNull();
+    southHandle.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 61, bubbles: true, cancelable: true,
+      clientX: 150, clientY: 200,
+    }));
+    svgEl.dispatchEvent(new PointerEvent("pointermove", {
+      pointerId: 61, bubbles: true, cancelable: true,
+      clientX: 140, clientY: 200,
+    }));
+    const lastRect = onCropRectChange.mock.calls.at(-1)?.[0];
+    // local delta: dx = 0, dy = 10 → h += 10
+    expect(lastRect.w).toBe(200);
+    expect(lastRect.h).toBe(110);
+    expect(lastRect.x).toBe(95);
+    expect(lastRect.y).toBe(95);
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("classic crop east handle resize with 180 degree rotation", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onCropRectChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <CropOverlay
+          cropRect={{ x: 100, y: 100, w: 200, h: 100 }}
+          guideMode="none"
+          canvasWidth={800}
+          canvasHeight={600}
+          zoom={1}
+          cropMode="free"
+          cropAspect={null}
+          cropRotation={180}
+          onCropRectChange={onCropRectChange}
+          onCropRotationChange={vi.fn()}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+
+    const eastHandle = container.querySelector("[data-crop-handle='e']")!;
+    expect(eastHandle).not.toBeNull();
+    eastHandle.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 62, bubbles: true, cancelable: true,
+      clientX: 300, clientY: 150,
+    }));
+    svgEl.dispatchEvent(new PointerEvent("pointermove", {
+      pointerId: 62, bubbles: true, cancelable: true,
+      clientX: 310, clientY: 150,
+    }));
+    const lastRect = onCropRectChange.mock.calls.at(-1)?.[0];
+    // local delta at 180 deg: dx = -10, dy = 0 → w -= 10 (since East handle drags right but is rotated to left)
+    expect(lastRect.w).toBe(190);
+    expect(lastRect.h).toBe(100);
+    expect(lastRect.x).toBe(110);
+    expect(lastRect.y).toBe(100);
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("classic crop SE corner resize with 45 degree rotation", () => {
+    const origSet = SVGElement.prototype.setPointerCapture;
+    SVGElement.prototype.setPointerCapture = vi.fn();
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    SVGElement.prototype.releasePointerCapture = vi.fn();
+
+    const onCropRectChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <CropOverlay
+          cropRect={{ x: 100, y: 100, w: 200, h: 100 }}
+          guideMode="none"
+          canvasWidth={800}
+          canvasHeight={600}
+          zoom={1}
+          cropMode="free"
+          cropAspect={null}
+          cropRotation={45}
+          onCropRectChange={onCropRectChange}
+          onCropRotationChange={vi.fn()}
+        />
+      ),
+      container,
+    );
+
+    const svgEl = container.querySelector("svg")!;
+
+    // SE corner at unrotated SVG position: (300, 200)
+    // Visually rotated 45° about center (200, 150):
+    const cx2 = 200, cy2 = 150;
+    const ox2 = 300 - cx2, oy2 = 200 - cy2;
+    const vx2 = cx2 + ox2 * 0.70710678 - oy2 * 0.70710678;
+    const vy2 = cy2 + ox2 * 0.70710678 + oy2 * 0.70710678;
+
+    const seHandle = container.querySelector("[data-crop-handle='se']")!;
+    expect(seHandle).not.toBeNull();
+    seHandle.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 51, bubbles: true, cancelable: true,
+      clientX: vx2, clientY: vy2,
+    }));
+    svgEl.dispatchEvent(new PointerEvent("pointermove", {
+      pointerId: 51, bubbles: true, cancelable: true,
+      clientX: vx2 + 20, clientY: vy2,
+    }));
+    const lastRect = onCropRectChange.mock.calls.at(-1)?.[0];
+
+    // SE corner: both w and h change. At 45°, rightward 20px gives:
+    // local = (14.14, -14.14) → w += 14.14, h += -14.14 (h decreases!)
+    expect(lastRect.w).toBeCloseTo(214.14, 1);
+    expect(lastRect.h).toBeCloseTo(85.86, 1);
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
 });

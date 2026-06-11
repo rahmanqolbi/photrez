@@ -20,7 +20,7 @@ export function CropOverlayHandles(props: CropOverlayHandlesProps) {
   return (
     <For each={props.handles}>
       {(h) => {
-        const cursor = getCursorForHandle(h.type, props.cropRotation ?? 0, 1, 1);
+        const cursor = () => getCursorForHandle(h.type, props.cropRotation ?? 0, 1, 1);
         return (
           <g>
             <rect
@@ -30,7 +30,7 @@ export function CropOverlayHandles(props: CropOverlayHandlesProps) {
               height={props.hitSize}
               fill="transparent"
               data-crop-handle={h.type}
-              style={{ cursor, "pointer-events": pe() }}
+              style={{ cursor: cursor(), "pointer-events": pe() }}
               onPointerDown={(e) => props.startDrag(e, h.type)}
               onPointerEnter={() => props.setHover(h.type)}
               onPointerLeave={() => { if (!props.isDragging) props.setHover(null); }}

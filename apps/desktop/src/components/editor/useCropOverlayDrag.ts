@@ -5,6 +5,7 @@ import {
   applyCropResizeHandle,
   applyCropMove,
   screenDeltaToRotatedCropLocalDelta,
+  rotateHandleType,
 } from "@/viewport/cropGeometry";
 import { getCursorForHandle, normalizeRotation } from "@/viewport/transformGeometry";
 import { getRotateCursorByPos } from "@/viewport/cursorRotate";
@@ -100,14 +101,14 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
   });
 
   const resolvedCursor = createMemo(() => {
-    const handle = hoverHandle();
     const drag = dragState();
+    const handle = drag ? drag.handle : hoverHandle();
     if (params.isNavigationMode()) return drag ? "grabbing" : "grab";
     if (drag?.handle.startsWith("rotate")) return rotateCursor();
     if (!handle) return "crosshair";
     if (handle.startsWith("rotate")) return rotateCursor();
     if (handle === "move") return "move";
-    return getCursorForHandle(handle, 0, 1, 1);
+    return getCursorForHandle(handle, cropRotationValue(), 1, 1);
   });
 
   const startDrag = (e: PointerEvent, handle: string) => {
@@ -198,15 +199,54 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
     } else if (drag.handle === "move") {
       newRect = applyCropMove(drag.startRect, dx, dy, docW, docH);
     } else {
-      const localDelta = screenDeltaToRotatedCropLocalDelta(dx, dy, cropRotationValue());
+      const rot = cropRotationValue();
+      const isCorner = ["nw", "ne", "se", "sw"].includes(drag.handle);
       const constraint = params.cropMode;
       const aspect = constraint === "ratio" && params.cropAspect ? params.cropAspect : null;
+
+      const localDelta = screenDeltaToRotatedCropLocalDelta(dx, dy, rot);
       newRect = applyCropResizeHandle(drag.startRect, drag.handle, localDelta.dx, localDelta.dy, {
         constraint,
         aspect,
         shift: e.shiftKey,
         alt: e.altKey,
       });
+
+      // Pivot correction under rotation: Ensure the opposite anchor point remains stationary in screen/document space
+      if (rot !== 0 && !e.altKey) {
+        const getHandleAnchorLocalOffset = (h: string, w: number, hVal: number) => {
+          switch (h) {
+            case "nw": return { x: w / 2, y: hVal / 2 };
+            case "ne": return { x: -w / 2, y: hVal / 2 };
+            case "se": return { x: -w / 2, y: -hVal / 2 };
+            case "sw": return { x: w / 2, y: -hVal / 2 };
+            case "n": return { x: 0, y: hVal / 2 };
+            case "s": return { x: 0, y: -hVal / 2 };
+            case "e": return { x: -w / 2, y: 0 };
+            case "w": return { x: w / 2, y: 0 };
+            default: return { x: 0, y: 0 };
+          }
+        };
+
+        const c1 = {
+          x: drag.startRect.x + drag.startRect.w / 2,
+          y: drag.startRect.y + drag.startRect.h / 2,
+        };
+        const v1 = getHandleAnchorLocalOffset(drag.handle, drag.startRect.w, drag.startRect.h);
+        const v2 = getHandleAnchorLocalOffset(drag.handle, newRect.w, newRect.h);
+
+        const diffX = v1.x - v2.x;
+        const diffY = v1.y - v2.y;
+
+        const rad = (rot * Math.PI) / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        const shiftX = diffX * cos - diffY * sin;
+        const shiftY = diffX * sin + diffY * cos;
+
+        newRect.x = c1.x + shiftX - newRect.w / 2;
+        newRect.y = c1.y + shiftY - newRect.h / 2;
+      }
       newRect = constrainCropRectToDocument(newRect, docW, docH);
     }
 

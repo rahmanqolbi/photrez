@@ -1,5 +1,29 @@
 # AI History — Photrez
 
+## [2026-06-11] BUG FIX — Classic Rotated Crop Side Resize Axis, Pivot Drift, and Mouse Cursor Rotation [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / UX
+
+**Root Cause:**
+1. **Peta Delta Salah**: Di mode Classic Crop, ketika cropbox di-rotate dan di-resize menggunakan sisi/edge handle, terdapat percabangan `if (rot !== 0 && !isCorner)` di `useCropOverlayDrag.ts` yang memanggil `rotateHandleType` untuk memetakan ulang jenis handle (misalnya East menjadi South pada rotasi 90 derajat), namun menggunakan delta mouse mentah (`dx`/`dy` global) alih-alih delta lokal yang sudah diproyeksikan (`localDelta.dx`/`localDelta.dy`). Hal ini menyebabkan rumus resize memodifikasi ukuran menggunakan sumbu global yang miring terhadap cropbox, sehingga arah resize melenceng.
+2. **Drift Titik Pusat Rotasi**: Ketika cropbox di-resize di bawah rotasi, koordinat `{ x, y, w, h }` kotak unrotated diperbarui. Karena render SVG menerapkan rotasi grup di sekitar titik pusat kotak yang baru (`cropRectCenter()`), titik pusat rotasi bergeser selama drag. Akibatnya, sisi/sudut seberang (anchor point) yang seharusnya diam/stasioner malah bergeser (drift) di layar.
+3. **Indikator Mouse / Kursor Terkunci**: Walaupun elemen handle-individual di SVG sudah memiliki gaya kursor yang ter-rotate (`ns-resize`, `ew-resize`, dsb.), elemen induk `<svg>` yang mengontrol kursor mouse saat penangkapan pointer aktif (drag aktif) menggunakan `resolvedCursor()`. Nilai di dalam `resolvedCursor` ini secara keliru memanggil `getCursorForHandle(handle, 0, 1, 1)` dengan nilai rotasi statis `0`, sehingga kursor kembali menjadi tegak/tidak berotasi sesaat setelah drag dimulai.
+4. **SolidJS <For> Loop Reactivity Gap**: Indikator kursor pada handle saat tidak di-drag ditentukan di [CropOverlayHandles.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/CropOverlayHandles.tsx). Namun, evaluasi kursor dilakukan secara langsung di dalam deklarasi loop `For` (`const cursor = getCursorForHandle(...)`). Karena array list `handles` tidak diperbarui saat rotasi diubah tanpa resizing, SolidJS tidak memicu re-render item `For` tersebut. Hal ini menyebabkan indikator kursor mouse saat hover terasa tidak sesuai/stale, dan baru diperbarui ketika di-click/di-drag (saat modifikasi ukuran memicu re-render).
+
+**Fix Rationale:**
+1. **Delta Lokal Seragam**: Menghilangkan percabangan khusus sisi handle (`rot !== 0 && !isCorner`) dan menyamakan perilakunya dengan handle sudut. Pergeseran mouse selalu diproyeksikan ke sumbu lokal cropbox yang ter-rotate via `screenDeltaToRotatedCropLocalDelta`, dan di-resize menggunakan handle asli (`drag.handle`).
+2. **Koreksi Pivot**: Menambahkan logika koreksi translasi (`shiftX`, `shiftY`) pada koordinat `{ x, y }` setelah kalkulasi dimensi baru. Logika ini menghitung perbedaan antara vektor lokal titik anchor awal (`v1`) dan titik anchor baru (`v2`), lalu memutarnya kembali sebesar sudut rotasi untuk mengimbangi pergeseran pusat rotasi SVG. Ini menjamin titik seberang (anchor point) benar-benar diam secara statis di layar.
+3. **Kursor Ter-rotate Selama Drag**: Memperbarui `resolvedCursor` di `useCropOverlayDrag.ts` agar menyertakan nilai rotasi aktif `cropRotationValue()` saat memanggil `getCursorForHandle`. Selain itu, kursor dikunci menggunakan handle aktif (`dragState()?.handle`) agar tidak berkedip (flicker) saat mouse sedikit bergeser dari area sensor handle selama proses drag sedang berlangsung.
+4. **Kursor Hover Reaktif**: Mengubah penentuan kursor di dalam perulangan `For` pada `CropOverlayHandles.tsx` menjadi sebuah fungsi reaktif (`const cursor = () => ...`) dan memanggilnya di binding style `cursor: cursor()`. Dengan begitu, SolidJS dapat melacak ketergantungan `props.cropRotation` secara dinamis dan memperbarui CSS kursor pada handle seketika saat cropbox di-rotate, bahkan sebelum di-click.
+
+**Rincian Perubahan:**
+1. `useCropOverlayDrag.ts` — Menyederhanakan penentuan delta dengan selalu memproyeksikan delta mouse ke sumbu lokal cropbox. Menambahkan fungsi `getHandleAnchorLocalOffset` dan kalkulasi offset translasi ter-rotate untuk mengoreksi posisi `x`/`y` agar sisi anchor seberang tetap stasioner.
+2. `useCropOverlayDrag.ts` — Memperbarui `resolvedCursor` untuk mengalirkan `cropRotationValue()` ke `getCursorForHandle` dan mengunci target handle selama drag aktif.
+3. `CropOverlayHandles.tsx` — Mengubah deklarasi variabel `cursor` menjadi fungsi lambda `cursor()` reaktif agar pembaruan rotasi memicu perubahan kursor secara dinamis pada event hover.
+4. `CropOverlay.test.tsx` — Memperbarui assertion pengujian unit resize sisi Classic Crop yang ter-rotate (45°, 90°, 180°) agar merefleksikan posisi `x`/`y` baru yang ter-pivot secara presisi dan benar.
+
+---
+
 ## [2026-06-10] FEATURE — Modern Crop Drag Centering and Viewport Reset on Click [COMPLETE]
 
 ### Kategori: FEATURE / CROP / VIEWPORT / UX

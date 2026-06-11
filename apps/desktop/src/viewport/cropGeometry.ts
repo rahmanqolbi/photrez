@@ -12,6 +12,24 @@ export interface CropResizeOptions {
   alt?: boolean;
 }
 
+const HANDLE_COMPASS = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];
+
+/**
+ * Rotate a handle type by the nearest 45-degree increment matching the
+ * visual rotation.  At 90° the "east" handle appears at the bottom so it
+ * should act like "south" (e→s).  At 45° the east handle appears at the
+ * bottom-right diagonal so it acts like "southeast" (e→se).
+ *
+ * Edge handles that become corner types after rotation gain 2-DOF tracking
+ * so the handle follows the mouse more naturally on screen.
+ */
+export function rotateHandleType(type: string, rotationDeg: number): string {
+  const idx = HANDLE_COMPASS.indexOf(type);
+  if (idx === -1) return type;
+  const steps = Math.round(rotationDeg / 45);
+  return HANDLE_COMPASS[((idx + steps) % 8 + 8) % 8];
+}
+
 export function screenDeltaToRotatedCropLocalDelta(
   dx: number,
   dy: number,

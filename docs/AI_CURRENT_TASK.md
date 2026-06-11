@@ -182,6 +182,20 @@ Applied via `setPan()` + `engine.setViewport()`. Zoom preserved.
 - PASS: `pnpm --filter photrez-desktop test` (776 tests, 52 files)
 - PASS: `cargo test -p photrez-core` (85 tests)
 
+### [2026-06-11] Bug Fix — Classic Rotated Crop Side Resize Axis [COMPLETE]
+
+Fixing the resize behavior of edge/side handles for a rotated cropbox in Classic Crop mode. The current logic uses screen-space coordinates instead of rotated local coordinates when resizing via non-corner handles.
+
+**Planned:**
+1. Update `useCropOverlayDrag.ts` to use rotated local coordinates (`localDelta`) for both corner and side handles when `rot !== 0`.
+2. Verify that existing and new tests pass.
+
+### Verification
+- PASS: `pnpm.cmd run build` (production build compiled successfully in 6.06s)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (all 781 tests passed, verifying edge handle coordinate conversion, rotation pivot drift correction, SVG drag cursor style, and For-loop reactive cursor style bindings on handle hover)
+- PASS: `cargo test -p photrez-core` (all 85 Rust core tests passed)
+
+
 
 
 
