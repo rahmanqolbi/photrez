@@ -207,6 +207,43 @@ describe("renderPaintStrokeToContext", () => {
     expect(ctx.globalCompositeOperation).toBe("destination-out");
   });
 
+  it("reduces alpha in soft eraser path", () => {
+    const mockImgData = createImageDataMock(40, 40);
+    mockImgData.data.fill(0);
+    for (let i = 3; i < mockImgData.data.length; i += 4) {
+      mockImgData.data[i] = 200;
+    }
+    const ctx = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      globalCompositeOperation: "",
+      globalAlpha: 1,
+      canvas: { width: 40, height: 40 },
+      getImageData: vi.fn((x: number, y: number, w: number, h: number) => {
+        const img = createImageDataMock(w, h);
+        img.data.fill(0);
+        for (let i = 3; i < img.data.length; i += 4) {
+          img.data[i] = 200;
+        }
+        return img;
+      }),
+      putImageData: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      arc: vi.fn(),
+      fill: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+
+    renderPaintStrokeToContext(ctx, [{ x: 20, y: 20 }], { size: 20, hardness: 0, opacity: 1, flow: 1, smoothing: 0 }, "rgba(0,0,0,1)", true);
+
+    const putData = (ctx.putImageData as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as ImageData;
+    const alphas = putData.data.filter((_: number, i: number) => i % 4 === 3);
+    expect(alphas.some((a: number) => a < 200)).toBe(true);
+    expect(alphas.some((a: number) => a > 0)).toBe(true);
+  });
+
   it("sets source-over composite for brush", () => {
     const ctx = {
       save: vi.fn(),
