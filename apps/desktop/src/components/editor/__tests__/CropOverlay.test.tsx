@@ -867,7 +867,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 300, h: 200 }}
+          frame={{ x: 350, y: 300, w: 300, h: 200 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -940,7 +940,7 @@ describe("CropOverlay viewport panning", () => {
         clientY: 400,
       }),
     );
-    expect(onFrameChange).toHaveBeenCalledWith({ w: 340, h: 200 });
+    expect(onFrameChange).toHaveBeenCalledWith({ x: 350, y: 300, w: 340, h: 200 });
 
     onImageTransformChange.mockClear();
     const rotateRing = container.querySelector("[data-modern-crop-rotate='ring']");
@@ -989,7 +989,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 300, h: 200 }}
+          frame={{ x: 350, y: 300, w: 300, h: 200 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 90, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -1050,7 +1050,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 300, h: 200 }}
+          frame={{ x: 350, y: 300, w: 300, h: 200 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -1114,7 +1114,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 300, h: 200 }}
+          frame={{ x: 350, y: 300, w: 300, h: 200 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -1176,7 +1176,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 400, h: 300 }}
+          frame={{ x: 300, y: 250, w: 400, h: 300 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -1241,7 +1241,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 300, h: 200 }}
+          frame={{ x: 350, y: 300, w: 300, h: 200 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -1302,7 +1302,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 400, h: 300 }}
+          frame={{ x: 300, y: 250, w: 400, h: 300 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -1359,7 +1359,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 400, h: 300 }}
+          frame={{ x: 300, y: 250, w: 400, h: 300 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -1393,7 +1393,7 @@ describe("CropOverlay viewport panning", () => {
       shiftKey: true,
     }));
 
-    expect(onFrameChange.mock.calls.at(-1)?.[0]).toEqual({ w: 560, h: 340 });
+    expect(onFrameChange.mock.calls.at(-1)?.[0]).toEqual({ x: 300, y: 250, w: 560, h: 340 });
 
     SVGElement.prototype.setPointerCapture = origSet;
     SVGElement.prototype.releasePointerCapture = origRelease;
@@ -1415,7 +1415,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 400, h: 300 }}
+          frame={{ x: 300, y: 250, w: 400, h: 300 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -1449,7 +1449,7 @@ describe("CropOverlay viewport panning", () => {
       altKey: true,
     }));
 
-    expect(onFrameChange.mock.calls.at(-1)?.[0]).toEqual({ w: 480, h: 300 });
+    expect(onFrameChange.mock.calls.at(-1)?.[0]).toEqual({ x: 300, y: 250, w: 480, h: 300 });
     expect(onImageTransformChange).not.toHaveBeenCalled();
 
     SVGElement.prototype.setPointerCapture = origSet;
@@ -1472,7 +1472,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 400, h: 300 }}
+          frame={{ x: 300, y: 250, w: 400, h: 300 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -1675,7 +1675,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 300, h: 200 }}
+          frame={{ x: 350, y: 300, w: 300, h: 200 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -1742,7 +1742,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 300, h: 200 }}
+          frame={{ x: 350, y: 300, w: 300, h: 200 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -1809,7 +1809,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 300, h: 200 }}
+          frame={{ x: 350, y: 300, w: 300, h: 200 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -1876,7 +1876,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 300, h: 200 }}
+          frame={{ x: 350, y: 300, w: 300, h: 200 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -1943,7 +1943,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 300, h: 200 }}
+          frame={{ x: 350, y: 300, w: 300, h: 200 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -2013,7 +2013,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 300, h: 200 }}
+          frame={{ x: 350, y: 300, w: 300, h: 200 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -2092,7 +2092,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 300, h: 200 }}
+          frame={{ x: 350, y: 300, w: 300, h: 200 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -2147,7 +2147,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 300, h: 200 }}
+          frame={{ x: 350, y: 300, w: 300, h: 200 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}
@@ -2211,7 +2211,7 @@ describe("CropOverlay viewport panning", () => {
     const dispose = render(
       () => (
         <ModernCropOverlay
-          frame={{ w: 300, h: 200 }}
+          frame={{ x: 350, y: 300, w: 300, h: 200 }}
           imageTransform={{ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 }}
           viewportWidth={1000}
           viewportHeight={800}

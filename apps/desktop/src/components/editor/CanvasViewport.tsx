@@ -37,6 +37,7 @@ export function CanvasViewport() {
     activeDocumentId,
     zoom,
     pan,
+    setPan,
     viewportWidth,
     viewportHeight,
     docWidth,
@@ -165,8 +166,8 @@ export function CanvasViewport() {
     if (!frame) return {};
     return {
       position: "absolute" as const,
-      left: `${(viewportWidth() - frame.w) / 2}px`,
-      top: `${(viewportHeight() - frame.h) / 2}px`,
+      left: `${frame.x}px`,
+      top: `${frame.y}px`,
       width: `${frame.w}px`,
       height: `${frame.h}px`,
       "background-color": resolvedCropFillColor(),
@@ -269,6 +270,15 @@ export function CanvasViewport() {
     const sessionKey = `${activeDocumentId() ?? "none"}:${viewportWidth()}x${viewportHeight()}:${zoom()}:${mode}:${aspectKey}`;
     if (lastModernCropSessionKey !== sessionKey) {
       lastModernCropSessionKey = sessionKey;
+      // Center document in viewport so frame + document align on entry
+      const scale = modernCropImageTransform().scale;
+      const centerPanX = (viewportWidth() - docWidth() * zoom() * scale) / 2;
+      const centerPanY = (viewportHeight() - docHeight() * zoom() * scale) / 2;
+      setPan({ x: centerPanX, y: centerPanY });
+      const engine = workspace.getActiveEngine();
+      if (engine) {
+        engine.setViewport({ panX: centerPanX, panY: centerPanY, zoom: zoom() });
+      }
       setModernCropFrame(getDefaultModernCropFrame({
         viewportWidth: viewportWidth(),
         viewportHeight: viewportHeight(),
@@ -320,6 +330,16 @@ export function CanvasViewport() {
     getCanvasContainerRef: () => canvasContainerRef,
   });
 
+  // Derived canvas screen rect for expansion fill indicator — memo outside Show to guarantee reactivity
+  const canvasScreenRect = createMemo(() => {
+    if (modernCropImageTransform().rotation !== 0) return null;
+    return {
+      x: pan().x + modernCropImageTransform().offsetX,
+      y: pan().y + modernCropImageTransform().offsetY,
+      w: docWidth() * zoom() * (modernCropImageTransform().scale ?? 1),
+      h: docHeight() * zoom() * (modernCropImageTransform().scale ?? 1),
+    };
+  });
 
   const isPasteboardPointerDown = (e: PointerEvent) => {
     if (e.target === canvasContainerRef) return true;
@@ -732,12 +752,7 @@ export function CanvasViewport() {
               viewportHeight={viewportHeight()}
               projectedWidth={docWidth() * zoom() * (modernCropImageTransform().scale ?? 1)}
               projectedHeight={docHeight() * zoom() * (modernCropImageTransform().scale ?? 1)}
-              canvasScreenRect={modernCropImageTransform().rotation === 0 ? {
-                x: pan().x + modernCropImageTransform().offsetX,
-                y: pan().y + modernCropImageTransform().offsetY,
-                w: docWidth() * zoom() * (modernCropImageTransform().scale ?? 1),
-                h: docHeight() * zoom() * (modernCropImageTransform().scale ?? 1),
-              } : null}
+              canvasScreenRect={canvasScreenRect()}
               cropMode={cropMode()}
               cropAspect={ea()}
               guideMode={cropGuideMode()}

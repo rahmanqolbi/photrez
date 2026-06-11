@@ -1,16 +1,6 @@
 import { createSignal } from "solid-js";
-
-export interface ModernCropFrame {
-  w: number;
-  h: number;
-}
-
-export interface ModernCropImageTransform {
-  offsetX: number;
-  offsetY: number;
-  rotation: number;
-  scale: number;
-}
+import type { ModernCropFrame, ModernCropImageTransform } from "@/viewport/modernCropGeometry";
+export type { ModernCropFrame, ModernCropImageTransform };
 
 export interface ModernCropSnapshot {
   frame: ModernCropFrame;

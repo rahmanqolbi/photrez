@@ -292,50 +292,44 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
       }}
     >
       <defs>
-        <mask id="modern-crop-shield">
-          <rect x={0} y={0} width={props.viewportWidth} height={props.viewportHeight} fill="white" />
-          <rect x={screenRect().x} y={screenRect().y} width={screenRect().w} height={screenRect().h} fill="black" />
-        </mask>
-        <mask id="modern-expansion-mask">
-          <rect x={screenRect().x} y={screenRect().y} width={screenRect().w} height={screenRect().h} fill="white" />
-          {(() => {
-            const cr = props.canvasScreenRect;
-            if (!cr) return null;
-            const ix = Math.max(screenRect().x, cr.x);
-            const iy = Math.max(screenRect().y, cr.y);
-            const ix2 = Math.min(screenRect().x + screenRect().w, cr.x + cr.w);
-            const iy2 = Math.min(screenRect().y + screenRect().h, cr.y + cr.h);
-            if (ix < ix2 && iy < iy2) {
-              return <rect x={ix} y={iy} width={ix2 - ix} height={iy2 - iy} fill="black" />;
-            }
-            return null;
-          })()}
-        </mask>
       </defs>
-      {/* Canvas expansion fill — checkerboard pattern in areas where frame exceeds canvas */}
-      <Show when={(() => {
+      {/* Canvas expansion fill — non-overlapping strips for areas where frame exceeds canvas */}
+      {(() => {
         const cr = props.canvasScreenRect;
-        if (!cr) return false;
+        if (!cr) return null;
         const sr = screenRect();
-        return sr.x < cr.x || sr.y < cr.y || (sr.x + sr.w) > (cr.x + cr.w) || (sr.y + sr.h) > (cr.y + cr.h);
-      })()}>
-        <rect
-          x={screenRect().x} y={screenRect().y}
-          width={screenRect().w} height={screenRect().h}
-          fill="rgba(255,255,255,0.08)"
-          mask="url(#modern-expansion-mask)"
-          style={{ "pointer-events": "none" }}
-        />
-      </Show>
-      <rect
-        x={0}
-        y={0}
-        width={props.viewportWidth}
-        height={props.viewportHeight}
-        fill="rgba(0,0,0,0.55)"
-        mask="url(#modern-crop-shield)"
-        style={{ "pointer-events": "none" }}
-      />
+        const rects: Array<{ x: number; y: number; w: number; h: number }> = [];
+        const lW = cr.x - sr.x;
+        if (lW > 0) rects.push({ x: sr.x, y: sr.y, w: lW, h: sr.h });
+        const rW = (sr.x + sr.w) - (cr.x + cr.w);
+        if (rW > 0) rects.push({ x: cr.x + cr.w, y: sr.y, w: rW, h: sr.h });
+        const tW = Math.min(sr.x + sr.w, cr.x + cr.w) - Math.max(sr.x, cr.x);
+        const tH = cr.y - sr.y;
+        if (tW > 0 && tH > 0) rects.push({ x: Math.max(sr.x, cr.x), y: sr.y, w: tW, h: tH });
+        const bH = (sr.y + sr.h) - (cr.y + cr.h);
+        if (tW > 0 && bH > 0) rects.push({ x: Math.max(sr.x, cr.x), y: cr.y + cr.h, w: tW, h: bH });
+        return rects.map(r => (
+          <rect x={r.x} y={r.y} width={r.w} height={r.h} fill="rgba(255,255,255,0.08)" style={{ "pointer-events": "none" }} />
+        ));
+      })()}
+      {(() => {
+        const sr = screenRect();
+        const vw = props.viewportWidth;
+        const vh = props.viewportHeight;
+        const darkRects: Array<{ x: number; y: number; w: number; h: number }> = [];
+        const lW = sr.x;
+        if (lW > 0) darkRects.push({ x: 0, y: 0, w: lW, h: vh });
+        const rW = vw - (sr.x + sr.w);
+        if (rW > 0) darkRects.push({ x: sr.x + sr.w, y: 0, w: rW, h: vh });
+        const tW = Math.min(vw, sr.w);
+        const tH = sr.y;
+        if (tW > 0 && tH > 0) darkRects.push({ x: Math.max(0, sr.x), y: 0, w: tW, h: tH });
+        const bH = vh - (sr.y + sr.h);
+        if (tW > 0 && bH > 0) darkRects.push({ x: Math.max(0, sr.x), y: sr.y + sr.h, w: tW, h: bH });
+        return darkRects.map(r => (
+          <rect x={r.x} y={r.y} width={r.w} height={r.h} fill="rgba(0,0,0,0.55)" style={{ "pointer-events": "none" }} />
+        ));
+      })()}
       <rect
         x={screenRect().x}
         y={screenRect().y}

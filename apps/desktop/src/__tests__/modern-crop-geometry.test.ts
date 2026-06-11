@@ -14,6 +14,8 @@ import {
   screenPointToModernDocumentPoint,
 } from "../viewport/modernCropGeometry";
 
+const f = (w: number, h: number, x = 0, y = 0) => ({ x, y, w, h });
+
 describe("modern crop geometry", () => {
   it("computes projected canvas size", () => {
     expect(getProjectedCanvasSize({ docWidth: 1600, docHeight: 900, zoom: 0.5 })).toEqual({ w: 800, h: 450 });
@@ -22,24 +24,24 @@ describe("modern crop geometry", () => {
   });
 
   it("enforces minimum frame size but does not cap at projected bounds", () => {
-    expect(clampFrameToProjectedBounds({ w: 500, h: 300 }, { w: 400, h: 300 })).toEqual({ w: 500, h: 300 });
-    expect(clampFrameToProjectedBounds({ w: 200, h: 100 }, { w: 400, h: 300 })).toEqual({ w: 200, h: 100 });
-    expect(clampFrameToProjectedBounds({ w: 10, h: 10 }, { w: 400, h: 300 })).toEqual({ w: 24, h: 24 });
+    expect(clampFrameToProjectedBounds(f(500, 300), { w: 400, h: 300 })).toEqual({ x: 0, y: 0, w: 500, h: 300 });
+    expect(clampFrameToProjectedBounds(f(200, 100), { w: 400, h: 300 })).toEqual({ x: 0, y: 0, w: 200, h: 100 });
+    expect(clampFrameToProjectedBounds(f(10, 10), { w: 400, h: 300 })).toEqual({ x: 0, y: 0, w: 24, h: 24 });
   });
 
   it("centers the frame in viewport coordinates", () => {
-    expect(getModernCropFrameScreenRect({ w: 400, h: 300 }, 1200, 800))
+    expect(getModernCropFrameScreenRect(f(400, 300, 400, 250), 1200, 800))
       .toEqual({ x: 400, y: 250, w: 400, h: 300 });
   });
 
   it("computes the modern image pivot from the rendered cropbox center", () => {
     const pivot = getModernCropImagePivot({
-      frame: { w: 400, h: 240 },
+      frame: f(400, 240, 400, 260),
       viewport: { width: 1200, height: 760, panX: 75, panY: -30, zoom: 2 },
       transform: { offsetX: 25, offsetY: 10, rotation: 30, scale: 1.5 },
     });
 
-    expect(getModernCropFrameScreenCenter({ w: 400, h: 240 }, 1200, 760))
+    expect(getModernCropFrameScreenCenter(f(400, 240, 400, 260), 1200, 760))
       .toEqual({ x: 600, y: 380 });
     expect(pivot.screen).toEqual({ x: 600, y: 380 });
     expect(pivot.document.x).toBeCloseTo((600 - 75 - 25) / 3);
@@ -53,7 +55,7 @@ describe("modern crop geometry", () => {
   });
 
   it("keeps the cropbox center pinned when inverting a rotated modern transform", () => {
-    const frame = { w: 400, h: 240 };
+    const frame = f(400, 240);
     const viewport = { width: 1200, height: 760, panX: 75, panY: -30, zoom: 2 };
     const transform = { offsetX: 25, offsetY: 10, rotation: 37, scale: 1.5 };
     const pivot = getModernCropImagePivot({ frame, viewport, transform });
@@ -71,7 +73,7 @@ describe("modern crop geometry", () => {
 
   it("maps centered screen frame to document crop rect with pan and zoom", () => {
     const rect = modernFrameToCropRect({
-      frame: { w: 400, h: 300 },
+      frame: f(400, 300, 400, 250),
       viewport: { width: 1200, height: 800, panX: 100, panY: 50, zoom: 2 },
       transform: { offsetX: 0, offsetY: 0, rotation: 0, scale: 1 },
     });
@@ -84,7 +86,7 @@ describe("modern crop geometry", () => {
 
   it("includes image offset when mapping to document crop rect", () => {
     const rect = modernFrameToCropRect({
-      frame: { w: 400, h: 300 },
+      frame: f(400, 300, 400, 250),
       viewport: { width: 1200, height: 800, panX: 100, panY: 50, zoom: 2 },
       transform: { offsetX: 40, offsetY: -20, rotation: 0, scale: 1 },
     });
@@ -108,7 +110,7 @@ describe("modern crop geometry", () => {
     expect(frame.w).toBeCloseTo(frame.h);
     expect(frame.w).toBeLessThanOrEqual(800);
     expect(frame.h).toBeLessThanOrEqual(450);
-    expect(frame).toEqual({ w: 450, h: 450 });
+    expect(frame).toEqual({ x: 275, y: 125, w: 450, h: 450 });
   });
 
   it("defaults to projected canvas size when smaller than viewport", () => {
@@ -120,7 +122,7 @@ describe("modern crop geometry", () => {
       docHeight: 900,
       zoom: 0.7,
       aspect: null,
-    })).toEqual({ w: 1120, h: 630 });
+    })).toEqual({ x: 40, y: 85, w: 1120, h: 630 });
   });
 
   it("frame size tracks projected canvas bounds, clamped by viewport", () => {
@@ -134,13 +136,13 @@ describe("modern crop geometry", () => {
       viewportWidth: 1200, viewportHeight: 800,
       docWidth: 1600, docHeight: 900, zoom: 2.0,
     });
-    expect(frame1).toEqual({ w: 800, h: 450 });
-    expect(frame2).toEqual({ w: 1200, h: 800 });
+    expect(frame1).toEqual({ x: 200, y: 175, w: 800, h: 450 });
+    expect(frame2).toEqual({ x: 0, y: 0, w: 1200, h: 800 });
   });
 
   it("allows center resize beyond projected canvas bounds", () => {
     const result = resizeModernFrameFromCenter({
-      frame: { w: 300, h: 300 },
+      frame: f(300, 300),
       handle: "e",
       deltaX: 200,
       deltaY: 0,
@@ -155,7 +157,7 @@ describe("modern crop geometry", () => {
 
   it("allows one-sided resize beyond projected canvas bounds", () => {
     const { frame } = resizeModernFrameOneSided({
-      frame: { w: 300, h: 300 },
+      frame: f(300, 300),
       handle: "e",
       deltaX: 200,
       deltaY: 0,
@@ -170,18 +172,18 @@ describe("modern crop geometry", () => {
 
   it("resizes the modern frame from center", () => {
     expect(resizeModernFrameFromCenter({
-      frame: { w: 400, h: 300 },
+      frame: f(400, 300),
       handle: "e",
       deltaX: 20,
       deltaY: 0,
       viewportWidth: 1200,
       viewportHeight: 800,
-    })).toEqual({ w: 440, h: 300 });
+    })).toEqual({ x: 0, y: 0, w: 440, h: 300 });
   });
 
   it("applies ratio constraint in ratio crop mode", () => {
     expect(resizeModernFrameFromCenter({
-      frame: { w: 400, h: 300 },
+      frame: f(400, 300),
       handle: "e",
       deltaX: 40,
       deltaY: 0,
@@ -189,12 +191,12 @@ describe("modern crop geometry", () => {
       viewportHeight: 800,
       aspect: { w: 16, h: 9 },
       cropMode: "ratio",
-    })).toEqual({ w: 480, h: 270 });
+    })).toEqual({ x: 0, y: 0, w: 480, h: 270 });
   });
 
   it("applies size mode constraint using target aspect", () => {
     expect(resizeModernFrameFromCenter({
-      frame: { w: 400, h: 300 },
+      frame: f(400, 300),
       handle: "se",
       deltaX: 40,
       deltaY: 30,
@@ -202,11 +204,11 @@ describe("modern crop geometry", () => {
       viewportHeight: 800,
       aspect: { w: 4, h: 3 },
       cropMode: "size",
-    })).toEqual({ w: 480, h: 360 });
+    })).toEqual({ x: 0, y: 0, w: 480, h: 360 });
   });
 
   it("keeps center fixed during free resize by doubling delta", () => {
-    const frame = { w: 400, h: 300 };
+    const frame = f(400, 300);
     const result = resizeModernFrameFromCenter({
       frame,
       handle: "e",
@@ -220,7 +222,7 @@ describe("modern crop geometry", () => {
   });
 
   it("keeps center fixed during south resize", () => {
-    const frame = { w: 400, h: 300 };
+    const frame = f(400, 300);
     const result = resizeModernFrameFromCenter({
       frame,
       handle: "s",
@@ -234,7 +236,7 @@ describe("modern crop geometry", () => {
   });
 
   it("keeps center fixed during corner resize", () => {
-    const frame = { w: 400, h: 300 };
+    const frame = f(400, 300);
     const result = resizeModernFrameFromCenter({
       frame,
       handle: "se",
@@ -250,7 +252,7 @@ describe("modern crop geometry", () => {
   it("size mode SE corner from center: projection-based ratio preserves monotonicity across axis flips", () => {
   // Simulate alternating axis dominance that causes |dw| >= |dh| / |dh| > |dw| flips.
   // With projection fix, each move increases width monotonically.
-  let frame = { w: 400, h: 300 };
+  let frame = f(400, 300);
   const moves = [
     { dx: 5, dy: 4 },   // |dw| >= |dh| → width-driven path (buggy)
     { dx: 4, dy: 5 },   // |dh| > |dw| → height-driven path (buggy: jumps)
@@ -288,7 +290,7 @@ describe("modern crop geometry", () => {
 
 it("maps a rotated modern frame to the visual crop size, not its document-space AABB", () => {
     const rect = modernFrameToCropRect({
-      frame: { w: 400, h: 200 },
+      frame: f(400, 200, 300, 300),
       viewport: { width: 1000, height: 800, panX: 0, panY: 0, zoom: 1 },
       transform: { offsetX: 0, offsetY: 0, rotation: 45, scale: 1 },
     });
@@ -310,109 +312,109 @@ it("maps a rotated modern frame to the visual crop size, not its document-space 
 describe("modern crop one-sided resize", () => {
   it("E handle: width increases, compensation shifts content left to anchor left edge", () => {
     const result = resizeModernFrameOneSided({
-      frame: { w: 400, h: 300 }, handle: "e", deltaX: 40, deltaY: 0,
+      frame: f(400, 300), handle: "e", deltaX: 40, deltaY: 0,
       viewportWidth: 1200, viewportHeight: 800,
     });
-    expect(result.frame).toEqual({ w: 480, h: 300 });
+    expect(result.frame).toEqual({ x: 0, y: 0, w: 480, h: 300 });
     expect(result.compensation.x).toBe(-40);
     expect(result.compensation.y).toBe(0);
   });
 
   it("W handle: width decreases, compensation shifts content left to anchor right edge", () => {
     const result = resizeModernFrameOneSided({
-      frame: { w: 400, h: 300 }, handle: "w", deltaX: 40, deltaY: 0,
+      frame: f(400, 300), handle: "w", deltaX: 40, deltaY: 0,
       viewportWidth: 1200, viewportHeight: 800,
     });
-    expect(result.frame).toEqual({ w: 320, h: 300 });
+    expect(result.frame).toEqual({ x: 0, y: 0, w: 320, h: 300 });
     expect(result.compensation.x).toBe(-40);
     expect(result.compensation.y).toBe(0);
   });
 
   it("S handle: height increases, compensation shifts content up to anchor top edge", () => {
     const result = resizeModernFrameOneSided({
-      frame: { w: 400, h: 300 }, handle: "s", deltaX: 0, deltaY: 40,
+      frame: f(400, 300), handle: "s", deltaX: 0, deltaY: 40,
       viewportWidth: 1200, viewportHeight: 800,
     });
-    expect(result.frame).toEqual({ w: 400, h: 380 });
+    expect(result.frame).toEqual({ x: 0, y: 0, w: 400, h: 380 });
     expect(result.compensation.x).toBe(0);
     expect(result.compensation.y).toBe(-40);
   });
 
   it("N handle: height decreases, compensation shifts content up to anchor bottom edge", () => {
     const result = resizeModernFrameOneSided({
-      frame: { w: 400, h: 300 }, handle: "n", deltaX: 0, deltaY: 40,
+      frame: f(400, 300), handle: "n", deltaX: 0, deltaY: 40,
       viewportWidth: 1200, viewportHeight: 800,
     });
-    expect(result.frame).toEqual({ w: 400, h: 220 });
+    expect(result.frame).toEqual({ x: 0, y: 0, w: 400, h: 220 });
     expect(result.compensation.x).toBe(0);
     expect(result.compensation.y).toBe(-40);
   });
 
   it("SE corner: width and height increase, compensations anchor NW corner", () => {
     const result = resizeModernFrameOneSided({
-      frame: { w: 400, h: 300 }, handle: "se", deltaX: 40, deltaY: 30,
+      frame: f(400, 300), handle: "se", deltaX: 40, deltaY: 30,
       viewportWidth: 1200, viewportHeight: 800,
     });
-    expect(result.frame).toEqual({ w: 480, h: 360 });
+    expect(result.frame).toEqual({ x: 0, y: 0, w: 480, h: 360 });
     expect(result.compensation.x).toBe(-40);
     expect(result.compensation.y).toBe(-30);
   });
 
   it("NW corner: width and height decrease, compensations anchor SE corner", () => {
     const result = resizeModernFrameOneSided({
-      frame: { w: 400, h: 300 }, handle: "nw", deltaX: 40, deltaY: 30,
+      frame: f(400, 300), handle: "nw", deltaX: 40, deltaY: 30,
       viewportWidth: 1200, viewportHeight: 800,
     });
-    expect(result.frame).toEqual({ w: 320, h: 240 });
+    expect(result.frame).toEqual({ x: 0, y: 0, w: 320, h: 240 });
     expect(result.compensation.x).toBe(-40);
     expect(result.compensation.y).toBe(-30);
   });
 
   it("NE corner: width increases, height decreases", () => {
     const result = resizeModernFrameOneSided({
-      frame: { w: 400, h: 300 }, handle: "ne", deltaX: 40, deltaY: 30,
+      frame: f(400, 300), handle: "ne", deltaX: 40, deltaY: 30,
       viewportWidth: 1200, viewportHeight: 800,
     });
-    expect(result.frame).toEqual({ w: 480, h: 240 });
+    expect(result.frame).toEqual({ x: 0, y: 0, w: 480, h: 240 });
     expect(result.compensation.x).toBe(-40);
     expect(result.compensation.y).toBe(-30);
   });
 
   it("SW corner: width decreases, height increases", () => {
     const result = resizeModernFrameOneSided({
-      frame: { w: 400, h: 300 }, handle: "sw", deltaX: 40, deltaY: 30,
+      frame: f(400, 300), handle: "sw", deltaX: 40, deltaY: 30,
       viewportWidth: 1200, viewportHeight: 800,
     });
-    expect(result.frame).toEqual({ w: 320, h: 360 });
+    expect(result.frame).toEqual({ x: 0, y: 0, w: 320, h: 360 });
     expect(result.compensation.x).toBe(-40);
     expect(result.compensation.y).toBe(-30);
   });
 
   it("ratio mode: E handle preserves aspect, both axes grow, compensations for both", () => {
     const result = resizeModernFrameOneSided({
-      frame: { w: 400, h: 300 }, handle: "e", deltaX: 80, deltaY: 0,
+      frame: f(400, 300), handle: "e", deltaX: 80, deltaY: 0,
       viewportWidth: 1200, viewportHeight: 800,
       aspect: { w: 4, h: 3 }, cropMode: "ratio",
     });
-    expect(result.frame).toEqual({ w: 560, h: 420 });
+    expect(result.frame).toEqual({ x: 0, y: 0, w: 560, h: 420 });
     expect(result.compensation.x).toBe(-80);
     expect(result.compensation.y).toBe(-60);
   });
 
   it("ratio mode: S handle height-driven, width preserves aspect", () => {
     const result = resizeModernFrameOneSided({
-      frame: { w: 400, h: 300 }, handle: "s", deltaX: 0, deltaY: 60,
+      frame: f(400, 300), handle: "s", deltaX: 0, deltaY: 60,
       viewportWidth: 1200, viewportHeight: 800,
       aspect: { w: 4, h: 3 }, cropMode: "ratio",
     });
-    expect(result.frame).toEqual({ w: 560, h: 420 });
+    expect(result.frame).toEqual({ x: 0, y: 0, w: 560, h: 420 });
     expect(result.compensation.x).toBe(-80);
     expect(result.compensation.y).toBe(-60);
   });
 
   it("ratio mode: SE corner preserves aspect using diagonal projection", () => {
     const result = resizeModernFrameOneSided({
-      frame: { w: 400, h: 300 }, handle: "se", deltaX: 40, deltaY: 20,
+      frame: f(400, 300), handle: "se", deltaX: 40, deltaY: 20,
       viewportWidth: 1200, viewportHeight: 800,
       aspect: { w: 16, h: 9 }, cropMode: "ratio",
     });
@@ -426,18 +428,18 @@ describe("modern crop one-sided resize", () => {
 
   it("size mode: same as ratio with target aspect", () => {
     const result = resizeModernFrameOneSided({
-      frame: { w: 400, h: 300 }, handle: "e", deltaX: 80, deltaY: 0,
+      frame: f(400, 300), handle: "e", deltaX: 80, deltaY: 0,
       viewportWidth: 1200, viewportHeight: 800,
       aspect: { w: 800, h: 600 }, cropMode: "size",
     });
-    expect(result.frame).toEqual({ w: 560, h: 420 });
+    expect(result.frame).toEqual({ x: 0, y: 0, w: 560, h: 420 });
     expect(result.compensation.x).toBe(-80);
     expect(result.compensation.y).toBe(-60);
   });
 
   it("clamps to minimum size and adjusts compensation accordingly", () => {
     const result = resizeModernFrameOneSided({
-      frame: { w: 30, h: 30 }, handle: "nw", deltaX: 100, deltaY: 100,
+      frame: f(30, 30), handle: "nw", deltaX: 100, deltaY: 100,
       viewportWidth: 1200, viewportHeight: 800,
     });
     expect(result.frame.w).toBe(24);
@@ -447,7 +449,7 @@ describe("modern crop one-sided resize", () => {
   });
 
   it("E handle: content at left edge stays anchored, content at right edge shifts", () => {
-    const frame = { w: 400, h: 300 };
+    const frame = f(400, 300);
     const result = resizeModernFrameOneSided({
       frame, handle: "e", deltaX: 60, deltaY: 0,
       viewportWidth: 1200, viewportHeight: 800,
@@ -457,7 +459,7 @@ describe("modern crop one-sided resize", () => {
   });
 
   it("W handle: content at right edge stays anchored, content at left edge shifts", () => {
-    const frame = { w: 400, h: 300 };
+    const frame = f(400, 300);
     const result = resizeModernFrameOneSided({
       frame, handle: "w", deltaX: 60, deltaY: 0,
       viewportWidth: 1200, viewportHeight: 800,
@@ -467,7 +469,7 @@ describe("modern crop one-sided resize", () => {
   });
 
   it("N handle: content at bottom edge stays anchored, content at top edge shifts", () => {
-    const frame = { w: 400, h: 300 };
+    const frame = f(400, 300);
     const result = resizeModernFrameOneSided({
       frame, handle: "n", deltaX: 0, deltaY: 60,
       viewportWidth: 1200, viewportHeight: 800,
@@ -477,7 +479,7 @@ describe("modern crop one-sided resize", () => {
   });
 
   it("S handle: content at top edge stays anchored, content at bottom edge shifts", () => {
-    const frame = { w: 400, h: 300 };
+    const frame = f(400, 300);
     const result = resizeModernFrameOneSided({
       frame, handle: "s", deltaX: 0, deltaY: 60,
       viewportWidth: 1200, viewportHeight: 800,
@@ -488,16 +490,16 @@ describe("modern crop one-sided resize", () => {
 
   it("zero delta produces zero compensation", () => {
     const result = resizeModernFrameOneSided({
-      frame: { w: 400, h: 300 }, handle: "e", deltaX: 0, deltaY: 0,
+      frame: f(400, 300), handle: "e", deltaX: 0, deltaY: 0,
       viewportWidth: 1200, viewportHeight: 800,
     });
-    expect(result.frame).toEqual({ w: 400, h: 300 });
+    expect(result.frame).toEqual({ x: 0, y: 0, w: 400, h: 300 });
     expect(result.compensation).toEqual({ x: 0, y: 0 });
   });
 
   it("negative delta (dragging inward) produces smaller frame and matching compensation", () => {
     const result = resizeModernFrameOneSided({
-      frame: { w: 400, h: 300 }, handle: "e", deltaX: -40, deltaY: 0,
+      frame: f(400, 300), handle: "e", deltaX: -40, deltaY: 0,
       viewportWidth: 1200, viewportHeight: 800,
     });
     expect(result.frame.w).toBe(320);
@@ -507,7 +509,7 @@ describe("modern crop one-sided resize", () => {
   describe("center-out resize (alt)", () => {
     it("E handle + alt: frame expands same as non-alt, but compensation is zero", () => {
       const result = resizeModernFrameOneSided({
-        frame: { w: 400, h: 300 }, handle: "e", deltaX: 60, deltaY: 0,
+        frame: f(400, 300), handle: "e", deltaX: 60, deltaY: 0,
         viewportWidth: 1200, viewportHeight: 800, alt: true,
       });
       expect(result.frame.w).toBe(520);
@@ -516,7 +518,7 @@ describe("modern crop one-sided resize", () => {
 
     it("W handle + alt: frame shrinks, compensation is zero", () => {
       const result = resizeModernFrameOneSided({
-        frame: { w: 400, h: 300 }, handle: "w", deltaX: 60, deltaY: 0,
+        frame: f(400, 300), handle: "w", deltaX: 60, deltaY: 0,
         viewportWidth: 1200, viewportHeight: 800, alt: true,
       });
       expect(result.frame.w).toBe(280);
@@ -525,7 +527,7 @@ describe("modern crop one-sided resize", () => {
 
     it("S handle + alt: height expands, compensation is zero", () => {
       const result = resizeModernFrameOneSided({
-        frame: { w: 400, h: 300 }, handle: "s", deltaX: 0, deltaY: 60,
+        frame: f(400, 300), handle: "s", deltaX: 0, deltaY: 60,
         viewportWidth: 1200, viewportHeight: 800, alt: true,
       });
       expect(result.frame.h).toBe(420);
@@ -534,7 +536,7 @@ describe("modern crop one-sided resize", () => {
 
     it("N handle + alt: height shrinks, compensation is zero", () => {
       const result = resizeModernFrameOneSided({
-        frame: { w: 400, h: 300 }, handle: "n", deltaX: 0, deltaY: 60,
+        frame: f(400, 300), handle: "n", deltaX: 0, deltaY: 60,
         viewportWidth: 1200, viewportHeight: 800, alt: true,
       });
       expect(result.frame.h).toBe(180);
@@ -543,16 +545,16 @@ describe("modern crop one-sided resize", () => {
 
     it("zero delta + alt: no change", () => {
       const result = resizeModernFrameOneSided({
-        frame: { w: 400, h: 300 }, handle: "e", deltaX: 0, deltaY: 0,
+        frame: f(400, 300), handle: "e", deltaX: 0, deltaY: 0,
         viewportWidth: 1200, viewportHeight: 800, alt: true,
       });
-      expect(result.frame).toEqual({ w: 400, h: 300 });
+      expect(result.frame).toEqual({ x: 0, y: 0, w: 400, h: 300 });
       expect(result.compensation).toEqual({ x: 0, y: 0 });
     });
 
     it("SE corner + alt: both axes expand, compensation is zero", () => {
       const result = resizeModernFrameOneSided({
-        frame: { w: 400, h: 300 }, handle: "se", deltaX: 60, deltaY: 50,
+        frame: f(400, 300), handle: "se", deltaX: 60, deltaY: 50,
         viewportWidth: 1200, viewportHeight: 800, alt: true,
       });
       expect(result.frame.w).toBe(520);
@@ -563,7 +565,7 @@ describe("modern crop one-sided resize", () => {
 
     it("NW corner + alt: both axes shrink, compensation is zero", () => {
       const result = resizeModernFrameOneSided({
-        frame: { w: 400, h: 300 }, handle: "nw", deltaX: 60, deltaY: 50,
+        frame: f(400, 300), handle: "nw", deltaX: 60, deltaY: 50,
         viewportWidth: 1200, viewportHeight: 800, alt: true,
       });
       expect(result.frame.w).toBe(280);
@@ -574,7 +576,7 @@ describe("modern crop one-sided resize", () => {
 
     it("E handle + alt + aspect constraint: frame follows aspect, compensation zero", () => {
       const result = resizeModernFrameOneSided({
-        frame: { w: 400, h: 300 }, handle: "e", deltaX: 60, deltaY: 0,
+        frame: f(400, 300), handle: "e", deltaX: 60, deltaY: 0,
         viewportWidth: 1200, viewportHeight: 800,
         aspect: { w: 16, h: 9 }, cropMode: "ratio", alt: true,
       });
@@ -586,7 +588,7 @@ describe("modern crop one-sided resize", () => {
 
     it("corner + shift + alt: classic center-out proportional resize", () => {
       const result = resizeModernFrameOneSided({
-        frame: { w: 400, h: 300 }, handle: "se", deltaX: 60, deltaY: 50,
+        frame: f(400, 300), handle: "se", deltaX: 60, deltaY: 50,
         viewportWidth: 1200, viewportHeight: 800,
         shift: true, alt: true,
       });
@@ -602,7 +604,7 @@ describe("modern crop one-sided resize", () => {
     };
 
     it("SE corner outward: per-move delta stable (no aspect-ratio amplification)", () => {
-      let frame = { w: 400, h: 300 };
+      let frame = f(400, 300);
       // Alternating axis dominance: |dw| > |dh| then |dh| > |dw|
       // Old axis-threshold code produces deltas oscillating by ~1.777× (the aspect ratio).
       // With diagonal projection, per-move deltas remain within 1.3× of each other.
@@ -625,7 +627,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("SE corner inward: all moves decrease width monotonically", () => {
-      let frame = { w: 600, h: 400 };
+      let frame = f(600, 400);
       const moves = [{ dx: -20, dy: -15 }, { dx: -15, dy: -18 }, { dx: -22, dy: -14 }, { dx: -13, dy: -19 }];
       const widths: number[] = [600];
       for (const m of moves) {
@@ -639,7 +641,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("NW corner outward: monotonic growth across axis flips", () => {
-      let frame = { w: 400, h: 300 };
+      let frame = f(400, 300);
       const moves = [{ dx: -20, dy: -15 }, { dx: -14, dy: -18 }, { dx: -22, dy: -16 }];
       const widths: number[] = [400];
       for (const m of moves) {
@@ -653,7 +655,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("NE corner outward: monotonic growth across axis flips (hy = -1)", () => {
-      let frame = { w: 400, h: 300 };
+      let frame = f(400, 300);
       const moves = [{ dx: 20, dy: -15 }, { dx: 14, dy: -18 }, { dx: 22, dy: -16 }];
       const widths: number[] = [400];
       for (const m of moves) {
@@ -667,7 +669,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("SW corner outward: monotonic growth across axis flips", () => {
-      let frame = { w: 400, h: 300 };
+      let frame = f(400, 300);
       const moves = [{ dx: -20, dy: 15 }, { dx: -14, dy: 18 }, { dx: -22, dy: 16 }];
       const widths: number[] = [400];
       for (const m of moves) {
@@ -681,7 +683,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("all four corners maintain ratio under repeated axis-flip drag", () => {
-      let fSE = { w: 400, h: 300 }, fNE = { w: 400, h: 300 }, fNW = { w: 400, h: 300 }, fSW = { w: 400, h: 300 };
+      let fSE = f(400, 300), fNE = f(400, 300), fNW = f(400, 300), fSW = f(400, 300);
       const moves = [{ dx: 10, dy: 8 }, { dx: 8, dy: 10 }, { dx: 12, dy: 9 }];
       for (const m of moves) {
         fSE = resizeModernFrameOneSided({ frame: fSE, handle: "se", deltaX: m.dx, deltaY: m.dy, ...opts }).frame;
@@ -702,7 +704,7 @@ describe("modern crop one-sided resize", () => {
     };
 
     it("SE corner outward: per-move delta monotonic across axis flips", () => {
-      let frame = { w: 400, h: 300 };
+      let frame = f(400, 300);
       const moves = [{ dx: 5, dy: 4 }, { dx: 4, dy: 5 }, { dx: 5, dy: 4 }, { dx: 4, dy: 5 }];
       const widths: number[] = [400];
       for (const m of moves) {
@@ -721,7 +723,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("SE corner inward: monotonic decrease", () => {
-      let frame = { w: 500, h: 340 };
+      let frame = f(500, 340);
       const moves = [{ dx: -5, dy: -4 }, { dx: -4, dy: -5 }, { dx: -5, dy: -4 }];
       const widths: number[] = [500];
       for (const m of moves) {
@@ -734,7 +736,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("all four corners maintain ratio under centered resize", () => {
-      let fSE = { w: 400, h: 300 }, fNE = { w: 400, h: 300 }, fNW = { w: 400, h: 300 }, fSW = { w: 400, h: 300 };
+      let fSE = f(400, 300), fNE = f(400, 300), fNW = f(400, 300), fSW = f(400, 300);
       const moves = [{ dx: 5, dy: 4 }, { dx: 4, dy: 5 }, { dx: 6, dy: 4 }];
       for (const m of moves) {
         fSE = resizeModernFrameFromCenter({ frame: fSE, handle: "se", deltaX: m.dx, deltaY: m.dy, ...opts });
@@ -752,7 +754,7 @@ describe("modern crop one-sided resize", () => {
     const handles = ["e", "w", "n", "s", "ne", "nw", "se", "sw"] as const;
     for (const handle of handles) {
       const result = resizeModernFrameOneSided({
-        frame: { w: 400, h: 300 }, handle, deltaX: 50, deltaY: 30,
+        frame: f(400, 300), handle, deltaX: 50, deltaY: 30,
         viewportWidth: 1200, viewportHeight: 800,
       });
       if (handle.includes("w")) {
@@ -778,7 +780,7 @@ describe("modern crop one-sided resize", () => {
     function topEdge(fh: number) { return (VH - fh) / 2; }
 
     it("E handle: right edge tracks deltaX 1:1", () => {
-      const frame = { w: 400, h: 300 };
+      const frame = f(400, 300);
       const oldEdge = rightEdge(frame.w);
       const result = resizeModernFrameOneSided({
         frame, handle: "e", deltaX: 100, deltaY: 0,
@@ -788,7 +790,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("W handle: left edge tracks deltaX 1:1 (moves left by deltaX)", () => {
-      const frame = { w: 400, h: 300 };
+      const frame = f(400, 300);
       const oldEdge = leftEdge(frame.w);
       const result = resizeModernFrameOneSided({
         frame, handle: "w", deltaX: 100, deltaY: 0,
@@ -798,7 +800,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("S handle: bottom edge tracks deltaY 1:1", () => {
-      const frame = { w: 400, h: 300 };
+      const frame = f(400, 300);
       const oldEdge = bottomEdge(frame.h);
       const result = resizeModernFrameOneSided({
         frame, handle: "s", deltaX: 0, deltaY: 100,
@@ -808,7 +810,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("N handle: top edge tracks deltaY 1:1 (moves up by deltaY)", () => {
-      const frame = { w: 400, h: 300 };
+      const frame = f(400, 300);
       const oldEdge = topEdge(frame.h);
       const result = resizeModernFrameOneSided({
         frame, handle: "n", deltaX: 0, deltaY: 100,
@@ -818,7 +820,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("E handle: also tracks inward (negative delta) at 1:1", () => {
-      const frame = { w: 400, h: 300 };
+      const frame = f(400, 300);
       const oldEdge = rightEdge(frame.w);
       const result = resizeModernFrameOneSided({
         frame, handle: "e", deltaX: -75, deltaY: 0,
@@ -828,7 +830,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("SE corner: both axes track delta 1:1 independently", () => {
-      const frame = { w: 400, h: 300 };
+      const frame = f(400, 300);
       const oldR = rightEdge(frame.w);
       const oldB = bottomEdge(frame.h);
       const result = resizeModernFrameOneSided({
@@ -840,7 +842,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("NW corner: both axes track delta 1:1 (inward)", () => {
-      const frame = { w: 400, h: 300 };
+      const frame = f(400, 300);
       const oldL = leftEdge(frame.w);
       const oldT = topEdge(frame.h);
       const result = resizeModernFrameOneSided({
@@ -852,7 +854,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("NE corner: right edge tracks deltaX, top edge tracks deltaY", () => {
-      const frame = { w: 400, h: 300 };
+      const frame = f(400, 300);
       const oldR = rightEdge(frame.w);
       const oldT = topEdge(frame.h);
       const result = resizeModernFrameOneSided({
@@ -864,7 +866,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("SW corner: left edge tracks deltaX, bottom edge tracks deltaY", () => {
-      const frame = { w: 400, h: 300 };
+      const frame = f(400, 300);
       const oldL = leftEdge(frame.w);
       const oldB = bottomEdge(frame.h);
       const result = resizeModernFrameOneSided({
@@ -880,7 +882,7 @@ describe("modern crop one-sided resize", () => {
       // Each edge delta must equal the total mouse delta accumulated.
       const handles = ["e", "w", "n", "s", "ne", "nw", "se", "sw"] as const;
       for (const handle of handles) {
-        let frame = { w: 400, h: 300 };
+        let frame = f(400, 300);
         const moves: { dx: number; dy: number }[] = [
           { dx: 30, dy: 20 },
           { dx: -10, dy: 5 },
@@ -917,7 +919,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("ratio mode: E handle edge tracks deltaX 1:1 (opposite edge anchored by compensation)", () => {
-      const frame = { w: 400, h: 300 };
+      const frame = f(400, 300);
       const oldEdge = rightEdge(frame.w);
       const result = resizeModernFrameOneSided({
         frame, handle: "e", deltaX: 80, deltaY: 0,
@@ -929,7 +931,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("ratio mode: S handle edge tracks deltaY 1:1", () => {
-      const frame = { w: 400, h: 300 };
+      const frame = f(400, 300);
       const oldEdge = bottomEdge(frame.h);
       const result = resizeModernFrameOneSided({
         frame, handle: "s", deltaX: 0, deltaY: 60,
@@ -943,7 +945,7 @@ describe("modern crop one-sided resize", () => {
 
   describe("edge cases — minimum size and extreme aspect ratios", () => {
     it("resize from minimum 24×24 does not produce NaN or sub-1 dimensions", () => {
-      const frame = { w: 24, h: 24 };
+      const frame = f(24, 24);
       const result = resizeModernFrameOneSided({
         frame, handle: "se", deltaX: 100, deltaY: 80,
         viewportWidth: 1200, viewportHeight: 800,
@@ -955,7 +957,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("resize from minimum 24×24 inward does not crash", () => {
-      const frame = { w: 24, h: 24 };
+      const frame = f(24, 24);
       const result = resizeModernFrameOneSided({
         frame, handle: "se", deltaX: -100, deltaY: -100,
         viewportWidth: 1200, viewportHeight: 800,
@@ -971,7 +973,7 @@ describe("modern crop one-sided resize", () => {
         viewportWidth: 1200, viewportHeight: 800,
         aspect: { w: 100, h: 1 }, cropMode: "ratio" as const,
       };
-      let frame = { w: 200, h: 2 };
+      let frame = f(200, 2);
       const widths: number[] = [200];
       for (let i = 0; i < 5; i++) {
         const result = resizeModernFrameOneSided({
@@ -991,7 +993,7 @@ describe("modern crop one-sided resize", () => {
         viewportWidth: 1200, viewportHeight: 800,
         aspect: { w: 1, h: 100 }, cropMode: "ratio" as const,
       };
-      let frame = { w: 2, h: 200 };
+      let frame = f(2, 200);
       const heights: number[] = [200];
       for (let i = 0; i < 5; i++) {
         const result = resizeModernFrameOneSided({
@@ -1007,7 +1009,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("free mode: extreme resize stays within document bounds (no overflow to NaN)", () => {
-      const frame = { w: 400, h: 300 };
+      const frame = f(400, 300);
       const result = resizeModernFrameOneSided({
         frame, handle: "se", deltaX: 2000, deltaY: 1500,
         viewportWidth: 1200, viewportHeight: 800,
@@ -1019,7 +1021,7 @@ describe("modern crop one-sided resize", () => {
     });
 
     it("free mode: extreme inward resize clamps to minimum", () => {
-      const frame = { w: 400, h: 300 };
+      const frame = f(400, 300);
       const result = resizeModernFrameOneSided({
         frame, handle: "se", deltaX: -500, deltaY: -400,
         viewportWidth: 1200, viewportHeight: 800,

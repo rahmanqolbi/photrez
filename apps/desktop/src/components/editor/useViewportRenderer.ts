@@ -1,5 +1,6 @@
 import { createSignal, createEffect, onMount, onCleanup } from "solid-js";
 import { useEditor } from "./EditorContext";
+import { centerModernCropFrame } from "@/viewport/modernCropGeometry";
 
 interface UseViewportRendererParams {
   getCanvasContainerRef: () => HTMLDivElement | undefined;
@@ -17,6 +18,9 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
     syncViewport,
     setViewportWidth,
     setViewportHeight,
+    modernCropFrame,
+    setModernCropFrame,
+    cropInteractionMode,
   } = useEditor();
 
   const [isFitTransition, setIsFitTransition] = createSignal(false);
@@ -47,6 +51,12 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
     setIsFitTransition(true);
     engine.fitToScreen(rect.width, rect.height);
     syncViewport();
+    if (cropInteractionMode() === "modern") {
+      setModernCropFrame(prev => {
+        if (!prev) return null;
+        return centerModernCropFrame(prev, rect.width, rect.height);
+      });
+    }
     resizeRenderer();
     scheduler.requestRender();
     fitTransitionTimeoutId = window.setTimeout(() => setIsFitTransition(false), 200);

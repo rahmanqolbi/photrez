@@ -118,3 +118,70 @@ Implemented snap to document edges, center, and rule-of-thirds during crop drag-
 - PASS: `pnpm run build`
 - PASS: `npx vitest run` (775 tests, 52 files)
 - PASS: `cargo test -p photrez-core` (85 tests)
+
+---
+
+### [2026-06-10] Viewport-Aware Crop Frame Position [COMPLETE]
+
+**Implementation:**
+1. `ModernCropFrame` interface: `{x,y,w,h}` instead of `{w,h}` — frame position stored explicitly.
+2. `getModernCropFrameScreenRect` returns `{x: frame.x, y: frame.y, ...}` — no fallback centering.
+3. `shiftModernCropFrame(dx, dy)` in `usePanNavigation.ts` — moves frame along with viewport in all 4 pan paths.
+4. `centerModernCropFrame()` helper — recomputes centered x,y from viewport size.
+5. `fitToScreenAndRender` in `useViewportRenderer.ts` — recenters frame after Ctrl+0.
+6. All resize/move/clamp helpers preserve `x,y` from input frame.
+7. Frame literals across 4 source files + 3 test files updated.
+
+### Verification
+- PASS: `npx tsc --noEmit`
+- PASS: `pnpm.cmd run build`
+- PASS: `npx vitest run` (775 tests, 52 files)
+
+---
+
+### [2026-06-10] Bug Fix — Fill Box Stuck + Pan Reset on Crop Entry [COMPLETE]
+
+**Fix 1 — Fill box not following pan:**
+Moved `canvasScreenRect` into a top-level `createMemo` at `CanvasViewport` level (outside `<Show>` render prop). Memo tracks `pan()`, `offsetX/Y`, `rotation`, `docWidth`, `zoom`, `scale`. Guarantees reactive update on pan.
+
+**Fix 2 — Pan reset to center on crop entry:**
+Replaced `setPan({x:0, y:0})` with centering calc:
+```
+panX = (viewportWidth − docWidth × zoom × scale) / 2
+panY = (viewportHeight − docHeight × zoom × scale) / 2
+```
+Applied via `setPan()` + `engine.setViewport()`. Zoom preserved.
+
+### Verification
+- PASS: `pnpm.cmd run build`
+- PASS: `npx vitest run` (775 tests, 52 files)
+
+### [2026-06-10] Bug Fix — Modern Crop Fill BG Panning Lag [COMPLETE]
+
+**Problem:** Modern crop fill background preview (`modernCropFillPreviewStyle`) used viewport-centered coordinates `(viewportWidth - w)/2` instead of actual screen coordinates `frame.x` and `frame.y`, causing the fill preview to be left behind when the viewport was panned/scrolled.
+
+**Solution:** Use `frame.x` and `frame.y` directly in `modernCropFillPreviewStyle`. Added dedicated test coverage verifying positioning correctness.
+
+### Verification
+- PASS: `pnpm run build` (tsc + Vite)
+- PASS: `pnpm --filter photrez-desktop test` (776 tests, 52 files)
+- PASS: `cargo test -p photrez-core` (85 tests)
+
+### [2026-06-10] Feature — Reset Canvas Center on Crop Click Entry [COMPLETE]
+
+**Problem:**
+1. Clicking the canvas when no cropbox exists creates a default cropbox, but did not reset the canvas position/pan to the center, which could leave the newly created cropbox off-center if the viewport was panned before.
+2. In Modern crop mode, drag-to-create committed a frame with coordinates hardcoded to `(0,0)`, making the newly created frame appear at the top-left corner of the viewport while the image content shifted to center, leading to misalignment.
+
+**Solution:**
+1. When creating the default/restored cropbox on canvas click, reset the viewport pan coordinates to center the canvas in the viewport for both Classic and Modern modes.
+2. Set the committed drag-create frame's `x` and `y` coordinates to center-fit in the viewport `x: (vw - w)/2` and `y: (vh - h)/2`, matching the Modern crop layout center pivot.
+
+### Verification
+- PASS: `pnpm run build` (tsc + Vite)
+- PASS: `pnpm --filter photrez-desktop test` (776 tests, 52 files)
+- PASS: `cargo test -p photrez-core` (85 tests)
+
+
+
+

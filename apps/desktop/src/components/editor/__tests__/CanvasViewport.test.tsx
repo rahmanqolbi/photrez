@@ -73,6 +73,7 @@ let setCropInteractionMode: (mode: "modern" | "classic") => void = () => {};
 let getModernImageTransform: () => any = () => ({ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 });
 let setModernImageTransform: (t: any) => void = () => {};
 let getModernFrame: () => any = () => null;
+let setModernFrameState: (frame: any) => void = () => {};
 let resetModernCropState: () => void = () => {};
 let getCropMode: () => string = () => "free";
 let setCropModeState: (mode: any) => void = () => {};
@@ -101,6 +102,7 @@ const TestConsumer = () => {
   getModernImageTransform = editor.modernCropImageTransform;
   setModernImageTransform = editor.setModernCropImageTransform;
   getModernFrame = editor.modernCropFrame;
+  setModernFrameState = editor.setModernCropFrame;
   resetModernCropState = editor.resetModernCrop;
   getCropMode = editor.cropMode;
   setCropModeState = editor.setCropMode;
@@ -221,6 +223,24 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     expect(preview!.style.backgroundColor).toBe("rgb(119, 136, 153)");
   });
 
+  it("positions Modern crop fill preview according to frame.x and frame.y", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("crop");
+    setCropInteractionMode("modern");
+    setCropFillEnabledState(true);
+    setModernFrameState({ x: 120, y: 80, w: 200, h: 150 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const preview = container.querySelector("[data-crop-fill-preview='modern']") as HTMLElement | null;
+    expect(preview).not.toBeNull();
+    expect(preview!.style.left).toBe("120px");
+    expect(preview!.style.top).toBe("80px");
+    expect(preview!.style.width).toBe("200px");
+    expect(preview!.style.height).toBe("150px");
+  });
+
   it("clears the active layer when pasteboard is clicked in Move tool mode", async () => {
     const { session } = renderViewport();
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -296,12 +316,13 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     expect(getCropRotation()).toBe(0);
   });
 
-  it("canvas click in Crop mode with no crop box restores default crop box", async () => {
+  it("canvas click in Crop mode with no crop box restores default crop box and centers viewport", async () => {
     const { session } = renderViewport();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     setTool("crop");
     setCrop(null);
+    session.engine.setViewport({ panX: 100, panY: 150, zoom: 1 });
 
     const canvas = container.querySelector("canvas") as HTMLCanvasElement;
     if (!canvas) throw new Error("Canvas not found");
@@ -313,6 +334,8 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     canvas.dispatchEvent(upEvent);
 
     expect(getCrop()).toEqual({ x: 0, y: 0, w: 800, h: 600 });
+    expect(session.engine.getViewport().panX).toBe(0);
+    expect(session.engine.getViewport().panY).toBe(0);
   });
 
   it("does not clear active layer when paint tools are active", async () => {
@@ -599,14 +622,15 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     }));
   }
 
-  it("creates default frame on canvas click in Modern mode with no frame", async () => {
-    renderViewport();
+  it("creates default frame on canvas click in Modern mode with no frame and centers viewport", async () => {
+    const { session } = renderViewport();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     setTool("crop");
     setCropInteractionMode("modern");
     resetModernCropState();
     expect(getModernFrame()).toBeNull();
+    session.engine.setViewport({ panX: 120, panY: 170, zoom: 1 });
 
     const canvas = container.querySelector("canvas") as HTMLCanvasElement;
     expect(canvas).not.toBeNull();
@@ -624,6 +648,8 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     expect(frame).not.toBeNull();
     expect(frame!.w).toBeGreaterThan(0);
     expect(frame!.h).toBeGreaterThan(0);
+    expect(session.engine.getViewport().panX).toBe(0);
+    expect(session.engine.getViewport().panY).toBe(0);
   });
 
   it("drag below 5px threshold creates default frame on pointerup", async () => {
@@ -685,6 +711,8 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     expect(frame).not.toBeNull();
     // Wider-than-tall drag → frame should be wider than tall
     expect(frame!.w).toBeGreaterThan(frame!.h);
+    expect(frame!.x).toBe((800 - frame!.w) / 2);
+    expect(frame!.y).toBe((600 - frame!.h) / 2);
   });
 
   it("Shift+drag in Free mode creates roughly square frame", async () => {

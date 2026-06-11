@@ -1,6 +1,8 @@
 import { applyCropResizeHandle } from "./cropGeometry";
 
 export interface ModernCropFrame {
+  x: number;
+  y: number;
   w: number;
   h: number;
 }
@@ -35,12 +37,12 @@ export function getProjectedCanvasSize(params: {
 
 export function getModernCropFrameScreenRect(
   frame: ModernCropFrame,
-  viewportWidth: number,
-  viewportHeight: number,
+  _viewportWidth?: number,
+  _viewportHeight?: number,
 ) {
   return {
-    x: (viewportWidth - frame.w) / 2,
-    y: (viewportHeight - frame.h) / 2,
+    x: frame.x,
+    y: frame.y,
     w: frame.w,
     h: frame.h,
   };
@@ -48,13 +50,12 @@ export function getModernCropFrameScreenRect(
 
 export function getModernCropFrameScreenCenter(
   frame: ModernCropFrame,
-  viewportWidth: number,
-  viewportHeight: number,
+  _viewportWidth?: number,
+  _viewportHeight?: number,
 ) {
-  const rect = getModernCropFrameScreenRect(frame, viewportWidth, viewportHeight);
   return {
-    x: rect.x + rect.w / 2,
-    y: rect.y + rect.h / 2,
+    x: frame.x + frame.w / 2,
+    y: frame.y + frame.h / 2,
   };
 }
 
@@ -89,6 +90,8 @@ export function clampFrameToProjectedBounds(
 ): ModernCropFrame {
   const min = minSize ?? 24;
   return {
+    x: frame.x,
+    y: frame.y,
     w: Math.max(min, frame.w),
     h: Math.max(min, frame.h),
   };
@@ -123,7 +126,12 @@ export function getDefaultModernCropFrame(params: {
     w = h * aspect;
   }
 
-  return { w: Math.max(1, w), h: Math.max(1, h) };
+  return { w: Math.max(1, w), h: Math.max(1, h), x: (params.viewportWidth - w) / 2, y: (params.viewportHeight - h) / 2 };
+}
+
+/** Re-center an existing frame in the viewport. */
+export function centerModernCropFrame(frame: ModernCropFrame, viewportWidth: number, viewportHeight: number): ModernCropFrame {
+  return { ...frame, x: (viewportWidth - frame.w) / 2, y: (viewportHeight - frame.h) / 2 };
 }
 
 export function resizeModernFrameFromCenter(params: {
@@ -174,6 +182,8 @@ export function resizeModernFrameFromCenter(params: {
   return {
     w: Math.max(minSize, Math.abs(w)),
     h: Math.max(minSize, Math.abs(h)),
+    x: params.frame.x,
+    y: params.frame.y,
   };
 }
 
@@ -226,7 +236,7 @@ export function resizeModernFrameOneSided(params: {
     const resultCenterX = resized.x + resized.w / 2;
     const resultCenterY = resized.y + resized.h / 2;
     return {
-      frame: { w: newW, h: newH },
+      frame: { x: params.frame.x, y: params.frame.y, w: newW, h: newH },
       compensation: {
         x: params.alt ? 0 : -resultCenterX || 0,
         y: params.alt ? 0 : -resultCenterY || 0,
@@ -270,7 +280,7 @@ export function resizeModernFrameOneSided(params: {
   const actualDh = newH - fh;
 
   return {
-    frame: { w: newW, h: newH },
+    frame: { x: params.frame.x, y: params.frame.y, w: newW, h: newH },
     compensation: {
       x: params.alt ? 0 : (params.handle.includes("w") ? actualDw : -actualDw) / 2 || 0,
       y: params.alt ? 0 : (params.handle.includes("n") ? actualDh : -actualDh) / 2 || 0,

@@ -1,5 +1,37 @@
 # AI History — Photrez
 
+## [2026-06-10] FEATURE — Modern Crop Drag Centering and Viewport Reset on Click [COMPLETE]
+
+### Kategori: FEATURE / CROP / VIEWPORT / UX
+
+**User Goal:**
+1. Clicking the canvas in Crop mode when no cropbox exists should center the viewport, reset image offset adjustments, and create a centered default or restored crop frame.
+2. Drag-to-create crop frames in Modern mode should be positioned accurately (centered in the viewport) instead of hardcoding coordinates to `(0,0)` (which aligned the frame to the top-left of the viewport).
+
+**Implementation:**
+1. `useCanvasPointerTools.ts` — destructured `setPan` from the editor context.
+2. In Classic and Modern crop mode click fallback (inside `onCanvasPointerUp`), added pan centering logic:
+   - Resets viewport coordinates to place the document center exactly in the center of the viewport.
+   - For Modern crop, also resets `modernCropImageTransform` offsets (`offsetX`, `offsetY`, `rotation: 0`, `scale: 1`).
+3. In Modern `commitDragCreateFrame`, positioned the newly created frame at `x: (vw - clamped.w) / 2, y: (vh - clamped.h) / 2` to match the viewport center, rather than hardcoding it to `(0,0)`.
+4. `CanvasViewport.test.tsx` — updated Classic and Modern crop click-to-create frame tests to set a non-zero viewport pan before click and assert that the viewport gets panned back to `(0,0)` (centered position) after the click. Also added centering assertions to the drag-create aspect test.
+
+---
+
+## [2026-06-10] BUG FIX — Modern Crop Fill BG Panning Lag [COMPLETE]
+
+### Kategori: BUG FIX / CROP / FRONTEND / UI
+
+**Root Cause:** In Modern Crop mode, the viewport-aware crop frame's position (`frame.x` and `frame.y`) shifts on viewport panning/scrolling. However, `modernCropFillPreviewStyle` positioned the fill background using hardcoded viewport-centered math `(viewportWidth - frame.w) / 2` and `(viewportHeight - frame.h) / 2`, causing the fill background to remain static and lag/be left behind during pan.
+
+**Fix Rationale:** Position `modernCropFillPreviewStyle` directly using the crop frame's actual coordinates (`frame.x` and `frame.y`) to ensure it always moves with the frame.
+
+**Rincian Perubahan:**
+1. `CanvasViewport.tsx` — updated `modernCropFillPreviewStyle` CSS positioning to use `frame.x` and `frame.y` instead of hardcoded center offsets.
+2. `CanvasViewport.test.tsx` — bound `setModernFrameState` inside `TestConsumer` and added a unit test verifying positioning accuracy of the modern crop fill preview on frame movement.
+
+---
+
 ## [2026-06-10] FEATURE — Smart Guides (Crop Classic) [COMPLETE]
 
 ### Kategori: FEATURE / CROP / UX / SNAP
@@ -2152,6 +2184,71 @@ Visual feedback ditingkatkan agar lebih jelas:
 - ✅ `pnpm.cmd run build`: PASS (TypeScript + Vite)
 - ✅ `npx vitest run`: 182 PASS (17 files)
 - ✅ `cargo test -p photrez-core`: 85/85 PASS (via pre-commit hook)
+
+## [2026-06-10] FEATURE — Viewport-Aware Modern Crop Frame Position [COMPLETE]
+
+### Kategori: FEATURE / CROP / VIEWPORT / UX
+
+**User Goal:** When user performs viewport actions (scroll, pan, zoom, momentum), the Modern crop frame should move along with the viewport instead of staying fixed at center. Cancel/reset restores frame to centered position.
+
+**Design:** `docs/superpowers/specs/2026-06-10-viewport-crop-frame-position-design.md`
+
+**Implementation:**
+1. `ModernCropFrame` interface changed from `{w,h}` to `{x,y,w,h}` (required fields) — frame position is now stored explicitly rather than derived from viewport center.
+2. `getModernCropFrameScreenRect` no longer centers frame — returns `{x: frame.x, y: frame.y, w: frame.w, h: frame.h}` directly.
+3. `getDefaultModernCropFrame` returns centered `{x,y,w,h}`.
+4. `centerModernCropFrame()` helper added — recomputes centered x,y from viewport size.
+5. `clampFrameToProjectedBounds` preserves `x,y` from input.
+6. `resizeModernFrameFromCenter` and `resizeModernFrameOneSided` return `{x,y,w,h}` (x,y passed through).
+7. `shiftModernCropFrame(dx, dy)` added to `usePanNavigation.ts` — called in all 4 pan paths (scroll, shift+scroll, space+drag, momentum) to move frame position along with viewport.
+8. `fitToScreenAndRender` in `useViewportRenderer.ts` recenters frame after fit-to-screen (Ctrl+0).
+9. Space+drag handler uses `actualDx/Dy` (engine viewport delta after `setViewport`) to account for potential clamping.
+10. `modernCropState.ts` imports `ModernCropFrame`/`ModernCropImageTransform` from `modernCropGeometry.ts` (removed local duplicates).
+11. All frame literals across 4 source files + 3 test files updated to include `x,y`.
+12. Canvas Expansion visual indicator entry already in history above.
+13. Engine test for non-fill directional expansion: `applyCrop(-25,-30,150,160)` on 100×100 doc.
+
+**Still pending:**
+- Zoom handler (Ctrl+scroll, Ctrl+=/-) does not adjust frame position yet.
+
+### Verification
+- PASS: `npx tsc --noEmit` (no type errors)
+- PASS: `pnpm.cmd run build` (tsc + Vite)
+- PASS: `npx vitest run` (775 tests, 52 files)
+
+---
+
+## [2026-06-10] BUG FIX — Fill Box Stuck + Pan Reset on Crop Entry [COMPLETE]
+
+### Kategori: BUG FIX / CROP / VIEWPORT / UX
+
+**User Goal:**
+1. Canvas expansion fill indicator (dashed canvas boundary + subtle fill) must move with viewport during pan.
+2. On entering Crop tool, document + crop frame must be centered, not at top-left corner.
+
+**Root Cause 1 — Fill box not reactive:**
+`canvasScreenRect` was computed inline inside a `<Show>` render prop function. SolidJS's `Show` component creates a memo for the `when` condition, but inline signal accesses inside the children function may not reliably propagate to the template when the `when` condition stays truthy. `pan()` changes during scroll/pan were not triggering re-render of the expansion fill/dashed rect.
+
+**Fix 1:** Moved `canvasScreenRect` into a top-level `createMemo` at the `CanvasViewport` component level, outside any `Show` render prop. The memo tracks `pan()`, `offsetX/Y`, `rotation`, `docWidth`, `zoom`, and `scale`. When any dependency changes, the memo re-evaluates and the new value is passed directly as a prop to `ModernCropOverlay`.
+
+**Root Cause 2 — Pan reset to (0,0) not centering:**
+Setting `pan = {x: 0, y: 0}` positions the document's top-left at the viewport's top-left corner, not center.
+
+**Fix 2:** On Modern crop session entry (new session key), compute the correct centering pan:
+```
+panX = (viewportWidth − docWidth × zoom × scale) / 2
+panY = (viewportHeight − docHeight × zoom × scale) / 2
+```
+Applied via both `setPan()` signal and `engine.setViewport()`. Zoom is preserved.
+
+**Files Changed:**
+- `CanvasViewport.tsx` — added `canvasScreenRect` memo, `setPan` destructuring, centering pan calc in session key effect, replaced inline `canvasScreenRect` with memo
+
+### Verification
+- PASS: `pnpm.cmd run build`
+- PASS: `npx vitest run` (775 tests, 52 files)
+
+---
 
 > Dokumen ini mencatat SEMUA perubahan signifikan yang dibuat oleh AI.
 > Urutan: terbaru di atas. Jangan hapus entri lama — hanya tambahkan di atas.

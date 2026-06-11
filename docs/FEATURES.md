@@ -72,7 +72,7 @@
 | ✅ DONE      | Resize canvas dialog + aspect ratio lock toggle |
 | ✅ DONE      | Crop overlay/guide UI                      |
 | ✅ DONE      | Interactive crop option bar (mode dropdown, editable ratio/size, guide overlay selector, delete toggle, swap W/H, reset/apply/cancel) |
-| ✅ DONE      | Crop Fill BG — defaults to editor Background Color, supports crop-local custom color override, previews fill in Modern/Classic crop, and bakes fill into empty crop output areas on apply |
+| ✅ DONE      | Crop Fill BG — defaults to editor Background Color, supports crop-local custom color override, previews fill in Modern/Classic crop (with viewport panning support in both modes), and bakes fill into empty crop output areas on apply |
 | ✅ DONE      | Crop box resize reactivity (overlay updates live during drag) |
 | ✅ DONE      | Crop snapping — canvas edges/centers + layer edges (Smart Guides, Alt disables) |
 | ✅ DONE      | Crop rotation — rotatable crop boundaries with screen-aligned visual box (canvas rotates behind), dynamic cursor, snap to 15° with Shift, angle readout, layer offset/rotation update, and local-axis resize after rotation |
@@ -96,7 +96,7 @@
 | ✅ DONE      | Modern mode frame can exceed canvas bounds — `clampFrameToProjectedBounds` no longer caps at projected canvas size. Frame dimensions from viewport selection preserved (min size enforced). Enables canvas expansion workflow |
 | ✅ DONE      | Modern mode drag-create clears existing frame — frame removed once drag exceeds threshold, providing clear visual feedback that a new crop is being created |
 | ✅ DONE      | Canvas Expansion — Directional expansion when crop frame > canvas. Auto-trigger, expand on apply. Engine handles negative x/y crop rects (+ fill bg). Visual indicator: dashed canvas boundary + subtle expansion fill in frame overlay. Tested with fill/transparent expansion |
-
+| ✅ DONE      | Viewport-Aware Crop Frame Position — Modern crop frame moves along with viewport during scroll, pan, shift+scroll, space+drag, and momentum. Frame position stored explicitly in `{x,y,w,h}`. Reset via fit-to-screen recenters frame. Cancel/reset restores centered position |
 
 ---
 

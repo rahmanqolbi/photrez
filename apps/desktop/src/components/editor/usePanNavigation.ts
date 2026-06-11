@@ -7,7 +7,16 @@ interface PanNavigationOptions {
 }
 
 export function usePanNavigation(options: PanNavigationOptions) {
-  const { workspace, scheduler, syncViewport } = useEditor();
+  const { workspace, scheduler, syncViewport, modernCropFrame, setModernCropFrame, cropInteractionMode } = useEditor();
+
+  /** When panning in Modern crop mode, shift the frame along with the viewport. */
+  function shiftModernCropFrame(dx: number, dy: number) {
+    if (cropInteractionMode() !== "modern") return;
+    setModernCropFrame(prev => {
+      if (!prev) return null;
+      return { ...prev, x: prev.x + dx, y: prev.y + dy };
+    });
+  }
 
   const [isSpacePressed, setIsSpacePressed] = createSignal(false);
   const [isPanning, setIsPanning] = createSignal(false);
@@ -44,6 +53,7 @@ export function usePanNavigation(options: PanNavigationOptions) {
       }
 
       engine.pan(momentumVelocity.x, momentumVelocity.y);
+      shiftModernCropFrame(momentumVelocity.x, momentumVelocity.y);
       syncViewport();
       scheduler.requestRender();
 
@@ -76,8 +86,10 @@ export function usePanNavigation(options: PanNavigationOptions) {
       // Holding Shift scrolls horizontal, normal scrolls vertical
       if (e.shiftKey) {
         engine.pan(-e.deltaY, 0);
+        shiftModernCropFrame(-e.deltaY, 0);
       } else {
         engine.pan(-e.deltaX, -e.deltaY);
+        shiftModernCropFrame(-e.deltaX, -e.deltaY);
       }
       syncViewport();
       scheduler.requestRender();
@@ -114,10 +126,15 @@ export function usePanNavigation(options: PanNavigationOptions) {
 
     const dx = e.clientX - panDragStart.clientX;
     const dy = e.clientY - panDragStart.clientY;
+    const prevPanX = engine.getViewport().panX;
+    const prevPanY = engine.getViewport().panY;
     engine.setViewport({
       panX: panDragStart.panX + dx,
       panY: panDragStart.panY + dy,
     });
+    const actualDx = engine.getViewport().panX - prevPanX;
+    const actualDy = engine.getViewport().panY - prevPanY;
+    shiftModernCropFrame(actualDx, actualDy);
     syncViewport();
     scheduler.requestRender();
 

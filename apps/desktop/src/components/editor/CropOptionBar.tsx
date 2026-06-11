@@ -126,9 +126,9 @@ export function CropOptionBar() {
 
   const fitFrameToMaxBounds = (w: number, h: number) => {
     const max = maxModernFrame();
-    if (w <= max.w && h <= max.h) return { w, h };
+    if (w <= max.w && h <= max.h) return { x: 0, y: 0, w, h };
     const scale = Math.min(max.w / w, max.h / h);
-    return { w: w * scale, h: h * scale };
+    return { x: 0, y: 0, w: w * scale, h: h * scale };
   };
 
   const setModernFrameToAspect = (aspect: { w: number; h: number }) => {

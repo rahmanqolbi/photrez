@@ -60,6 +60,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     setBgColor,
     zoom,
     pan,
+    setPan,
     cropRect,
     cropMode,
     cropAspect,
@@ -485,7 +486,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
           e.shiftKey,
         );
       } else if (!modernCropFrame()) {
-        // Click behavior — create default frame
+        // Click behavior — create default frame and reset canvas position to center
         const mode = cropMode();
         const ratioAspect = cropAspect();
         const sizeTarget = cropSizeTarget();
@@ -494,6 +495,17 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
           : mode === "size" && sizeTarget && sizeTarget.w > 0 && sizeTarget.h > 0
             ? { w: sizeTarget.w, h: sizeTarget.h }
             : null;
+
+        const scale = 1;
+        const centerPanX = (viewportWidth() - docWidth() * zoom() * scale) / 2;
+        const centerPanY = (viewportHeight() - docHeight() * zoom() * scale) / 2;
+        setPan({ x: centerPanX, y: centerPanY });
+        setModernCropImageTransform({ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 });
+        const engine = workspace.getActiveEngine();
+        if (engine) {
+          engine.setViewport({ panX: centerPanX, panY: centerPanY, zoom: zoom() });
+        }
+
         setModernCropFrame(getDefaultModernCropFrame({
           viewportWidth: viewportWidth(),
           viewportHeight: viewportHeight(),
@@ -512,6 +524,12 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       const dx = Math.abs(coords.x - interactiveState.dragStart.x);
       const dy = Math.abs(coords.y - interactiveState.dragStart.y);
       if (dx <= 2 && dy <= 2) {
+        // Reset canvas position to center
+        const centerPanX = (viewportWidth() - docWidth() * zoom()) / 2;
+        const centerPanY = (viewportHeight() - docHeight() * zoom()) / 2;
+        setPan({ x: centerPanX, y: centerPanY });
+        engine.setViewport({ panX: centerPanX, panY: centerPanY, zoom: zoom() });
+
         const restored = restoreHiddenCropPreview({
           cropRect,
           cropRotation,
@@ -582,11 +600,17 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       zoom: zoom(),
     });
 
-    const frame = clampFrameToProjectedBounds(
-      { w: frameW, h: frameH },
+    const clamped = clampFrameToProjectedBounds(
+      { x: 0, y: 0, w: frameW, h: frameH },
       projected,
       MIN_CROP_SIZE,
     );
+
+    const frame = {
+      ...clamped,
+      x: (vw - clamped.w) / 2,
+      y: (vh - clamped.h) / 2,
+    };
 
     setModernCropFrame(frame);
 
