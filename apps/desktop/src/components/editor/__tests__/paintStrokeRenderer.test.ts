@@ -465,6 +465,36 @@ describe("renderPaintStrokeToContext", () => {
     expect(alphaAt(40, 40)).toBeGreaterThan(110);
   });
 
+  it("limits soft stroke image data work to the stroke bounds", () => {
+    const imageData = createImageDataMock(22, 22);
+    const ctx = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      globalCompositeOperation: "",
+      globalAlpha: 1,
+      canvas: { width: 500, height: 500 },
+      getImageData: vi.fn(() => imageData),
+      putImageData: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      arc: vi.fn(),
+      fill: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+
+    renderPaintStrokeToContext(
+      ctx,
+      [{ x: 50, y: 50 }],
+      { size: 20, hardness: 0, opacity: 1, flow: 1, smoothing: 0 },
+      "#ff0000",
+      false,
+    );
+
+    expect(ctx.getImageData).toHaveBeenCalledWith(39, 39, 22, 22);
+    expect(ctx.putImageData).toHaveBeenCalledWith(imageData, 39, 39);
+  });
+
   it("restores context after drawing", () => {
     const ctx = {
       save: vi.fn(),
