@@ -1,5 +1,60 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildStrokeDabs, getDabSpacing, renderPaintStrokeToContext, colorToRgbString } from "../paintStrokeRenderer";
+import {
+  buildStrokeDabs,
+  getDabSpacing,
+  renderPaintStrokeToContext,
+  colorToRgbString,
+  brushAlphaAtDistance,
+  distanceToSegment,
+  smoothstep01,
+} from "../paintStrokeRenderer";
+
+describe("brush hardness falloff", () => {
+  it("maps smoothstep from 0 to 1", () => {
+    expect(smoothstep01(-1)).toBe(0);
+    expect(smoothstep01(0)).toBe(0);
+    expect(smoothstep01(1)).toBe(1);
+    expect(smoothstep01(2)).toBe(1);
+    expect(smoothstep01(0.5)).toBeCloseTo(0.5, 5);
+  });
+
+  it("feathers the entire radius when hardness is 0", () => {
+    const radius = 50;
+    expect(brushAlphaAtDistance(0, radius, 0)).toBe(1);
+    expect(brushAlphaAtDistance(25, radius, 0)).toBeCloseTo(0.5, 5);
+    expect(brushAlphaAtDistance(49, radius, 0)).toBeGreaterThan(0);
+    expect(brushAlphaAtDistance(50, radius, 0)).toBe(0);
+  });
+
+  it("keeps a solid center up to the hardness radius", () => {
+    const radius = 50;
+    expect(brushAlphaAtDistance(24, radius, 0.5)).toBe(1);
+    expect(brushAlphaAtDistance(25, radius, 0.5)).toBe(1);
+    expect(brushAlphaAtDistance(37.5, radius, 0.5)).toBeCloseTo(0.5, 5);
+    expect(brushAlphaAtDistance(50, radius, 0.5)).toBe(0);
+  });
+
+  it("is solid until the outer edge when hardness is 1", () => {
+    const radius = 50;
+    expect(brushAlphaAtDistance(0, radius, 1)).toBe(1);
+    expect(brushAlphaAtDistance(49.9, radius, 1)).toBe(1);
+    expect(brushAlphaAtDistance(50, radius, 1)).toBe(0);
+  });
+});
+
+describe("distanceToSegment", () => {
+  it("measures perpendicular distance to a horizontal segment", () => {
+    expect(distanceToSegment(5, 3, 0, 0, 10, 0)).toBeCloseTo(3, 5);
+  });
+
+  it("measures distance to the nearest endpoint outside a segment", () => {
+    expect(distanceToSegment(13, 4, 0, 0, 10, 0)).toBeCloseTo(5, 5);
+  });
+
+  it("handles zero-length segments as points", () => {
+    expect(distanceToSegment(3, 4, 0, 0, 0, 0)).toBeCloseTo(5, 5);
+  });
+});
 
 describe("colorToRgbString", () => {
   it("parses 6-digit hex color", () => {
@@ -119,8 +174,10 @@ describe("renderPaintStrokeToContext", () => {
       restore: vi.fn(),
       globalCompositeOperation: "",
       globalAlpha: 1,
-      fillStyle: "",
       beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
@@ -136,8 +193,10 @@ describe("renderPaintStrokeToContext", () => {
       restore: vi.fn(),
       globalCompositeOperation: "",
       globalAlpha: 1,
-      fillStyle: "",
       beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
@@ -154,8 +213,10 @@ describe("renderPaintStrokeToContext", () => {
       restore: vi.fn(),
       globalCompositeOperation: "",
       globalAlpha: 1,
-      fillStyle: "",
       beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
@@ -165,113 +226,91 @@ describe("renderPaintStrokeToContext", () => {
     expect(ctx.globalCompositeOperation).toBe("source-over");
   });
 
-  it("uses solid fill when hardness is 1", () => {
-    const createRadialGradient = vi.fn();
+  it("uses solid line when hardness is 1", () => {
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),
       globalCompositeOperation: "",
       globalAlpha: 1,
-      fillStyle: "",
-      createRadialGradient,
+      strokeStyle: "",
+      lineWidth: 0,
       beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
 
-    renderPaintStrokeToContext(ctx, [{ x: 50, y: 50 }], { size: 20, hardness: 1, opacity: 1, flow: 1, smoothing: 0 }, "#ff0000", false);
+    renderPaintStrokeToContext(ctx, [{ x: 50, y: 50 }, { x: 100, y: 50 }], { size: 20, hardness: 1, opacity: 1, flow: 1, smoothing: 0 }, "#ff0000", false);
 
-    expect(createRadialGradient).not.toHaveBeenCalled();
-    expect(ctx.fillStyle).toBe("#ff0000");
+    expect(ctx.strokeStyle).toBe("#ff0000");
+    expect(ctx.lineWidth).toBe(20);
+    expect(ctx.moveTo).toHaveBeenCalledWith(50, 50);
+    expect(ctx.lineTo).toHaveBeenCalledWith(100, 50);
+    expect(ctx.stroke).toHaveBeenCalled();
   });
 
-  it("uses gradient fill when hardness is less than 1", () => {
-    const gradientMock = { addColorStop: vi.fn() };
-    const createRadialGradient = vi.fn(() => gradientMock);
+  it("uses shadow offset when hardness is less than 1", () => {
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),
       globalCompositeOperation: "",
       globalAlpha: 1,
-      fillStyle: "",
-      createRadialGradient,
+      strokeStyle: "",
+      lineWidth: 0,
+      shadowColor: "",
+      shadowBlur: 0,
+      shadowOffsetX: 0,
+      shadowOffsetY: 0,
       beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
 
-    renderPaintStrokeToContext(ctx, [{ x: 50, y: 50 }], { size: 20, hardness: 0.5, opacity: 1, flow: 1, smoothing: 0 }, "#ff0000", false);
+    renderPaintStrokeToContext(ctx, [{ x: 50, y: 50 }, { x: 100, y: 50 }], { size: 20, hardness: 0.5, opacity: 1, flow: 1, smoothing: 0 }, "#ff0000", false);
 
-    expect(createRadialGradient).toHaveBeenCalledTimes(1);
-    expect(gradientMock.addColorStop).toHaveBeenCalledWith(0, "#ff0000");
-    expect(gradientMock.addColorStop).toHaveBeenCalledWith(0.5, "#ff0000");
-    expect(gradientMock.addColorStop).toHaveBeenCalledWith(1, "rgba(255,0,0,0)");
+    expect(ctx.shadowColor).toBe("#ff0000");
+    expect(ctx.shadowBlur).toBe(2); // size 20 * 0.2 * 0.5 = 2
+    expect(ctx.shadowOffsetX).toBe(20000);
+    expect(ctx.lineWidth).toBe(14); // coreWidth = 20 * (0.4 + 0.6 * 0.5) = 14
+    expect(ctx.moveTo).toHaveBeenCalledWith(-20000 + 50, 50);
+    expect(ctx.lineTo).toHaveBeenCalledWith(-20000 + 100, 50);
+    expect(ctx.stroke).toHaveBeenCalled();
   });
 
-  it("uses gradient with hardness=0 gradient from start", () => {
-    const gradientMock = { addColorStop: vi.fn() };
-    const createRadialGradient = vi.fn(() => gradientMock);
+  it("sets core width and blur when hardness is 0", () => {
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),
       globalCompositeOperation: "",
       globalAlpha: 1,
-      fillStyle: "",
-      createRadialGradient,
+      strokeStyle: "",
+      lineWidth: 0,
+      shadowColor: "",
+      shadowBlur: 0,
+      shadowOffsetX: 0,
+      shadowOffsetY: 0,
       beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
 
-    renderPaintStrokeToContext(ctx, [{ x: 50, y: 50 }], { size: 20, hardness: 0, opacity: 1, flow: 1, smoothing: 0 }, "#00ff00", false);
+    renderPaintStrokeToContext(ctx, [{ x: 50, y: 50 }, { x: 100, y: 50 }], { size: 20, hardness: 0, opacity: 1, flow: 1, smoothing: 0 }, "#00ff00", false);
 
-    expect(createRadialGradient).toHaveBeenCalledTimes(1);
-    expect(gradientMock.addColorStop).toHaveBeenCalledWith(0, "#00ff00");
-    expect(gradientMock.addColorStop).toHaveBeenCalledWith(0, "#00ff00");
-    expect(gradientMock.addColorStop).toHaveBeenCalledWith(1, "rgba(0,255,0,0)");
+    expect(ctx.shadowColor).toBe("#00ff00");
+    expect(ctx.shadowBlur).toBe(4); // size 20 * 0.2 * 1 = 4
+    expect(ctx.lineWidth).toBe(8); // coreWidth = 20 * 0.4 = 8
+    expect(ctx.stroke).toHaveBeenCalled();
   });
 
-  it("uses correct transparent outer stop for blue hex color", () => {
-    const gradientMock = { addColorStop: vi.fn() };
-    const createRadialGradient = vi.fn(() => gradientMock);
-    const ctx = {
-      save: vi.fn(),
-      restore: vi.fn(),
-      globalCompositeOperation: "",
-      globalAlpha: 1,
-      fillStyle: "",
-      createRadialGradient,
-      beginPath: vi.fn(),
-      arc: vi.fn(),
-      fill: vi.fn(),
-    } as unknown as CanvasRenderingContext2D;
-
-    renderPaintStrokeToContext(ctx, [{ x: 50, y: 50 }], { size: 20, hardness: 0.5, opacity: 1, flow: 1, smoothing: 0 }, "#0000ff", false);
-
-    expect(gradientMock.addColorStop).toHaveBeenCalledWith(1, "rgba(0,0,255,0)");
-  });
-
-  it("uses correct transparent outer stop for rgba eraser color (black)", () => {
-    const gradientMock = { addColorStop: vi.fn() };
-    const createRadialGradient = vi.fn(() => gradientMock);
-    const ctx = {
-      save: vi.fn(),
-      restore: vi.fn(),
-      globalCompositeOperation: "",
-      globalAlpha: 1,
-      fillStyle: "",
-      createRadialGradient,
-      beginPath: vi.fn(),
-      arc: vi.fn(),
-      fill: vi.fn(),
-    } as unknown as CanvasRenderingContext2D;
-
-    renderPaintStrokeToContext(ctx, [{ x: 50, y: 50 }], { size: 20, hardness: 0.5, opacity: 1, flow: 1, smoothing: 0 }, "rgba(0,0,0,1)", false);
-
-    expect(gradientMock.addColorStop).toHaveBeenCalledWith(1, "rgba(0,0,0,0)");
-  });
-
-  it("draws an arc per dab with correct radius", () => {
+  it("draws a single dot using arc for 1-point stroke (hardness=1)", () => {
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),
@@ -279,6 +318,9 @@ describe("renderPaintStrokeToContext", () => {
       globalAlpha: 1,
       fillStyle: "",
       beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
@@ -286,26 +328,36 @@ describe("renderPaintStrokeToContext", () => {
     renderPaintStrokeToContext(ctx, [{ x: 100, y: 200 }], { size: 50, hardness: 1, opacity: 0.5, flow: 1, smoothing: 0 }, "#ff0000", false);
 
     expect(ctx.arc).toHaveBeenCalledWith(100, 200, 25, 0, Math.PI * 2);
-    expect(ctx.globalAlpha).toBe(0.5);
+    expect(ctx.fillStyle).toBe("#ff0000");
     expect(ctx.fill).toHaveBeenCalledTimes(1);
+    expect(ctx.stroke).not.toHaveBeenCalled();
   });
 
-  it("draws multiple dabs for multi-point stroke", () => {
+  it("draws a single dot using arc with offset for 1-point stroke (hardness=0.5)", () => {
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),
       globalCompositeOperation: "",
       globalAlpha: 1,
       fillStyle: "",
+      shadowColor: "",
+      shadowBlur: 0,
+      shadowOffsetX: 0,
+      shadowOffsetY: 0,
       beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
-      createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
     } as unknown as CanvasRenderingContext2D;
 
-    renderPaintStrokeToContext(ctx, [{ x: 0, y: 0 }, { x: 10, y: 0 }], { size: 10, hardness: 0.8, opacity: 1, flow: 1, smoothing: 0 }, "#ff0000", false);
+    renderPaintStrokeToContext(ctx, [{ x: 100, y: 200 }], { size: 50, hardness: 0.5, opacity: 0.5, flow: 1, smoothing: 0 }, "#ff0000", false);
 
-    expect(ctx.arc).toHaveBeenCalledTimes(buildStrokeDabs([{ x: 0, y: 0 }, { x: 10, y: 0 }], 10).length);
+    expect(ctx.arc).toHaveBeenCalledWith(-20000 + 100, 200, 17.5, 0, Math.PI * 2); // coreWidth is 50 * 0.7 = 35, radius is 17.5
+    expect(ctx.fillStyle).toBe("#ff0000");
+    expect(ctx.fill).toHaveBeenCalledTimes(1);
+    expect(ctx.stroke).not.toHaveBeenCalled();
   });
 
   it("applies flow multiplier to globalAlpha", () => {
@@ -314,8 +366,10 @@ describe("renderPaintStrokeToContext", () => {
       restore: vi.fn(),
       globalCompositeOperation: "",
       globalAlpha: 1,
-      fillStyle: "",
       beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
@@ -337,8 +391,10 @@ describe("renderPaintStrokeToContext", () => {
       restore: vi.fn(),
       globalCompositeOperation: "",
       globalAlpha: 1,
-      fillStyle: "",
       beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
