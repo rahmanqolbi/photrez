@@ -207,8 +207,8 @@ export function resizeModernFrameOneSided(params: {
   const fh = params.frame.h;
 
   const isCorner = ["nw", "ne", "se", "sw"].includes(params.handle);
-  const effDx = params.deltaX * 2;
-  const effDy = params.deltaY * 2;
+  const effDx = params.deltaX;
+  const effDy = params.deltaY;
   let dw = 0;
   let dh = 0;
 
