@@ -42,6 +42,68 @@ export function CropOptionBar() {
   } = useEditor();
 
   const [showCustomRatio, setShowCustomRatio] = createSignal(false);
+  const [recentRatios, setRecentRatios] = createSignal<{ w: number; h: number }[]>([]);
+  const [showRatiosDropdown, setShowRatiosDropdown] = createSignal(false);
+
+  const handleLockCurrentShape = () => {
+    const rect = cropRect();
+    if (rect && rect.w > 0 && rect.h > 0) {
+      const w = Math.round(rect.w);
+      const h = Math.round(rect.h);
+      setCropMode("ratio");
+      setCropAspect({ w, h });
+      setCropFrameToAspect({ w, h });
+      pushRecentRatio(w, h);
+    }
+  };
+
+  const pushRecentRatio = (w: number, h: number) => {
+    setRecentRatios((prev) => {
+      const next = prev.filter((r) => !(r.w === w && r.h === h));
+      return [{ w, h }, ...next].slice(0, 3);
+    });
+  };
+
+  const handleSwap = () => {
+    if (cropMode() === "ratio" && cropAspect()) {
+      const nextAspect = { w: cropAspect()!.h, h: cropAspect()!.w };
+      setCropAspect(nextAspect);
+      setCropFrameToAspect(nextAspect);
+      const cw = customWVal(), ch = customHVal();
+      setCustomWVal(ch);
+      setCustomHVal(cw);
+    } else if (cropMode() === "size" && cropSizeTarget()) {
+      const nextTarget = { w: cropSizeTarget()!.h, h: cropSizeTarget()!.w };
+      setCropSizeTarget(nextTarget);
+      const sw = sizeWVal(), sh = sizeHVal();
+      setSizeWVal(sh);
+      setSizeHVal(sw);
+      if (cropInteractionMode() === "modern") {
+        setModernFrameToAspect({ w: nextTarget.w, h: nextTarget.h });
+      } else if (cropRect()) {
+        setCropRect(fitCropRectToAspect(nextTarget, docWidth(), docHeight(), cropRotation()));
+      }
+    } else {
+      if (cropInteractionMode() === "modern" && modernCropFrame()) {
+        const fitted = fitFrameToMaxBounds(modernCropFrame()!.h, modernCropFrame()!.w);
+        setModernCropFrame(fitted);
+      } else {
+        const rect = cropRect();
+        if (rect) {
+          const cx = rect.x + rect.w / 2;
+          const cy = rect.y + rect.h / 2;
+          const nw = rect.h;
+          const nh = rect.w;
+          setCropRect({
+            x: cx - nw / 2,
+            y: cy - nh / 2,
+            w: nw,
+            h: nh
+          });
+        }
+      }
+    }
+  };
 
   const [customWVal, setCustomWVal] = createSignal(16);
   const [customHVal, setCustomHVal] = createSignal(9);
@@ -68,23 +130,38 @@ export function CropOptionBar() {
     },
   ));
 
+  createEffect(() => {
+    const aspect = cropAspect();
+    if (aspect) {
+      untrack(() => {
+        setCustomWVal(aspect.w);
+        setCustomHVal(aspect.h);
+      });
+    }
+  });
+
+  const isCustomActive = () => {
+    if (cropMode() !== "ratio") return false;
+    const aspect = cropAspect();
+    if (!aspect) return false;
+    return !CROP_PRESETS.some(
+      (p) => p.aspect.w === aspect.w && p.aspect.h === aspect.h
+    );
+  };
+
   const isActivePill = (preset: { w: number; h: number }) => {
     if (cropMode() !== "ratio") return false;
     const a = cropAspect();
     return a?.w === preset.w && a?.h === preset.h;
   };
 
-  const isCustomActive = () => cropMode() === "ratio" && showCustomRatio();
-
   const handlePillClick = (preset: { w: number; h: number }) => {
-    setShowCustomRatio(false);
     setCropMode("ratio");
     setCropAspect({ w: preset.w, h: preset.h });
     setCropFrameToAspect(preset);
   };
 
   const handleFreeClick = () => {
-    setShowCustomRatio(false);
     setCropMode("free");
     if (cropInteractionMode() === "modern" && modernCropFrame()) {
       setModernCropFrame(fitFrameToMaxBounds(modernCropFrame()!.w, modernCropFrame()!.h));
@@ -92,7 +169,6 @@ export function CropOptionBar() {
   };
 
   const handleSizeModeClick = () => {
-    setShowCustomRatio(false);
     setCropMode("size");
     const target = cropSizeTarget() ?? { w: 800, h: 600 };
     setCropSizeTarget(target);
@@ -111,6 +187,18 @@ export function CropOptionBar() {
          : g === "diagonal" ? "Diagonal"
          : g === "golden" ? "Golden"
          : "None";
+  };
+
+  const currentRatioLabel = () => {
+    if (cropMode() === "free") return "Free";
+    if (cropMode() === "size") return "Size";
+    const aspect = cropAspect();
+    if (!aspect) return "Free";
+    const preset = CROP_PRESETS.find(
+      (p) => p.aspect.w === aspect.w && p.aspect.h === aspect.h
+    );
+    if (preset) return preset.label;
+    return `${aspect.w}:${aspect.h}`;
   };
 
   const unitLabel = () => cropSizeUnit();
@@ -223,68 +311,120 @@ export function CropOptionBar() {
 
       <Divider />
 
-      {/* Mode Toggle (always visible) */}
-      <div class="flex shrink-0 items-center gap-0.5 overflow-x-auto">
+      {/* Aspect Ratio Dropdown */}
+      <div class="relative">
         <button
-          onClick={handleFreeClick}
-          class={`flex h-[24px] shrink-0 items-center rounded-[3px] border px-2 text-[11px] transition-colors ${
-            cropMode() === "free"
-              ? "bg-editor-accent text-white border-editor-accent shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
-              : "border-dashed border-editor-field-border bg-editor-field text-editor-text-dim hover:text-editor-text hover:border-editor-field-border/80"
-          }`}
+          type="button"
+          onClick={() => setShowRatiosDropdown(!showRatiosDropdown())}
+          class="flex h-[24px] shrink-0 items-center gap-1.5 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:border-editor-accent transition-colors cursor-pointer"
         >
-          Free
+          <span>Ratio: {currentRatioLabel()}</span>
+          <Icon name="chevron-down" class="size-3 text-editor-text-dim" />
         </button>
-        {/* Ratio pills — hidden in Size mode */}
-        <Show when={cropMode() !== "size"}>
-          <For each={PILL_PRESETS}>
-            {(preset) => (
-              <button
-                onClick={() => handlePillClick(preset.aspect)}
-                class={`flex h-[24px] shrink-0 items-center rounded-[3px] border px-2 text-[11px] transition-colors ${
-                  isActivePill(preset.aspect)
-                    ? "bg-editor-accent text-white border-editor-accent shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
-                    : "border-editor-field-border bg-editor-field text-editor-text-dim hover:text-editor-text hover:border-editor-field-border/80"
-                }`}
-              >
-                {preset.label}
-              </button>
-            )}
-          </For>
-          <button
-            onClick={() => {
-              if (!showCustomRatio()) {
-                const cur = cropAspect();
-                setCustomWVal(cur?.w ?? 16);
-                setCustomHVal(cur?.h ?? 9);
-              }
-              setShowCustomRatio(!showCustomRatio());
-            }}
-            class={`flex h-[24px] shrink-0 items-center rounded-[3px] border px-2 text-[11px] transition-colors ${
-              showCustomRatio()
-                ? "bg-editor-accent text-white border-editor-accent shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
-                : "border-editor-field-border bg-editor-field text-editor-text-dim hover:text-editor-text hover:border-editor-field-border/80"
-            }`}
-          >
-            +
-          </button>
+
+        <Show when={showRatiosDropdown()}>
+          <div class="absolute top-full left-0 z-50 mt-1 flex flex-col rounded-[4px] border border-editor-field-border bg-editor-panel py-1 shadow-lg max-h-[300px] overflow-y-auto min-w-[150px]">
+            <div class="fixed inset-0 z-[-1]" onClick={() => setShowRatiosDropdown(false)} />
+
+            {/* Lock Current Shape Option */}
+            <button
+              type="button"
+              disabled={cropMode() !== "free"}
+              class={`flex items-center gap-2 px-3 py-1.5 text-[11px] text-left hover:bg-editor-field/60 disabled:opacity-40 disabled:pointer-events-none text-editor-text`}
+              onClick={() => {
+                handleLockCurrentShape();
+                setShowRatiosDropdown(false);
+              }}
+            >
+              <Icon name="lock" class="size-3" strokeWidth={1.5} />
+              <span>Lock Current Shape</span>
+            </button>
+
+            <div class="h-px bg-editor-divider my-1" />
+
+            {/* Recents list if available */}
+            <Show when={recentRatios().length > 0}>
+              <div class="px-3 py-0.5 text-[9px] font-bold text-editor-text-dim uppercase tracking-wider">Recents</div>
+              <For each={recentRatios()}>
+                {(r) => (
+                  <button
+                    type="button"
+                    class="flex items-center justify-between px-3 py-1 text-[11px] text-editor-text hover:bg-editor-field/60 text-left w-full"
+                    onClick={() => {
+                      setCropMode("ratio");
+                      setShowCustomRatio(false);
+                      setCropAspect({ w: r.w, h: r.h });
+                      setCropFrameToAspect({ w: r.w, h: r.h });
+                      setShowRatiosDropdown(false);
+                    }}
+                  >
+                    <span>{r.w}:{r.h}</span>
+                  </button>
+                )}
+              </For>
+              <div class="h-px bg-editor-divider my-1" />
+            </Show>
+
+            {/* Standard Options */}
+            <button
+              type="button"
+              class={`flex items-center px-3 py-1.5 text-[11px] hover:bg-editor-field/60 text-left w-full ${cropMode() === "free" ? "text-editor-accent font-medium" : "text-editor-text"}`}
+              onClick={() => {
+                handleFreeClick();
+                setShowRatiosDropdown(false);
+              }}
+            >
+              Free
+            </button>
+            <button
+              type="button"
+              class={`flex items-center px-3 py-1.5 text-[11px] hover:bg-editor-field/60 text-left w-full ${isCustomActive() ? "text-editor-accent font-medium" : "text-editor-text"}`}
+              onClick={() => {
+                setCropMode("ratio");
+                setShowRatiosDropdown(false);
+                const cur = cropAspect() ?? { w: 16, h: 9 };
+                setCropAspect(cur);
+                setCropFrameToAspect(cur);
+              }}
+            >
+              Custom...
+            </button>
+            <button
+              type="button"
+              class={`flex items-center px-3 py-1.5 text-[11px] hover:bg-editor-field/60 text-left w-full ${cropMode() === "size" ? "text-editor-accent font-medium" : "text-editor-text"}`}
+              onClick={() => {
+                handleSizeModeClick();
+                setShowRatiosDropdown(false);
+              }}
+            >
+              Size
+            </button>
+
+            <div class="h-px bg-editor-divider my-1" />
+
+            <div class="px-3 py-0.5 text-[9px] font-bold text-editor-text-dim uppercase tracking-wider">Presets</div>
+            <For each={CROP_PRESETS}>
+              {(preset) => (
+                <button
+                  type="button"
+                  class={`flex items-center px-3 py-1.5 text-[11px] hover:bg-editor-field/60 text-left w-full ${isActivePill(preset.aspect) ? "text-editor-accent font-medium" : "text-editor-text"}`}
+                  onClick={() => {
+                    handlePillClick(preset.aspect);
+                    setShowRatiosDropdown(false);
+                  }}
+                >
+                  {preset.label}
+                </button>
+              )}
+            </For>
+          </div>
         </Show>
-        <button
-          onClick={handleSizeModeClick}
-          class={`flex h-[24px] shrink-0 items-center rounded-[3px] border px-2 text-[11px] transition-colors ${
-            cropMode() === "size"
-              ? "bg-editor-accent text-white border-editor-accent shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
-              : "border-editor-field-border bg-editor-field text-editor-text-dim hover:text-editor-text hover:border-editor-field-border/80"
-          }`}
-        >
-          Size
-        </button>
       </div>
 
-      {/* Secondary Options on Main Bar (hidden under 650px, labels hidden under 900px) */}
-      <div class="hidden @min-[650px]:flex items-center gap-1.5 shrink-0">
-        {/* Custom W:H fields — visible when "+" is expanded */}
-        <Show when={showCustomRatio()}>
+      {/* Secondary Options on Main Bar (hidden under 768px, labels hidden under 900px) */}
+      <div class="hidden @min-[768px]:flex items-center gap-1.5 shrink-0">
+        {/* Custom W:H fields — visible when Custom ratio input is shown */}
+        <Show when={cropMode() === "ratio"}>
           <div class="flex shrink-0 items-center gap-1">
             <EditableNumField
               label="W"
@@ -293,13 +433,20 @@ export function CropOptionBar() {
                 setCustomWVal(v);
                 const aspect = { w: v, h: customHVal() };
                 setCropAspect(aspect);
-                setShowCustomRatio(false);
-                setCropMode("ratio");
+                pushRecentRatio(aspect.w, aspect.h);
                 setCropFrameToAspect(aspect);
               }}
               class="w-[62px]"
             />
-            <span class="text-[11px] text-editor-text-dim font-bold">:</span>
+            <button
+              type="button"
+              onClick={handleSwap}
+              class="flex size-[20px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors cursor-pointer"
+              aria-label="Swap width and height"
+              title="Swap Width/Height"
+            >
+              <Icon name="swap" class="size-3.5" strokeWidth={1.5} />
+            </button>
             <EditableNumField
               label="H"
               value={customHVal()}
@@ -307,8 +454,7 @@ export function CropOptionBar() {
                 setCustomHVal(v);
                 const aspect = { w: customWVal(), h: v };
                 setCropAspect(aspect);
-                setShowCustomRatio(false);
-                setCropMode("ratio");
+                pushRecentRatio(aspect.w, aspect.h);
                 setCropFrameToAspect(aspect);
               }}
               class="w-[62px]"
@@ -334,6 +480,15 @@ export function CropOptionBar() {
               }}
               class="w-[68px]"
             />
+            <button
+              type="button"
+              onClick={handleSwap}
+              class="flex size-[20px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors cursor-pointer"
+              aria-label="Swap width and height"
+              title="Swap Width/Height"
+            >
+              <Icon name="swap" class="size-3.5" strokeWidth={1.5} />
+            </button>
             <EditableNumField
               label="H"
               value={sizeHVal()}
@@ -393,7 +548,7 @@ export function CropOptionBar() {
           class="w-[64px]"
         />
 
-        {/* Rotation & Swap Buttons */}
+        {/* Rotation Buttons */}
         <div class="flex items-center gap-1">
           <button
             onClick={() => {
@@ -436,50 +591,6 @@ export function CropOptionBar() {
             title="Rotate 90° CW"
           >
             <Icon name="rotate-cw" class="size-4" strokeWidth={1.5} />
-          </button>
-          <button
-            onClick={() => {
-              if (cropMode() === "ratio" && cropAspect()) {
-                const nextAspect = { w: cropAspect()!.h, h: cropAspect()!.w };
-                setCropAspect(nextAspect);
-                setCropFrameToAspect(nextAspect);
-              } else if (cropMode() === "size" && cropSizeTarget()) {
-                const nextTarget = { w: cropSizeTarget()!.h, h: cropSizeTarget()!.w };
-                setCropSizeTarget(nextTarget);
-                const sw = sizeWVal(), sh = sizeHVal();
-                setSizeWVal(sh);
-                setSizeHVal(sw);
-                if (cropInteractionMode() === "modern") {
-                  setModernFrameToAspect({ w: nextTarget.w, h: nextTarget.h });
-                } else if (cropRect()) {
-                  setCropRect(fitCropRectToAspect(nextTarget, docWidth(), docHeight(), cropRotation()));
-                }
-              } else {
-                if (cropInteractionMode() === "modern" && modernCropFrame()) {
-                  const fitted = fitFrameToMaxBounds(modernCropFrame()!.h, modernCropFrame()!.w);
-                  setModernCropFrame(fitted);
-                } else {
-                  const rect = cropRect();
-                  if (rect) {
-                    const cx = rect.x + rect.w / 2;
-                    const cy = rect.y + rect.h / 2;
-                    const nw = rect.h;
-                    const nh = rect.w;
-                    setCropRect({
-                      x: cx - nw / 2,
-                      y: cy - nh / 2,
-                      w: nw,
-                      h: nh
-                    });
-                  }
-                }
-              }
-            }}
-            class="flex size-[24px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors"
-            aria-label="Swap width and height"
-            title="Swap Width/Height"
-          >
-            <Icon name="swap" class="size-4" strokeWidth={1.5} />
           </button>
         </div>
 
@@ -559,6 +670,117 @@ export function CropOptionBar() {
       </div>
 
       <MoreDropdown>
+        {/* W/H fields if active (for mobile overflow) */}
+        <Show when={cropMode() === "ratio"}>
+          <div class="flex flex-col gap-1.5">
+            <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Custom Ratio</span>
+            <div class="flex items-center gap-1">
+              <EditableNumField
+                label="W"
+                value={customWVal()}
+                onSubmit={(v) => {
+                  setCustomWVal(v);
+                  const aspect = { w: v, h: customHVal() };
+                  setCropAspect(aspect);
+                  pushRecentRatio(aspect.w, aspect.h);
+                  setCropFrameToAspect(aspect);
+                }}
+                class="w-full"
+              />
+              <button
+                type="button"
+                onClick={handleSwap}
+                class="flex size-[24px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors cursor-pointer"
+                aria-label="Swap width and height"
+                title="Swap Width/Height"
+              >
+                <Icon name="swap" class="size-4" strokeWidth={1.5} />
+              </button>
+              <EditableNumField
+                label="H"
+                value={customHVal()}
+                onSubmit={(v) => {
+                  setCustomHVal(v);
+                  const aspect = { w: customWVal(), h: v };
+                  setCropAspect(aspect);
+                  pushRecentRatio(aspect.w, aspect.h);
+                  setCropFrameToAspect(aspect);
+                }}
+                class="w-full"
+              />
+            </div>
+          </div>
+        </Show>
+
+        <Show when={cropMode() === "size"}>
+          <div class="flex flex-col gap-1.5">
+            <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Size ({unitLabel()})</span>
+            <div class="flex items-center gap-1.5">
+              <EditableNumField
+                label="W"
+                value={sizeWVal()}
+                onSubmit={(v) => {
+                  setSizeWVal(v);
+                  const valPx = fromUnit(v, cropSizeUnit());
+                  const nextTarget = { w: valPx, h: cropSizeTarget()?.h ?? 600 };
+                  setCropSizeTarget(nextTarget);
+                  if (cropInteractionMode() === "modern") {
+                    setModernFrameToAspect({ w: nextTarget.w, h: nextTarget.h });
+                  } else if (cropRect()) {
+                    setCropRect(fitCropRectToAspect(nextTarget, docWidth(), docHeight(), cropRotation()));
+                  }
+                }}
+                class="w-full"
+              />
+              <button
+                type="button"
+                onClick={handleSwap}
+                class="flex size-[24px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors cursor-pointer"
+                aria-label="Swap width and height"
+                title="Swap Width/Height"
+              >
+                <Icon name="swap" class="size-4" strokeWidth={1.5} />
+              </button>
+              <EditableNumField
+                label="H"
+                value={sizeHVal()}
+                onSubmit={(v) => {
+                  setSizeHVal(v);
+                  const valPx = fromUnit(v, cropSizeUnit());
+                  const nextTarget = { w: cropSizeTarget()?.w ?? 800, h: valPx };
+                  setCropSizeTarget(nextTarget);
+                  if (cropInteractionMode() === "modern") {
+                    setModernFrameToAspect({ w: nextTarget.w, h: nextTarget.h });
+                  } else if (cropRect()) {
+                    setCropRect(fitCropRectToAspect(nextTarget, docWidth(), docHeight(), cropRotation()));
+                  }
+                }}
+                class="w-full"
+              />
+            </div>
+
+            {/* Unit Selector */}
+            <div class="relative flex h-[24px] w-full items-center rounded-[3px] border border-editor-field-border bg-editor-field px-2 hover:border-editor-field-border/80 transition-all cursor-pointer focus-ring-within">
+              <span class="text-[11px] text-editor-text mr-4 select-none">
+                {unitLabel()}
+              </span>
+              <div class="ml-auto pointer-events-none text-editor-text-dim">
+                <Icon name="chevron-down" class="size-3" strokeWidth={1.5} />
+              </div>
+              <select
+                value={cropSizeUnit()}
+                onChange={(e) => setCropSizeUnit(e.currentTarget.value as any)}
+                class="absolute inset-0 h-full w-full opacity-0 cursor-pointer text-[11px]"
+              >
+                <option value="px" class="bg-editor-panel text-editor-text">px</option>
+                <option value="cm" class="bg-editor-panel text-editor-text">cm</option>
+                <option value="mm" class="bg-editor-panel text-editor-text">mm</option>
+                <option value="in" class="bg-editor-panel text-editor-text">in</option>
+              </select>
+            </div>
+          </div>
+        </Show>
+
         {/* Angle Field */}
         <div class="flex flex-col gap-1.5">
           <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Angle</span>
@@ -579,9 +801,9 @@ export function CropOptionBar() {
           />
         </div>
 
-        {/* Rotation & Swap Buttons */}
+        {/* Rotation Buttons */}
         <div class="flex flex-col gap-1.5 mt-1.5">
-          <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Rotate & Swap</span>
+          <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Rotate</span>
           <div class="flex items-center gap-1 bg-editor-field/30 p-1.5 rounded-[4px] border border-editor-field-border">
             <button
               onClick={() => {
@@ -622,49 +844,6 @@ export function CropOptionBar() {
               title="Rotate 90° CW"
             >
               <Icon name="rotate-cw" class="size-4" strokeWidth={1.5} />
-            </button>
-            <button
-              onClick={() => {
-                if (cropMode() === "ratio" && cropAspect()) {
-                  const nextAspect = { w: cropAspect()!.h, h: cropAspect()!.w };
-                  setCropAspect(nextAspect);
-                  setCropFrameToAspect(nextAspect);
-                } else if (cropMode() === "size" && cropSizeTarget()) {
-                  const nextTarget = { w: cropSizeTarget()!.h, h: cropSizeTarget()!.w };
-                  setCropSizeTarget(nextTarget);
-                  const sw = sizeWVal(), sh = sizeHVal();
-                  setSizeWVal(sh);
-                  setSizeHVal(sw);
-                  if (cropInteractionMode() === "modern") {
-                    setModernFrameToAspect({ w: nextTarget.w, h: nextTarget.h });
-                  } else if (cropRect()) {
-                    setCropRect(fitCropRectToAspect(nextTarget, docWidth(), docHeight(), cropRotation()));
-                  }
-                } else {
-                  if (cropInteractionMode() === "modern" && modernCropFrame()) {
-                    const fitted = fitFrameToMaxBounds(modernCropFrame()!.h, modernCropFrame()!.w);
-                    setModernCropFrame(fitted);
-                  } else {
-                    const rect = cropRect();
-                    if (rect) {
-                      const cx = rect.x + rect.w / 2;
-                      const cy = rect.y + rect.h / 2;
-                      const nw = rect.h;
-                      const nh = rect.w;
-                      setCropRect({
-                        x: cx - nw / 2,
-                        y: cy - nh / 2,
-                        w: nw,
-                        h: nh
-                      });
-                    }
-                  }
-                }
-              }}
-              class="flex flex-1 size-[24px] items-center justify-center rounded-[3px] hover:bg-editor-field/50 text-editor-icon hover:text-editor-text transition-colors"
-              title="Swap Width/Height"
-            >
-              <Icon name="swap" class="size-4" strokeWidth={1.5} />
             </button>
           </div>
         </div>

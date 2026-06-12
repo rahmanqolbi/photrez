@@ -232,7 +232,7 @@ export function MoveOptionBar() {
         </Show>
 
         {/* Main Bar Controls (hidden on narrow container) */}
-        <div class="hidden @min-[650px]:flex items-center gap-1.5 shrink-0">
+        <div class="hidden @min-[768px]:flex items-center gap-1.5 shrink-0">
           <Divider />
 
           <div class={clsx("flex shrink-0 items-center gap-1 text-editor-icon", isLocked() && "opacity-30 pointer-events-none")}>
