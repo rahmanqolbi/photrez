@@ -134,17 +134,6 @@ export function useBrushOverlay() {
     }
 
     // Soft brush path (hardness < 1) uses incremental PaintStrokeSession
-    const latestDocPoint = points.at(-1);
-    if (!latestDocPoint) return;
-
-    const latest = documentToLayerLocal(
-      latestDocPoint.x,
-      latestDocPoint.y,
-      layer.transform,
-      layer.width,
-      layer.height,
-    );
-
     const settingsKey = getPaintSessionKey(settings, fgColor());
     const needsReset =
       !paintSession ||
@@ -181,19 +170,30 @@ export function useBrushOverlay() {
     const spacing = getBrushDabSpacing(settings.size, settings.hardness, settings.flow);
     const alphaScale = settings.opacity * settings.flow * getEffectiveFlowMultiplier(settings.hardness);
 
-    if (!paintSession.lastPoint) {
-      stampBrushTipMaxAlpha(paintSession.maskData, layer.width, layer.height, tip, latest.x, latest.y, alphaScale);
-      paintSession.dabCount += 1;
-    } else {
-      const result = interpolateDabs(paintSession.lastPoint, latest, spacing, paintSession.spacingCarry);
-      paintSession.spacingCarry = result.carry;
-      for (const dab of result.dabs) {
-        stampBrushTipMaxAlpha(paintSession.maskData, layer.width, layer.height, tip, dab.x, dab.y, alphaScale);
-        paintSession.dabCount += 1;
-      }
-    }
+    const startIndex = needsReset ? 0 : prevStrokePointCount;
+    for (let i = startIndex; i < points.length; i++) {
+      const pt = points[i];
+      const localPt = documentToLayerLocal(
+        pt.x,
+        pt.y,
+        layer.transform,
+        layer.width,
+        layer.height,
+      );
 
-    paintSession.lastPoint = latest;
+      if (!paintSession.lastPoint) {
+        stampBrushTipMaxAlpha(paintSession.maskData, layer.width, layer.height, tip, localPt.x, localPt.y, alphaScale);
+        paintSession.dabCount += 1;
+      } else {
+        const result = interpolateDabs(paintSession.lastPoint, localPt, spacing, paintSession.spacingCarry);
+        paintSession.spacingCarry = result.carry;
+        for (const dab of result.dabs) {
+          stampBrushTipMaxAlpha(paintSession.maskData, layer.width, layer.height, tip, dab.x, dab.y, alphaScale);
+          paintSession.dabCount += 1;
+        }
+      }
+      paintSession.lastPoint = localPt;
+    }
 
     if (isEraser) {
       if (eraserPreviewCtx) {

@@ -1,5 +1,26 @@
 # AI History — Photrez
 
+## [2026-06-12] BUG FIX — Fix Shift-Click Straight Lines for Soft Brush [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / ERASER / UX
+
+**Root Cause:**
+The soft brush path in `onPaintStroke` inside `useBrushOverlay.ts` only read the last point of the points array (`points.at(-1)`), ignoring intermediate points. When the user held Shift and clicked, the pointer handler generated an interpolated line of points, but only the final clicked point was actually stamped, causing the Shift-click straight line feature to fail to draw anything but a single dot.
+
+**Fix Rationale:**
+Update `onPaintStroke` to iterate over all newly added points in the stroke array (from `prevStrokePointCount` to `points.length`) and process each point sequentially, ensuring all dabs along the straight line are interpolated and stamped correctly.
+
+**Rincian Perubahan:**
+1. `useBrushOverlay.ts` - Iterated over the points array starting from `prevStrokePointCount` to process all new points.
+2. `2026-06-12-fix-shift-click-straight-lines-soft-brush-design.md` - Created and committed the design document for this bug fix.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (all 809 tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+- PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
+
+---
+
 ## [2026-06-12] POLISH — Implement Smoothstep Brush Falloff Curve [COMPLETE]
 
 ### Kategori: POLISH / BRUSH / ERASER / UX / CALIBRATION

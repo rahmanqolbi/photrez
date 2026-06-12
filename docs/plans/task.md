@@ -7,3 +7,4 @@
 | Task 3 | Shift-Drag Axis Lock | done |
 | Task 4 | Remove Inner Brush Cursor Hardness Indicator Ring | done |
 | Task 5 | Implement Smoothstep Brush Falloff Curve | done |
+| Task 6 | Fix Shift-Click Straight Lines for Soft Brush | done |

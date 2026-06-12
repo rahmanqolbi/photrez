@@ -347,3 +347,17 @@ Implementing the cubic Hermite / Smoothstep function ($3v^2 - 2v^3$) to map soft
 - PASS: `pnpm --filter photrez-desktop test --run` (all 809 tests passed)
 - PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
 - PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
+
+### [2026-06-12] Fix Shift-Click Straight Lines for Soft Brush [COMPLETE]
+
+Fixing the Shift-click straight line drawing modifier on soft brushes (hardness < 1) by processing all newly added points in the stroke instead of only looking at the last point.
+
+**Done:**
+1. Modified the soft brush path in `onPaintStroke` inside `useBrushOverlay.ts` to iterate from `prevStrokePointCount` to `points.length` and process all points sequentially.
+2. Verified that Shift-click straight line drawing is now fully functional for both hard and soft brushes.
+3. Verified that all 809 frontend unit tests, Rust core workspace tests, and production build checks compile and pass successfully.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (all 809 tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+- PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
