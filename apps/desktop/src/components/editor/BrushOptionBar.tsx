@@ -143,8 +143,8 @@ export function BrushOptionBar() {
         />
       </div>
 
-      {/* Secondary Options on Main Bar (hidden under 768px) */}
-      <div class="hidden @min-[768px]:flex items-center gap-1.5 shrink-0">
+      {/* Secondary Options on Main Bar (hidden under 880px) */}
+      <div class="hidden @min-[880px]:flex items-center gap-1.5 shrink-0">
         <Divider />
 
         <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">

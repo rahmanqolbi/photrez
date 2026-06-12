@@ -4,6 +4,32 @@
 
 ## Current Tasks
 
+### [2026-06-12] Option Bar Breakpoint Alignment & Ratio Text Wrap Fix [COMPLETE]
+
+Align responsive breakpoints for crop and brush option bars to 880px to match move tool option bar and more dropdown visibility, and prevent the Ratio selector button text from wrapping into two lines. Additionally, pulled W/H crop inputs out of the responsive collapse container so they remain visible on the main bar at all times, and fixed the "Free" mode crop frame centering bug.
+
+**Done:**
+1. Updated `CropOptionBar.tsx` breakpoint to 880px and added `whitespace-nowrap` to prevent Ratio button text from wrapping.
+2. Moved custom ratio W/H inputs and physical size W/H inputs (+ unit selector) outside the `@min-[880px]` responsive collapse container in `CropOptionBar.tsx` so they are always visible on the main bar.
+3. Removed duplicate W/H inputs and unit selector from `MoreDropdown` in `CropOptionBar.tsx`.
+4. Updated `BrushOptionBar.tsx` breakpoint from 768px to 880px.
+5. Fixed `fitFrameToMaxBounds` in `CropOptionBar.tsx` to return coordinates centered in the viewport, resolving the bug where switching to "Free" mode shifted the crop box to the top-left corner `(0, 0)`.
+6. Added coordinate centering assertions in the `CropOptionBar.test.tsx` test suite.
+7. Verified all 810 frontend tests and 92 Rust workspace tests pass, and Vite production build succeeds.
+
+### [2026-06-12] Crop Option Bar UX Improvements [COMPLETE]
+
+Redesign the Crop Tool Option Bar to collapse aspect ratio presets into a single dropdown, place the Swap button directly between the Width (W) and Height (H) input fields (for both custom ratio and physical size modes), and add "Lock Current Shape" and "Recent Ratios" (up to 3 items) features to resolve common UX pain points.
+
+**Done:**
+1. Replaced horizontal preset pills with Aspect Ratio Dropdown selector showing lock shape, recents, and presets.
+2. Implemented "Lock Current Shape" aspect ratio locking.
+3. Implemented Recent Ratios state tracking (up to 3 items) and added `pushRecentRatio` to inputs submit handlers.
+4. Positioned Swap button directly between W and H inputs in both ratio mode and size mode, on both main bar and mobile/overflow dropdown.
+5. Removed duplicate standalone Swap button from the rotation group.
+6. Synchronized custom W/H input fields with current aspect ratio when changed via presets dropdown.
+7. Verified via frontend test suite (810/810 pass), Rust tests (92/92 pass), and Vite production builds.
+
 ### [2026-06-12] Brush Intermediate Hardness Mapping Polish [COMPLETE]
 
 Polishing brush hardness mapping so intermediate values match desktop editor expectations. Manual QA shows `Hard 80%` still has a wider feather rim than expected; it should be mostly solid with only a narrow soft edge, while `Hard 0%` must keep the current broad feather profile.

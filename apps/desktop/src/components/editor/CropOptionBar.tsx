@@ -46,10 +46,23 @@ export function CropOptionBar() {
   const [showRatiosDropdown, setShowRatiosDropdown] = createSignal(false);
 
   const handleLockCurrentShape = () => {
-    const rect = cropRect();
-    if (rect && rect.w > 0 && rect.h > 0) {
-      const w = Math.round(rect.w);
-      const h = Math.round(rect.h);
+    let w = 0;
+    let h = 0;
+    if (cropInteractionMode() === "modern") {
+      const frame = modernCropFrame();
+      if (frame && frame.w > 0 && frame.h > 0) {
+        w = Math.round(frame.w);
+        h = Math.round(frame.h);
+      }
+    } else {
+      const rect = cropRect();
+      if (rect && rect.w > 0 && rect.h > 0) {
+        w = Math.round(rect.w);
+        h = Math.round(rect.h);
+      }
+    }
+
+    if (w > 0 && h > 0) {
       setCropMode("ratio");
       setCropAspect({ w, h });
       setCropFrameToAspect({ w, h });
@@ -214,9 +227,19 @@ export function CropOptionBar() {
 
   const fitFrameToMaxBounds = (w: number, h: number) => {
     const max = maxModernFrame();
-    if (w <= max.w && h <= max.h) return { x: 0, y: 0, w, h };
-    const scale = Math.min(max.w / w, max.h / h);
-    return { x: 0, y: 0, w: w * scale, h: h * scale };
+    let finalW = w;
+    let finalH = h;
+    if (w > max.w || h > max.h) {
+      const scale = Math.min(max.w / w, max.h / h);
+      finalW = w * scale;
+      finalH = h * scale;
+    }
+    return {
+      x: (viewportWidth() - finalW) / 2,
+      y: (viewportHeight() - finalH) / 2,
+      w: finalW,
+      h: finalH,
+    };
   };
 
   const setModernFrameToAspect = (aspect: { w: number; h: number }) => {
@@ -316,10 +339,10 @@ export function CropOptionBar() {
         <button
           type="button"
           onClick={() => setShowRatiosDropdown(!showRatiosDropdown())}
-          class="flex h-[24px] shrink-0 items-center gap-1.5 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:border-editor-accent transition-colors cursor-pointer"
+          class="flex h-[24px] shrink-0 items-center gap-1.5 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:border-editor-accent transition-colors cursor-pointer whitespace-nowrap"
         >
           <span>Ratio: {currentRatioLabel()}</span>
-          <Icon name="chevron-down" class="size-3 text-editor-text-dim" />
+          <Icon name="chevron-down" class="size-3 text-editor-text-dim shrink-0" />
         </button>
 
         <Show when={showRatiosDropdown()}>
@@ -421,115 +444,115 @@ export function CropOptionBar() {
         </Show>
       </div>
 
-      {/* Secondary Options on Main Bar (hidden under 768px, labels hidden under 900px) */}
-      <div class="hidden @min-[768px]:flex items-center gap-1.5 shrink-0">
-        {/* Custom W:H fields — visible when Custom ratio input is shown */}
-        <Show when={cropMode() === "ratio"}>
-          <div class="flex shrink-0 items-center gap-1">
-            <EditableNumField
-              label="W"
-              value={customWVal()}
-              onSubmit={(v) => {
-                setCustomWVal(v);
-                const aspect = { w: v, h: customHVal() };
-                setCropAspect(aspect);
-                pushRecentRatio(aspect.w, aspect.h);
-                setCropFrameToAspect(aspect);
-              }}
-              class="w-[62px]"
-            />
-            <button
-              type="button"
-              onClick={handleSwap}
-              class="flex size-[20px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors cursor-pointer"
-              aria-label="Swap width and height"
-              title="Swap Width/Height"
-            >
-              <Icon name="swap" class="size-3.5" strokeWidth={1.5} />
-            </button>
-            <EditableNumField
-              label="H"
-              value={customHVal()}
-              onSubmit={(v) => {
-                setCustomHVal(v);
-                const aspect = { w: customWVal(), h: v };
-                setCropAspect(aspect);
-                pushRecentRatio(aspect.w, aspect.h);
-                setCropFrameToAspect(aspect);
-              }}
-              class="w-[62px]"
-            />
-          </div>
-        </Show>
-
-        <Show when={cropMode() === "size"}>
-          <div class="flex shrink-0 items-center gap-1.5">
-            <EditableNumField
-              label="W"
-              value={sizeWVal()}
-              onSubmit={(v) => {
-                setSizeWVal(v);
-                const valPx = fromUnit(v, cropSizeUnit());
-                const nextTarget = { w: valPx, h: cropSizeTarget()?.h ?? 600 };
-                setCropSizeTarget(nextTarget);
-                if (cropInteractionMode() === "modern") {
-                  setModernFrameToAspect({ w: nextTarget.w, h: nextTarget.h });
-                } else if (cropRect()) {
-                  setCropRect(fitCropRectToAspect(nextTarget, docWidth(), docHeight(), cropRotation()));
-                }
-              }}
-              class="w-[68px]"
-            />
-            <button
-              type="button"
-              onClick={handleSwap}
-              class="flex size-[20px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors cursor-pointer"
-              aria-label="Swap width and height"
-              title="Swap Width/Height"
-            >
-              <Icon name="swap" class="size-3.5" strokeWidth={1.5} />
-            </button>
-            <EditableNumField
-              label="H"
-              value={sizeHVal()}
-              onSubmit={(v) => {
-                setSizeHVal(v);
-                const valPx = fromUnit(v, cropSizeUnit());
-                const nextTarget = { w: cropSizeTarget()?.w ?? 800, h: valPx };
-                setCropSizeTarget(nextTarget);
-                if (cropInteractionMode() === "modern") {
-                  setModernFrameToAspect({ w: nextTarget.w, h: nextTarget.h });
-                } else if (cropRect()) {
-                  setCropRect(fitCropRectToAspect(nextTarget, docWidth(), docHeight(), cropRotation()));
-                }
-              }}
-              class="w-[68px]"
-            />
-            
-            {/* Unit Selector */}
-            <div class="relative flex h-[24px] shrink-0 items-center rounded-[3px] border border-editor-field-border bg-editor-field px-2 hover:border-editor-field-border/80 transition-all cursor-pointer focus-ring-within">
-              <span class="text-[11px] text-editor-text mr-4 select-none">
-                {unitLabel()}
-              </span>
-              <div class="ml-auto pointer-events-none text-editor-text-dim">
-                <Icon name="chevron-down" class="size-3" strokeWidth={1.5} />
-              </div>
-              <select
-                value={cropSizeUnit()}
-                onChange={(e) => setCropSizeUnit(e.currentTarget.value as any)}
-                class="absolute inset-0 h-full w-full opacity-0 cursor-pointer text-[11px]"
-              >
-                <option value="px" class="bg-editor-panel text-editor-text">px</option>
-                <option value="cm" class="bg-editor-panel text-editor-text">cm</option>
-                <option value="mm" class="bg-editor-panel text-editor-text">mm</option>
-                <option value="in" class="bg-editor-panel text-editor-text">in</option>
-              </select>
-            </div>
-          </div>
-        </Show>
-
+      {/* Custom W:H fields — visible when Custom ratio input is shown */}
+      <Show when={cropMode() === "ratio"}>
+        <div class="flex shrink-0 items-center gap-1">
+          <EditableNumField
+            label="W"
+            value={customWVal()}
+            onSubmit={(v) => {
+              setCustomWVal(v);
+              const aspect = { w: v, h: customHVal() };
+              setCropAspect(aspect);
+              pushRecentRatio(aspect.w, aspect.h);
+              setCropFrameToAspect(aspect);
+            }}
+            class="w-[62px]"
+          />
+          <button
+            type="button"
+            onClick={handleSwap}
+            class="flex size-[20px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors cursor-pointer"
+            aria-label="Swap width and height"
+            title="Swap Width/Height"
+          >
+            <Icon name="swap" class="size-3.5" strokeWidth={1.5} />
+          </button>
+          <EditableNumField
+            label="H"
+            value={customHVal()}
+            onSubmit={(v) => {
+              setCustomHVal(v);
+              const aspect = { w: customWVal(), h: v };
+              setCropAspect(aspect);
+              pushRecentRatio(aspect.w, aspect.h);
+              setCropFrameToAspect(aspect);
+            }}
+            class="w-[62px]"
+          />
+        </div>
         <Divider />
+      </Show>
 
+      <Show when={cropMode() === "size"}>
+        <div class="flex shrink-0 items-center gap-1.5">
+          <EditableNumField
+            label="W"
+            value={sizeWVal()}
+            onSubmit={(v) => {
+              setSizeWVal(v);
+              const valPx = fromUnit(v, cropSizeUnit());
+              const nextTarget = { w: valPx, h: cropSizeTarget()?.h ?? 600 };
+              setCropSizeTarget(nextTarget);
+              if (cropInteractionMode() === "modern") {
+                setModernFrameToAspect({ w: nextTarget.w, h: nextTarget.h });
+              } else if (cropRect()) {
+                setCropRect(fitCropRectToAspect(nextTarget, docWidth(), docHeight(), cropRotation()));
+              }
+            }}
+            class="w-[68px]"
+          />
+          <button
+            type="button"
+            onClick={handleSwap}
+            class="flex size-[20px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors cursor-pointer"
+            aria-label="Swap width and height"
+            title="Swap Width/Height"
+          >
+            <Icon name="swap" class="size-3.5" strokeWidth={1.5} />
+          </button>
+          <EditableNumField
+            label="H"
+            value={sizeHVal()}
+            onSubmit={(v) => {
+              setSizeHVal(v);
+              const valPx = fromUnit(v, cropSizeUnit());
+              const nextTarget = { w: cropSizeTarget()?.w ?? 800, h: valPx };
+              setCropSizeTarget(nextTarget);
+              if (cropInteractionMode() === "modern") {
+                setModernFrameToAspect({ w: nextTarget.w, h: nextTarget.h });
+              } else if (cropRect()) {
+                setCropRect(fitCropRectToAspect(nextTarget, docWidth(), docHeight(), cropRotation()));
+              }
+            }}
+            class="w-[68px]"
+          />
+          
+          {/* Unit Selector */}
+          <div class="relative flex h-[24px] shrink-0 items-center rounded-[3px] border border-editor-field-border bg-editor-field px-2 hover:border-editor-field-border/80 transition-all cursor-pointer focus-ring-within">
+            <span class="text-[11px] text-editor-text mr-4 select-none">
+              {unitLabel()}
+            </span>
+            <div class="ml-auto pointer-events-none text-editor-text-dim">
+              <Icon name="chevron-down" class="size-3" strokeWidth={1.5} />
+            </div>
+            <select
+              value={cropSizeUnit()}
+              onChange={(e) => setCropSizeUnit(e.currentTarget.value as any)}
+              class="absolute inset-0 h-full w-full opacity-0 cursor-pointer text-[11px]"
+            >
+              <option value="px" class="bg-editor-panel text-editor-text">px</option>
+              <option value="cm" class="bg-editor-panel text-editor-text">cm</option>
+              <option value="mm" class="bg-editor-panel text-editor-text">mm</option>
+              <option value="in" class="bg-editor-panel text-editor-text">in</option>
+            </select>
+          </div>
+        </div>
+        <Divider />
+      </Show>
+
+      {/* Secondary Options on Main Bar (hidden under 880px, labels hidden under 900px) */}
+      <div class="hidden @min-[880px]:flex items-center gap-1.5 shrink-0">
         {/* Angle Field */}
         <EditableNumField
           label="Angle"
@@ -670,117 +693,6 @@ export function CropOptionBar() {
       </div>
 
       <MoreDropdown>
-        {/* W/H fields if active (for mobile overflow) */}
-        <Show when={cropMode() === "ratio"}>
-          <div class="flex flex-col gap-1.5">
-            <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Custom Ratio</span>
-            <div class="flex items-center gap-1">
-              <EditableNumField
-                label="W"
-                value={customWVal()}
-                onSubmit={(v) => {
-                  setCustomWVal(v);
-                  const aspect = { w: v, h: customHVal() };
-                  setCropAspect(aspect);
-                  pushRecentRatio(aspect.w, aspect.h);
-                  setCropFrameToAspect(aspect);
-                }}
-                class="w-full"
-              />
-              <button
-                type="button"
-                onClick={handleSwap}
-                class="flex size-[24px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors cursor-pointer"
-                aria-label="Swap width and height"
-                title="Swap Width/Height"
-              >
-                <Icon name="swap" class="size-4" strokeWidth={1.5} />
-              </button>
-              <EditableNumField
-                label="H"
-                value={customHVal()}
-                onSubmit={(v) => {
-                  setCustomHVal(v);
-                  const aspect = { w: customWVal(), h: v };
-                  setCropAspect(aspect);
-                  pushRecentRatio(aspect.w, aspect.h);
-                  setCropFrameToAspect(aspect);
-                }}
-                class="w-full"
-              />
-            </div>
-          </div>
-        </Show>
-
-        <Show when={cropMode() === "size"}>
-          <div class="flex flex-col gap-1.5">
-            <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Size ({unitLabel()})</span>
-            <div class="flex items-center gap-1.5">
-              <EditableNumField
-                label="W"
-                value={sizeWVal()}
-                onSubmit={(v) => {
-                  setSizeWVal(v);
-                  const valPx = fromUnit(v, cropSizeUnit());
-                  const nextTarget = { w: valPx, h: cropSizeTarget()?.h ?? 600 };
-                  setCropSizeTarget(nextTarget);
-                  if (cropInteractionMode() === "modern") {
-                    setModernFrameToAspect({ w: nextTarget.w, h: nextTarget.h });
-                  } else if (cropRect()) {
-                    setCropRect(fitCropRectToAspect(nextTarget, docWidth(), docHeight(), cropRotation()));
-                  }
-                }}
-                class="w-full"
-              />
-              <button
-                type="button"
-                onClick={handleSwap}
-                class="flex size-[24px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors cursor-pointer"
-                aria-label="Swap width and height"
-                title="Swap Width/Height"
-              >
-                <Icon name="swap" class="size-4" strokeWidth={1.5} />
-              </button>
-              <EditableNumField
-                label="H"
-                value={sizeHVal()}
-                onSubmit={(v) => {
-                  setSizeHVal(v);
-                  const valPx = fromUnit(v, cropSizeUnit());
-                  const nextTarget = { w: cropSizeTarget()?.w ?? 800, h: valPx };
-                  setCropSizeTarget(nextTarget);
-                  if (cropInteractionMode() === "modern") {
-                    setModernFrameToAspect({ w: nextTarget.w, h: nextTarget.h });
-                  } else if (cropRect()) {
-                    setCropRect(fitCropRectToAspect(nextTarget, docWidth(), docHeight(), cropRotation()));
-                  }
-                }}
-                class="w-full"
-              />
-            </div>
-
-            {/* Unit Selector */}
-            <div class="relative flex h-[24px] w-full items-center rounded-[3px] border border-editor-field-border bg-editor-field px-2 hover:border-editor-field-border/80 transition-all cursor-pointer focus-ring-within">
-              <span class="text-[11px] text-editor-text mr-4 select-none">
-                {unitLabel()}
-              </span>
-              <div class="ml-auto pointer-events-none text-editor-text-dim">
-                <Icon name="chevron-down" class="size-3" strokeWidth={1.5} />
-              </div>
-              <select
-                value={cropSizeUnit()}
-                onChange={(e) => setCropSizeUnit(e.currentTarget.value as any)}
-                class="absolute inset-0 h-full w-full opacity-0 cursor-pointer text-[11px]"
-              >
-                <option value="px" class="bg-editor-panel text-editor-text">px</option>
-                <option value="cm" class="bg-editor-panel text-editor-text">cm</option>
-                <option value="mm" class="bg-editor-panel text-editor-text">mm</option>
-                <option value="in" class="bg-editor-panel text-editor-text">in</option>
-              </select>
-            </div>
-          </div>
-        </Show>
-
         {/* Angle Field */}
         <div class="flex flex-col gap-1.5">
           <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Angle</span>

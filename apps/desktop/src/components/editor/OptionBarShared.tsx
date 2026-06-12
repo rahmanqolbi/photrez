@@ -37,7 +37,7 @@ export function ToolPill(props: { icon: string; label: string }) {
 export function MoreDropdown(props: { children: JSX.Element }) {
   const [isOpen, setIsOpen] = createSignal(false);
   return (
-    <div class="relative hidden @max-[768px]:flex">
+    <div class="relative hidden @max-[880px]:flex">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen())}

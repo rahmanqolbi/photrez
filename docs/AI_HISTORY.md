@@ -1,5 +1,54 @@
 # AI History — Photrez
 
+## [2026-06-12] BUG FIX / POLISH — Option Bar Responsive Breakpoint & W/H Inputs Layout [COMPLETE]
+
+### Kategori: BUG FIX / POLISH / FRONTEND / UI / UX
+
+**Root Cause:**
+1. Dropdown Aspect Ratio button text wrapped into two lines ("Ratio:" on top, value on bottom) under narrow viewports because it lacked nowrap layout rules.
+2. Responsive breakpoints across different tool option bars were mismatched (MoveOptionBar used 880px container queries while Crop and Brush option bars used 768px). This resulted in overlapping elements, layout cuts, and duplications when the viewport width was between 768px and 880px.
+3. Placing the W/H inputs inside the collapse container hid vital editing input boxes when the window size was slightly narrow.
+4. The helper `fitFrameToMaxBounds` returned `{ x: 0, y: 0, ... }` which reset the Modern crop frame position to the top-left corner `(0, 0)` upon clicking "Free" or "Swap", causing visual jumping and empty canvas expansion areas to show up.
+
+**Fix Rationale:**
+1. Added `whitespace-nowrap` class and `shrink-0` to the dropdown indicator icon on the Crop Ratio selector button to prevent text wrapping.
+2. Aligned the crop and brush tool option bar responsive breakpoints to `880px` (`@min-[880px]:flex`), matching the move tool and MoreDropdown container query thresholds.
+3. Moved custom ratio W/H inputs and physical size W/H inputs (+ unit selector) outside the `@min-[880px]` responsive collapse container in `CropOptionBar.tsx` so they are always visible on the main bar, and removed duplicate fields from `MoreDropdown`.
+4. Refactored `fitFrameToMaxBounds` to compute centered `x` and `y` coordinates based on `viewportWidth` and `viewportHeight` so that the modern crop frame remains centered in the viewport.
+5. Added centering assertions to the Vitest suite in `CropOptionBar.test.tsx`.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (all 810 frontend tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+- PASS: `.\rtk.exe cargo test --workspace` (all 92 Rust workspace tests passed)
+
+---
+
+## [2026-06-12] FEATURE — Crop Option Bar UX Improvements [COMPLETE]
+
+### Kategori: FEATURE / CROP / FRONTEND / UI / UX
+
+**Root Cause / Motivation:**
+Pill preset bar yang lama memiliki banyak tombol preset horizontal yang memakan ruang bar dan tidak scalable. Selain itu, tombol Swap terpisah jauh di grup rotasi, sehingga membingungkan pengguna. Kami membutuhkan dropdown preset tunggal, fitur "Lock Current Shape", "Recent Ratios", dan tata letak `[W] [Swap] [H]` terpadu.
+
+**Fix Rationale / Design:**
+1. Menggabungkan preset rasio ke dropdown Aspect Ratio selector yang mencakup opsi "Lock Current Shape", "Recents", dan presets bawaan.
+2. Memindahkan tombol Swap langsung di antara kolom W dan H di semua mode (Custom Ratio & Size) baik di bar utama maupun di MoreDropdown.
+3. Menghapus tombol Swap duplikat dari grup rotasi.
+4. Menambahkan pelacakan recent ratios (maksimal 3 item) pada form submit.
+5. Menambahkan sinkronisasi otomatis nilai input W/H dengan preset rasio yang dipilih agar input selalu ter-update.
+
+**Rincian Perubahan:**
+1. `CropOptionBar.tsx` — Menambahkan state dropdown, recent ratios, implementasi `handleLockCurrentShape` & `handleSwap`, restrukturisasi form input `[W] [Swap] [H]` di bar utama & `MoreDropdown`, sinkronisasi nilai input via `createEffect`, dan penghapusan tombol swap lama di grup rotasi.
+2. `CropOptionBar.test.tsx` — Memperbarui helper `clickPill` untuk membuka dropdown secara otomatis saat elemen preset atau mode tersembunyi ingin diklik, serta menambahkan pengujian swap W/H di mode Size.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (all 810 frontend tests passed)
+- PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+
+---
+
 ## [2026-06-12] BUG FIX — Brush Cursor Shown on Pan [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / ERASER / VIEWPORT / UX

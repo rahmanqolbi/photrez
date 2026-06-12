@@ -20,21 +20,21 @@ We will implement a responsive Option Bar design utilizing CSS Container Queries
 - **Fields and Selectors**: Style custom inputs and selection dropdowns (like Crop Unit Selector, Composition Guide) to look like standard `EditableNumField` inputs (height `24px`, font size `11px`, background `bg-editor-field`, subtle border).
 
 ### 2. Container Queries & Progressive Hiding
-Wrap the option bar content in a container named `optionbar`:
-- Define Option Bar wrapper in `OptionBar.tsx` as a container: `@container optionbar (min-width: 0px)`.
-- Use container query rules (or Tailwind container queries if supported, else standard CSS container query styles) to:
-  - `@container optionbar (max-width: 900px)`: Hide text labels on toggle buttons (Auto, Snap, Delete Cropped, Fill BG) and labels for coordinates (`X`, `Y`, `W`, `H`) or group prefixes (`Align`, `Flip`).
-  - `@container optionbar (max-width: 650px)`: Hide secondary group controls (e.g. Align, Flip on Move tool, custom W:H or Guide mode on Crop tool) and display them in a **More Options** (`...`) dropdown menu at the end of the Option Bar.
+Wrap the option bar content in a container:
+- Mark the Option Bar wrapper in `OptionBar.tsx` as a container using the `@container` Tailwind utility.
+- Use native Tailwind v4 container query variants directly in child elements:
+  - `@max-[900px]:hidden`: Hide text labels on toggle buttons (Auto, Snap, Delete Cropped, Fill BG) and labels for coordinates (`X`, `Y`, `W`, `H`) or group prefixes (`Align`, `Flip`).
+  - `@max-[650px]:hidden`: Hide secondary group controls (e.g. Align, Flip on Move tool, custom W:H or Guide mode on Crop tool) and display them in a **More Options** (`...`) dropdown menu at the end of the Option Bar.
 
 ### 3. "More Options" Overflow Menu
 - Add a dropdown component (using a custom SolidJS popover or dropdown trigger) at the end of the Option Bar.
-- This dropdown is only visible when the container is narrow (`max-width: 650px`).
+- This dropdown is only visible when the container is narrow (rendered with `hidden @max-[650px]:flex`).
 - It renders the hidden options as a vertical list menu with desktop-like styling (snappy hover state, tight padding, clear borders).
 
 ## Affected Files
 
 ### [OptionBar.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/OptionBar.tsx)
-- Wrap in `@container optionbar` container.
+- Wrap in `@container` container class.
 - Manage overflow state or pass responsive class names.
 
 ### [OptionBarShared.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/OptionBarShared.tsx)

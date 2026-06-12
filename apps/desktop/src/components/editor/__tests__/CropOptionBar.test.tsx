@@ -5,9 +5,27 @@ import { CropOptionBar } from "../CropOptionBar";
 import * as EditorContextModule from "../EditorContext";
 
 function clickPill(container: HTMLElement, label: string) {
-  const buttons = container.querySelectorAll("button");
-  const pill = Array.from(buttons).find(b => b.textContent?.trim() === label);
-  if (pill) pill.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  let searchLabel = label;
+  if (label === "+") searchLabel = "Custom...";
+
+  const buttonsBefore = container.querySelectorAll("button");
+  let pill = Array.from(buttonsBefore).find(b => b.textContent?.trim() === searchLabel);
+  
+  if (!pill) {
+    const ratioBtn = Array.from(buttonsBefore).find(b => {
+      const text = b.textContent?.trim() || "";
+      return text.startsWith("Ratio:") || text === "Ratio";
+    });
+    if (ratioBtn) {
+      ratioBtn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      const buttonsAfter = container.querySelectorAll("button");
+      pill = Array.from(buttonsAfter).find(b => b.textContent?.trim() === searchLabel);
+    }
+  }
+  
+  if (pill) {
+    pill.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  }
 }
 
 const MAX_W = 800; // min(viewportWidth=800, docWidth=1600 * zoom=1)
@@ -227,6 +245,9 @@ describe("CropOptionBar", () => {
         expect(frame.h).toBeLessThanOrEqual(MAX_H);
         // Aspect preserved from 5000:4000 = 5:4 = 1.25
         expect(frame.w / frame.h).toBeCloseTo(5 / 4, 1);
+        // Verify frame coordinates are correctly centered in the viewport
+        expect(frame.x).toBeCloseTo((MAX_W - frame.w) / 2, 1);
+        expect(frame.y).toBeCloseTo((MAX_H - frame.h) / 2, 1);
 
         done();
       });
@@ -1628,6 +1649,33 @@ describe("CropOptionBar", () => {
         const lastTarget = setCropSizeTargetSpy.mock.lastCall?.[0];
         expect(lastTarget.w).toBeGreaterThan(300); // 300+ DPI, not 96 DPI
         expect(lastTarget.w).toBeCloseTo(354.33, 1);
+
+        done();
+      });
+    });
+
+    it("locks modern crop frame shape in modern interaction mode", () => {
+      runWithContainer((container, done) => {
+        const [cropMode, setCropMode] = createSignal<"free" | "ratio" | "size">("free");
+        const [cropAspect, setCropAspect] = createSignal<{ w: number; h: number } | null>(null);
+        const setCropModeSpy = vi.fn((m) => setCropMode(m));
+        const setCropAspectSpy = vi.fn((a) => setCropAspect(a));
+        const setModernFrameSpy = vi.fn();
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropInteractionMode: () => "modern" as const,
+          cropMode, setCropMode: setCropModeSpy,
+          cropAspect, setCropAspect: setCropAspectSpy,
+          modernCropFrame: () => ({ x: 100, y: 100, w: 400, h: 300 }),
+          setModernCropFrame: setModernFrameSpy,
+        }, container);
+
+        clickPill(container, "Lock Current Shape");
+
+        expect(setCropModeSpy).toHaveBeenCalledWith("ratio");
+        expect(setCropAspectSpy).toHaveBeenCalledWith({ w: 400, h: 300 });
+        expect(setModernFrameSpy).toHaveBeenCalled();
 
         done();
       });

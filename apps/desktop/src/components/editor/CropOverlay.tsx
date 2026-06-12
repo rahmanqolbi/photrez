@@ -32,6 +32,7 @@ interface CropOverlayProps {
   onApplyCrop?: () => void;
   hiddenCropPreview?: CropPreview | null;
   onHiddenCropPreviewChange?: (preview: CropPreview | null) => void;
+  isAltPressed?: () => boolean;
 }
 
 const HANDLE_TYPES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
@@ -79,6 +80,7 @@ export function CropOverlay(props: CropOverlayProps) {
     onDragStateChange: props.onDragStateChange,
     getSvgRef: () => svgRef,
     onHiddenCropPreviewChange: props.onHiddenCropPreviewChange,
+    isAltPressed: props.isAltPressed,
   });
 
   const cropRectCenter = createMemo(() => {

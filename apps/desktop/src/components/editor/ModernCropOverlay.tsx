@@ -36,6 +36,7 @@ interface ModernCropOverlayProps {
   onDragStateChange?: (isDragging: boolean) => void;
   onApplyCrop?: () => void;
   onModernCropCommit?: () => void;
+  isAltPressed?: () => boolean;
 }
 
 type DragState =
@@ -218,7 +219,7 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
         aspect,
         cropMode: props.cropMode,
         shift: e.shiftKey,
-        alt: e.altKey,
+        alt: props.isAltPressed?.() || e.altKey,
       });
       props.onFrameChange(frame);
       if (compensation.x !== 0 || compensation.y !== 0) {

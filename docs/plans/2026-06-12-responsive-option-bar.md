@@ -10,46 +10,7 @@
 
 ---
 
-### Task 1: Add Container Query Helper Classes in index.css
-
-**Files:**
-- Modify: [index.css](file:///d:/Project/image-studio/apps/desktop/src/index.css)
-
-**Step 1: Write container query class definitions**
-Add the following classes under `@layer components` or at the bottom of the file:
-```css
-/* Container Query for Option Bar */
-.optionbar-container {
-  container-type: inline-size;
-  container-name: optionbar;
-  width: 100%;
-}
-
-@container optionbar (max-width: 900px) {
-  .cq-hide-label {
-    display: none !important;
-  }
-}
-
-@container optionbar (max-width: 650px) {
-  .cq-hide-group {
-    display: none !important;
-  }
-  .cq-show-overflow {
-    display: flex !important;
-  }
-}
-```
-
-**Step 2: Commit**
-```bash
-git add apps/desktop/src/index.css
-git commit -m "style: add container query classes for optionbar"
-```
-
----
-
-### Task 2: Create Shared Components in OptionBarShared.tsx
+### Task 1: Create Shared Components in OptionBarShared.tsx
 
 **Files:**
 - Modify: [OptionBarShared.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/OptionBarShared.tsx)
@@ -73,7 +34,7 @@ export function ToolPill(props: { icon: string; label: string }) {
 export function MoreDropdown(props: { children: JSX.Element }) {
   const [isOpen, setIsOpen] = createSignal(false);
   return (
-    <div class="relative hidden cq-show-overflow">
+    <div class="relative hidden @max-[650px]:flex">
       <button
         onClick={() => setIsOpen(!isOpen())}
         class="flex size-[24px] shrink-0 items-center justify-center rounded-[3px] border border-editor-field-border bg-editor-field text-editor-icon hover:border-editor-accent hover:text-editor-text transition-colors"
@@ -87,7 +48,7 @@ export function MoreDropdown(props: { children: JSX.Element }) {
           {props.children}
         </div>
       </Show>
-    </ui>
+    </div>
   );
 }
 ```
@@ -100,7 +61,7 @@ git commit -m "feat: add ToolPill and MoreDropdown shared components"
 
 ---
 
-### Task 3: Unify & Responsive-ize MoveOptionBar.tsx
+### Task 2: Unify & Responsive-ize MoveOptionBar.tsx
 
 **Files:**
 - Modify: [MoveOptionBar.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/MoveOptionBar.tsx)
@@ -108,8 +69,8 @@ git commit -m "feat: add ToolPill and MoreDropdown shared components"
 **Step 1: Update MoveOptionBar structure**
 - Import `ToolPill` and `MoreDropdown`.
 - Replace the capitalized tool name header with `<ToolPill icon="cursor" label={activeTool()} />`.
-- Wrap the labels inside ToggleBtn/EditableNumField with `cq-hide-label` classes so they hide under 900px.
-- Wrap Align and Flip groups with `cq-hide-group` and copy them into a `<MoreDropdown>` render at the end of the Option Bar.
+- Wrap the labels inside ToggleBtn/EditableNumField with `@max-[900px]:hidden` classes so they hide under 900px.
+- Wrap Align and Flip groups with `@max-[650px]:hidden` and copy them into a `<MoreDropdown>` render at the end of the Option Bar.
 
 **Step 2: Commit**
 ```bash
@@ -119,7 +80,7 @@ git commit -m "feat: unify MoveOptionBar design and make it responsive"
 
 ---
 
-### Task 4: Unify & Responsive-ize CropOptionBar.tsx
+### Task 3: Unify & Responsive-ize CropOptionBar.tsx
 
 **Files:**
 - Modify: [CropOptionBar.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/CropOptionBar.tsx)
@@ -127,7 +88,7 @@ git commit -m "feat: unify MoveOptionBar design and make it responsive"
 **Step 1: Update CropOptionBar structure**
 - Add `<ToolPill icon="crop" label="Crop" />` at the start.
 - Standardize all inline buttons and selectors to use `h-[24px]` and matching borders/background.
-- Wrap non-essential crop options (e.g. guide modes, Fill BG settings, presets) with `cq-hide-group` and make them available in the overflow dropdown.
+- Wrap non-essential crop options (e.g. guide modes, Fill BG settings, presets) with `@max-[650px]:hidden` and make them available in the overflow dropdown.
 
 **Step 2: Commit**
 ```bash
@@ -137,7 +98,7 @@ git commit -m "feat: unify CropOptionBar design and make it responsive"
 
 ---
 
-### Task 5: Unify & Responsive-ize BrushOptionBar.tsx
+### Task 4: Unify & Responsive-ize BrushOptionBar.tsx
 
 **Files:**
 - Modify: [BrushOptionBar.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/BrushOptionBar.tsx)
@@ -145,7 +106,7 @@ git commit -m "feat: unify CropOptionBar design and make it responsive"
 **Step 1: Update BrushOptionBar structure**
 - Add `<ToolPill icon="brush" label={activeTool()} />` at the start instead of uppercase orange text.
 - Replace custom inline styles on inputs with standard `h-[24px]` heights and classes matching `EditableNumField`.
-- Apply `cq-hide-label` to slider/numeric field label texts and `cq-hide-group` to secondary configurations (Smoothing, presets).
+- Apply `@max-[900px]:hidden` to slider/numeric field label texts and `@max-[650px]:hidden` to secondary configurations (Smoothing, presets).
 
 **Step 2: Commit**
 ```bash
@@ -155,21 +116,21 @@ git commit -m "feat: unify BrushOptionBar design and make it responsive"
 
 ---
 
-### Task 6: Apply Container Query Container in OptionBar.tsx
+### Task 5: Apply `@container` query wrapper in OptionBar.tsx
 
 **Files:**
 - Modify: [OptionBar.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/OptionBar.tsx)
 
 **Step 1: Add container class**
-Change the outer div wrapper class to include `optionbar-container`:
+Change the outer div wrapper class to include `@container`:
 ```tsx
-<div class="optionbar-container flex h-[44px] shrink-0 items-center gap-1.5 overflow-x-auto border-b border-editor-divider bg-editor-toolbar px-3">
+<div class="@container flex h-[44px] shrink-0 items-center gap-1.5 overflow-x-auto border-b border-editor-divider bg-editor-toolbar px-3">
 ```
 
 **Step 2: Commit**
 ```bash
 git add apps/desktop/src/components/editor/OptionBar.tsx
-git commit -m "style: apply container query class to OptionBar root"
+git commit -m "style: apply container class to OptionBar root"
 ```
 
 ---

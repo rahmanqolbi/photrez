@@ -758,6 +758,7 @@ export function CanvasViewport() {
               onDragStateChange={setIsCropDragging}
               hiddenCropPreview={hiddenCropPreview()}
               onHiddenCropPreviewChange={setHiddenCropPreview}
+              isAltPressed={isAltPressed}
                   onApplyCrop={() => {
                     applyCropPreview({
                       workspace,
@@ -802,6 +803,7 @@ export function CanvasViewport() {
               onHoverHandleChange={setHoverHandle}
               onDragStateChange={setIsCropDragging}
               onModernCropCommit={() => commitModernCropState()}
+              isAltPressed={isAltPressed}
               onApplyCrop={() => {
                 const f = modernCropFrame();
                 if (!f) return;

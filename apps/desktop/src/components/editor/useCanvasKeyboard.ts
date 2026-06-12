@@ -376,6 +376,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
 
       // Alt key tracking for eyedropper shortcut
       if (e.key === "Alt") {
+        e.preventDefault();
         options.setIsAltPressed(true);
       }
 

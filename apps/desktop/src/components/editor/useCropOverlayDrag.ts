@@ -35,6 +35,7 @@ interface UseCropOverlayDragParams {
   onDragStateChange?: (isDragging: boolean) => void;
   getSvgRef: () => SVGSVGElement | undefined;
   onHiddenCropPreviewChange?: (preview: CropPreview | null) => void;
+  isAltPressed?: () => boolean;
 }
 
 export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
@@ -205,15 +206,16 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
       const aspect = constraint === "ratio" && params.cropAspect ? params.cropAspect : null;
 
       const localDelta = screenDeltaToRotatedCropLocalDelta(dx, dy, rot);
+      const altPressed = params.isAltPressed?.() || e.altKey;
       newRect = applyCropResizeHandle(drag.startRect, drag.handle, localDelta.dx, localDelta.dy, {
         constraint,
         aspect,
         shift: e.shiftKey,
-        alt: e.altKey,
+        alt: altPressed,
       });
 
       // Pivot correction under rotation: Ensure the opposite anchor point remains stationary in screen/document space
-      if (rot !== 0 && !e.altKey) {
+      if (rot !== 0 && !altPressed) {
         const getHandleAnchorLocalOffset = (h: string, w: number, hVal: number) => {
           switch (h) {
             case "nw": return { x: w / 2, y: hVal / 2 };

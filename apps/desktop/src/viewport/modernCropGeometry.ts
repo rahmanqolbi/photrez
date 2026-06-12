@@ -179,11 +179,13 @@ export function resizeModernFrameFromCenter(params: {
     }
   }
 
+  const finalW = Math.max(minSize, Math.abs(w));
+  const finalH = Math.max(minSize, Math.abs(h));
   return {
-    w: Math.max(minSize, Math.abs(w)),
-    h: Math.max(minSize, Math.abs(h)),
-    x: params.frame.x,
-    y: params.frame.y,
+    w: finalW,
+    h: finalH,
+    x: params.frame.x + (params.frame.w - finalW) / 2,
+    y: params.frame.y + (params.frame.h - finalH) / 2,
   };
 }
 
@@ -207,8 +209,8 @@ export function resizeModernFrameOneSided(params: {
   const fh = params.frame.h;
 
   const isCorner = ["nw", "ne", "se", "sw"].includes(params.handle);
-  const effDx = params.deltaX;
-  const effDy = params.deltaY;
+  const effDx = params.alt ? params.deltaX * 2 : params.deltaX;
+  const effDy = params.alt ? params.deltaY * 2 : params.deltaY;
   let dw = 0;
   let dh = 0;
 
@@ -222,8 +224,8 @@ export function resizeModernFrameOneSided(params: {
     const resized = applyCropResizeHandle(
       startRect,
       params.handle,
-      effDx,
-      effDy,
+      params.deltaX,
+      params.deltaY,
       {
         constraint: "free",
         aspect: null,
@@ -236,7 +238,12 @@ export function resizeModernFrameOneSided(params: {
     const resultCenterX = resized.x + resized.w / 2;
     const resultCenterY = resized.y + resized.h / 2;
     return {
-      frame: { x: params.frame.x, y: params.frame.y, w: newW, h: newH },
+      frame: {
+        x: params.frame.x + (fw - newW) / 2,
+        y: params.frame.y + (fh - newH) / 2,
+        w: newW,
+        h: newH,
+      },
       compensation: {
         x: params.alt ? 0 : -resultCenterX || 0,
         y: params.alt ? 0 : -resultCenterY || 0,
@@ -280,7 +287,12 @@ export function resizeModernFrameOneSided(params: {
   const actualDh = newH - fh;
 
   return {
-    frame: { x: params.frame.x, y: params.frame.y, w: newW, h: newH },
+    frame: {
+      x: params.frame.x + (fw - newW) / 2,
+      y: params.frame.y + (fh - newH) / 2,
+      w: newW,
+      h: newH,
+    },
     compensation: {
       x: params.alt ? 0 : (params.handle.includes("w") ? actualDw : -actualDw) / 2 || 0,
       y: params.alt ? 0 : (params.handle.includes("n") ? actualDh : -actualDh) / 2 || 0,
