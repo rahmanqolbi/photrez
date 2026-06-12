@@ -1,0 +1,389 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Photrez Desktop - Carbon Studio Windows UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+      /* ANTI-WEBAPP GLOBAL RESETS */
+      * {
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      input, textarea {
+        user-select: text;
+        -webkit-user-select: text;
+      }
+      img, svg, a {
+        -webkit-user-drag: none;
+        user-drag: none;
+      }
+      html, body {
+        overscroll-behavior: none;
+      }
+      body {
+        cursor: default;
+        font-family: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Roboto", sans-serif;
+        font-weight: 500; /* Force medium weight for sharp clear-type rendering */
+        font-variant-numeric: tabular-nums; /* Critical for pro apps: prevents digits from shifting */
+      }
+      .font-mono {
+        font-family: "Consolas", "Cascadia Code", "JetBrains Mono", monospace;
+      }
+      
+      /* Mica Material Emulation */
+      .mica-bg {
+        background-color: #1A1A1C;
+        background-image: 
+          radial-gradient(circle at 0% 0%, rgba(249, 115, 22, 0.06) 0%, transparent 40%),
+          radial-gradient(circle at 100% 100%, rgba(251, 146, 60, 0.03) 0%, transparent 45%);
+      }
+
+      /* Windows Fluent Overlay Scrollbar */
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background-color: rgba(161, 161, 170, 0.2);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(161, 161, 170, 0.4);
+      }
+
+      /* Premium Artboard Checkerboard Pattern */
+      .canvas-checkerboard {
+        background-color: #202022;
+        background-image: 
+          linear-gradient(45deg, #181818 25%, transparent 25%), 
+          linear-gradient(-45deg, #181818 25%, transparent 25%), 
+          linear-gradient(45deg, transparent 75%, #181818 75%), 
+          linear-gradient(-45deg, transparent 75%, #181818 75%);
+        background-size: 12px 12px;
+        background-position: 0 0, 0 6px, 6px -6px, -6px 0px;
+      }
+
+      /* Fluent Input Bottom Highlight Border Effect */
+      .fluent-input {
+        background-color: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        transition: all 0.1s cubic-bezier(0.2, 0, 0, 1);
+      }
+      .fluent-input:focus {
+        border-bottom: 2px solid #F97316;
+        background-color: rgba(255, 255, 255, 0.06);
+        outline: none;
+      }
+
+      /* Desktop Primary Button Top Light Edge */
+      .desktop-btn-primary {
+        background: linear-gradient(180deg, #FB923C 0%, #F97316 100%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-top: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      }
+      .desktop-btn-primary:hover {
+        background: linear-gradient(180deg, #FDBA74 0%, #FB923C 100%);
+      }
+      .desktop-btn-primary:active {
+        background: #EA580C;
+      }
+
+      /* Selection Border Animation */
+      @keyframes dash {
+        to { stroke-dashoffset: -20; }
+      }
+      .active-vector-path {
+        stroke-dasharray: 5;
+        animation: dash 1s linear infinite;
+      }
+
+      /* Desktop Precise CAD Ruler Ticks (High Contrast) */
+      .ruler-x-ticks {
+        background-image: 
+          linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+        background-size: 100px 100%, 50px 55%, 10px 30%;
+        background-position: 0 0, 0 100%, 0 100%;
+        background-repeat: repeat-x;
+      }
+      .ruler-y-ticks {
+        background-image: 
+          linear-gradient(180deg, rgba(255,255,255,0.4) 1px, transparent 1px),
+          linear-gradient(180deg, rgba(255,255,255,0.2) 1px, transparent 1px),
+          linear-gradient(180deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+        background-size: 100% 100px, 55% 50px, 30% 10px;
+        background-position: 0 0, 100% 0, 100% 0;
+        background-repeat: repeat-y;
+      }
+    </style>
+  </head>
+  <body class="mica-bg text-[#D4D4D8] overflow-hidden h-screen w-screen">
+    <div class="app grid grid-rows-[36px_42px_1fr_28px] h-screen overflow-hidden">
+      
+      <!-- 1. TOP WINDOW HEADER & MENUBAR -->
+      <header data-tauri-drag-region class="menubar flex items-center justify-between pl-3 pr-0 bg-[#1A1A1C] border-b border-[#3B3F47] text-[13px] h-[36px] relative" aria-label="App Header">
+        <div data-tauri-drag-region class="flex items-center h-full">
+          <!-- Logo -->
+          <div class="flex items-center gap-1.5 mr-4 font-normal text-[11px] text-[#D4D4D8]">
+            <span class="w-4 h-4 bg-gradient-to-tr from-[#F97316] to-[#FB923C] rounded-[8px] flex items-center justify-center text-[10px] font-black text-[#1A1A1C]">P</span>
+            <span class="font-semibold tracking-wide">Photrez</span>
+          </div>
+
+          <!-- Windows Style Flat Menu Bar -->
+          <nav class="flex items-center h-full text-[#D4D4D8]" aria-label="Main menu">
+            <div class="relative menu-container h-full flex items-center">
+              <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[11px] cursor-default">File</button>
+              <div class="absolute left-0 top-[36px] hidden menu-dropdown bg-[#29292B] border border-[#3B3F47] rounded-[8px] shadow-lg py-1 w-56 z-50">
+                <a href="#" class="flex items-center justify-between px-3.5 py-1 hover:bg-[#F97316] hover:text-white text-[#D4D4D8] text-[11px]"><span>New Document...</span><span class="font-mono text-[10px] opacity-70">Ctrl+N</span></a>
+                <a href="#" class="flex items-center justify-between px-3.5 py-1 hover:bg-[#F97316] hover:text-white text-[#D4D4D8] text-[11px]"><span>Open Image...</span><span class="font-mono text-[10px] opacity-70">Ctrl+O</span></a>
+                <div class="h-[1px] bg-[#3B3F47] my-1 mx-2"></div>
+                <a href="#" class="flex items-center justify-between px-3.5 py-1 hover:bg-[#F97316] hover:text-white text-[#D4D4D8] text-[11px]" id="menuOpenExport"><span>Export Graphic...</span><span class="font-mono text-[10px] opacity-70">Ctrl+E</span></a>
+              </div>
+            </div>
+            <div class="relative menu-container h-full flex items-center">
+              <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[11px] cursor-default">Edit</button>
+            </div>
+            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[11px] cursor-default">View</button>
+            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[11px] cursor-default">Window</button>
+            <button class="px-3 h-full hover:bg-white/5 transition-colors duration-100 text-[11px] cursor-default">Help</button>
+          </nav>
+        </div>
+
+        <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 pointer-events-none">
+          <span class="font-mono text-[10px] text-[#A1A1AA] tracking-tight">banner-client-v4.qanvas</span>
+          <span class="w-1 h-1 rounded-[4px] bg-[#A1A1AA]"></span>
+          <span class="text-[10px] text-[#71717A] font-normal">Photrez Core v1.0</span>
+        </div>
+
+        <!-- Windows Native Title Bar Controls -->
+        <div class="flex items-center h-full text-[#A1A1AA]">
+          <button class="h-full w-[46px] flex items-center justify-center hover:bg-white/5 hover:text-white transition-colors" title="Minimize">
+            <svg width="10" height="1" viewBox="0 0 10 1"><rect width="10" height="1" fill="currentColor"></rect></svg>
+          </button>
+          <button class="h-full w-[46px] flex items-center justify-center hover:bg-white/5 hover:text-white transition-colors" title="Maximize">
+            <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1"></rect></svg>
+          </button>
+          <button class="h-full w-[46px] flex items-center justify-center hover:bg-[#e81123] hover:text-white transition-colors" title="Close">
+            <svg width="10" height="10" viewBox="0 0 10 10"><path d="M1,1 L9,9 M9,1 L1,9" stroke="currentColor" stroke-width="1" stroke-linecap="round"></path></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- 2. CONTEXTUAL TOOL OPTIONS BAR -->
+      <section class="toolbar flex items-center justify-between px-3 bg-[#1A1A1C] border-b border-[#3B3F47] h-[42px] text-[11px] text-[#A1A1AA]" aria-label="Tool options bar">
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2 border-r border-[#3B3F47] pr-4 h-full py-1">
+            <i data-lucide="pen-tool" class="w-3.5 h-3.5 text-[#F97316]"></i>
+            <span class="font-medium text-[#D4D4D8] text-[11px]">Pen Tool</span>
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <span class="text-[#A1A1AA] text-[10px]">Fill</span>
+            <button class="flex items-center gap-1.5 px-2 py-0.5 bg-[#202022] hover:bg-[#29292B] border border-[#3B3F47] rounded-[8px] text-[11px]">
+              <span class="w-3 h-3 rounded-[8px] bg-gradient-to-tr from-[#F97316] to-[#FB923C] border border-white/20"></span>
+              <span class="text-[11px] font-normal text-[#D4D4D8]">Photon Amber</span>
+              <i data-lucide="chevron-down" class="w-3 h-3 text-[#71717A]"></i>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-[#A1A1AA] text-[10px]">Stroke</span>
+            <input type="text" class="w-12 h-[22px] fluent-input font-mono text-[10px] font-normal text-center text-[#D4D4D8] rounded-[8px]" value="2.5 px" />
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button class="flex items-center gap-1.5 px-2.5 h-[22px] bg-[#202022] border border-[#3B3F47] text-[#A1A1AA] hover:bg-[#29292B] hover:text-white rounded-[8px] transition-all duration-100 cursor-default" id="openPalette">
+            <i data-lucide="terminal" class="w-3 h-3 text-[#F97316]"></i>
+            <span class="text-[10px] font-normal">Command Palette</span>
+            <kbd class="font-mono text-[9px] bg-[#161618] border border-[#3B3F47] px-1 rounded-[8px] text-[#71717A]">Ctrl K</kbd>
+          </button>
+          
+          <span class="w-[1px] h-4 bg-[#3B3F47] mx-1"></span>
+          <button class="px-2.5 h-[22px] bg-[#202022] border border-[#3B3F47] text-[#A1A1AA] hover:bg-[#29292B] hover:text-white rounded-[8px] text-[10px] font-normal cursor-default" id="toggleInspector">Inspector</button>
+          <button class="flex items-center gap-1 px-3 h-[22px] desktop-btn-primary text-white font-normal text-[11px] rounded-[8px] transition-colors duration-100 cursor-default" id="openExport">
+            <i data-lucide="share" class="w-3 h-3"></i>
+            <span>Export</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- 3. WORKSPACE -->
+      <div class="workspace grid grid-cols-[56px_1fr_320px] min-h-0 h-full overflow-hidden" id="workspaceContainer">
+        
+        <!-- 3.1 LEFT TOOL RAIL -->
+        <aside class="tool-rail bg-[#1A1A1C] border-r border-[#3B3F47] py-3 flex flex-col items-center gap-1.5 z-10 relative">
+          <div class="flex flex-col gap-1 w-full items-center">
+            <button class="w-9 h-9 rounded-[8px] flex items-center justify-center text-[#A1A1AA] hover:bg-[#29292B] hover:text-white transition-all duration-100 cursor-default" title="Move Tool (V)"><i data-lucide="move" class="w-5 h-5"></i></button>
+            <div class="relative w-9 h-9 flex items-center justify-center">
+              <span class="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-[#F97316]"></span>
+              <button class="w-9 h-9 rounded-[8px] flex items-center justify-center text-white bg-[#29292B] shadow-inner cursor-default" title="Pen Tool (P)"><i data-lucide="pen-tool" class="w-5 h-5"></i></button>
+            </div>
+            <button class="w-9 h-9 rounded-[8px] flex items-center justify-center text-[#A1A1AA] hover:bg-[#29292B] hover:text-white transition-all duration-100 cursor-default" title="Text Tool (T)"><i data-lucide="type" class="w-5 h-5"></i></button>
+          </div>
+          <div class="mt-auto flex flex-col gap-1 w-full items-center">
+            <button class="w-9 h-9 rounded-[8px] flex items-center justify-center text-[#A1A1AA] hover:bg-[#29292B] hover:text-white transition-all duration-100 cursor-default" id="btnZoomIn"><i data-lucide="zoom-in" class="w-5 h-5"></i></button>
+            <button class="w-9 h-9 rounded-[8px] flex items-center justify-center text-[#A1A1AA] hover:bg-[#29292B] hover:text-white transition-all duration-100 cursor-default" id="btnZoomOut"><i data-lucide="zoom-out" class="w-5 h-5"></i></button>
+          </div>
+        </aside>
+
+        <!-- 3.2 CANVAS VIEWPORT -->
+        <main class="canvas-wrap relative bg-[#161618] overflow-hidden flex flex-col h-full">
+          <div class="h-[18px] bg-[#1A1A1C] border-b border-[#3B3F47] relative ruler-x-ticks">
+            <div class="absolute inset-0 font-mono text-[10px] text-[#71717A] leading-none pt-0.5 pointer-events-none">
+              <span class="absolute -translate-x-1/2" style="left: 0px;">0</span>
+              <span class="absolute -translate-x-1/2" style="left: 100px;">100</span>
+              <span class="absolute -translate-x-1/2" style="left: 200px;">200</span>
+              <span class="absolute -translate-x-1/2" style="left: 300px;">300</span>
+              <span class="absolute -translate-x-1/2" style="left: 400px;">400</span>
+              <span class="absolute -translate-x-1/2" style="left: 500px;">500</span>
+            </div>
+          </div>
+          
+          <div class="flex flex-row h-full min-h-0 w-full">
+            <div class="w-[18px] bg-[#1A1A1C] border-r border-[#3B3F47] relative ruler-y-ticks"></div>
+            <div class="flex-1 h-full flex items-center justify-center relative">
+              <div class="artboard w-[680px] aspect-[16/10] canvas-checkerboard border border-[#3B3F47] shadow-[0_8px_24px_rgba(0,0,0,0.6)] relative rounded-[8px] overflow-hidden" id="canvasArtboard">
+                <div class="absolute inset-0 bg-[#202022] flex flex-col justify-between p-8">
+                  <div class="relative w-full h-[180px] rounded-[8px] border border-[#3B3F47] bg-[#1A1A1C] flex items-center justify-center">
+                    <svg class="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M 50,140 C 150,20 250,200 380,90" fill="none" stroke="#F97316" stroke-width="2.5" class="active-vector-path" />
+                      <circle cx="50" cy="140" r="4.5" fill="#1A1A1C" stroke="#F97316" stroke-width="2" />
+                      <circle cx="380" cy="90" r="4.5" fill="#1A1A1C" stroke="#F97316" stroke-width="2" />
+                    </svg>
+                  </div>
+                  <div class="flex items-end justify-between mt-4">
+                    <div class="flex flex-col">
+                      <span class="text-[10px] text-[#A1A1AA] font-normal uppercase tracking-wider">Campaign banner</span>
+                      <h3 class="text-base font-bold text-white mt-1 leading-none">Explore Unknown</h3>
+                    </div>
+                    <!-- Sharp 2px Join Expedition Button -->
+                    <div class="px-4 py-1.5 rounded-[8px] bg-[#D4D4D8] text-[#161618] font-bold text-[11px] cursor-default">
+                      Join Expedition
+                    </div>
+                  </div>
+                </div>
+                <div class="absolute inset-x-6 inset-y-6 border border-[#F97316]/50 pointer-events-none">
+                  <div class="absolute -top-1.5 -left-1.5 w-3 h-3 bg-[#1A1A1C] border-2 border-[#F97316] pointer-events-auto cursor-nwse-resize"></div>
+                  <div class="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-[#1A1A1C] border-2 border-[#F97316] pointer-events-auto cursor-nwse-resize"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <!-- 3.3 RIGHT INSPECTOR -->
+        <aside class="inspector bg-[#202022] border-l border-[#3B3F47] flex flex-col min-h-0 overflow-hidden" id="inspectorPanel">
+          <div class="border-b border-[#3B3F47] flex flex-col min-h-0 bg-[#202022]">
+            <header class="h-8 border-b border-[#3B3F47] px-3.5 flex items-center justify-between">
+              <div class="flex items-center gap-1.5 text-[11px] font-medium text-[#D4D4D8]">
+                <i data-lucide="sliders" class="w-3.5 h-3.5 text-[#F97316]"></i>
+                <span>Vector properties</span>
+              </div>
+            </header>
+            <div class="p-3.5 flex flex-col gap-3.5">
+              <div class="grid grid-cols-4 gap-2">
+                <div class="flex flex-col gap-0.5"><label class="text-[10px] uppercase tracking-wider text-[#A1A1AA]">X</label><input class="text-[11px] h-[22px] px-1 rounded-[8px] fluent-input text-center text-[#D4D4D8]" value="128.5 px" /></div>
+                <div class="flex flex-col gap-0.5"><label class="text-[10px] uppercase tracking-wider text-[#A1A1AA]">Y</label><input class="text-[11px] h-[22px] px-1 rounded-[8px] fluent-input text-center text-[#D4D4D8]" value="64.0 px" /></div>
+                <div class="flex flex-col gap-0.5"><label class="text-[10px] uppercase tracking-wider text-[#A1A1AA]">W</label><input class="text-[11px] h-[22px] px-1 rounded-[8px] fluent-input text-center text-[#D4D4D8]" value="680.0 px" /></div>
+                <div class="flex flex-col gap-0.5"><label class="text-[10px] uppercase tracking-wider text-[#A1A1AA]">H</label><input class="text-[11px] h-[22px] px-1 rounded-[8px] fluent-input text-center text-[#D4D4D8]" value="425.0 px" /></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <!-- Classic Desktop Attached Tabs -->
+            <div class="flex bg-[#161618] h-[32px] select-none">
+              <button class="px-5 flex items-center justify-center text-[10px] font-bold bg-[#202022] text-[#D4D4D8] border-t-[2px] border-t-[#F97316] border-r border-r-[#3B3F47] relative z-10 cursor-default" id="tabBtnLayers">
+                LAYERS
+              </button>
+              <button class="px-5 flex items-center justify-center text-[10px] font-bold bg-transparent text-[#71717A] hover:text-[#D4D4D8] hover:bg-[#1A1A1C] border-t-[2px] border-t-transparent border-b border-b-[#3B3F47] border-r border-r-[#3B3F47] transition-colors duration-100 cursor-default" id="tabBtnHistory">
+                HISTORY
+              </button>
+              <div class="flex-1 border-b border-[#3B3F47]"></div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto min-h-0 flex flex-col" id="tabContentLayers">
+              <section class="flex flex-col flex-1">
+                <header class="h-7 border-b border-[#3B3F47] px-3.5 flex items-center justify-between bg-[#1A1A1C]">
+                  <span class="text-[10px] font-medium text-[#A1A1AA]">Layers stack</span>
+                </header>
+                <div class="flex flex-col">
+                  <!-- Layer Item -->
+                  <div class="h-[28px] border-b border-[#3B3F47] flex items-center justify-between px-2 bg-[#F97316]/10 border-l-[2px] border-l-[#F97316] text-white cursor-default">
+                    <div class="flex items-center gap-2">
+                      <button class="text-[#D4D4D8]"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
+                      <div class="w-4 h-4 rounded-[8px] border border-[#F97316]/30 flex items-center justify-center bg-[#F97316]/20">
+                        <i data-lucide="pen-tool" class="w-2.5 h-2.5 text-[#F97316]"></i>
+                      </div>
+                      <span class="text-[11px] font-medium">Vector Line Shape</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div class="flex-1 overflow-y-auto min-h-0 hidden flex flex-col" id="tabContentHistory">
+              <section class="p-3.5 flex flex-col gap-3">
+                <span class="text-[10px] text-[#A1A1AA]">History logs will appear here.</span>
+              </section>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <!-- 4. BOTTOM STATUS BAR -->
+      <footer class="statusbar flex items-center justify-between px-3 bg-[#1A1A1C] border-t border-[#3B3F47] h-[28px] text-[10px] text-[#71717A] select-none">
+        <div class="flex items-center gap-3">
+          <span class="text-[#D4D4D8]">680 x 425 px</span>
+          <span class="opacity-30">â€¢</span>
+          <span>Zoom: <span class="text-[#F97316] font-medium" id="zoomPercentText">100%</span></span>
+          <span class="opacity-30">â€¢</span>
+          <span>RAM: <span class="text-[#10B981] font-mono">112 MB</span></span>
+        </div>
+        <div class="flex items-center gap-2 text-[#F97316] uppercase tracking-wider font-semibold">
+          <span>SolidJS Renderer Active</span>
+        </div>
+      </footer>
+    </div>
+
+    <!-- Script Interactions -->
+    <script>
+      lucide.createIcons();
+      
+      const tabBtnLayers = document.getElementById("tabBtnLayers");
+      const tabBtnHistory = document.getElementById("tabBtnHistory");
+      const tabContentLayers = document.getElementById("tabContentLayers");
+      const tabContentHistory = document.getElementById("tabContentHistory");
+
+      tabBtnLayers.addEventListener("click", () => {
+        tabBtnLayers.className = "px-5 flex items-center justify-center text-[10px] font-bold bg-[#202022] text-[#D4D4D8] border-t-[2px] border-t-[#F97316] border-r border-r-[#3B3F47] relative z-10 cursor-default";
+        tabBtnHistory.className = "px-5 flex items-center justify-center text-[10px] font-bold bg-transparent text-[#71717A] hover:text-[#D4D4D8] hover:bg-[#1A1A1C] border-t-[2px] border-t-transparent border-b border-b-[#3B3F47] border-r border-r-[#3B3F47] transition-colors duration-100 cursor-default";
+        tabContentLayers.classList.remove("hidden");
+        tabContentHistory.classList.add("hidden");
+      });
+
+      tabBtnHistory.addEventListener("click", () => {
+        tabBtnHistory.className = "px-5 flex items-center justify-center text-[10px] font-bold bg-[#202022] text-[#D4D4D8] border-t-[2px] border-t-[#F97316] border-r border-r-[#3B3F47] relative z-10 cursor-default";
+        tabBtnLayers.className = "px-5 flex items-center justify-center text-[10px] font-bold bg-transparent text-[#71717A] hover:text-[#D4D4D8] hover:bg-[#1A1A1C] border-t-[2px] border-t-transparent border-b border-b-[#3B3F47] border-r border-r-[#3B3F47] transition-colors duration-100 cursor-default";
+        tabContentHistory.classList.remove("hidden");
+        tabContentLayers.classList.add("hidden");
+      });
+    </script>
+  </body>
+</html>tml>>
+</html>tml>
+

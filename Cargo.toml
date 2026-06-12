@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = [
+    "apps/desktop/src-tauri",
+    "crates/core"
+]
+
+[workspace.dependencies]
+# We will define shared dependencies here as we proceed.

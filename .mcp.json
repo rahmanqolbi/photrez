@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "code-review-graph": {
+      "command": "D:\\laragon\\bin\\python\\python-3.10\\python.exe",
+      "args": [
+        "-m",
+        "code_review_graph",
+        "serve"
+      ],
+      "cwd": "D:\\Project\\image-studio",
+      "type": "stdio"
+    }
+  }
+}

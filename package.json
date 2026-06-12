@@ -1,0 +1,15 @@
+{
+  "name": "photrez-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter photrez-desktop dev",
+    "build": "pnpm --filter photrez-desktop build",
+    "test:e2e": "pnpm --filter photrez-desktop test:e2e",
+    "tauri": "tauri",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "husky": "^9.1.7"
+  }
+}

@@ -1,0 +1,207 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Photrez UI Style Guide Preview - Carbon Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+      /* ANTI-WEBAPP GLOBAL RESETS */
+      * {
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      input, textarea {
+        user-select: text;
+        -webkit-user-select: text;
+      }
+      img, svg, a {
+        -webkit-user-drag: none;
+        user-drag: none;
+      }
+      html, body {
+        overscroll-behavior: none;
+      }
+      body {
+        cursor: default;
+        font-family: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Roboto", sans-serif;
+        font-weight: 500; /* Rigid weight for ClearType */
+        font-variant-numeric: tabular-nums; /* Critical for pro apps */
+      }
+      .font-mono {
+        font-family: "Consolas", "Cascadia Code", "JetBrains Mono", monospace;
+      }
+      
+      /* Windows Fluent Overlay Scrollbar */
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background-color: rgba(158, 168, 182, 0.2);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(158, 168, 182, 0.4);
+      }
+    </style>
+  </head>
+  <body class="bg-[#0a0b0d] text-[#e7ebf0] min-h-screen p-8">
+    <main class="max-w-[1000px] mx-auto flex flex-col gap-8">
+      
+      <!-- HEADER -->
+      <header class="border-b border-[#23252a] pb-6 flex items-center justify-between">
+        <div class="flex flex-col gap-1.5">
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 bg-gradient-to-tr from-[#2f8ff5] to-[#7fb8ff] rounded-[6px] flex items-center justify-center text-[11px] font-black text-[#0a0b0d]">P</span>
+            <h1 class="text-2xl font-bold tracking-tight">Photrez UI Style Guide</h1>
+          </div>
+          <p class="text-[#9ea8b6] text-[14px]">Carbon Studio Edition &bull; Modern Strict Desktop Baseline</p>
+        </div>
+        <span class="px-2.5 py-1 text-[11px] font-bold font-mono bg-[#121316] border border-[#23252a] text-[#2f8ff5] rounded-[8px] tracking-wider uppercase">Active Token System</span>
+      </header>
+
+      <!-- 1. CORE DESIGN PRINCIPLES -->
+      <section class="flex flex-col gap-4">
+        <h2 class="tracking-widest text-[10px] uppercase font-bold text-[#5c6475]">Core Design Principles</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-[#121316] border border-[#23252a] p-4 rounded-[8px] flex flex-col gap-2">
+            <span class="text-[13px] font-bold text-[#2f8ff5]">1. Desktop-First Density</span>
+            <p class="text-[#9ea8b6] text-[13px] leading-relaxed">Compact control sizing, dense margins, and strict layouts. Eliminates flowing web scrolls completely.</p>
+          </div>
+          <div class="bg-[#121316] border border-[#23252a] p-4 rounded-[8px] flex flex-col gap-2">
+            <span class="text-[13px] font-bold text-[#2f8ff5]">2. Mechanical Rigidity</span>
+            <p class="text-[#9ea8b6] text-[13px] leading-relaxed">Sharp corners, geometric lines, and instant animations. No bouncing UI, no pill-shapes, no soft drop-shadows.</p>
+          </div>
+          <div class="bg-[#121316] border border-[#23252a] p-4 rounded-[8px] flex flex-col gap-2">
+            <span class="text-[13px] font-bold text-[#2f8ff5]">3. Silent Interface Philosophy</span>
+            <p class="text-[#9ea8b6] text-[13px] leading-relaxed">Obsidian charcoal backdrops act as a calm environment, letting the artwork stand out without color clashes.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. COLOR TOKENS -->
+      <section class="flex flex-col gap-4">
+        <h2 class="tracking-widest text-[10px] uppercase font-bold text-[#5c6475]">Carbon Studio Color System</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
+          <div class="bg-[#121316] border border-[#23252a] rounded-[8px] p-2.5 flex flex-col gap-2">
+            <div class="h-10 rounded-[8px] bg-[#0a0b0d] border border-white/5"></div>
+            <div class="flex flex-col">
+              <span class="text-[11px] font-bold text-[#e7ebf0]">bg-app-frame</span>
+              <span class="font-mono text-[10px] text-[#5c6475]">#0a0b0d</span>
+            </div>
+          </div>
+          <div class="bg-[#121316] border border-[#23252a] rounded-[8px] p-2.5 flex flex-col gap-2">
+            <div class="h-10 rounded-[8px] bg-[#121316] border border-white/5"></div>
+            <div class="flex flex-col">
+              <span class="text-[11px] font-bold text-[#e7ebf0]">bg-panel</span>
+              <span class="font-mono text-[10px] text-[#5c6475]">#121316</span>
+            </div>
+          </div>
+          <div class="bg-[#121316] border border-[#23252a] rounded-[8px] p-2.5 flex flex-col gap-2">
+            <div class="h-10 rounded-[8px] bg-[#181a1f] border border-white/5"></div>
+            <div class="flex flex-col">
+              <span class="text-[11px] font-bold text-[#e7ebf0]">bg-control</span>
+              <span class="font-mono text-[10px] text-[#5c6475]">#181a1f</span>
+            </div>
+          </div>
+          <div class="bg-[#121316] border border-[#23252a] rounded-[8px] p-2.5 flex flex-col gap-2">
+            <div class="h-10 rounded-[8px] bg-[#2f8ff5] border border-white/5"></div>
+            <div class="flex flex-col">
+              <span class="text-[11px] font-bold text-[#e7ebf0]">color-accent</span>
+              <span class="font-mono text-[10px] text-[#5c6475]">#2f8ff5</span>
+            </div>
+          </div>
+          <div class="bg-[#121316] border border-[#23252a] rounded-[8px] p-2.5 flex flex-col gap-2">
+            <div class="h-10 rounded-[8px] bg-[#23252a]"></div>
+            <div class="flex flex-col">
+              <span class="text-[11px] font-bold text-[#e7ebf0]">border-subtle</span>
+              <span class="font-mono text-[10px] text-[#5c6475]">#23252a</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. TYPOGRAPHY & COMPONENT PREVIEWS -->
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Left: Typography -->
+        <div class="flex flex-col gap-4">
+          <h2 class="tracking-widest text-[10px] uppercase font-bold text-[#5c6475]">Typography Stack</h2>
+          <div class="bg-[#121316] border border-[#23252a] p-4 rounded-[8px] flex flex-col gap-4">
+            <div class="flex flex-col gap-1">
+              <span class="text-[10px] text-[#5c6475] uppercase tracking-wider font-bold">Primary UI Font (Segoe UI Variable)</span>
+              <span class="text-[18px] font-semibold text-[#e7ebf0] tracking-tight">Segoe UI Variable Text</span>
+              <span class="text-[13px] text-[#9ea8b6]">Aa Bb Cc Dd Ee Ff Gg 1234567890</span>
+            </div>
+            <div class="flex flex-col gap-1 border-t border-[#23252a] pt-3.5">
+              <span class="text-[10px] text-[#5c6475] uppercase tracking-wider font-bold">Technical Data Font (Consolas)</span>
+              <span class="font-mono text-[14px] font-semibold text-[#2f8ff5]">Consolas Numbers</span>
+              <span class="font-mono text-[13px] text-[#9ea8b6]">X: 128.5px Y: 64.0px W: 680.0px Scale: 100%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Real Working Component Previews -->
+        <div class="flex flex-col gap-4">
+          <h2 class="tracking-widest text-[10px] uppercase font-bold text-[#5c6475]">Rigid Desktop Components</h2>
+          <div class="bg-[#121316] border border-[#23252a] p-4 rounded-[8px] flex flex-col gap-4">
+            
+            <!-- Buttons -->
+            <div class="flex flex-wrap items-center gap-3">
+              <!-- Sharp Primary Button -->
+              <button class="px-3.5 h-6 text-[11px] font-medium rounded-[6px] bg-gradient-to-b from-[#3d9cfc] to-[#2f8ff5] border border-white/10 border-t-white/25 hover:from-[#4fa3ff] hover:to-[#3d9cfc] text-[#0a0b0d] transition-colors duration-100 cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.3)]">Export</button>
+              
+              <!-- Sharp Secondary Button -->
+              <button class="px-3 h-6 text-[11px] font-medium border border-[#23252a] rounded-[6px] bg-[#181a1f] hover:bg-[#22252c] text-[#e7ebf0] transition-colors duration-100 cursor-pointer">Cancel</button>
+              
+              <!-- Subtle Action Button -->
+              <button class="group flex items-center gap-1.5 px-2 h-6 text-[11px] font-normal rounded-[6px] bg-transparent hover:bg-white/5 text-[#9ea8b6] hover:text-[#e7ebf0] transition-all duration-100 cursor-pointer">
+                <i data-lucide="copy" class="w-3 h-3 text-[#5c6475] group-hover:text-[#2f8ff5] transition-colors duration-100"></i>
+                <span>Duplicate</span>
+              </button>
+            </div>
+
+            <!-- Attached Tab Preview -->
+            <div class="flex text-[11px] font-medium bg-[#07080a] h-[26px] border-b border-[#23252a] w-[140px]">
+              <button class="flex-1 flex items-center justify-center bg-[#121316] text-[#e7ebf0] border-t-[2px] border-t-[#2f8ff5] border-r border-r-white/5 relative z-10 cursor-default">
+                Layers
+              </button>
+              <button class="flex-1 flex items-center justify-center bg-transparent text-white/50 hover:text-white/80 border-t-[2px] border-t-transparent border-r border-r-white/5 cursor-pointer">
+                History
+              </button>
+            </div>
+
+            <!-- Tool Options Parameter input preview -->
+            <div class="flex items-center gap-2.5 bg-[#0a0b0d] border border-[#23252a] p-2 rounded-[6px]">
+              <span class="tracking-widest text-[10px] uppercase font-bold text-[#5c6475]">Properties</span>
+              <div class="flex items-center gap-1.5 ml-auto">
+                <span class="text-[#5c6475] text-[10px] uppercase font-bold">Width</span>
+                <input class="w-14 h-5 bg-white/5 border border-white/10 border-b-white/40 focus:border-b-[#2f8ff5] text-[12px] text-center text-[#e7ebf0] rounded-[8px] outline-none transition-all duration-100" value="640 px" readonly />
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+      <!-- FOOTER INFO -->
+      <footer class="border-t border-[#23252a] pt-4 text-center text-[#5c6475] text-[11px] font-mono select-none">
+        Source docs: [22-ui-style-guide.md](docs/22-ui-style-guide.md) &bull; [23-design-tokens.md](docs/23-design-tokens.md) &bull; [24-ui-component-rules.md](docs/24-ui-component-rules.md)
+      </footer>
+
+    </main>
+    <script>
+      lucide.createIcons();
+    </script>
+  </body>
+</html>

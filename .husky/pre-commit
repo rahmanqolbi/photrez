@@ -1,0 +1,40 @@
+#!/bin/sh
+echo "============================================="
+echo "   Running Pre-Commit Verification Pipeline  "
+echo "============================================="
+
+# 1. TypeScript & Frontend Compilation Check
+echo ""
+echo "[1/3] Running TypeScript Type Check & Vite Build..."
+pnpm --filter photrez-desktop build || {
+  echo ""
+  echo "❌ ERROR: TypeScript compilation or Vite build failed!"
+  exit 1
+}
+
+# 2. Frontend Unit Tests
+echo ""
+echo "[2/3] Running Frontend Unit Tests..."
+pnpm --filter photrez-desktop test || {
+  echo ""
+  echo "❌ ERROR: Frontend unit tests failed!"
+  exit 1
+}
+
+# 3. Rust Core & Workspace Check/Tests
+echo ""
+echo "[3/3] Running Rust Compilation Check & Core Tests..."
+cargo check -p photrez-core || {
+  echo ""
+  echo "❌ ERROR: Rust compilation check failed!"
+  exit 1
+}
+
+cargo test -p photrez-core || {
+  echo ""
+  echo "❌ ERROR: Rust core unit tests failed!"
+  exit 1
+}
+
+echo ""
+echo "✅ SUCCESS: All TypeScript, Frontend, and Rust checks passed! Proceeding with commit."
