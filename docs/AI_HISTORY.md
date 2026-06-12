@@ -1,5 +1,27 @@
 # AI History — Photrez
 
+## [2026-06-12] POLISH — Remove Inner Brush Hardness Indicator Ring [COMPLETE]
+
+### Kategori: POLISH / BRUSH / ERASER / UX
+
+**Root Cause:**
+The brush/eraser cursor overlay rendered an inner dashed circle (`data-paint-cursor-hardness`) when `hardness > 0 && hardness < 1` to represent the hardness boundary. This secondary ring is non-standard in professional image editors (like Photoshop/Affinity) and creates unnecessary visual clutter.
+
+**Fix Rationale:**
+Remove the secondary inner dashed ring from `BrushCursorOverlay.tsx` to align Photrez exactly with professional editor aesthetics, making the brush/eraser kursor a single clean circle showing the outer brush size.
+
+**Rincian Perubahan:**
+1. `BrushCursorOverlay.tsx` - Removed the `<circle data-paint-cursor-hardness>` rendering block and cleaned up the unused `hardRadius` definition.
+2. `BrushCursorOverlay.test.tsx` - Updated unit test assertions to expect that the inner hardness circle is absent (`toBeNull()`).
+3. `2026-06-12-remove-inner-brush-cursor-indicator-design.md` - Created and committed the design document for this change.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (all 809 tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+- PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
+
+---
+
 ## [2026-06-12] FEATURE — Brush & Eraser UX Improvements [COMPLETE]
 
 ### Kategori: FEATURE / BRUSH / ERASER / UX

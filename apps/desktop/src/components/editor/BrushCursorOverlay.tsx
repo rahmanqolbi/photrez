@@ -38,7 +38,6 @@ export function BrushCursorOverlay(props?: {
   });
 
   const radius = () => settings().size / 2;
-  const hardRadius = () => radius() * settings().hardness;
 
   onMount(() => {
     let containerEl: HTMLElement | null = null;
@@ -97,18 +96,6 @@ export function BrushCursorOverlay(props?: {
           stroke="white"
           stroke-width={1 / zoom()}
         />
-        <Show when={settings().hardness > 0 && settings().hardness < 1}>
-          <circle
-            data-paint-cursor-hardness
-            cx={0}
-            cy={0}
-            r={hardRadius()}
-            fill="none"
-            stroke="rgba(255,255,255,0.3)"
-            stroke-width={1 / zoom()}
-            stroke-dasharray={`${2 / zoom()} ${2 / zoom()}`}
-          />
-        </Show>
         <line x1={-4 / zoom()} y1={0} x2={4 / zoom()} y2={0} stroke="white" stroke-width={1 / zoom()} />
         <line x1={0} y1={-4 / zoom()} x2={0} y2={4 / zoom()} stroke="white" stroke-width={1 / zoom()} />
       </g>

@@ -28,7 +28,7 @@ describe("BrushCursorOverlay", () => {
     const dispose = render(() => <BrushCursorOverlay forceVisibleForTest cursorPosForTest={{ x: 10, y: 10 }} />, root);
 
     expect(root.querySelector("[data-paint-cursor-outer]")?.getAttribute("r")).toBe("12");
-    expect(root.querySelector("[data-paint-cursor-hardness]")?.getAttribute("r")).toBe("6");
+    expect(root.querySelector("[data-paint-cursor-hardness]")).toBeNull();
 
     dispose();
     root.remove();

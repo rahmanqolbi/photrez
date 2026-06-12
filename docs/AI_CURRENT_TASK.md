@@ -317,3 +317,18 @@ Implementing modifier key workflows (Shift + Alt) for the Brush and Eraser tools
 - PASS: `pnpm --filter photrez-desktop test --run` (all 809 tests passed)
 - PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
 - PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
+
+### [2026-06-12] Remove Inner Brush Hardness Indicator Ring [COMPLETE]
+
+Removing the inner dashed hardness ring from the brush/eraser cursor overlay to match professional editor aesthetics (Photoshop/Affinity) and reduce visual clutter.
+
+**Done:**
+1. Removed `<circle data-paint-cursor-hardness>` conditional rendering from `BrushCursorOverlay.tsx`.
+2. Cleaned up unused `hardRadius` definition in `BrushCursorOverlay.tsx`.
+3. Updated unit tests in `BrushCursorOverlay.test.tsx` to assert that the inner hardness circle is absent (`toBeNull()`).
+4. Verified that the updated unit tests and build compilation pass successfully.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (all 809 tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+- PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
