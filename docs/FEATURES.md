@@ -111,7 +111,8 @@
 | ✅ DONE      | Brush/eraser cursor preview reflects active size and hardness |
 | ✅ DONE      | Brush/eraser active-size shortcuts (`[` / `]`) |
 | ✅ DONE      | Paint blocked-state feedback for locked, hidden, and protected layers |
-| ✅ DONE      | Soft edge rendering via radial gradient falloff |
+| ✅ DONE      | Soft edge rendering via deterministic per-pixel distance-field alpha mask (within-stroke max-alpha, no accumulation, bounds-clipped) |
+| ✅ DONE      | Brush-tip mask engine replacement for faster editor-like soft brush UX |
 | ✅ DONE      | Hard brush (hardness=100%) solid fill (no gradient) |
 | ✅ DONE      | Cursor overlay accounts for viewport pan and zoom |
 | ✅ DONE      | Cursor radius matches stroke at any zoom level |
@@ -124,6 +125,7 @@
 | ✅ DONE      | Enhanced option bar — Flow input, Smoothing input, Preset dropdown |
 | ✅ DONE      | Right-click context menu — Size/Hardness/Strength sliders, preset grid, Reset button, close on Escape/outside click |
 | ✅ DONE      | Keyboard shortcuts — `[`/`]` for size, Shift+`[`/`]` for hardness |
+| ✅ DONE      | Brush visual calibration: hardness 0 broad feather, dense soft spacing, subpixel bilinear stamping, editor-like effective flow/alphaScale hardness scaling, and pixel-profile regression tests |
 
 ---
 
@@ -183,7 +185,7 @@
 | ✅ DONE      | Transformation HUD near cursor             |
 | ✅ DONE      | Status bar tool hints + zoom readout       |
 | ✅ DONE      | HiDPI/Retina sharpness (canvas pixel buffer = docW × zoom × dpr) |
-| ✅ DONE      | Smooth zoom (150ms tween) + snap fit-to-screen (instant) |
+| ✅ DONE      | Snappy, instant zoom & tool switching (no CSS transition delay/jiggle) |
 | ✅ DONE      | View matrix bug fix (documentSize, not canvasSize) |
 | ✅ DONE      | Cursor style reactive binding (style:cursor for Space-grab visual feedback) |
 | ✅ DONE      | Cursor imperative sync (createEffect for guaranteed reactivity in canvas) |
@@ -283,6 +285,9 @@
 
 | Status | Item |
 | ------ | ---- |
+| DONE | Brush visual calibration and pixel QA plan executed: `docs/superpowers/plans/2026-06-11-brush-visual-calibration-and-qa.md` |
+| DONE | Brush-tip mask engine implementation plan executed: `docs/superpowers/plans/2026-06-11-brush-tip-mask-engine.md` |
+| DONE | Brush hardness distance-field soft-edge implementation: `docs/superpowers/plans/2026-06-11-brush-hardness-distance-field-soft-edge.md` |
 | DONE | Brush and Eraser tool improvement plan created: `docs/superpowers/plans/2026-06-06-brush-eraser-tool-improvements.md` |
 | DONE | Crop Hidden Preview Restore correction plan created: `docs/superpowers/plans/2026-06-05-crop-interaction-model-plan.md` |
 | DONE | Scalability and maintainability refactor plan created: `docs/plans/2026-06-04-scalability-maintainability-refactor-plan.md` |

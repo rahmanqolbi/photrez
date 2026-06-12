@@ -8,6 +8,8 @@ import {
   getPaintToolBlockReason,
   sizeSliderToPaintSize,
   paintSizeToSizeSlider,
+  BRUSH_PRESETS,
+  applyPaintPreset,
   MAX_PAINT_SIZE,
   MAX_LINEAR_SIZE,
   type PaintToolState,
@@ -112,5 +114,36 @@ describe("brushToolState", () => {
     expect(getPaintToolBlockReason({ locked: false, visible: false, lockTransparency: false }, false)).toBe("Layer hidden");
     expect(getPaintToolBlockReason({ locked: false, visible: true, lockTransparency: true }, true)).toBe("Transparent pixels protected");
     expect(getPaintToolBlockReason({ locked: false, visible: true, lockTransparency: true }, false)).toBeNull();
+  });
+
+  it("uses editor-like preset defaults for soft round versus large soft", () => {
+    const softRound = BRUSH_PRESETS.find((preset) => preset.id === "soft-round");
+    const largeSoft = BRUSH_PRESETS.find((preset) => preset.id === "large-soft");
+
+    expect(softRound).toMatchObject({
+      hardness: 0.15,
+      opacity: 1,
+      flow: 1,
+      tool: "both",
+    });
+    expect(largeSoft).toMatchObject({
+      hardness: 0,
+      opacity: 0.85,
+      flow: 0.65,
+      tool: "both",
+    });
+  });
+
+  it("applies the soft round preset as a fuller main brush", () => {
+    const softRound = BRUSH_PRESETS.find((preset) => preset.id === "soft-round");
+    expect(softRound).toBeDefined();
+
+    const changes = applyPaintPreset(softRound!, "brush", state);
+
+    expect(changes).toMatchObject({
+      brushHardness: 0.15,
+      brushOpacity: 1,
+      brushFlow: 1,
+    });
   });
 });

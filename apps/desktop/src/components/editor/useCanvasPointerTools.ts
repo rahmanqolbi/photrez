@@ -12,7 +12,7 @@ import {
   type ToolContext,
 } from "@/viewport/input-handler";
 import { getActivePaintToolSettings, getPaintToolBlockReason, type PaintToolSettings } from "./brushToolState";
-import { PaintSmoother } from "./paintSmoothing";
+import { PaintSmoother, smoothingToWindowSize } from "./paintSmoothing";
 import { getLayerAabb } from "@/viewport/transformGeometry";
 import { computeSnapAdjustment, type SnapRect } from "@/viewport/smartGuides";
 import type { HudMode } from "./TransformHud";
@@ -330,7 +330,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     if (canvas) canvas.setPointerCapture(e.pointerId);
 
     const coords = getDocCoords(e);
-    paintSmoother.setWindowSize(interactiveState.paintSettings.smoothing);
+    paintSmoother.setWindowSize(smoothingToWindowSize(interactiveState.paintSettings.smoothing));
     paintSmoother.reset();
     const smoothed = paintSmoother.addPoint(coords.x, coords.y);
     handlePointerDown(
@@ -450,6 +450,9 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     setSnapLines([]);
     const coords = getDocCoords(e);
     const smoothed = paintSmoother.addPoint(coords.x, coords.y);
+    const tool = (interactiveState.dragTool ?? activeTool()) as ToolType;
+    const hasPoints = (tool === "brush" || tool === "eraser") && interactiveState.strokePoints.length > 0;
+
     handlePointerUp(
       activeTool() as ToolType,
       smoothed.x,
@@ -463,10 +466,9 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const canvas = params.getCanvasRef();
     if (canvas) canvas.releasePointerCapture(e.pointerId);
 
-    const tool = (interactiveState.dragTool ?? activeTool()) as ToolType;
-    if (tool === "brush" || tool === "eraser") {
+    if (hasPoints) {
       const layerId = engine.getActiveLayerId();
-      if (layerId && interactiveState.strokePoints.length > 0) {
+      if (layerId) {
         params.commitBrushStroke(engine, layerId, tool === "eraser");
       }
     }

@@ -1,8 +1,28 @@
 import { useEditor } from "./EditorContext";
 import type { DocumentEngine } from "@/engine/document";
 import { getPaintToolBlockReason, type PaintToolSettings } from "./brushToolState";
-import { renderPaintStrokeToContext } from "./paintStrokeRenderer";
 import { documentToLayerLocal } from "@/viewport/transformGeometry";
+import {
+  getBrushDabSpacing,
+  getBrushTip,
+  interpolateDabs,
+  stampBrushTipMaxAlpha,
+  paintMaskToContext,
+  getEffectiveFlowMultiplier,
+} from "./brushTipMask";
+
+interface PaintStrokeSession {
+  layerId: string;
+  isEraser: boolean;
+  settingsKey: string;
+  color: string;
+  maskData: Uint8ClampedArray;
+  maskWidth: number;
+  maskHeight: number;
+  lastPoint: { x: number; y: number } | null;
+  spacingCarry: number;
+  dabCount: number;
+}
 
 export function useBrushOverlay() {
   const { workspace, renderer, scheduler, fgColor, docWidth, docHeight } = useEditor();
@@ -14,6 +34,17 @@ export function useBrushOverlay() {
 
   let eraserPreviewCanvas: OffscreenCanvas | null = null;
   let eraserPreviewCtx: OffscreenCanvasRenderingContext2D | null = null;
+  let paintSession: PaintStrokeSession | null = null;
+
+  function getPaintSessionKey(settings: PaintToolSettings, color: string): string {
+    return [
+      Math.round(settings.size),
+      Math.round(settings.hardness * 100),
+      Math.round(settings.opacity * 100),
+      Math.round(settings.flow * 100),
+      color,
+    ].join(":");
+  }
 
   function onPaintStroke(
     points: { x: number; y: number }[],
@@ -42,51 +73,140 @@ export function useBrushOverlay() {
       overlayCanvasRef.height = layer.height;
     }
 
-    const localPoints = points.map(p => documentToLayerLocal(
-      p.x, p.y, layer.transform, layer.width, layer.height,
-    ));
+    // Task 4: Hard brush path (hardness >= 1) remains path-based for performance and visual parity.
+    if (settings.hardness >= 1) {
+      const localPoints = points.map(p => documentToLayerLocal(
+        p.x, p.y, layer.transform, layer.width, layer.height,
+      ));
 
-    if (prevStrokePointCount === 0) {
+      if (isEraser && (!eraserPreviewCanvas || eraserPreviewCanvas.width !== layer.width || eraserPreviewCanvas.height !== layer.height)) {
+        eraserPreviewCanvas = new OffscreenCanvas(layer.width, layer.height);
+        eraserPreviewCtx = eraserPreviewCanvas.getContext("2d");
+      }
+      const activeCtx = isEraser ? eraserPreviewCtx : overlayCtx;
+      if (!activeCtx) return;
+
+      activeCtx.save();
       if (isEraser) {
-        overlayCtx.clearRect(0, 0, layer.width, layer.height);
-        overlayCanvasRef.style.background = "";
+        activeCtx.clearRect(0, 0, layer.width, layer.height);
+        if (layer.imageBitmap) {
+          activeCtx.drawImage(layer.imageBitmap, 0, 0);
+        }
+        activeCtx.globalCompositeOperation = "destination-out";
+      } else {
+        activeCtx.clearRect(0, 0, layer.width, layer.height);
+        activeCtx.globalCompositeOperation = "source-over";
+      }
+      activeCtx.globalAlpha = settings.opacity * settings.flow;
+      activeCtx.strokeStyle = isEraser ? "rgba(0,0,0,1)" : fgColor();
+      activeCtx.lineWidth = settings.size;
+      activeCtx.lineCap = "round";
+      activeCtx.lineJoin = "round";
 
+      if (localPoints.length > 0) {
+        activeCtx.beginPath();
+        activeCtx.moveTo(localPoints[0].x, localPoints[0].y);
+        for (let i = 1; i < localPoints.length; i++) {
+          activeCtx.lineTo(localPoints[i].x, localPoints[i].y);
+        }
+        if (localPoints.length === 1) {
+          activeCtx.fillStyle = isEraser ? "rgba(0,0,0,1)" : fgColor();
+          activeCtx.beginPath();
+          activeCtx.arc(localPoints[0].x, localPoints[0].y, settings.size / 2, 0, Math.PI * 2);
+          activeCtx.fill();
+        } else {
+          activeCtx.stroke();
+        }
+      }
+      activeCtx.restore();
+
+      if (!isEraser && layer.lockTransparency && layer.imageBitmap) {
+        overlayCtx.globalCompositeOperation = "destination-in";
+        overlayCtx.drawImage(layer.imageBitmap, 0, 0);
+        overlayCtx.globalCompositeOperation = "source-over";
+      }
+
+      if (isEraser) {
+        uploadEraserPreview(activeEngine, activeId, layer.width, layer.height);
+      }
+      prevStrokePointCount = points.length;
+      return;
+    }
+
+    // Soft brush path (hardness < 1) uses incremental PaintStrokeSession
+    const latestDocPoint = points.at(-1);
+    if (!latestDocPoint) return;
+
+    const latest = documentToLayerLocal(
+      latestDocPoint.x,
+      latestDocPoint.y,
+      layer.transform,
+      layer.width,
+      layer.height,
+    );
+
+    const settingsKey = getPaintSessionKey(settings, fgColor());
+    const needsReset =
+      !paintSession ||
+      paintSession.layerId !== activeId ||
+      paintSession.isEraser !== isEraser ||
+      paintSession.settingsKey !== settingsKey ||
+      paintSession.maskWidth !== layer.width ||
+      paintSession.maskHeight !== layer.height ||
+      prevStrokePointCount === 0;
+
+    if (needsReset) {
+      paintSession = {
+        layerId: activeId,
+        isEraser,
+        settingsKey,
+        color: fgColor(),
+        maskData: new Uint8ClampedArray(layer.width * layer.height),
+        maskWidth: layer.width,
+        maskHeight: layer.height,
+        lastPoint: null,
+        spacingCarry: 0,
+        dabCount: 0,
+      };
+
+      if (isEraser) {
         eraserPreviewCanvas = new OffscreenCanvas(layer.width, layer.height);
         eraserPreviewCtx = eraserPreviewCanvas.getContext("2d")!;
-        if (layer.imageBitmap) {
-          eraserPreviewCtx.drawImage(layer.imageBitmap, 0, 0);
-        }
-      } else {
-        overlayCtx.clearRect(0, 0, layer.width, layer.height);
-        overlayCanvasRef.style.background = "";
-        if (layer.imageBitmap) {
-          overlayCtx.drawImage(layer.imageBitmap, 0, 0);
-        }
       }
     }
 
-    const startIdx = prevStrokePointCount > 0 ? prevStrokePointCount - 1 : 0;
-    const deltaPoints = localPoints.slice(startIdx);
+    if (!paintSession) return;
+
+    const tip = getBrushTip({ size: settings.size, hardness: settings.hardness, curve: "soft" });
+    const spacing = getBrushDabSpacing(settings.size, settings.hardness, settings.flow);
+    const alphaScale = settings.opacity * settings.flow * getEffectiveFlowMultiplier(settings.hardness);
+
+    if (!paintSession.lastPoint) {
+      stampBrushTipMaxAlpha(paintSession.maskData, layer.width, layer.height, tip, latest.x, latest.y, alphaScale);
+      paintSession.dabCount += 1;
+    } else {
+      const result = interpolateDabs(paintSession.lastPoint, latest, spacing, paintSession.spacingCarry);
+      paintSession.spacingCarry = result.carry;
+      for (const dab of result.dabs) {
+        stampBrushTipMaxAlpha(paintSession.maskData, layer.width, layer.height, tip, dab.x, dab.y, alphaScale);
+        paintSession.dabCount += 1;
+      }
+    }
+
+    paintSession.lastPoint = latest;
 
     if (isEraser) {
-      if (deltaPoints.length > 0 && eraserPreviewCtx) {
-        renderPaintStrokeToContext(
-          eraserPreviewCtx as any as CanvasRenderingContext2D,
-          deltaPoints,
-          settings,
-          "rgba(0,0,0,1)",
-          true,
-        );
+      if (eraserPreviewCtx) {
+        eraserPreviewCtx.clearRect(0, 0, layer.width, layer.height);
+        if (layer.imageBitmap) {
+          eraserPreviewCtx.drawImage(layer.imageBitmap, 0, 0);
+        }
+        paintMaskToContext(eraserPreviewCtx, paintSession.maskData, layer.width, layer.height, "rgba(0,0,0,1)", true);
         uploadEraserPreview(activeEngine, activeId, layer.width, layer.height);
       }
     } else {
-      renderPaintStrokeToContext(
-        overlayCtx,
-        deltaPoints.length > 0 ? deltaPoints : localPoints,
-        settings,
-        fgColor(),
-        false,
-      );
+      overlayCtx.clearRect(0, 0, layer.width, layer.height);
+      paintMaskToContext(overlayCtx, paintSession.maskData, layer.width, layer.height, paintSession.color, false);
 
       if (layer.lockTransparency && layer.imageBitmap) {
         overlayCtx.globalCompositeOperation = "destination-in";
@@ -144,8 +264,14 @@ export function useBrushOverlay() {
     }
     if (!overlayCtx) return;
 
+    const layer = engine.getLayer(layerId);
+    if (!layer) return;
+
     const snapshot = new OffscreenCanvas(w, h);
     const sCtx = snapshot.getContext("2d")!;
+    if (layer.imageBitmap) {
+      sCtx.drawImage(layer.imageBitmap, 0, 0);
+    }
     sCtx.drawImage(overlayCanvasRef, 0, 0);
 
     try {
@@ -160,6 +286,7 @@ export function useBrushOverlay() {
         newBitmap.close();
         overlayCtx.clearRect(0, 0, w, h);
         prevStrokePointCount = 0;
+        paintSession = null;
         return;
       }
       engine.setLayerImageBitmap(layerId, newBitmap);
@@ -167,8 +294,10 @@ export function useBrushOverlay() {
       scheduler.requestRender();
       overlayCtx.clearRect(0, 0, w, h);
       prevStrokePointCount = 0;
+      paintSession = null;
     } catch (err) {
       console.error("Stroke commit failed:", err);
+      paintSession = null;
     }
   }
 
@@ -192,6 +321,7 @@ export function useBrushOverlay() {
         newBitmap.close();
         overlayCtx?.clearRect(0, 0, w, h);
         prevStrokePointCount = 0;
+        paintSession = null;
         return;
       }
       engine.setLayerImageBitmap(layerId, newBitmap);
@@ -201,8 +331,10 @@ export function useBrushOverlay() {
       prevStrokePointCount = 0;
       eraserPreviewCanvas = null;
       eraserPreviewCtx = null;
+      paintSession = null;
     } catch (err) {
       console.error("Eraser commit failed:", err);
+      paintSession = null;
     }
   }
 
@@ -215,6 +347,8 @@ export function useBrushOverlay() {
       if (el) {
         el.width = docWidth();
         el.height = docHeight();
+      } else {
+        paintSession = null;
       }
     },
     getOverlayCanvasRef: () => overlayCanvasRef,
@@ -222,6 +356,7 @@ export function useBrushOverlay() {
       prevStrokePointCount = 0;
       eraserPreviewCanvas = null;
       eraserPreviewCtx = null;
+      paintSession = null;
     },
   };
 }

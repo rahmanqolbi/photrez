@@ -92,7 +92,7 @@ describe("error resilience", () => {
 
     const snap = engine.snapshot();
     engine.setViewport({ panX: 0, panY: 0, zoom: 1, rotation: 0 });
-    engine.restore(snap);
+    engine.restore(snap, { restoreViewport: true });
 
     expect(engine.getViewport()).toEqual({ panX: 100, panY: 50, zoom: 2.5, rotation: 0 });
   });

@@ -1,5 +1,480 @@
 # AI History — Photrez
 
+## [2026-06-12] POLISH — Brush Preset UX Calibration [COMPLETE]
+
+### Kategori: POLISH / BRUSH / PRESETS / UX
+
+**Root Cause:**
+The core hardness 0 brush now has an acceptable feather/body profile, but the `Soft Round` preset still used `hardness: 0.0` and `flow: 0.55`. That made the main soft preset feel closer to an airbrush/wash than a desktop-editor soft round brush with a fuller center.
+
+**Fix Rationale:**
+Keep the core brush engine stable and solve the UX through presets. `Soft Round` is now the primary editor-like soft brush with a small hardening amount and full flow, while `Large Soft` remains the broad low-pressure wash preset.
+
+**Rincian Perubahan:**
+1. `brushToolState.ts` - Updated `Soft Round` preset from hardness `0.0`, flow `0.55` to hardness `0.15`, flow `1.0`.
+2. `brushToolState.ts` - Updated `Large Soft` flow from `0.35` to `0.65`, keeping hardness `0.0` and opacity `0.85`.
+3. `brushToolState.test.ts` - Added regression tests for editor-like Soft Round defaults and preset application behavior.
+
+### Verification
+- PASS: `pnpm.cmd --filter photrez-desktop exec vitest run src/components/editor/__tests__/brushToolState.test.ts src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts --run` (65 tests)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (804 tests, 53 files)
+- PASS: `pnpm.cmd run build` (tsc + Vite production build)
+- PASS: `cargo test --workspace` (92 Rust workspace tests)
+
+---
+
+## [2026-06-12] POLISH — Brush Soft Round Fatter Center Calibration [COMPLETE]
+
+### Kategori: POLISH / BRUSH / UX / CALIBRATION
+
+**Root Cause:**
+Manual QA showed that raising effective flow made hardness 0 more visible, but the visible center still looked too thin. The issue was the radial alpha shape: the `soft` curve exponent `1.3` dropped opacity too quickly away from the center, so the stroke read like a narrow center line with a wide haze instead of a fuller soft round brush.
+
+**Fix Rationale:**
+Change the soft radial profile rather than raising flow again. Hardness 0 now uses a fatter falloff exponent (`0.7`), while `brushAlphaAtDistance` dynamically increases the exponent with hardness (`0.7 + 0.6 * h`). This gives hardness 0 a wider center/body while preventing hardness 80 from developing an overly thick outer edge.
+
+**Rincian Perubahan:**
+1. `brushTipMask.ts` - Updated `falloff(..., "soft")` to use exponent `0.7`.
+2. `brushTipMask.ts` - Updated `brushAlphaAtDistance` so soft brushes use a hardness-aware exponent `0.7 + 0.6 * h`.
+3. `brushTipMask.test.ts` - Updated hardness 0 pixel-profile bounds: stronger alpha at 25-50% radius, feather retained at 75% radius, edge still near zero.
+
+### Verification
+- PASS: `pnpm.cmd --filter photrez-desktop exec vitest run src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts --run` (52 tests)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (802 tests, 53 files)
+- PASS: `pnpm.cmd run build` (tsc + Vite production build)
+- PASS: `cargo test --workspace` (92 Rust workspace tests)
+
+---
+
+## [2026-06-12] POLISH — Brush Soft Round Opacity Body Calibration [COMPLETE]
+
+### Kategori: POLISH / BRUSH / UX / CALIBRATION
+
+**Root Cause:**
+Manual QA showed the hardness 0 brush now had a correct broad feather shape, but still looked too airbrush-like at Flow 100 / Strength 100. The center opacity was limited by `softPeak = 0.9` and `getEffectiveFlowMultiplier(0) = 0.82`, producing an effective center around `0.738`.
+
+**Fix Rationale:**
+Preserve the existing falloff shape, dab spacing, max-alpha stroke behavior, and subpixel stamping, then increase only the effective opacity body. The formula is now `getEffectiveFlowMultiplier(hardness) = 0.9 + 0.1 * h`, so hardness 0 reaches an effective center around `0.81`, hardness 80 reaches `0.98`, and hardness 100 remains `1.0`.
+
+**Rincian Perubahan:**
+1. `brushTipMask.ts` - Updated `getEffectiveFlowMultiplier` from `0.82 + 0.18 * h` to `0.9 + 0.1 * h`.
+2. `brushTipMask.test.ts` - Updated effective-flow checkpoints to `0.90`, `0.98`, and `1.0`.
+3. `paintStrokeRenderer.test.ts` - Updated the soft brush center alpha assertion from `189` to `207`.
+
+### Verification
+- PASS: `pnpm.cmd --filter photrez-desktop exec vitest run src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts --run` (52 tests)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (802 tests, 53 files)
+- PASS: `pnpm.cmd run build` (tsc + Vite production build)
+- PASS: `cargo test --workspace` (92 Rust workspace tests)
+
+---
+
+## [2026-06-12] POLISH — Brush Soft Round Editor-Like Final Polish [COMPLETE]
+
+### Kategori: POLISH / BRUSH / UX / CALIBRATION
+
+**Root Cause:**
+After the previous soft-round calibration, hardness 0 was finally broad and natural, but Flow 100 / Strength 100 still looked slightly too transparent because the stroke alpha combined `softPeak = 0.9` with an effective flow multiplier of `0.80`, producing a maximum soft-center alpha around `0.72`.
+
+**Fix Rationale:**
+Keep the current falloff exponent, peak profile, and dab spacing stable, then make only a small opacity-body adjustment: `getEffectiveFlowMultiplier(hardness) = 0.82 + 0.18 * h`. This raises hardness 0 to a maximum soft-center alpha around `0.738`, keeps hardness 80 near full body at `0.964`, and preserves hardness 100 at `1.0`.
+
+**Rincian Perubahan:**
+1. `brushTipMask.ts` - Updated `getEffectiveFlowMultiplier` from `0.8 + 0.2 * h` to `0.82 + 0.18 * h`.
+2. `brushTipMask.test.ts` - Updated multiplier checkpoints to `0.82`, `0.964`, and `1.0`; replaced the pixel-profile helper's `any` with `BrushTip`.
+3. `paintStrokeRenderer.test.ts` - Updated the soft brush center alpha assertion from `184` to `189`.
+4. `useBrushOverlay.ts` - Removed an unused hard-path variable.
+5. `AI_HISTORY.md` - Repaired the missing heading for the earlier quadratic effective-flow entry.
+
+### Verification
+- PASS: `pnpm.cmd --filter photrez-desktop exec vitest run src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts --run` (52 tests)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (802 tests, 53 files)
+- PASS: `pnpm.cmd run build` (tsc + Vite production build)
+- PASS: `cargo test --workspace` (92 Rust workspace tests)
+
+---
+
+## [2026-06-12] BUG FIX — Brush Effective Flow Hardness Scaling Calibration Tuning [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / UX / CALIBRATION
+
+**Root Cause:**
+Formulasi `getEffectiveFlowMultiplier(hardness) = 0.1 * h^2 + 0.32 * h + 0.58` menghasilkan effective flow multiplier sebesar `0.58` untuk hardness 0. Pada flow 100% dan strength 100%, center alpha maksimal yang dihasilkan pada stroke hanyalah `0.9 * 0.58 = 0.522` (sekitar 52%). Hal ini mengakibatkan goresan kuas yang sangat pudar/samar dan tidak memiliki body visual yang memadai.
+
+**Fix Rationale:**
+Mengubah formula multiplier ke bentuk linear yang lebih kuat, yaitu `0.8 + 0.2 * h`. Dengan formula baru ini, hardness 0 akan mendapatkan flow multiplier sebesar `0.8` (sehingga center alpha maksimal naik menjadi `0.9 * 0.8 = 0.72` atau 72%), mempertahankan kelembutan gradien luar tetapi memberikan bodi warna yang lebih jelas di area tengah goresan kuas.
+
+**Rincian Perubahan:**
+1. `brushTipMask.ts` - Memperbarui formula `getEffectiveFlowMultiplier` ke `0.8 + 0.2 * h`.
+2. `brushTipMask.test.ts` - Menyelaraskan asersi checkpoints test untuk `0.80`, `0.96`, dan `1.0`.
+3. `paintStrokeRenderer.test.ts` - Menyesuaikan asersi center alpha untuk goresan lembut dari `133` menjadi `184`, serta memperbarui asersi batas atas/bawah alpha pada tes tumpang tindih stroke (overlap test) menjadi `toBeLessThanOrEqual(100)` dan `toBeGreaterThan(60)`.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (802 tests, 53 files)
+- PASS: `pnpm run build` (tsc + Vite production build)
+- PASS: `cargo test --workspace` (92 workspace core tests)
+
+---
+
+## [2026-06-12] BUG FIX — Viewport Transition Jiggle [COMPLETE]
+
+### Kategori: BUG FIX / VIEWPORT / UX
+
+**Root Cause:**
+Visual canvas dan container-nya memiliki CSS transition properties (`left 0.15s...` dan `transform 0.15s...`) yang aktif saat tidak terjadi panning. Ketika pengguna melakukan zoom, ukuran canvas (`width` dan `height`) berubah secara instan, tetapi posisi (`left`/`top`) dan transform scale-nya dianimasikan lambat selama 150ms. Ini mengakibatkan visual gambar dan overlay koordinat tidak sejajar selama transisi, sehingga menghasilkan efek goyangan/jiggling. Begitu pula saat perpindahan tool (khususnya berpindah ke/dari Crop tool), canvas berpindah posisi antara koordinat pan dan `0px` secara transisi lambat, membuat canvas terlihat bergeser/tergelincir tidak semestinya.
+
+**Fix Rationale:**
+Menghapus seluruh transisi CSS (`transition: "none"`) pada visual canvas utama dan overlay container di `CanvasViewport.tsx`. Ini memastikan seluruh operasi perubahan zoom, pergeseran pan, dan pergantian tool berjalan secara instan dan tajam (snappy), menghilangkan kelambatan visual dan koordinat drift sepenuhnya seperti pada editor gambar profesional.
+
+**Rincian Perubahan:**
+1. `CanvasViewport.tsx` - Mengubah properti style `transition` pada elemen `<canvas>` dan pembungkus overlay `<div>` menjadi `"none"`.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test` (802 tests, 53 files)
+- PASS: `pnpm run build` (tsc + Vite production build)
+- PASS: `cargo test --workspace` (92 workspace core tests)
+
+---
+
+## [2026-06-12] BUG FIX — Brush Effective Flow Hardness Scaling Calibration [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / ERASER / UX / PERFORMANCE
+
+**Root Cause:**
+Dengan Flow 100% dan max-alpha mask yang sangat kuat, goresan berukuran besar (misalnya size 60/75) pada hardness 0 masih terlihat seperti marker/tube yang tebal di area tengahnya.
+
+**Fix Rationale:**
+1. Mengurangi effective flow (atau alpha scale dari setiap stamping dab) secara dinamis untuk brush yang memiliki hardness rendah.
+2. Menggunakan fungsi kuadratik `getEffectiveFlowMultiplier(hardness) = 0.1 * h^2 + 0.32 * h + 0.58` untuk memetakan multiplier flow. Ini memastikan hardness 0 bernilai ~58%, hardness 0.8 bernilai ~90%, dan hardness 1.0 bernilai 100%.
+3. Menerapkan pengali ini langsung pada kalkulasi `alphaScale` di `useBrushOverlay.ts` dan `paintStrokeRenderer.ts`.
+
+**Rincian Perubahan:**
+1. `brushTipMask.ts` - Mengekspos fungsi `getEffectiveFlowMultiplier(hardness)` dengan pemetaan kuadratik yang ditentukan.
+2. `useBrushOverlay.ts` & `paintStrokeRenderer.ts` - Mengalikan `alphaScale` dengan `getEffectiveFlowMultiplier(settings.hardness)`.
+3. `brushTipMask.test.ts` - Menambahkan test case untuk memvalidasi keluaran `getEffectiveFlowMultiplier` pada checkpoints utama dan memastikan `alphaScale` soft brush diturunkan.
+4. `paintStrokeRenderer.test.ts` - Menyesuaikan asersi alpha yang sebelumnya bernilai tinggi ke batas baru yang lebih rendah akibat scaling multiplier.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test` (798 tests, 52 files)
+- PASS: `pnpm run build` (tsc + Vite production build)
+- PASS: `cargo test --workspace` (92 Rust workspace tests)
+
+---
+
+## [2026-06-12] BUG FIX — Brush Soft Exponent and Peak Multiplier Calibration [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / ERASER / UX / PERFORMANCE
+
+**Root Cause:**
+Setting the soft brush falloff exponent to `2.2` proved too steep, resulting in a thin hot core surrounded by a muddy wide haze. Additionally, without a peak multiplier, the center of the brush tip remained at 100% (255) opacity, leading to a marker-like appearance where the center line was a hard solid stripe rather than a broad, gradual feather.
+
+**Fix Rationale:**
+1. Lowered the soft falloff curve exponent from `2.2` to `1.3` (inside the `1.25–1.4` range) in `brushTipMask.ts`.
+2. Implemented a `softPeak` multiplier of `0.9 + 0.1 * h` for the `"soft"` curve, bringing down the maximum center alpha of the soft brush tip from `1.0` to `0.9` (at hardness 0) while keeping it fully solid at hardness 1.
+3. Locked and verified the resulting radial pixel-profile boundaries exactly: center 0.8-0.95, 25% radius 0.6-0.75, 50% radius 0.3-0.5, 75% radius 0.08-0.2, edge 0.
+
+**Rincian Perubahan:**
+1. `brushTipMask.ts` - Set `"soft"` curve exponent to `1.3` and scaled alpha output by `0.9 + 0.1 * h` to implement the softPeak multiplier. Only return `1` in `brushAlphaAtDistance` for `distance <= hardRadius` if `hardRadius > 0`.
+2. `brushTipMask.test.ts` - Updated radial alpha profile test expectations to match center 0.8-0.95, 25% radius 0.6-0.75, 50% radius 0.3-0.5, 75% radius 0.08-0.2.
+3. `paintStrokeRenderer.test.ts` - Updated unit tests for soft brush center alpha expectations and stamping first points to accommodate the 0.9 softPeak multiplier.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test` (800 tests, 53 files)
+- PASS: `pnpm run build` (tsc + Vite production build)
+- PASS: `cargo test --workspace` (92 Rust workspace tests)
+
+---
+
+## [2026-06-11] BUG FIX — Brush Soft Spacing, Subpixel Stamping, and Alpha Profile Calibration [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / ERASER / UX / PERFORMANCE
+
+**Root Cause:**
+Even though the spacing formula computed 3px spacing for size 70 hardness 0 brushes, dabs snapped to integer coordinates during stamping, creating rounding jitter (such as alternate spacing variations of 2px and 3px). This coordinate rounding jitter created visible periodic interference banding (stamped circles) along drawn strokes. Furthermore, the `"soft"` curve falloff exponent was too low (`1.2`), which created a wide, flat central core that made the brush stroke look marker-like (solid center stripe with thin blurred edges).
+
+**Fix Rationale:**
+1. Replaced integer-snapped stamping with subpixel stamping using bilinear tip sampling. When stamping a brush tip, it now interpolates the alpha values of the precomputed brush tip over fractional offsets instead of rounding `centerX` and `centerY` directly, resulting in perfectly consistent spacing and smooth strokes.
+2. Tuned the `"soft"` curve falloff exponent in `brushTipMask.ts` to `2.2` to shrink the flat central core and extend the feathering roll-off, producing a gradual, professional-grade soft round brush stroke.
+
+**Rincian Perubahan:**
+1. `brushTipMask.ts` - Refactored `stampBrushTipMaxAlpha` to perform bilinear sampling on the brush tip's alpha data using fractional coordinates, achieving subpixel stamping resolution. Adjusted `"soft"` curve falloff exponent from `1.2` to `2.2`.
+2. `brushTipMask.test.ts` - Added a dedicated unit test `supports subpixel stamping with bilinear interpolation` verifying that fractional coordinate stamping correctly interpolates values at subpixel boundaries. Updated r25, r50, and r75 expectations to match the new `2.2` power curve.
+3. `paintStrokeRenderer.test.ts` - Updated test expectations for even-sized brush centers and soft brush path alpha values to match the calibrated falloff curve.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test` (800 tests, 53 files)
+- PASS: `pnpm run build` (tsc + Vite production build)
+- PASS: `cargo test --workspace` (92 Rust workspace tests)
+
+---
+
+## [2026-06-11] BUG FIX — Brush Visual Calibration and Pixel QA [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / ERASER / UX / PERFORMANCE
+
+**Root Cause:**
+The brush-tip mask engine was using a `"cosine"` curve which caused the hardness 0 brush tip to decline in opacity too quickly away from the center (forming a narrow core and halo). Additionally, dab spacing for soft brushes was too wide, leading to visible banding stamps during drags, and the compatibility renderer did not stamp the very first brush dab of a multi-point stroke.
+
+**Fix Rationale:**
+Introduced a `"soft"` falloff curve (`Math.pow(1 - t, 0.75)`) that keeps the opacity higher in the outer brush radius, producing a broad feathered edge. Tuned the spacing logic to dynamically tighten spacing for soft brushes (e.g. 6px spacing for size 75), and corrected the compatibility renderer to stamp the start point of a multi-point stroke.
+
+**Rincian Perubahan:**
+1. `brushTipMask.ts` - added `"soft"` curve and set as default; tuned `getBrushDabSpacing` for soft brushes.
+2. `useBrushOverlay.ts` - updated drawing overlay session to explicitly request `"soft"` curve.
+3. `paintStrokeRenderer.ts` - updated soft compatibility renderer to use `"soft"` curve and always stamp `points[0]`.
+4. `brushTipMask.test.ts` - added radial alpha profile tests for hardness 0, 50, 100, and spacing density tests.
+5. `paintStrokeRenderer.test.ts` - added integration test for first-point stamping in multi-point soft stroke, and adjusted center alpha tests to fit the new soft profile.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test` (798 tests, 53 files)
+- PASS: `pnpm run build` (tsc + Vite production build)
+- PASS: `cargo test --workspace` (92 Rust core + desktop workspace tests)
+
+---
+
+## [2026-06-11] PLANNING — Brush Visual Calibration and Pixel QA
+
+### Kategori: PLANNING / BRUSH / ERASER / UX / PERFORMANCE
+
+**User Goal:**
+Membuat plan lanjutan karena setelah brush-tip mask engine diimplementasikan, manual review masih terasa tidak banyak berbeda: size 75, hardness 0, flow 100 tetap terlihat seperti core sempit dengan halo dan banding dab.
+
+**Root Cause Planning Notes:**
+Jalur incremental `PaintStrokeSession` sudah ada di `useBrushOverlay.ts`, sehingga masalah berikutnya kemungkinan bukan arsitektur preview full-stroke lagi. Fokus baru adalah kalibrasi profil alpha brush tip, spacing dab soft brush, kemungkinan snapping subpixel, dan bukti pixel-profile agar perubahan visual bisa diukur sebelum diklaim benar.
+
+**Plan Rationale:**
+Plan baru memisahkan pekerjaan visual calibration dari plan engine. Agent berikutnya diarahkan untuk menjaga arsitektur incremental yang sudah ada, lalu menambahkan test radial alpha profile untuk hardness 0/50/100, tuning `falloff`/`brushAlphaAtDistance`/`getBrushDabSpacing`, dan manual screenshot QA pada skenario yang sama dengan laporan user.
+
+**Rincian Dokumen:**
+1. Menambahkan `docs/superpowers/plans/2026-06-11-brush-visual-calibration-and-qa.md`.
+2. Menambahkan acceptance criteria visual untuk size 75, hardness 0, flow 100.
+3. Menambahkan prompt copy-ready untuk AI agent lain.
+
+---
+
+## [2026-06-11] BUG FIX — Brush Tip Mask Engine Performance [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / ERASER / RENDERER / UX / PERFORMANCE
+
+**Root Cause:**
+Jalur interaktif brush/eraser preview sebelumnya (`useBrushOverlay.ts`) masih memanggil renderer satu-kali (`renderPaintStrokeToContext`) di setiap gerakan pointer dengan merender ulang seluruh daftar titik (`localPoints`). Hal ini menyebabkan degradasi performa/lag seiring bertambah panjangnya stroke karena rendering memproses ulang semua titik secara berulang.
+
+**Fix Rationale:**
+Memindahkan tracking pointer drag interaktif di `useBrushOverlay.ts` ke mode incremental `PaintStrokeSession`. Setiap gerakan pointer hanya menghitung dan menstempel (stamping) dabs baru sejak titik pointer terakhir ke titik pointer terbaru menggunakan carry spacing. Hasil stempel ini disimpan ke dalam masker max-alpha stroke tunggal, lalu di-composite ke preview canvas/layer. Ini menjaga performa tetap konstan di setiap pointer move tanpa tumpang-tindih (buildup) warna yang mengeras di dalam satu goresan.
+
+**Rincian Perubahan:**
+1. `brushTipMask.ts` - mengekspor `parsePaintColor`, `compositeMaskToImageData`, dan `paintMaskToContext` sebagai helper compositing bersama.
+2. `useBrushOverlay.ts` - mengimplementasikan incremental `PaintStrokeSession` untuk preview brush/eraser yang ringan tanpa memanggil `renderPaintStrokeToContext(...)`. Menjaga hard brush (`hardness >= 1`) tetap memakai stroke vektor/path-based untuk performa optimal.
+3. `paintStrokeRenderer.ts` - membersihkan fungsi-fungsi matematika distance-field yang usang, dan mendekomposisikan compositing soft brush menggunakan helper dari `brushTipMask.ts`.
+4. `brushToolState.ts` - menyesuaikan nilai default presets soft round, large soft, dan soft eraser (hardness=0, flow lebih rendah) untuk transisi shading yang lebih halus.
+5. `brushTipMask.test.ts` dan `paintStrokeRenderer.test.ts` - memperbarui dan menambah unit tests untuk verifikasi kompilasi dan compositing.
+
+### Verification
+- PASS: `pnpm.cmd run build` (tsc + Vite built in 6.05s)
+- PASS: `pnpm.cmd --filter photrez-desktop test` (794 tests, 53 files)
+- PASS: `cargo test --workspace` (92 workspace core tests)
+
+---
+
+## [2026-06-11] PLANNING REVISION — Brush Tip Mask Engine AI Handoff
+
+### Kategori: PLANNING / BRUSH / ERASER / RENDERER / UX / PERFORMANCE
+
+**User Goal:**
+Merevisi rencana brush-tip mask engine agar bisa dikirim ke AI agent lain tanpa ambigu, setelah implementasi awal masih terasa tidak sesuai dan lag pada brush size besar, hardness 0.
+
+**Root Cause Planning Notes:**
+Implementasi brush-tip mask sudah memiliki helper dan one-shot compatibility path, tetapi jalur interaktif di `useBrushOverlay.ts` masih memakai `renderPaintStrokeToContext(...)` setiap pointer move. Akibatnya preview brush/eraser masih membersihkan canvas dan merender ulang seluruh point list, sehingga biaya tetap tumbuh sepanjang stroke dan UX belum seperti editor gambar umum.
+
+**Plan Revision Rationale:**
+Plan direvisi untuk menjadikan `useBrushOverlay.ts` sebagai target utama: active drag harus memakai incremental `PaintStrokeSession`, hanya stamp dab baru dari titik terakhir ke titik terbaru, lalu composite preview dari per-stroke max-alpha mask. `paintStrokeRenderer.ts` diposisikan sebagai compatibility renderer saja, bukan jalur pointer-move preview.
+
+**Rincian Dokumen:**
+1. Mengganti isi `docs/superpowers/plans/2026-06-11-brush-tip-mask-engine.md` dengan handoff plan yang lebih eksplisit.
+2. Menambahkan diagnosis implementasi saat ini, non-negotiable requirements, task breakdown, verification gate, manual QA, dan prompt copy-ready.
+3. Memperbarui `FEATURES.md` dan `docs/01-id-decision-log.md` agar status planning mencerminkan revisi handoff.
+
+---
+
+## [2026-06-11] PLANNING — Brush Tip Mask Engine Replacement
+
+### Kategori: PLANNING / BRUSH / ERASER / RENDERER / UX / PERFORMANCE
+
+**User Goal:**
+Membuat rencana implementasi yang lebih jelas untuk model AI lain setelah hasil distance-field soft brush masih terasa kurang pas dan agak lag. Target UX adalah brush yang terasa seperti aplikasi editor gambar umum: responsive, full-diameter feather untuk hardness 0, flow terasa natural, dan tidak ada penumpukan bulatan dalam satu stroke.
+
+**Root Cause Planning Notes:**
+Distance-field alpha mask secara visual lebih benar daripada `shadowBlur`, tetapi implementasi interaktifnya mahal karena setiap pointer move dapat menghitung banyak pixel terhadap banyak segmen path. Biaya ini tumbuh ketika stroke makin panjang, sehingga brush besar seperti size 85 hardness 0 dapat terasa lag.
+
+**Plan Rationale:**
+Rencana baru memakai cached brush-tip alpha mask dan incremental dab stamping ke per-stroke max-alpha mask. Ini menjaga properti penting dari distance-field, yaitu tidak ada alpha buildup dalam satu stroke, tetapi biaya runtime mengikuti jumlah dab baru dan ukuran tip brush, bukan panjang total stroke.
+
+**Rincian Dokumen:**
+1. Menambahkan `docs/superpowers/plans/2026-06-11-brush-tip-mask-engine.md`.
+2. Menandai `docs/superpowers/plans/2026-06-11-brush-hardness-distance-field-soft-edge.md` sebagai superseded.
+3. Menambahkan prompt handoff copy-ready untuk model AI lain di dalam plan.
+4. Memperbarui `FEATURES.md` dan `docs/01-id-decision-log.md` dengan arah brush-tip mask engine.
+
+---
+
+## [2026-06-11] BUG FIX — Brush Hardness Distance-Field Soft Edge [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / ERASER / RENDERER / UX
+
+**Root Cause:**
+Implementasi soft brush sebelumnya (hardness < 1) menggunakan Canvas `shadowBlur` + `shadowOffsetX` yang menggambar satu garis path lalu memproyeksikan bayangan kembali ke posisi layar. Pendekatan ini menghasilkan visual soft brush yang ukuran dan feather behavior-nya bergantung pada implementasi Gaussian blur browser, sehingga perceived diameter soft brush tidak akurat — `hardness=0` menghasilkan core sempit dengan blur, bukan full-diameter feathered brush.
+
+**Fix Rationale:**
+Mengganti pendekatan shadowBlur dengan per-stroke distance-field alpha mask di ImageData. Setiap pixel dalam bounding box stroke dihitung jarak terdekatnya ke path stroke menggunakan `distanceToSegment` dan `distanceToStrokePath`. Alpha pixel ditentukan oleh `brushAlphaAtDistance` yang menggunakan smoothstep Hermite falloff dari hard radius (hardness × radius) ke outer radius (size/2). Composite alpha dilakukan sekali per pixel (source-over untuk brush, destination-out manual untuk eraser), mencegah akumulasi alpha dalam satu stroke.
+
+**Rincian Perubahan:**
+1. `paintStrokeRenderer.ts` — Menambahkan 7 helper: `smoothstep01`, `brushAlphaAtDistance`, `distanceToSegment`, `parsePaintColor`, `getStrokeBounds`, `distanceToStrokePath`, `renderSoftStrokeToImageData`. Mengganti branch `shadowOffsetX`/`shadowBlur` dengan `renderSoftStrokeToImageData` untuk soft brush (hardness < 1).
+2. `paintStrokeRenderer.test.ts` — Menambahkan 10 test baru (7 pure-function untuk smoothstep, brushAlphaAtDistance, distanceToSegment; 3 render integration untuk mask dimension, eraser alpha reduction, bounds clipping). Total 38 test di file ini.
+3. `useBrushOverlay.ts` — Tidak ada perubahan; lock transparency (lines 87-91) dan eraser path (lines 62-76) sudah benar dan dipertahankan.
+
+**Verification:**
+4 commits, semua lolos pre-commit pipeline:
+- `test: define brush hardness falloff math`
+- `fix: render soft brush with distance field mask`
+- `test: prevent soft brush alpha accumulation`
+- `test: verify soft eraser reduces alpha`
+- `perf: bound soft brush mask rendering`
+- PASS: `tsc && vite build` (4/4)
+- PASS: `vitest run` (788 tests, 52 files, 4/4)
+- PASS: `cargo test -p photrez-core` (85 tests, 4/4)
+
+---
+
+## [2026-06-11] PLANNING — Brush Hardness Distance-Field Soft Edge
+
+### Kategori: PLANNING / BRUSH / ERASER / RENDERER / UX
+
+**User Goal:**
+Membuat rencana pembaruan implementasi hardness brush agar `hardness=0` menghasilkan efek bulu/feather full-diameter, bukan terlihat kecil seperti core sempit dengan blur. Rencana juga harus menjawab risiko penumpukan bulatan/alpha accumulation pada satu stroke drag.
+
+**Root Cause Planning Notes:**
+Implementasi saat ini memakai Canvas 2D `shadowBlur` + `shadowOffsetX` untuk menggambar soft brush sebagai unified path. Pendekatan ini sudah menghindari penumpukan dab radial, tetapi masih bergantung pada perilaku blur browser dan formula `coreWidth + shadowBlur`, sehingga `hardness=0` dapat terlihat sebagai solid core kecil dengan blur, bukan distance-field feather yang memenuhi diameter cursor.
+
+**Plan Rationale:**
+Rencana baru mengarahkan implementasi ke per-stroke distance-field alpha mask: setiap pixel dihitung dari jarak terdekat ke path stroke, hardness menentukan radius solid bagian dalam, feather menggunakan smoothstep sampai radius luar `size / 2`, dan alpha dalam satu stroke memakai nearest-path/max-alpha behavior agar tidak menumpuk.
+
+**Rincian Dokumen:**
+1. Menambahkan `docs/superpowers/plans/2026-06-11-brush-hardness-distance-field-soft-edge.md`.
+2. Menandai rencana ini di `FEATURES.md` bagian Maintenance / Architecture Planning.
+3. Menambahkan keputusan rendering brush hardness di `docs/01-id-decision-log.md`.
+
+---
+
+## [2026-06-11] BUG FIX — Soft Brush Visible Diameter Calibration [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / RENDERER / UX
+
+**Root Cause:**
+Meskipun modifikasi sebelumnya telah membuat bagian tengah goresan kuas lembut (`hardness < 1`) menjadi padat (opaque), total diameter visible coretan masih sedikit meluap di luar kursor lingkaran visual (`1.25 * size` saat `hardness = 0`). Hal ini disebabkan karena Gaussian blur bawaan browser memendarkan bayangan hingga sejauh $\approx 3\sigma = 1.5 \times \text{shadowBlur}$ ke masing-masing sisi luar tepi garis inti (`coreWidth`).
+
+**Fix Rationale:**
+Melakukan kalibrasi matematis secara linear agar total diameter visual goresan yang terlihat di layar (yaitu `coreWidth + 3 * shadowBlur`) bernilai tepat sama dengan `size` kuas pada semua tingkat kekerasan (*hardness*).
+Dengan merumuskan $W + 3B = \text{size}$ dan menetapkan rasio center solid $W = 2B$ saat `hardness = 0`, didapatkan koefisien kalibrasi sebagai berikut:
+- `coreWidth = size * (0.4 + 0.6 * hardness)`
+- `shadowBlur = size * 0.2 * (1 - hardness)`
+Ketika disubstitusikan, didapat: $\text{size} \times (0.4 + 0.6H) + 3 \times \text{size} \times 0.2 \times (1 - H) = \text{size}$. Persamaan ini menjamin coretan selalu berada tepat di dalam batas kursor lingkaran visual kuas dan dapat di-*scale* dengan sempurna ke segala ukuran piksel.
+
+**Rincian Perubahan:**
+1. `paintStrokeRenderer.ts` — Memperbarui koefisien perataan pada formula kalkulasi `coreWidth` dan `shadowBlur` kuas lembut.
+2. `paintStrokeRenderer.test.ts` — Menyelaraskan nilai assertion pengujian unit (`shadowBlur`, `lineWidth`, `arc` radius) dengan koefisien rumus kalibrasi yang baru.
+
+---
+
+## [2026-06-11] BUG FIX — Soft Brush Perceived Size Adjustment [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / RENDERER / UX
+
+**Root Cause:**
+Saat menggambar dengan kuas lembut (`hardness < 1`), radius bayangan (`shadowBlur`) dihitung menggunakan proporsi `size * 0.35 * (1 - hardness)`, sedangkan lebar core (`coreWidth`) dihitung sebagai `size * (0.3 + 0.7 * hardness)`. Saat `hardness = 0`, rasio `coreWidth` (22.5px untuk kuas 75px) lebih kecil dibandingkan `shadowBlur` (26.25px). Akibat dispersi Gaussian blur yang lebar di atas garis core yang sempit, puncak alpha di tengah garis menyusut jauh di bawah `1.0` (hanya mencapai ~61%), membuat coretan tampak tipis/transparan dan jauh lebih kecil dibandingkan ukuran kursor lingkaran yang ditampilkan.
+
+**Fix Rationale:**
+Mengubah formula kalkulasi agar lebar core lebih besar dari radius dispersi blur, sehingga densitas center tetap padat (opaque, alpha $\ge 95\%$) dan degradasi kelembutan gradien menyebar pas hingga ke tepi lingkaran kursor kuas. Formula yang digunakan disesuaikan menjadi:
+- `coreWidth = size * (0.5 + 0.5 * hardness)`
+- `blur = size * 0.25 * (1 - hardness)`
+Pada `hardness = 0`, ini menghasilkan `coreWidth = 0.5 * size` dan `blur = 0.25 * size`, menjamin pusat coretan tetap solid (opaque) dan pendaran gradien menyebar secara proporsional.
+
+**Rincian Perubahan:**
+1. `paintStrokeRenderer.ts` — Memperbarui rumus kalkulasi `coreWidth` dan `blur` untuk goresan kuas lembut.
+2. `paintStrokeRenderer.test.ts` — Memperbarui assertion pengujian unit (`shadowBlur`, `lineWidth`, `arc` radius) untuk mencocokkan hasil dari rumus baru.
+
+---
+
+## [2026-06-11] BUG FIX — Viewport Zoom/Pan Resetting on Undo/Redo [COMPLETE]
+
+### Kategori: BUG FIX / VIEWPORT / HISTORY / UX
+
+**Root Cause:**
+Saat membuat snapshot riwayat (`engine.snapshot()`), status viewport saat ini (termasuk zoom dan pan koordinat) disimpan ke dalam model dokumen. Ketika snapshot tersebut dipulihkan kembali saat undo/redo (`engine.restore()`), status viewport yang lama ikut menimpa zoom dan pan aktif pengguna saat ini. Hal ini menyebabkan viewport melompat-lompat (zoom-popping) saat undo/redo tindakan pengeditan.
+
+**Fix Rationale:**
+Mengubah metode `restore` pada `DocumentEngine` untuk menerima parameter opsi tambahan `{ restoreViewport?: boolean }`. Secara default opsi ini bernilai `false`, yang berarti `restore` akan mempertahankan (preserve) koordinat pan dan tingkat zoom viewport aktif pengguna alih-alih menimpanya dengan data dari snapshot. Opsi `{ restoreViewport: true }` hanya dipasang pada kasus pengujian unit (unit tests) yang secara eksplisit menguji pemulihan viewport dari snapshot.
+
+**Rincian Perubahan:**
+1. `document.ts` — Memperbarui metode `restore` pada kelas `DocumentEngine` agar menyalin viewport aktif saat ini, menjalankan pemulihan snapshot, dan menulis kembali viewport aktif tersebut jika opsi `restoreViewport` bernilai false/undefined.
+2. `errorResilience.test.ts` & `document.test.ts` — Memperbarui pemanggilan `engine.restore(snap)` dengan parameter `{ restoreViewport: true }` pada skenario pengujian unit yang memvalidasi pemulihan viewport dari snapshot.
+
+---
+
+## [2026-06-11] FEATURE — Soft Brush Stroke Unified Path & shadowOffset Rendering [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / RENDERER / UX
+
+**Root Cause:**
+Goresan kuas lembut (`hardness = 0`) yang digambar menggunakan serangkaian dab (stamp) radial gradient bulat yang sangat rapat (spacing 15%) mengalami penumpukan alpha (alpha accumulation) di bawah mode blend `"source-over"`. Nilai alpha kecil yang bertumpuk sepanjang sisi garis lintasan seretan mouse dengan cepat berakumulasi melebihi `1.0` (fully opaque). Hal ini menyebabkan tepi goresan memadat secara tidak wajar dan tampak keras seperti sosis (sausage effect) alih-alih mempertahankan kelembutan gradiennya.
+
+**Fix Rationale:**
+Mengubah metode penggambaran dari cap radial gradien berulang menjadi **satu garis utuh (Unified Path)** menggunakan kombinasi `shadowOffsetX` dan `shadowBlur` di Canvas 2D. Dengan memposisikan koordinat penggambaran garis padat (core) jauh di luar layar (misal digeser sejauh `-20000` piksel) dan memproyeksikan bayangan lembutnya kembali ke posisi asli, kita mendapatkan tepian kuas lembut yang 100% seragam tanpa ada sambungan tumpang tindih. Lebar core dan ukuran blur bayangan dihitung secara dinamis dari ukuran kuas dan persentase hardness.
+
+**Rincian Perubahan:**
+1. `paintStrokeRenderer.ts` — Mengubah `renderPaintStrokeToContext` untuk menggambar satu garis terpadu menggunakan bayangan offset (`shadowOffsetX = 20000`, `shadowBlur = size - coreWidth`) ketika hardness < 1. Untuk kuas keras (hardness = 1), gambar garis padat biasa tanpa bayangan. Jika goresan hanya memiliki 1 koordinat (titik), gambar titik tunggal menggunakan `arc`.
+2. `useBrushOverlay.ts` — Memperbarui `onPaintStroke` untuk menghapus overlay canvas/eraser buffer dan menggambar ulang seluruh koordinat (`localPoints`) dari awal garis pada setiap event gerakan mouse (pointer move).
+3. `paintStrokeRenderer.test.ts` — Memperbarui pengujian unit untuk mencocokkan parameter path baru (`shadowBlur`, `shadowOffsetX`, `lineWidth`, `lineTo`, `moveTo`) dan menghapus pengujian radial gradient yang sudah usang.
+
+---
+
+## [2026-06-11] BUG FIX — Brush Soft Edge Overlap Accumulation [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / RENDERER / UX
+
+**Root Cause:**
+Saat menggambar stroke kuas dengan `hardness = 0`, tepi luar dari lingkaran dab kuas yang bertumpuk (overlapping) dengan sangat rapat sepanjang garis lintasan mouse diakumulasikan nilainya secara linear oleh Canvas 2D. Nilai alpha kecil yang bertumpuk berulang kali (`0.2 + 0.2 + 0.2 ...`) dengan cepat melewati `1.0` (fully opaque). Hal ini menyebabkan tepi luar kuas yang diseret (drag) kehilangan efek kelembutan gradiennya dan menghasilkan tepian kuas yang keras seperti `hardness = 100%`.
+
+**Fix Rationale:**
+Mengubah kejatuhan transparansi gradien kuas dari model linear ke model non-linear (cubic falloff) menggunakan persamaan $(1 - t)^3$. Dengan kurva kubik ini, tingkat transparansi individual di tepi luar satu dab kuas berkurang secara eksponensial menjadi sangat kecil (misalnya `0.008` pada radius 80%). Hasilnya, meskipun bertumpuk berulang-ulang saat kuas diseret, akumulasi nilainya tidak akan mencapai batas solid dan tepi lintasan kuas akan tetap mempertahankan kelembutannya (soft, fuzzy edges).
+
+**Rincian Perubahan:**
+1. `paintStrokeRenderer.ts` — Mengubah pembuatan `addColorStop` pada radial gradient brush dabs. Sekarang loop iteratif menambahkan 6 titik perhentian gradien (stops) dari `hardness` ke `1.0` dengan menghitung tingkat transparansi kubik `Math.pow(1 - t, 3)`.
+
+---
+
+## [2026-06-11] BUG FIX — Brush Tool Smoothing Slider, Transformed Layer Preview and Commit Alignment [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / ERASER / FRONTEND / UX
+
+**Root Cause:**
+1. **Slider Smoothing Lag**: Di `useCanvasPointerTools.ts`, nilai persentase smoothing dari input slider (0-100%) dikirim secara langsung ke `paintSmoother.setWindowSize()` tanpa dipetakan terlebih dahulu menggunakan utilitas `smoothingToWindowSize(smoothing)`. Hal ini menyebabkan ukuran window smoothing menjadi terlalu besar (sampai 100 poin) sehingga goresan kuas terasa sangat lag dan tidak memiliki tingkat kehalusan (granularity) yang sesuai.
+2. **Double Drawing & Preview Opacity Popping**: Di `useBrushOverlay.ts`, saat user mulai melukis (`prevStrokePointCount === 0`), `imageBitmap` layer digambar ulang ke dalam `overlayCanvasRef`. Karena overlay canvas ini di-render menggunakan CSS `opacity: 1` di atas viewport WebGL, tingkat opacity dan blend-mode asli dari layer tertimpa oleh salinan solid ini selama proses drag, menyebabkan tampilan visual tiba-tiba memudar/pop ke opacity 100%.
+3. **Mismatched Canvas Preview Transform**: Elemen overlay canvas diposisikan secara statis memenuhi seluruh area document container tanpa memperhitungkan transform local layer (termasuk offset translasi X/Y, rotasi, skala, flip horizontal/vertikal, dan opacity dari layer itu sendiri). Akibatnya, ketika melukis pada layer yang telah di-transform (di-rotate/di-scale), visual goresan kuas preview saat di-drag tidak sejajar dengan goresan kuas final yang menempel pada layer.
+4. **Pointer Up Commit Regression**: Di `useCanvasPointerTools.ts`, fungsi penanganan `onCanvasPointerUp` memanggil `handlePointerUp` dari `input-handler.ts` terlebih dahulu sebelum memanggil `params.commitBrushStroke()`. Namun, `handlePointerUp` tersebut langsung mengosongkan array koordinat `interactiveState.strokePoints = []`. Akibatnya, pemeriksaan `interactiveState.strokePoints.length > 0` di bawahnya selalu bernilai false dan goresan kuas tidak pernah dikomit secara permanen ke layer (stroke menghilang setelah mouse dilepas).
+
+**Fix Rationale:**
+1. **Peta Skala Smoothing**: Memanggil utilitas `smoothingToWindowSize(interactiveState.paintSettings.smoothing)` sebelum mengirim nilai ukuran window ke `paintSmoother.setWindowSize()`.
+2. **Kanvas Preview Transparan**: Menghilangkan proses penggambaran awal `imageBitmap` layer ke overlay canvas selama proses melukis aktif. Sebagai gantinya, saat `commitBrushStroke` dipicu, `layer.imageBitmap` asli digambar terlebih dahulu ke kanvas snapshot offscreen sebelum menimpa goresan kuas dari overlay canvas di atasnya.
+3. **Layer-Local Canvas CSS Transform**: Menambahkan memo reaktif `activeLayer` dan `overlayCanvasStyle` di `CanvasViewport.tsx` yang menerjemahkan properti layer transform (`x`, `y`, `scaleX`, `scaleY`, `rotation`, `flipH`, `flipV`, `opacity`) ke dalam instruksi CSS `translate3d`, `rotate`, `scale`, dan `opacity` pada overlay canvas.
+4. **State Snapshot Before Clear**: Menyimpan kondisi stroke (`hasPoints`) sebelum memicu `handlePointerUp`, dan menggunakan referensi boolean tersebut untuk menentukan apakah `commitBrushStroke` perlu dipicu.
+
+**Rincian Perubahan:**
+1. `useCanvasPointerTools.ts` — Mengimpor dan membungkus smoothing slider value menggunakan `smoothingToWindowSize`. Menyimpan status `hasPoints` sebelum memanggil `handlePointerUp` dan menggunakannya sebagai kondisi commit.
+2. `useBrushOverlay.ts` — Menghapus penggambaran `layer.imageBitmap` pada `onPaintStroke` untuk brush non-eraser. Memperbarui `commitBrushStroke` untuk menggambar `layer.imageBitmap` pada kanvas snapshot sebelum goresan kuas.
+3. `CanvasViewport.tsx` — Menambahkan `activeLayer` memo dan `overlayCanvasStyle` memo, lalu menyematkan `overlayCanvasStyle()` pada elemen overlay `<canvas>`.
+
+---
+
 ## [2026-06-11] BUG FIX — Classic Rotated Crop Side Resize Axis, Pivot Drift, and Mouse Cursor Rotation [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX

@@ -13,7 +13,7 @@ type AppTitleBarProps = {
 };
 
 export function AppTitleBar(props: AppTitleBarProps) {
-  const { workspace, renderer, scheduler, activeDocumentId, documents, activeTool, undoLastCrop, canCropUndo, redoCrop, canCropRedo, setCropRect, setCropRotation, layerTransformSession, setLayerTransformSession, setShowResizeDialog, setShowExportDialog } = useEditor();
+  const { workspace, renderer, scheduler, activeDocumentId, documents, activeTool, undoLastCrop, canCropUndo, redoCrop, canCropRedo, setCropRect, setCropRotation, layerTransformSession, setLayerTransformSession, setShowResizeDialog, setShowExportDialog, syncViewport } = useEditor();
 
   const cancelActiveTransformSession = (): boolean => {
     const engine = workspace.getActiveEngine();
@@ -50,6 +50,7 @@ export function AppTitleBar(props: AppTitleBarProps) {
         const prev = history.undo(engine.snapshot());
         if (prev) {
           engine.restore(prev);
+          syncViewport();
           const dpr = window.devicePixelRatio || 1;
           renderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr);
           for (const layer of engine.getLayers()) {
@@ -84,6 +85,7 @@ export function AppTitleBar(props: AppTitleBarProps) {
         const next = history.redo(engine.snapshot());
         if (next) {
           engine.restore(next);
+          syncViewport();
           const dpr = window.devicePixelRatio || 1;
           renderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr);
           for (const layer of engine.getLayers()) {

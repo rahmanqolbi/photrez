@@ -164,7 +164,7 @@ describe('DocumentEngine', () => {
     engine.setViewport({ panX: 0, panY: 0, zoom: 1, rotation: 0 });
     engine.clearSelection();
 
-    engine.restore(snap);
+    engine.restore(snap, { restoreViewport: true });
 
     expect(engine.getLayers().length).toBe(1);
     expect(engine.getViewport()).toEqual({ panX: 100, panY: 50, zoom: 2, rotation: 0 });

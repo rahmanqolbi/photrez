@@ -233,3 +233,17 @@
 | Task 232 | [BrushEraserFix] Add pointercancel handler for brush stroke cleanup | [x] Completed |
 | Task 233 | [BrushEraserFix] Convert stroke coords to layer-local for transformed layers | [x] Completed |
 | Task 234 | [BrushEraserFix] Add async commit race guard (verify engine+layer after await) | [x] Completed |
+| Task 235 | [BrushSoftEdge] Refactor paintStrokeRenderer.ts (Unified Path & shadowOffset) | [x] Completed |
+| Task 236 | [BrushSoftEdge] Refactor useBrushOverlay.ts (Full path redraws) | [x] Completed |
+| Task 237 | [BrushSoftEdge] Update unit tests in paintStrokeRenderer.test.ts | [x] Completed |
+| Task 238 | [BrushSoftEdge] Final verification and build checks | [x] Completed |
+| Task 239 | [BrushTipMask] Implement brush tip mask engine and incremental PaintStrokeSession | [x] Completed |
+| Task 240 | [BrushTipMask] Calibrate soft brush spacing & implement bilinear subpixel stamping | [x] Completed |
+| Task 241 | [BrushTipMask] Calibrate soft exponent (1.3) and peak multiplier (0.9) | [x] Completed |
+| Task 242 | [BrushTipMask] Scale effective flow / alphaScale based on hardness | [x] Completed |
+| Task 243 | [Viewport] Fix transition jiggle on zoom and tool switching | [x] Completed |
+
+
+
+
+

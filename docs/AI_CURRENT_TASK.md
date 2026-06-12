@@ -2,7 +2,98 @@
 
 ---
 
-## Current Tasks [ALL COMPLETE]
+## Current Tasks
+
+### [2026-06-12] Brush Preset UX Calibration [COMPLETE]
+
+Manual QA shows the core hardness 0 brush is now acceptable, but users still need editor-like presets: Soft Round should be a usable main soft brush with a slightly fuller center, while Large Soft remains a low-flow wash/airbrush-like preset.
+
+**Done:**
+1. Keep the core brush rendering engine unchanged.
+2. Updated brush preset expectations first.
+3. Tuned `Soft Round` default to hardness `0.15` and flow `1.0` for a desktop-editor main soft brush.
+4. Kept `Large Soft` as a lower-flow broad wash preset with hardness `0.0`, opacity `0.85`, and flow `0.65`.
+5. Focused brush-related tests pass; full verification recorded in `AI_HISTORY.md`.
+
+### [2026-06-12] Brush Soft Round Fatter Center Calibration [COMPLETE]
+
+Manual QA shows hardness 0 now has correct feathering and opacity, but the visible center remains too thin. The next calibration will change the soft radial falloff shape, not overall flow, so the middle reads more like a desktop editor soft round brush.
+
+**Done:**
+1. Keep softPeak, effective flow, spacing, and max-alpha stroke behavior unchanged.
+2. Tuned the hardness 0 `soft` falloff exponent toward a fatter-center profile.
+3. Added dynamic soft falloff exponent based on hardness, so hardness 0 gets a wider center while higher hardness values retain tighter edges.
+4. Updated pixel-profile tests so hardness 0 has stronger alpha at 25-50% radius while retaining a feathered edge.
+5. Focused tests pass; full verification recorded in `AI_HISTORY.md`.
+
+### [2026-06-12] Brush Soft Round Opacity Body Calibration [COMPLETE]
+
+Polishing hardness 0 soft round brush after manual QA showed the feather shape is correct but Flow 100 / Strength 100 still looks too airbrush-like and low-opacity compared with desktop image editors.
+
+**Done:**
+1. Keep current soft falloff exponent, softPeak, dab spacing, and subpixel stamping unchanged.
+2. Raised low-hardness effective flow from `0.82` to `0.90`, while keeping hardness 100 at `1.0`.
+3. Updated focused brush/renderer tests to lock the new opacity-body target.
+4. Focused tests pass; full verification recorded in `AI_HISTORY.md`.
+
+### [2026-06-12] Brush Soft Round Editor-Like Final Polish [COMPLETE]
+
+Polishing the soft round brush after manual QA showed the latest hardness 0 stroke is natural but still slightly too transparent for Flow 100 / Strength 100.
+
+**Done:**
+1. Slightly raise low-hardness effective flow from `0.80` to `0.82` while keeping hardness 100 at `1.0`.
+2. Keep the current `soft` falloff exponent and softPeak profile unchanged.
+3. Cleaned small TypeScript/test issues found during review (`any` in brushTipMask tests, unused variable in hard overlay path).
+4. Repaired malformed `AI_HISTORY.md` brush entry heading.
+5. Focused brush tests pass; full verification recorded in `AI_HISTORY.md`.
+
+### [2026-06-12] Bug Fix — Viewport Transition Jiggle [COMPLETE]
+
+Fixing the shaking/jiggling transition effects in the viewport during zoom (via shortcuts/mouse wheel) and tool switching.
+
+**Done:**
+1. Disabled CSS transitions for position (`left`, `top`) and scaling (`transform`) on the canvas and overlay container in `CanvasViewport.tsx` to ensure zoom and tool switching are instant, snappy, and free from coordinate/visual alignment drift.
+2. Verified that zoom, panning, and tool switching remain functional and look much cleaner.
+3. Ran Vitest test suite, TypeScript compile checks, and Tauri dev builds. All tests and builds pass.
+
+### [2026-06-12] Brush Effective Flow Hardness Scaling Calibration [COMPLETE]
+
+Tuning effective brush flow based on hardness to achieve an airbrush-like soft stroke.
+
+**Done:**
+1. Implemented `getEffectiveFlowMultiplier(hardness)` using the quadratic curve `0.1 * h^2 + 0.32 * h + 0.58`.
+2. Applied the multiplier to `alphaScale` in `useBrushOverlay.ts` and `paintStrokeRenderer.ts` so soft brush settings scale down stamp opacity dynamically.
+3. Added a unit test in `brushTipMask.test.ts` to verify the multiplier checkpoints (`f(0) = 0.58`, `f(0.8) = 0.90`, `f(1.0) = 1.00`) and verify that soft brush `alphaScale` is reduced.
+4. Adjusted assertions in `paintStrokeRenderer.test.ts` to reflect the calibrated alpha values.
+5. All 798 Vitest tests, cargo checks, and Tauri desktop builds compile and pass successfully.
+
+
+### [2026-06-12] Brush Falloff Soft Exponent and Peak Multiplier Calibration [COMPLETE]
+
+Tuned the soft round brush alpha falloff curve and peak multiplier to achieve a broad, smooth gradual feather.
+
+**Done:**
+1. Set the `"soft"` curve exponent to `1.3` (inside the `1.25–1.4` range).
+2. Implemented a `softPeak` multiplier of `0.9 + 0.1 * h` to limit maximum opacity of soft dabs.
+3. Verified the resulting radial pixel-profile matches exactly: center 0.8-0.95, 25% radius 0.6-0.75, 50% radius 0.3-0.5, 75% radius 0.08-0.2, edge 0.
+4. Updated unit tests in `brushTipMask.test.ts` and `paintStrokeRenderer.test.ts` to enforce these boundaries.
+5. All 800 Vitest tests and 92 Rust workspace tests pass, and frontend builds successfully.
+
+---
+
+### [2026-06-11] Brush Spacing and Subpixel Stamping Calibration [COMPLETE]
+
+Calibrated the soft round brush spacing, implemented subpixel stamping, and tuned the alpha falloff profile to eliminate visible dab banding/segmentation and core-heaviness at hardness 0.
+
+**Done:**
+1. Confirmed soft brush spacing for size 70 hardness 0 computes to 3px (well within the target 2-4px range).
+2. Verified `interpolateDabs` behaves consistently without accumulating periodic pattern artifacts.
+3. Implemented subpixel stamping via bilinear tip sampling in `stampBrushTipMaxAlpha` to prevent integer rounding coordinate jitter.
+4. Added unit test in `brushTipMask.test.ts` to assert correct bilinear subpixel stamping.
+5. Tuned the `"soft"` curve exponent in `brushTipMask.ts` from `1.2` to `2.2` to soften the center core/peak and make the feathering transition much more gradual and natural.
+6. All 800 Vitest tests and 92 Rust workspace tests pass, and frontend bundles successfully.
+
+---
 
 ### [2026-06-09] Post-Crop Move Tool Clean State [COMPLETE]
 
@@ -194,8 +285,17 @@ Fixing the resize behavior of edge/side handles for a rotated cropbox in Classic
 - PASS: `pnpm.cmd run build` (production build compiled successfully in 6.06s)
 - PASS: `pnpm.cmd --filter photrez-desktop test --run` (all 781 tests passed, verifying edge handle coordinate conversion, rotation pivot drift correction, SVG drag cursor style, and For-loop reactive cursor style bindings on handle hover)
 - PASS: `cargo test -p photrez-core` (all 85 Rust core tests passed)
+### [2026-06-12] Brush Effective Flow Calibration Tuning [COMPLETE]
 
+Adjusting the getEffectiveFlowMultiplier formula to increase the opacity and body of soft brushes (hardness 0), preventing them from looking too faded/ghost-like.
 
+**Done:**
+1. Updated `getEffectiveFlowMultiplier` in `brushTipMask.ts` from `0.1 * h^2 + 0.32 * h + 0.58` to `0.8 + 0.2 * h`.
+2. Updated checkpoints in `brushTipMask.test.ts` (0% hardness -> 0.8, 80% hardness -> 0.96, 100% hardness -> 1.0).
+3. Updated expected center alpha for soft brush drawing test in `paintStrokeRenderer.test.ts` to `184` (was `133`), and adjusted the overlap test's expected non-accumulated alpha bounds to `toBeLessThanOrEqual(100)` (was `80`) and `toBeGreaterThan(60)` (was `45`) to match the new multiplier scaling.
+4. Ran verification pipeline: all frontend tests, workspace cargo tests, and production build checks compile and pass successfully.
 
-
-
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (all 802 tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+- PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)

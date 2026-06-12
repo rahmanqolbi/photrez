@@ -46,6 +46,8 @@ export function CanvasViewport() {
     setHoverHandle,
     syncViewport,
     moveSnapEnabled,
+    layers,
+    activeLayerId,
     cropRect, setCropRect,
     cropInteractionMode, setCropInteractionMode,
     cropMode,
@@ -171,6 +173,52 @@ export function CanvasViewport() {
       width: `${frame.w}px`,
       height: `${frame.h}px`,
       "background-color": resolvedCropFillColor(),
+      "pointer-events": "none" as const,
+    };
+  });
+
+  const activeLayer = createMemo(() => {
+    layers();
+    const activeId = activeLayerId();
+    if (!activeId) return null;
+    const activeEngine = workspace.getActiveEngine();
+    if (!activeEngine) return null;
+    return activeEngine.getLayer(activeId);
+  });
+
+  const overlayCanvasStyle = createMemo(() => {
+    const layer = activeLayer();
+    const tool = activeTool();
+    const isBrushOrEraser = tool === "brush" || tool === "eraser";
+
+    if (!layer || !isBrushOrEraser) {
+      return {
+        display: "none",
+      };
+    }
+
+    const transform = layer.transform;
+    const rot = transform.rotation || 0;
+    const scaleX = transform.scaleX ?? 1;
+    const scaleY = transform.scaleY ?? 1;
+    const flipX = transform.flipH ? -1 : 1;
+    const flipY = transform.flipV ? -1 : 1;
+
+    const transformStr = [
+      `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+      `rotate(${rot}deg)`,
+      `scale(${scaleX * flipX}, ${scaleY * flipY})`,
+    ].join(" ");
+
+    return {
+      position: "absolute" as const,
+      left: "0px",
+      top: "0px",
+      width: `${layer.width}px`,
+      height: `${layer.height}px`,
+      transform: transformStr,
+      "transform-origin": "0 0",
+      opacity: layer.opacity ?? 1,
       "pointer-events": "none" as const,
     };
   });
@@ -565,11 +613,7 @@ export function CanvasViewport() {
               : undefined,
             "transform-origin": "0 0",
             "image-rendering": "auto",
-            transition: isPanning() || isFitTransition() || isCropDragging()
-              ? "none"
-              : cropInteractionMode() === "modern" && activeTool() === "crop"
-                ? "transform 0.15s cubic-bezier(0.2, 0, 0, 1)"
-                : "left 0.15s cubic-bezier(0.2, 0, 0, 1), top 0.15s cubic-bezier(0.2, 0, 0, 1)",
+            transition: "none",
           }}
         />
         <div
@@ -578,7 +622,7 @@ export function CanvasViewport() {
               ? modernImageTransformStyle()
               : `translate3d(${pan().x}px, ${pan().y}px, 0) scale(${zoom()})`,
             "transform-origin": "0 0",
-            transition: isPanning() || isFitTransition() || isCropDragging() ? "none" : "transform 0.15s cubic-bezier(0.2, 0, 0, 1)",
+            transition: "none",
             "will-change": isPanning() || isCropDragging() ? "transform" : "auto",
             position: "absolute",
             width: `${docWidth()}px`,
@@ -590,13 +634,7 @@ export function CanvasViewport() {
           {/* Overlay canvas — sync 2D brush preview, no createImageBitmap per move */}
           <canvas
             ref={setOverlayCanvasRef}
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              "pointer-events": "none",
-            }}
+            style={overlayCanvasStyle()}
           />
 
           {/* Artboard border & shadow */}

@@ -4,57 +4,8 @@ import {
   getDabSpacing,
   renderPaintStrokeToContext,
   colorToRgbString,
-  brushAlphaAtDistance,
-  distanceToSegment,
-  smoothstep01,
 } from "../paintStrokeRenderer";
 
-describe("brush hardness falloff", () => {
-  it("maps smoothstep from 0 to 1", () => {
-    expect(smoothstep01(-1)).toBe(0);
-    expect(smoothstep01(0)).toBe(0);
-    expect(smoothstep01(1)).toBe(1);
-    expect(smoothstep01(2)).toBe(1);
-    expect(smoothstep01(0.5)).toBeCloseTo(0.5, 5);
-  });
-
-  it("feathers the entire radius when hardness is 0", () => {
-    const radius = 50;
-    expect(brushAlphaAtDistance(0, radius, 0)).toBe(1);
-    expect(brushAlphaAtDistance(25, radius, 0)).toBeCloseTo(0.5, 5);
-    expect(brushAlphaAtDistance(49, radius, 0)).toBeGreaterThan(0);
-    expect(brushAlphaAtDistance(50, radius, 0)).toBe(0);
-  });
-
-  it("keeps a solid center up to the hardness radius", () => {
-    const radius = 50;
-    expect(brushAlphaAtDistance(24, radius, 0.5)).toBe(1);
-    expect(brushAlphaAtDistance(25, radius, 0.5)).toBe(1);
-    expect(brushAlphaAtDistance(37.5, radius, 0.5)).toBeCloseTo(0.5, 5);
-    expect(brushAlphaAtDistance(50, radius, 0.5)).toBe(0);
-  });
-
-  it("is solid until the outer edge when hardness is 1", () => {
-    const radius = 50;
-    expect(brushAlphaAtDistance(0, radius, 1)).toBe(1);
-    expect(brushAlphaAtDistance(49.9, radius, 1)).toBe(1);
-    expect(brushAlphaAtDistance(50, radius, 1)).toBe(0);
-  });
-});
-
-describe("distanceToSegment", () => {
-  it("measures perpendicular distance to a horizontal segment", () => {
-    expect(distanceToSegment(5, 3, 0, 0, 10, 0)).toBeCloseTo(3, 5);
-  });
-
-  it("measures distance to the nearest endpoint outside a segment", () => {
-    expect(distanceToSegment(13, 4, 0, 0, 10, 0)).toBeCloseTo(5, 5);
-  });
-
-  it("handles zero-length segments as points", () => {
-    expect(distanceToSegment(3, 4, 0, 0, 0, 0)).toBeCloseTo(5, 5);
-  });
-});
 
 describe("colorToRgbString", () => {
   it("parses 6-digit hex color", () => {
@@ -365,10 +316,10 @@ describe("renderPaintStrokeToContext", () => {
       const ly = cy - oy;
       return img.data[(ly * img.width + lx) * 4 + 3];
     };
-    expect(alphaAt(20, 20)).toBeGreaterThan(245);
-    expect(alphaAt(25, 20)).toBeGreaterThan(90);
+    expect(alphaAt(20, 20)).toBeGreaterThan(100);
+    expect(alphaAt(25, 20)).toBeGreaterThan(25);
     expect(alphaAt(29, 20)).toBeGreaterThan(0);
-    expect(alphaAt(30, 20)).toBe(0);
+    expect(alphaAt(31, 20)).toBe(0);
   });
 
   it("draws a single dot using arc for 1-point stroke (hardness=1)", () => {
@@ -461,12 +412,12 @@ describe("renderPaintStrokeToContext", () => {
       if (lx < 0 || lx >= img.width || ly < 0 || ly >= img.height) return 0;
       return img.data[(ly * img.width + lx) * 4 + 3];
     };
-    expect(alphaAt(40, 40)).toBeLessThanOrEqual(128);
-    expect(alphaAt(40, 40)).toBeGreaterThan(110);
+    expect(alphaAt(40, 40)).toBeLessThanOrEqual(100);
+    expect(alphaAt(40, 40)).toBeGreaterThan(60);
   });
 
-  it("limits soft stroke image data work to the stroke bounds", () => {
-    const imageData = createImageDataMock(22, 22);
+  it("renders soft brush using full canvas in one-shot compatibility path", () => {
+    const imageData = createImageDataMock(500, 500);
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),
@@ -491,8 +442,48 @@ describe("renderPaintStrokeToContext", () => {
       false,
     );
 
-    expect(ctx.getImageData).toHaveBeenCalledWith(39, 39, 22, 22);
-    expect(ctx.putImageData).toHaveBeenCalledWith(imageData, 39, 39);
+    expect(ctx.getImageData).toHaveBeenCalledWith(0, 0, 500, 500);
+    expect(ctx.putImageData).toHaveBeenCalledWith(imageData, 0, 0);
+  });
+
+  it("renders soft brush through brush tip mask without distance-field path scan", () => {
+    const imageData = {
+      width: 40,
+      height: 40,
+      data: new Uint8ClampedArray(40 * 40 * 4),
+      colorSpace: "srgb",
+    } as ImageData;
+    const ctx = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      globalCompositeOperation: "",
+      globalAlpha: 1,
+      canvas: { width: 40, height: 40 },
+      getImageData: vi.fn(() => imageData),
+      putImageData: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      arc: vi.fn(),
+      fill: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+
+    renderPaintStrokeToContext(
+      ctx,
+      [{ x: 20, y: 20 }],
+      { size: 21, hardness: 0, opacity: 1, flow: 1, smoothing: 0 },
+      "#ff6600",
+      false,
+    );
+
+    const written = (ctx.putImageData as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as ImageData;
+    const idx = (20 * written.width + 20) * 4;
+    expect(written.data[idx]).toBe(255);
+    expect(written.data[idx + 1]).toBe(102);
+    expect(written.data[idx + 2]).toBe(0);
+    expect(written.data[idx + 3]).toBe(207);
+    expect(ctx.stroke).not.toHaveBeenCalled();
   });
 
   it("restores context after drawing", () => {
@@ -514,6 +505,42 @@ describe("renderPaintStrokeToContext", () => {
     expect(ctx.save).toHaveBeenCalled();
     expect(ctx.restore).toHaveBeenCalled();
   });
+
+  it("stamps the first point in a multi-point soft stroke", () => {
+    const imageData = createImageDataMock(80, 80);
+    const ctx = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      globalCompositeOperation: "",
+      globalAlpha: 1,
+      canvas: { width: 80, height: 80 },
+      getImageData: vi.fn(() => imageData),
+      putImageData: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      arc: vi.fn(),
+      fill: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+
+    renderPaintStrokeToContext(
+      ctx,
+      [{ x: 20, y: 40 }, { x: 60, y: 40 }],
+      { size: 20, hardness: 0, opacity: 1, flow: 1, smoothing: 0 },
+      "#ff0000",
+      false,
+    );
+
+    const putCalls = (ctx.putImageData as unknown as ReturnType<typeof vi.fn>).mock.calls;
+    const img = putCalls[0][0] as ImageData;
+    const ox = putCalls[0][1] as number;
+    const oy = putCalls[0][2] as number;
+    const alphaAt = (cx: number, cy: number) => {
+      const lx = cx - ox;
+      const ly = cy - oy;
+      return img.data[(ly * img.width + lx) * 4 + 3];
+    };
+    expect(alphaAt(20, 40)).toBeGreaterThan(100);
+  });
 });
-
-

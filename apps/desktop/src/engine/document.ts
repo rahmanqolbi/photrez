@@ -602,8 +602,12 @@ export class DocumentEngine {
     return createSnapshot(this.model);
   }
 
-  restore(snapshot: DocumentModel): void {
+  restore(snapshot: DocumentModel, options?: { restoreViewport?: boolean }): void {
+    const currentViewport = { ...this.model.viewport };
     this.model = restoreSnapshot(snapshot);
+    if (!options?.restoreViewport) {
+      this.model.viewport = currentViewport;
+    }
     // Clean up stale texture handles for layers that no longer exist
     const currentIds = new Set(this.model.layers.map(l => l.id));
     for (const existingId of this.textureHandles.keys()) {
