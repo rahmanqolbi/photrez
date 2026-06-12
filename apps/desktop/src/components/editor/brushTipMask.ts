@@ -45,7 +45,7 @@ export function brushAlphaAtDistance(
   if (radius <= 0 || distance >= radius) return 0;
   const h = clamp01(hardness);
   if (h >= 1) return 1;
-  const hMapped = Math.pow(h, 1.6);
+  const hMapped = h;
   const hardRadius = radius * hMapped;
   if (hardRadius > 0 && distance <= hardRadius) return 1;
   const t = (distance - hardRadius) / Math.max(0.0001, radius - hardRadius);

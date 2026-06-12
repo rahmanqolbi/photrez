@@ -1,4 +1,4 @@
-import { createSignal, onMount, onCleanup, Show } from "solid-js";
+import { createSignal, onMount, onCleanup, Show, createEffect } from "solid-js";
 import { useEditor } from "./EditorContext";
 import { getActivePaintToolSettings } from "./brushToolState";
 import { screenToDocument } from "@/viewport/coords";
@@ -7,11 +7,13 @@ export function BrushCursorOverlay(props?: {
   forceVisibleForTest?: boolean;
   cursorPosForTest?: { x: number; y: number };
   isAltPressed?: boolean;
+  isPanning?: boolean;
 }) {
   const {
     workspace,
     activeTool,
     zoom,
+    pan,
     brushSize,
     brushHardness,
     brushOpacity,
@@ -39,27 +41,48 @@ export function BrushCursorOverlay(props?: {
 
   const radius = () => settings().size / 2;
 
-  onMount(() => {
-    let containerEl: HTMLElement | null = null;
+  let lastClientX = 0;
+  let lastClientY = 0;
+  let hasValidPosition = false;
+  let containerEl: HTMLElement | null = null;
 
+  const updatePosition = () => {
+    if (!isBrushTool() && !props?.forceVisibleForTest) {
+      setVisible(false);
+      return;
+    }
+    if (props?.cursorPosForTest) return;
+    if (!hasValidPosition) return;
+    if (!containerEl) {
+      containerEl = document.querySelector("[data-viewport-container]");
+      if (!containerEl) return;
+    }
+    const rect = containerEl.getBoundingClientRect();
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+    const doc = screenToDocument(lastClientX, lastClientY, rect, engine.getViewport());
+    setCursorPos({ x: doc.x, y: doc.y });
+    setVisible(true);
+  };
+
+  // React to zoom and pan changes automatically to update document-space mouse coordinate
+  createEffect(() => {
+    zoom();
+    if (typeof pan === "function") {
+      pan();
+    }
+    updatePosition();
+  });
+
+  onMount(() => {
     const handleMove = (e: PointerEvent) => {
-      if (!isBrushTool() && !props?.forceVisibleForTest) {
-        setVisible(false);
-        return;
-      }
-      if (props?.cursorPosForTest) return;
-      if (!containerEl) {
-        containerEl = document.querySelector("[data-viewport-container]");
-        if (!containerEl) return;
-      }
-      const rect = containerEl.getBoundingClientRect();
-      const engine = workspace.getActiveEngine();
-      if (!engine) return;
-      const doc = screenToDocument(e.clientX, e.clientY, rect, engine.getViewport());
-      setCursorPos({ x: doc.x, y: doc.y });
-      setVisible(true);
+      lastClientX = e.clientX;
+      lastClientY = e.clientY;
+      hasValidPosition = true;
+      updatePosition();
     };
     const handleLeave = () => {
+      hasValidPosition = false;
       if (!props?.forceVisibleForTest) setVisible(false);
     };
     window.addEventListener("pointermove", handleMove);
@@ -70,7 +93,7 @@ export function BrushCursorOverlay(props?: {
     });
   });
 
-  const show = () => props?.forceVisibleForTest || (isBrushTool() && visible() && !props?.isAltPressed);
+  const show = () => props?.forceVisibleForTest || (isBrushTool() && visible() && !props?.isAltPressed && !props?.isPanning);
   const pos = () => props?.cursorPosForTest || cursorPos();
 
   return (

@@ -4,6 +4,17 @@
 
 ## Current Tasks
 
+### [2026-06-12] Brush Intermediate Hardness Mapping Polish [COMPLETE]
+
+Polishing brush hardness mapping so intermediate values match desktop editor expectations. Manual QA shows `Hard 80%` still has a wider feather rim than expected; it should be mostly solid with only a narrow soft edge, while `Hard 0%` must keep the current broad feather profile.
+
+**Done:**
+1. Keep hardness 0 falloff, flow, spacing, and preset behavior unchanged.
+2. Updated pixel-profile tests for hardness 80 to expect a larger solid radius and narrower feather rim.
+3. Tried an aggressive `h^0.75` mapping, but it made lower/mid hardness values feel too hard and made the brush feel broken.
+4. Settled on a safer linear `h` mapping: `Hard 80%` is still mostly solid, while lower hardness values remain predictable.
+5. Focused brush and brush UX tests pass; full verification is pending.
+
 ### [2026-06-12] Brush Preset UX Calibration [COMPLETE]
 
 Manual QA shows the core hardness 0 brush is now acceptable, but users still need editor-like presets: Soft Round should be a usable main soft brush with a slightly fuller center, while Large Soft remains a low-flow wash/airbrush-like preset.
@@ -46,6 +57,35 @@ Polishing the soft round brush after manual QA showed the latest hardness 0 stro
 3. Cleaned small TypeScript/test issues found during review (`any` in brushTipMask tests, unused variable in hard overlay path).
 4. Repaired malformed `AI_HISTORY.md` brush entry heading.
 5. Focused brush tests pass; full verification recorded in `AI_HISTORY.md`.
+
+### [2026-06-12] Bug Fix — Brush Cursor Shown on Pan [COMPLETE]
+
+Fixing the brush/eraser cursor overlay ring being shown when the user is panning (holding Space or dragging to navigate) by passing viewport panning state to the overlay and hiding it.
+
+**Done:**
+1. Added `isPanning` boolean prop to `BrushCursorOverlay.tsx`.
+2. Passed `isPanning={isSpacePressed() || isPanning()}` to `<BrushCursorOverlay>` in `CanvasViewport.tsx`.
+3. Verified that the cursor hides correctly during panning and that all unit tests pass successfully.
+
+### [2026-06-12] Bug Fix — Brush Cursor Stuck on Zoom [COMPLETE]
+
+Fixing the brush/eraser cursor overlay ring feeling stuck during zoom operations unless the mouse is moved, by tracking last screen coordinates and updating the position reactively on zoom/pan changes.
+
+**Done:**
+1. Identified root cause: document-space coordinates of the mouse cursor were only updated on `pointermove` event, meaning when zooming (without moving the mouse), the overlay ring stayed stuck at the old document location.
+2. Destructured `pan` signal from `useEditor` and added a `createEffect` tracking `zoom` and `pan` signals to reactively call `updatePosition()`.
+3. Cached `lastClientX` and `lastClientY` coordinates on `pointermove` inside `BrushCursorOverlay.tsx`.
+4. Verified that all unit tests pass successfully.
+
+### [2026-06-12] Bug Fix — Viewport WebGL Backing Resolution Clamping [COMPLETE]
+
+Fixing the viewport crash/disappearance at high zoom levels (e.g. 500% or above) by clamping the WebGL canvas and texture backing size to a safe maximum of 4096 to prevent browser canvas limits (16384 max width/height) and VRAM exhaustion from triggering `CONTEXT_LOST_WEBGL`.
+
+**Done:**
+1. Identified root cause: lack of upper bound clamping on WebGL canvas size, causing WebGL texture allocation/framebuffer completeness failure and `CONTEXT_LOST_WEBGL` when zoom × dpr × document size exceeds GPU/browser MAX_TEXTURE_SIZE (Chrome caps canvas at 16384px height/width).
+2. Applied proportional clamping down to `Math.min(4096, gl.MAX_TEXTURE_SIZE)` in the `resize` function of `WebGL2Backend` (`webgl2.ts`).
+3. Verified using Vitest suite (810 tests pass), cargo tests (92 tests pass), and production Vite builds.
+
 
 ### [2026-06-12] Bug Fix — Viewport Transition Jiggle [COMPLETE]
 
@@ -361,3 +401,20 @@ Fixing the Shift-click straight line drawing modifier on soft brushes (hardness 
 - PASS: `pnpm --filter photrez-desktop test --run` (all 809 tests passed)
 - PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
 - PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
+
+### [2026-06-12] Sync lastPaintCoords with Undo/Redo [COMPLETE]
+
+Synchronize the last painted coordinate (`lastPaintCoords`) with the document undo/redo history stack, so undoing/redoing correctly reverts/advances the straight line start point.
+
+**Done:**
+1. Updated `CommandHistory` inside `history.ts` to store `lastPaintCoords` alongside snapshot entries.
+2. Exposed `getLastPaintCoords` and `setLastPaintCoords` in `CommandHistory` to manage active document coords.
+3. Refactored `useCanvasPointerTools.ts` to read/write `lastPaintCoords` via the active document session's history object.
+4. Added integration tests in `brushUx.test.tsx` verifying coordinate reverting/restoring during simulated undo/redo events.
+5. All 810 Vitest tests and 92 Rust workspace tests pass, and production app build compiles successfully.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (all 810 tests passed)
+- PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+

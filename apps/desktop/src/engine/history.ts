@@ -4,21 +4,32 @@ import { MAX_HISTORY_DEPTH } from "./types";
 interface SnapshotEntry {
   snapshot: DocumentModel;
   timestamp: number;
+  lastPaintCoords: { x: number; y: number } | null;
 }
 
 export class CommandHistory {
   private undoStack: SnapshotEntry[] = [];
   private redoStack: SnapshotEntry[] = [];
   private maxDepth: number;
+  private currentLastPaintCoords: { x: number; y: number } | null = null;
 
   constructor(maxDepth: number = MAX_HISTORY_DEPTH) {
     this.maxDepth = maxDepth;
   }
 
+  setLastPaintCoords(coords: { x: number; y: number } | null): void {
+    this.currentLastPaintCoords = coords;
+  }
+
+  getLastPaintCoords(): { x: number; y: number } | null {
+    return this.currentLastPaintCoords;
+  }
+
   commit(snapshot: DocumentModel): void {
     this.undoStack.push({
       snapshot,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      lastPaintCoords: this.currentLastPaintCoords,
     });
 
     // Clear redo stack on new operation
@@ -48,8 +59,11 @@ export class CommandHistory {
     // Save current to redo stack
     this.redoStack.push({
       snapshot: currentSnapshot,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      lastPaintCoords: this.currentLastPaintCoords,
     });
+
+    this.currentLastPaintCoords = previousEntry.lastPaintCoords;
 
     return previousEntry.snapshot;
   }
@@ -64,8 +78,11 @@ export class CommandHistory {
     // Save current to undo stack
     this.undoStack.push({
       snapshot: currentSnapshot,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      lastPaintCoords: this.currentLastPaintCoords,
     });
+
+    this.currentLastPaintCoords = nextEntry.lastPaintCoords;
 
     return nextEntry.snapshot;
   }
@@ -73,6 +90,7 @@ export class CommandHistory {
   clear(): void {
     this.undoStack = [];
     this.redoStack = [];
+    this.currentLastPaintCoords = null;
   }
 
   getUndoCount(): number {

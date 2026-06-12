@@ -675,7 +675,10 @@ export function CanvasViewport() {
             </Show>
             <HoverHighlight />
             <SmartGuides lines={snapLines()} />
-            <BrushCursorOverlay isAltPressed={isAltPressed()} />
+            <BrushCursorOverlay
+              isAltPressed={isAltPressed()}
+              isPanning={isSpacePressed() || isPanning()}
+            />
             <Show when={hudInfo()}>
               {(h) => (
                 <TransformHud

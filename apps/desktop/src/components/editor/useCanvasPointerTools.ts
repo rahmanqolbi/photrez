@@ -133,13 +133,24 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     modernDragSnappedPreview = null;
   }
 
-  let lastPaintCoords: { x: number; y: number } | null = null;
+  const getLastPaintCoords = (): { x: number; y: number } | null => {
+    const history = workspace.getActiveHistory();
+    return history ? history.getLastPaintCoords() : null;
+  };
+
+  const setLastPaintCoords = (coords: { x: number; y: number } | null) => {
+    const history = workspace.getActiveHistory();
+    if (history) {
+      history.setLastPaintCoords(coords);
+    }
+  };
+
   let axisLock: "horizontal" | "vertical" | null = null;
 
   createEffect(() => {
     const tool = activeTool();
     if (tool !== "brush" && tool !== "eraser") {
-      lastPaintCoords = null;
+      setLastPaintCoords(null);
     }
   });
 
@@ -377,12 +388,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const coords = getDocCoords(e);
     
     if (activeTool() === "brush" || activeTool() === "eraser") {
-      if (e.shiftKey && lastPaintCoords) {
-        interactiveState.strokePoints = interpolateLinePoints(lastPaintCoords, coords);
+      const lp = getLastPaintCoords();
+      if (e.shiftKey && lp) {
+        interactiveState.strokePoints = interpolateLinePoints(lp, coords);
         interactiveState.dragStart = { ...coords };
       } else {
         interactiveState.strokePoints = [];
-        lastPaintCoords = { ...coords };
+        setLastPaintCoords({ ...coords });
       }
     }
 
@@ -571,7 +583,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       if (layerId) {
         params.commitBrushStroke(engine, layerId, tool === "eraser");
         if (lastPt) {
-          lastPaintCoords = { ...lastPt };
+          setLastPaintCoords({ ...lastPt });
         }
       }
     }

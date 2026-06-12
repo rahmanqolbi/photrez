@@ -1,5 +1,111 @@
 # AI History — Photrez
 
+## [2026-06-12] BUG FIX — Brush Cursor Shown on Pan [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / ERASER / VIEWPORT / UX
+
+**Root Cause:**
+Saat pengguna melakukan panning/navigasi pada viewport (misalnya dengan menahan tombol `Space` untuk memunculkan kursor tangan dan menyeret canvas), indikator lingkaran ukuran brush/eraser tetap muncul di layar. Hal ini mengganggu pandangan pengguna karena tool brush/eraser sedang tidak aktif untuk menggambar selama proses navigasi/panning berlangsung.
+
+**Fix Rationale:**
+Mengirimkan status navigasi aktif (`isSpacePressed() || isPanning()`) dari viewport ke dalam komponen `<BrushCursorOverlay>` melalui properti `isPanning`. Ketika salah satu status tersebut bernilai `true`, lingkaran kursor brush/eraser akan disembunyikan secara otomatis dari layar (`!props?.isPanning`).
+
+**Rincian Perubahan:**
+1. `BrushCursorOverlay.tsx` — Menambahkan opsional properti `isPanning?: boolean` ke tipe props, serta memperbarui fungsi `show` untuk memastikan kursor lingkaran disembunyikan jika `isPanning` bernilai `true`.
+2. `CanvasViewport.tsx` — Menambahkan passing props `isPanning={isSpacePressed() || isPanning()}` ke pemanggilan `<BrushCursorOverlay>`.
+
+### Verification
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (all 810 frontend tests passed)
+- PASS: `cargo test --workspace` (all 92 Rust core/workspace tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+
+---
+
+## [2026-06-12] BUG FIX — Brush Cursor Stuck on Zoom [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / ERASER / VIEWPORT / UX
+
+**Root Cause:**
+Indikator visual berbentuk lingkaran kursor untuk tool brush dan eraser (`BrushCursorOverlay.tsx`) diposisikan menggunakan koordinat beruang dokumen (*document-space coordinates*) yang dihitung dan di-cache dalam state local (`cursorPos`) hanya pada saat event `pointermove` dipicu. Ketika pengguna melakukan zoom viewport (misal dengan shortcut `Ctrl+wheel`) tanpa memindahkan posisi fisik mouse, letak koordinat dokumen yang berada di bawah kursor mouse berubah secara drastis, tetapi state koordinat kursor overlay tidak terhitung ulang. Ini mengakibatkan lingkaran kursor visual terkesan "nyangkut" atau tertinggal di lokasi lama hingga pengguna menggoyangkan mouse sedikit.
+
+**Fix Rationale:**
+Menyimpan koordinat posisi mouse di client-space (`clientX`, `clientY`) setiap kali event `pointermove` terjadi. Menambahkan `createEffect` reaktif pada `BrushCursorOverlay.tsx` yang melacak sinyal `zoom()` dan `pan()`. Ketika viewport bergerak atau skala berubah, method `updatePosition()` akan secara otomatis dipanggil kembali untuk menghitung ulang posisi koordinat dokumen di bawah mouse dan memutakhirkan state secara reaktif, bahkan saat mouse diam tidak bergerak.
+
+**Rincian Perubahan:**
+1. `BrushCursorOverlay.tsx` — Menambahkan import `createEffect`, mendestrukturisasi sinyal `pan` dari `useEditor()`, meng-cache posisi screen mouse terbaru ke `lastClientX`/`lastClientY`, serta menambahkan `createEffect` yang reaktif terhadap `zoom` dan `pan` untuk memperbarui kalkulasi posisi dokumen kursor. Ditambahkan penanganan typeof *safety guard* pada sinyal `pan` untuk kompatibilitas mock pengujian unit.
+
+### Verification
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (all 810 frontend tests passed)
+- PASS: `cargo test --workspace` (all 92 Rust core/workspace tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+
+---
+
+## [2026-06-12] BUG FIX — Viewport WebGL Backing Resolution Clamping [COMPLETE]
+
+### Kategori: BUG FIX / VIEWPORT / RENDERER / UX
+
+**Root Cause:**
+Saat pengguna melakukan zoom gambar hingga tingkat persentase tinggi (misalnya 1486% seperti pada laporan QA) pada dokumen berukuran sedang/besar, ukuran buffer piksel (backing canvas/textures) dihitung langsung dengan mengalikan ukuran dokumen dengan tingkat zoom dan devicePixelRatio: `docWidth * zoom * dpr`. Pada zoom 1486% (faktor 14.86) dan dpr=2.0, gambar berukuran 709px membutuhkan buffer internal setinggi 21.072px. Ini melampaui batas keras browser Chrome untuk elemen `<canvas>` (maksimal 16.384px) dan alokasi memori tekstur WebGL, yang secara langsung memicu error `CONTEXT_LOST_WEBGL` dan menyebabkan canvas menjadi blank/layar hitam.
+
+**Fix Rationale:**
+Membatasi secara aman ukuran buffer piksel internal canvas WebGL dan tekstur ping-pong ke limit aman maksimal sebesar **4096px** (atau batas GPU `maxTextureSize` jika lebih rendah). Batas ini sangat direkomendasikan karena didukung oleh 100% perangkat dan browser tanpa risiko kehabisan VRAM atau memicu limitasi browser. Agar tidak terjadi distorsi/penyok (*stretching*) pada rasio gambar, lebar dan tinggi diturunkan secara proporsional. Browser kemudian akan memperbesar visual buffer tersebut secara mulus ke ukuran aslinya di layar menggunakan akselerasi CSS `scale(...)` tanpa terjadi kerusakan memori GPU.
+
+**Rincian Perubahan:**
+1. `webgl2.ts` — Memperbarui method `resize` untuk mengkalkulasi limit `maxLimit` sebagai `Math.min(4096, this.capabilities.maxTextureSize || 4096)`, lalu melakukan penyesuaian skala proporsional pada `w` dan `h` jika melampaui limit tersebut sebelum dialokasikan ke `canvas.width`/`canvas.height` dan ping-pong FBO textures.
+
+### Verification
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (all 810 frontend tests passed)
+- PASS: `cargo test --workspace` (all 92 Rust core/workspace tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+
+---
+
+## [2026-06-12] POLISH — Brush Intermediate Hardness Mapping [COMPLETE]
+
+### Kategori: POLISH / BRUSH / ERASER / HARDNESS / UX
+
+**Root Cause:**
+Manual QA showed `Hard 80%` looked softer than expected compared with desktop image editors. The hard-radius mapping used `Math.pow(hardness, 1.6)`, so hardness `0.8` only produced about `70%` solid radius, leaving a broad feather rim.
+
+**Fix Rationale:**
+Keep hardness 0 and the soft falloff profile unchanged, but remap intermediate hardness values so they feel closer to editor conventions. An aggressive `Math.pow(hardness, 0.75)` mapping was tested, but it made lower/mid hardness values too hard and made the brush feel broken. The final mapping is linear (`hardRadius = radius * hardness`), so hardness `0.8` produces about `80%` solid radius with a narrow feather rim while lower hardness values remain predictable. This also applies to eraser because brush and eraser share the same brush-tip mask logic.
+
+**Rincian Perubahan:**
+1. `brushTipMask.ts` - Changed hard-radius mapping from `Math.pow(h, 1.6)` to linear `h`.
+2. `brushTipMask.test.ts` - Updated hardness mapping expectations for 20%, 50%, 80%, and 100% hardness, including `Hard 80%` staying solid farther out and feathering only near the outer rim.
+
+### Verification
+- PASS: `pnpm.cmd --filter photrez-desktop exec vitest run src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts --run` (52 tests)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (810 tests, 54 files)
+- PASS: `pnpm.cmd run build` (tsc + Vite production build)
+- PASS: `cargo test --workspace` (92 Rust workspace tests)
+- PASS: `pnpm.cmd --filter photrez-desktop exec vitest run src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts src/components/editor/__tests__/brushUx.test.tsx --run` (56 tests, follow-up regression check)
+
+---
+
+## [2026-06-12] FEATURE — Synchronize lastPaintCoords with Undo/Redo [COMPLETE]
+
+### Kategori: FEATURE / BRUSH / ERASER / UX / HISTORY
+
+**Root Cause:**
+The last painted coordinate (`lastPaintCoords`) was stored as a local module variable in `useCanvasPointerTools.ts` and did not update during undo/redo actions. Consequently, if the user undid a stroke, holding Shift and clicking would connect from the now-undone coordinate rather than the end of the restored stroke.
+
+**Fix Rationale:**
+Extend the document `CommandHistory` snapshot entry stack to store `lastPaintCoords` alongside snapshot model versions. Update `useCanvasPointerTools.ts` to retrieve and write `lastPaintCoords` through the active history context, ensuring that undo/redo operations naturally revert/advance the straight-line coordinate start point.
+
+**Rincian Perubahan:**
+1. `history.ts` - Extended `SnapshotEntry` to store `lastPaintCoords` and added getters/setters in `CommandHistory` to manage it dynamically.
+2. `useCanvasPointerTools.ts` - Refactored tool callbacks to read and write `lastPaintCoords` through `getLastPaintCoords`/`setLastPaintCoords` helpers pointing to active workspace history.
+3. `brushUx.test.tsx` - Created unit tests asserting coordinate rollback correctness during simulated undo/redo cycles.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (all 810 tests passed)
+- PASS: `cargo test --workspace` (all 92 Rust core/workspace tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+
+---
+
 ## [2026-06-12] BUG FIX — Fix Shift-Click Straight Lines for Soft Brush [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / ERASER / UX

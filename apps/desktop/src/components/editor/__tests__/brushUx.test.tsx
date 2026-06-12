@@ -16,10 +16,15 @@ function createMockEditor(overrides: Record<string, any> = {}) {
     getLayers: () => [],
   };
 
+  let currentLastPaintCoords: any = null;
   const defaults: Record<string, any> = {
     workspace: {
       getActiveEngine: () => mockEngine,
-      getActiveHistory: () => ({ commit: vi.fn() }),
+      getActiveHistory: () => ({
+        commit: vi.fn(),
+        getLastPaintCoords: () => currentLastPaintCoords,
+        setLastPaintCoords: (c: any) => { currentLastPaintCoords = c; },
+      }),
     },
     activeTool: "brush",
     fgColor: "#000000",
@@ -190,6 +195,65 @@ describe("Brush & Eraser UX modifiers (Alt / Shift)", () => {
 
     // Last received point should be X=60, Y=50
     expect(strokePointsReceived.at(-1)).toEqual({ x: 60, y: 50 });
+
+    vi.restoreAllMocks();
+  });
+
+  it("synchronizes lastPaintCoords with active history on undo/redo actions", () => {
+    let mockCoords: { x: number; y: number } | null = null;
+    const mockHistory = {
+      commit: vi.fn(),
+      getLastPaintCoords: () => mockCoords,
+      setLastPaintCoords: (c: any) => { mockCoords = c; },
+    };
+
+    const { signals } = createMockEditor({
+      workspace: {
+        getActiveEngine: () => ({
+          getActiveLayerId: () => "layer-1",
+          getLayer: () => ({ id: "layer-1", locked: false, visible: true, width: 100, height: 100 }),
+          getViewport: () => ({ panX: 0, panY: 0, zoom: 1 }),
+          snapshot: vi.fn(() => ({})),
+          getWidth: () => 100,
+          getHeight: () => 100,
+          getLayers: () => [],
+        }),
+        getActiveHistory: () => mockHistory,
+      },
+      activeTool: "brush",
+    });
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(signals as any);
+
+    const canvas = document.createElement("canvas");
+    canvas.setPointerCapture = vi.fn();
+    canvas.releasePointerCapture = vi.fn();
+    const params = {
+      getCanvasContainerRef: () => document.createElement("div"),
+      getCanvasRef: () => canvas,
+      isSpacePressed: () => false,
+      isPanning: () => false,
+      isAltPressed: () => false,
+      stopMomentum: vi.fn(),
+      fitToScreenAndRender: vi.fn(),
+      commitBrushStroke: vi.fn(),
+      onPaintStroke: vi.fn(),
+    };
+
+    const tools = useCanvasPointerTools(params);
+
+    // Draw first stroke ending at (10, 10)
+    tools.onCanvasPointerDown({ button: 0, clientX: 10, clientY: 10, pointerId: 1 } as any);
+    tools.onCanvasPointerUp({ clientX: 10, clientY: 10, pointerId: 1 } as any);
+
+    expect(mockHistory.getLastPaintCoords()).toEqual({ x: 10, y: 10 });
+
+    // Simulate undo reverting coords to null
+    mockHistory.setLastPaintCoords(null);
+    expect(mockHistory.getLastPaintCoords()).toBeNull();
+
+    // Simulating redo setting coords back to (10, 10)
+    mockHistory.setLastPaintCoords({ x: 10, y: 10 });
+    expect(mockHistory.getLastPaintCoords()).toEqual({ x: 10, y: 10 });
 
     vi.restoreAllMocks();
   });

@@ -396,8 +396,17 @@ export class WebGL2Backend implements RenderBackend {
   }
 
   resize(docWidth: number, docHeight: number, zoom: number, dpr: number): void {
-    const w = Math.round(docWidth * zoom * dpr);
-    const h = Math.round(docHeight * zoom * dpr);
+    let w = Math.round(docWidth * zoom * dpr);
+    let h = Math.round(docHeight * zoom * dpr);
+
+    // Clamp backing buffer size to a safe maximum of 4096 to prevent WebGL context loss
+    // and memory exhaustion in the browser's GPU process under high zoom.
+    const maxLimit = Math.min(4096, this.capabilities.maxTextureSize || 4096);
+    if (w > maxLimit || h > maxLimit) {
+      const scale = Math.min(maxLimit / w, maxLimit / h);
+      w = Math.max(1, Math.round(w * scale));
+      h = Math.max(1, Math.round(h * scale));
+    }
 
     if (this.canvas) {
       // Scale pixel buffer by zoom × dpr so visual area = device pixel area (sharp on HiDPI)

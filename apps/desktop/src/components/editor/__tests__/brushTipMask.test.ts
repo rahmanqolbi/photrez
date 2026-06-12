@@ -30,10 +30,10 @@ describe("brushTipMask falloff", () => {
 
   it("keeps a solid center at the hardness radius", () => {
     const radius = 50;
-    // Under Math.pow(0.5, 1.6), hardRadius is 50 * 0.3298 = 16.49
-    expect(brushAlphaAtDistance(16.4, radius, 0.5, "cosine")).toBe(1);
-    expect(brushAlphaAtDistance(16.5, radius, 0.5, "cosine")).toBeLessThan(1);
-    expect(brushAlphaAtDistance(37.5, radius, 0.5, "cosine")).toBeCloseTo(0.3059, 4);
+    // Linear editor-like mapping: hardness 50% keeps a solid core through 50% radius.
+    expect(brushAlphaAtDistance(25, radius, 0.5, "cosine")).toBe(1);
+    expect(brushAlphaAtDistance(25.1, radius, 0.5, "cosine")).toBeLessThan(1);
+    expect(brushAlphaAtDistance(37.5, radius, 0.5, "cosine")).toBeCloseTo(0.5, 4);
     expect(brushAlphaAtDistance(50, radius, 0.5, "cosine")).toBe(0);
   });
 
@@ -181,26 +181,29 @@ describe("brushTipMask pixel profile", () => {
     const c = Math.floor(tip0.width / 2);
 
     // Distance 5 (x = c + 5):
-    // - 50%, 80%, 100% must be fully solid (alpha = 1)
-    // - 0%, 20% are in feather (alpha < 1)
+    // - 20%, 50%, 80%, 100% must have a solid core
+    // - 0% stays feathered immediately away from center
     expect(alphaAt(tip100, c + 5, c)).toBe(1);
     expect(alphaAt(tip80, c + 5, c)).toBe(1);
     expect(alphaAt(tip50, c + 5, c)).toBe(1);
-    expect(alphaAt(tip20, c + 5, c)).toBeLessThan(1);
+    expect(alphaAt(tip20, c + 5, c)).toBe(1);
     expect(alphaAt(tip0, c + 5, c)).toBeLessThan(1);
 
     // Distance 20 (x = c + 20):
-    // - 80% and 100% must be solid (alpha = 1)
-    // - 50% is feathered (alpha < 1)
+    // - 80% and 100% must be solid; 50% is already feathering by this distance
     expect(alphaAt(tip100, c + 20, c)).toBe(1);
     expect(alphaAt(tip80, c + 20, c)).toBe(1);
     expect(alphaAt(tip50, c + 20, c)).toBeLessThan(1);
 
     // Distance 30 (x = c + 30):
-    // - 100% must be solid (alpha = 1)
-    // - 80% is feathered (alpha < 1)
+    // - 80% and 100% should still be solid; 80% should feel nearly hard.
     expect(alphaAt(tip100, c + 30, c)).toBe(1);
-    expect(alphaAt(tip80, c + 30, c)).toBeLessThan(1);
+    expect(alphaAt(tip80, c + 30, c)).toBe(1);
+
+    // Distance 31 (x = c + 31):
+    // - 80% should only feather in a narrow outer rim.
+    expect(alphaAt(tip80, c + 31, c)).toBeLessThan(1);
+    expect(alphaAt(tip80, c + 31, c)).toBeGreaterThan(0.2);
 
     // Near outer edge (x = 74, distance 37):
     // - 100% must remain fully solid (alpha = 1) - no feather
