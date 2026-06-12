@@ -38,22 +38,22 @@ describe('resolveCursor', () => {
     expect(resolveCursor(ctx)).toBe('grabbing');
   });
 
-  it('returns crosshair when alt is pressed and activeTool is brush', () => {
+  it('returns copy when alt is pressed and activeTool is brush', () => {
     const ctx: CursorContext = {
       ...base,
       activeTool: 'brush',
       isAltPressed: true,
     };
-    expect(resolveCursor(ctx)).toBe('crosshair');
+    expect(resolveCursor(ctx)).toBe('copy');
   });
 
-  it('returns crosshair when alt is pressed and activeTool is eraser', () => {
+  it('returns copy when alt is pressed and activeTool is eraser', () => {
     const ctx: CursorContext = {
       ...base,
       activeTool: 'eraser',
       isAltPressed: true,
     };
-    expect(resolveCursor(ctx)).toBe('crosshair');
+    expect(resolveCursor(ctx)).toBe('copy');
   });
 
   describe('move tool with handles', () => {

@@ -146,4 +146,28 @@ describe("brushToolState", () => {
       brushFlow: 1,
     });
   });
+
+  it("uses an MVP-ready soft eraser preset", () => {
+    const softEraser = BRUSH_PRESETS.find((preset) => preset.id === "soft-eraser");
+
+    expect(softEraser).toMatchObject({
+      hardness: 0.15,
+      opacity: 1,
+      flow: 0.85,
+      tool: "eraser",
+    });
+  });
+
+  it("applies the soft eraser preset to eraser settings", () => {
+    const softEraser = BRUSH_PRESETS.find((preset) => preset.id === "soft-eraser");
+    expect(softEraser).toBeDefined();
+
+    const changes = applyPaintPreset(softEraser!, "eraser", state);
+
+    expect(changes).toMatchObject({
+      eraserHardness: 0.15,
+      eraserOpacity: 1,
+      eraserFlow: 0.85,
+    });
+  });
 });

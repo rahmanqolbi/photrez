@@ -126,6 +126,9 @@
 | ✅ DONE      | Right-click context menu — Size/Hardness/Strength sliders, preset grid, Reset button, close on Escape/outside click |
 | ✅ DONE      | Keyboard shortcuts — `[`/`]` for size, Shift+`[`/`]` for hardness |
 | ✅ DONE      | Brush visual calibration: hardness 0 broad feather, dense soft spacing, subpixel bilinear stamping, editor-like effective flow/alphaScale hardness scaling, and pixel-profile regression tests |
+| ✅ DONE      | Alt-Hold Eyedropper modifier for sampling colors from active canvas |
+| ✅ DONE      | Shift-Click Straight Lines interpolation connecting last painted dab |
+| ✅ DONE      | Shift-Drag Axis Locking constraining stroke to horizontal/vertical |
 
 ---
 

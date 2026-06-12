@@ -58,7 +58,9 @@ export function handlePointerDown(
   } else if (tool === "crop") {
     context.onCropCreated?.(docX, docY, 0, 0);
   } else if (tool === "brush" || tool === "eraser") {
-    context.strokePoints = [{ x: docX, y: docY }];
+    if (!context.strokePoints || context.strokePoints.length === 0) {
+      context.strokePoints = [{ x: docX, y: docY }];
+    }
     context.onPaintStroke?.([...context.strokePoints], tool === "eraser", context.paintSettings);
   } else if (tool === "eyedropper") {
     const color = engine.samplePixel(docX, docY);

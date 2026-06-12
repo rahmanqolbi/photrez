@@ -299,3 +299,21 @@ Adjusting the getEffectiveFlowMultiplier formula to increase the opacity and bod
 - PASS: `pnpm --filter photrez-desktop test --run` (all 802 tests passed)
 - PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
 - PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
+
+### [2026-06-12] Brush & Eraser UX Improvements [COMPLETE]
+
+Implementing modifier key workflows (Shift + Alt) for the Brush and Eraser tools:
+1. Alt-Hold Eyedropper: Hold Alt key while brush/eraser is active to temporarily sample colors.
+2. Shift-Click Straight Lines: Hold Shift and click to draw a straight line from the last stamp point.
+3. Shift-Drag Axis Lock: Hold Shift and drag to lock coordinates to horizontal or vertical axis.
+
+**Done:**
+1. Setup viewport context, implement Alt-Hold eyedropper and cursor styles (Task 1).
+2. Implement Shift-Click straight line interpolation (Task 2).
+3. Implement Shift-Drag axis locking (Task 3).
+4. Verified using Vitest suite, TypeScript compilation, and workspace tests.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (all 809 tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+- PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)

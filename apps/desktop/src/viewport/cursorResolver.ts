@@ -25,7 +25,7 @@ export interface CursorContext {
 export function resolveCursor(ctx: CursorContext): string {
   if (ctx.eyedropperTarget) return "crosshair";
   if (ctx.isSpacePressed) return ctx.isPanning ? "grabbing" : "grab";
-  if (ctx.isAltPressed && (ctx.activeTool === "brush" || ctx.activeTool === "eraser")) return "crosshair";
+  if (ctx.isAltPressed && (ctx.activeTool === "brush" || ctx.activeTool === "eraser")) return "copy";
   if (ctx.activeTool === "move" && ctx.isLayerLocked) return "default";
 
   if (ctx.activeTool === "move" && ctx.hoverHandle && ctx.hoverHandle !== "move" && ctx.hoverHandle !== "rotate") {

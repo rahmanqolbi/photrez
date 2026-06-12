@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal, createEffect } from "solid-js";
 import { useEditor } from "./EditorContext";
 import { screenToDocument, documentToScreen } from "@/viewport/coords";
 import { snapCropRect, type CropSnapTargets } from "@/viewport/cropSnap";
@@ -47,6 +47,30 @@ type HudData = {
   scalePercent: number;
   angle: number;
   snapActive: boolean;
+};
+
+const rgbToHex = (r: number, g: number, b: number): string => {
+  const toHex = (c: number) => {
+    const hex = Math.max(0, Math.min(255, Math.round(c))).toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  };
+  return "#" + toHex(r) + toHex(g) + toHex(b);
+};
+
+const interpolateLinePoints = (p1: { x: number; y: number }, p2: { x: number; y: number }): { x: number; y: number }[] => {
+  const points: { x: number; y: number }[] = [];
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const distance = Math.hypot(dx, dy);
+  const steps = Math.max(1, Math.round(distance));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    points.push({
+      x: p1.x + dx * t,
+      y: p1.y + dy * t,
+    });
+  }
+  return points;
 };
 
 export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
@@ -108,6 +132,16 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     modernDragEnd = null;
     modernDragSnappedPreview = null;
   }
+
+  let lastPaintCoords: { x: number; y: number } | null = null;
+  let axisLock: "horizontal" | "vertical" | null = null;
+
+  createEffect(() => {
+    const tool = activeTool();
+    if (tool !== "brush" && tool !== "eraser") {
+      lastPaintCoords = null;
+    }
+  });
 
   const paintSmoother = new PaintSmoother();
 
@@ -267,6 +301,17 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const history = workspace.getActiveHistory();
     if (!engine || !history) return;
 
+    if ((activeTool() === "brush" || activeTool() === "eraser") && params.isAltPressed()) {
+      const coords = getDocCoords(e);
+      const color = engine.samplePixel(coords.x, coords.y);
+      setFgColor(rgbToHex(color[0], color[1], color[2]));
+      const canvas = params.getCanvasRef();
+      if (canvas) {
+        canvas.setPointerCapture(e.pointerId);
+      }
+      return;
+    }
+
     if (activeTool() === "crop" && e.button === 0) {
       if (cropInteractionMode() === "modern") {
         // Track drag start for drag-to-create even when frame exists.
@@ -330,6 +375,17 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     if (canvas) canvas.setPointerCapture(e.pointerId);
 
     const coords = getDocCoords(e);
+    
+    if (activeTool() === "brush" || activeTool() === "eraser") {
+      if (e.shiftKey && lastPaintCoords) {
+        interactiveState.strokePoints = interpolateLinePoints(lastPaintCoords, coords);
+        interactiveState.dragStart = { ...coords };
+      } else {
+        interactiveState.strokePoints = [];
+        lastPaintCoords = { ...coords };
+      }
+    }
+
     paintSmoother.setWindowSize(smoothingToWindowSize(interactiveState.paintSettings.smoothing));
     paintSmoother.reset();
     const smoothed = paintSmoother.addPoint(coords.x, coords.y);
@@ -426,9 +482,42 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const engine = workspace.getActiveEngine();
     if (!engine) return;
 
+    if ((activeTool() === "brush" || activeTool() === "eraser") && params.isAltPressed()) {
+      if (e.buttons === 1) {
+        const coords = getDocCoords(e);
+        const color = engine.samplePixel(coords.x, coords.y);
+        setFgColor(rgbToHex(color[0], color[1], color[2]));
+        scheduler.requestRender();
+      }
+      return;
+    }
+
     interactiveState.isAltPressed = params.isAltPressed();
 
-    const coords = getDocCoords(e);
+    let coords = getDocCoords(e);
+
+    if ((activeTool() === "brush" || activeTool() === "eraser") && interactiveState.isDragging) {
+      if (e.shiftKey) {
+        const start = interactiveState.dragStart;
+        const dx = coords.x - start.x;
+        const dy = coords.y - start.y;
+        
+        if (!axisLock) {
+          if (Math.abs(dx) >= 5 || Math.abs(dy) >= 5) {
+            axisLock = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
+          }
+        }
+        
+        if (axisLock === "horizontal") {
+          coords = { x: coords.x, y: start.y };
+        } else if (axisLock === "vertical") {
+          coords = { x: start.x, y: coords.y };
+        }
+      } else {
+        axisLock = null;
+      }
+    }
+
     const smoothed = paintSmoother.addPoint(coords.x, coords.y);
     handlePointerMove(
       activeTool() as ToolType,
@@ -447,11 +536,22 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const history = workspace.getActiveHistory();
     if (!engine || !history) return;
 
+    if ((activeTool() === "brush" || activeTool() === "eraser") && params.isAltPressed()) {
+      const canvas = params.getCanvasRef();
+      if (canvas) {
+        try {
+          canvas.releasePointerCapture(e.pointerId);
+        } catch {}
+      }
+      return;
+    }
+
     setSnapLines([]);
     const coords = getDocCoords(e);
     const smoothed = paintSmoother.addPoint(coords.x, coords.y);
     const tool = (interactiveState.dragTool ?? activeTool()) as ToolType;
     const hasPoints = (tool === "brush" || tool === "eraser") && interactiveState.strokePoints.length > 0;
+    const lastPt = hasPoints ? interactiveState.strokePoints.at(-1) : null;
 
     handlePointerUp(
       activeTool() as ToolType,
@@ -470,6 +570,9 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       const layerId = engine.getActiveLayerId();
       if (layerId) {
         params.commitBrushStroke(engine, layerId, tool === "eraser");
+        if (lastPt) {
+          lastPaintCoords = { ...lastPt };
+        }
       }
     }
 

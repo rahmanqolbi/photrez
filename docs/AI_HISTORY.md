@@ -1,5 +1,54 @@
 # AI History — Photrez
 
+## [2026-06-12] FEATURE — Brush & Eraser UX Improvements [COMPLETE]
+
+### Kategori: FEATURE / BRUSH / ERASER / UX
+
+**Root Cause:**
+Professional image editor UX requires smooth support for modifiers like Alt-hold color sampling (eyedropper), Shift-click straight line drawing, and Shift-drag axis locking, which were previously missing from the brush/eraser tool workflow.
+
+**Fix Rationale:**
+1. Alt-Hold Eyedropper: Listen to `Alt` keydown/keyup on viewport to switch cursor to `"copy"` (representing eyedropper copy/sample cursor) and sample color on pointerdown/move, preventing options bar flickering by avoiding tool-state switches.
+2. Shift-Click Straight Lines: Interpolate dabs between the last painted coordinates and the new clicked point when Shift is held on pointer down.
+3. Shift-Drag Axis Locking: Constrain pointer movement coordinates to the primary axis (horizontal or vertical) if Shift is pressed during an active stroke.
+4. Verify using Vitest suite and manual testing.
+
+**Rincian Perubahan:**
+1. `useCanvasPointerTools.ts` - Intercept down/move events to handle Alt eyedropper, Shift-click straight line interpolation, and Shift-drag axis locking.
+2. `cursorResolver.ts` - Return `"copy"` cursor for Alt + active brush/eraser.
+3. `BrushCursorOverlay.tsx` & `CanvasViewport.tsx` - Pass `isAltPressed` state and hide circular brush overlay preview when active.
+4. `input-handler.ts` - Store the last painted coordinate of a completed stroke and avoid clearing it prematurely.
+5. `brushUx.test.tsx` - Add complete unit and integration tests covering the new modifier behaviors.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (all 809 tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+- PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
+
+---
+
+## [2026-06-12] POLISH — Soft Eraser MVP Preset Polish [COMPLETE]
+
+### Kategori: POLISH / ERASER / PRESETS / MVP
+
+**Root Cause:**
+The shared brush/eraser engine is now calibrated, but the dedicated `Soft Eraser` preset still used `hardness: 0.0` and `flow: 0.55`, making it feel too weak for immediate MVP use.
+
+**Fix Rationale:**
+Keep core eraser rendering unchanged and improve the preset UX. `Soft Eraser` now uses a small hardness value and stronger flow so it behaves like a useful editor eraser while retaining a soft edge.
+
+**Rincian Perubahan:**
+1. `brushToolState.ts` - Updated `Soft Eraser` preset from hardness `0.0`, flow `0.55` to hardness `0.15`, flow `0.85`.
+2. `brushToolState.test.ts` - Added tests for MVP-ready Soft Eraser defaults and applying the preset to eraser settings.
+
+### Verification
+- PASS: `pnpm.cmd --filter photrez-desktop exec vitest run src/components/editor/__tests__/brushToolState.test.ts src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts --run` (67 tests)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (806 tests, 53 files)
+- PASS: `pnpm.cmd run build` (tsc + Vite production build)
+- PASS: `cargo test --workspace` (92 Rust workspace tests)
+
+---
+
 ## [2026-06-12] POLISH — Brush Preset UX Calibration [COMPLETE]
 
 ### Kategori: POLISH / BRUSH / PRESETS / UX

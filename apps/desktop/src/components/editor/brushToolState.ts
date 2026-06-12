@@ -143,7 +143,7 @@ export const BRUSH_PRESETS: BrushPreset[] = [
   { id: "detail",         name: "Detail",        size: 5,   hardness: 0.8, opacity: 1.0, flow: 1.0, smoothing: 10, tool: "both" },
   { id: "large-soft",     name: "Large Soft",    size: 100, hardness: 0.0, opacity: 0.85, flow: 0.65, smoothing: 0,  tool: "both" },
   { id: "hard-eraser",    name: "Hard Eraser",   size: 30,  hardness: 1.0, opacity: 1.0, flow: 1.0, smoothing: 0,  tool: "eraser" },
-  { id: "soft-eraser",    name: "Soft Eraser",   size: 50,  hardness: 0.0, opacity: 1.0, flow: 0.55, smoothing: 0,  tool: "eraser" },
+  { id: "soft-eraser",    name: "Soft Eraser",   size: 50,  hardness: 0.15, opacity: 1.0, flow: 0.85, smoothing: 0,  tool: "eraser" },
 ];
 
 export function applyPaintPreset(

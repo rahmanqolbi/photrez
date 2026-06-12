@@ -6,6 +6,7 @@ import { screenToDocument } from "@/viewport/coords";
 export function BrushCursorOverlay(props?: {
   forceVisibleForTest?: boolean;
   cursorPosForTest?: { x: number; y: number };
+  isAltPressed?: boolean;
 }) {
   const {
     workspace,
@@ -70,7 +71,7 @@ export function BrushCursorOverlay(props?: {
     });
   });
 
-  const show = () => props?.forceVisibleForTest || (isBrushTool() && visible());
+  const show = () => props?.forceVisibleForTest || (isBrushTool() && visible() && !props?.isAltPressed);
   const pos = () => props?.cursorPosForTest || cursorPos();
 
   return (
