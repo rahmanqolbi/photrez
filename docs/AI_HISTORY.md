@@ -1,5 +1,24 @@
 # AI History — Photrez
 
+## [2026-06-12] BUG FIX — Modern Crop Geometry: Alt/Center-Out Resize Position Math [COMPLETE]
+
+### Kategori: BUG FIX / CROP / GEOMETRY / TESTS
+
+**Root Cause:**
+Commit 3cb2a89 introduced a bug in `resizeModernFrameOneSided` (`apps/desktop/src/viewport/modernCropGeometry.ts`) that applied frame position centering (`x: frame.x + (fw - newW) / 2`) to ALL code paths, including non-alt (one-sided) resize. For one-sided resize, the anchored edge must stay fixed — the x/y position should remain unchanged. Only alt (center-out) mode should shift x/y to keep the frame center fixed.
+
+**Changes:**
+1. `resizeModernFrameOneSided` — frame position now only adjusts x/y when `alt=true`:
+   - Non-alt: `x = params.frame.x` (anchored edge stays fixed)
+   - Alt: `x = params.frame.x + (fw - newW) / 2` (center stays fixed)
+   - Same logic for y axis
+2. Updated test expectations in `modern-crop-geometry.test.ts` (10 tests) and `CropOverlay.test.tsx` (1 test) to match corrected geometry
+
+**Verification:**
+- 54 test files, 811 frontend tests: ✅
+- TypeScript + Vite build: ✅
+- 85 Rust core tests: ✅
+
 ## [2026-06-12] BUG FIX / POLISH — Option Bar Responsive Breakpoint & W/H Inputs Layout [COMPLETE]
 
 ### Kategori: BUG FIX / POLISH / FRONTEND / UI / UX

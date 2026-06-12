@@ -1449,7 +1449,7 @@ describe("CropOverlay viewport panning", () => {
       altKey: true,
     }));
 
-    expect(onFrameChange.mock.calls.at(-1)?.[0]).toEqual({ x: 300, y: 250, w: 440, h: 300 });
+    expect(onFrameChange.mock.calls.at(-1)?.[0]).toEqual({ x: 260, y: 250, w: 480, h: 300 });
     expect(onImageTransformChange).not.toHaveBeenCalled();
 
     SVGElement.prototype.setPointerCapture = origSet;

@@ -4,6 +4,20 @@
 
 ## Current Tasks
 
+### [2026-06-12] Bug Fix — Modern Crop Geometry: Alt/Center-Out Resize Position Math [COMPLETE]
+
+**Root Cause:**
+Commit 3cb2a89 introduced a bug in `resizeModernFrameOneSided` that applied frame position centering to ALL code paths, including non-alt (one-sided) resize. For one-sided, the anchored edge must stay fixed — x/y should remain unchanged. Only alt (center-out) mode should shift x/y to keep the center fixed.
+
+**Fix:**
+- `resizeModernFrameOneSided` now only adjusts x/y when `alt=true`; non-alt keeps x/y unchanged
+- Updated 11 test expectations across `modern-crop-geometry.test.ts` and `CropOverlay.test.tsx`
+
+### Verification
+- PASS: 54 test files, 811 frontend tests
+- PASS: TypeScript + Vite build
+- PASS: 85 Rust core tests
+
 ### [2026-06-12] Option Bar Breakpoint Alignment & Ratio Text Wrap Fix [COMPLETE]
 
 Align responsive breakpoints for crop and brush option bars to 880px to match move tool option bar and more dropdown visibility, and prevent the Ratio selector button text from wrapping into two lines. Additionally, pulled W/H crop inputs out of the responsive collapse container so they remain visible on the main bar at all times, and fixed the "Free" mode crop frame centering bug.

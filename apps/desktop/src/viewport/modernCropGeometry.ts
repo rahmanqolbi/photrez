@@ -239,8 +239,16 @@ export function resizeModernFrameOneSided(params: {
     const resultCenterY = resized.y + resized.h / 2;
     return {
       frame: {
-        x: params.frame.x + (fw - newW) / 2,
-        y: params.frame.y + (fh - newH) / 2,
+        x: params.alt
+          ? params.frame.x + (fw - newW) / 2
+          : params.handle.includes("w")
+            ? params.frame.x + (fw - newW)
+            : params.frame.x,
+        y: params.alt
+          ? params.frame.y + (fh - newH) / 2
+          : params.handle.includes("n")
+            ? params.frame.y + (fh - newH)
+            : params.frame.y,
         w: newW,
         h: newH,
       },
@@ -288,8 +296,16 @@ export function resizeModernFrameOneSided(params: {
 
   return {
     frame: {
-      x: params.frame.x + (fw - newW) / 2,
-      y: params.frame.y + (fh - newH) / 2,
+      x: params.alt
+        ? params.frame.x + (fw - newW) / 2
+        : params.handle.includes("w")
+          ? params.frame.x + (fw - newW)
+          : params.frame.x,
+      y: params.alt
+        ? params.frame.y + (fh - newH) / 2
+        : params.handle.includes("n")
+          ? params.frame.y + (fh - newH)
+          : params.frame.y,
       w: newW,
       h: newH,
     },

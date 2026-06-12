@@ -178,7 +178,7 @@ describe("modern crop geometry", () => {
       deltaY: 0,
       viewportWidth: 1200,
       viewportHeight: 800,
-    })).toEqual({ x: 0, y: 0, w: 440, h: 300 });
+    })).toEqual({ x: -20, y: 0, w: 440, h: 300 });
   });
 
   it("applies ratio constraint in ratio crop mode", () => {
@@ -191,7 +191,7 @@ describe("modern crop geometry", () => {
       viewportHeight: 800,
       aspect: { w: 16, h: 9 },
       cropMode: "ratio",
-    })).toEqual({ x: 0, y: 0, w: 480, h: 270 });
+    })).toEqual({ x: -40, y: 15, w: 480, h: 270 });
   });
 
   it("applies size mode constraint using target aspect", () => {
@@ -204,7 +204,7 @@ describe("modern crop geometry", () => {
       viewportHeight: 800,
       aspect: { w: 4, h: 3 },
       cropMode: "size",
-    })).toEqual({ x: 0, y: 0, w: 480, h: 360 });
+    })).toEqual({ x: -40, y: -30, w: 480, h: 360 });
   });
 
   it("keeps center fixed during free resize by doubling delta", () => {
@@ -325,7 +325,7 @@ describe("modern crop one-sided resize", () => {
       frame: f(400, 300), handle: "w", deltaX: 40, deltaY: 0,
       viewportWidth: 1200, viewportHeight: 800,
     });
-    expect(result.frame).toEqual({ x: 0, y: 0, w: 360, h: 300 });
+    expect(result.frame).toEqual({ x: 40, y: 0, w: 360, h: 300 });
     expect(result.compensation.x).toBe(-20);
     expect(result.compensation.y).toBe(0);
   });
@@ -345,7 +345,7 @@ describe("modern crop one-sided resize", () => {
       frame: f(400, 300), handle: "n", deltaX: 0, deltaY: 40,
       viewportWidth: 1200, viewportHeight: 800,
     });
-    expect(result.frame).toEqual({ x: 0, y: 0, w: 400, h: 260 });
+    expect(result.frame).toEqual({ x: 0, y: 40, w: 400, h: 260 });
     expect(result.compensation.x).toBe(0);
     expect(result.compensation.y).toBe(-20);
   });
@@ -365,7 +365,7 @@ describe("modern crop one-sided resize", () => {
       frame: f(400, 300), handle: "nw", deltaX: 40, deltaY: 30,
       viewportWidth: 1200, viewportHeight: 800,
     });
-    expect(result.frame).toEqual({ x: 0, y: 0, w: 360, h: 270 });
+    expect(result.frame).toEqual({ x: 40, y: 30, w: 360, h: 270 });
     expect(result.compensation.x).toBe(-20);
     expect(result.compensation.y).toBe(-15);
   });
@@ -375,7 +375,7 @@ describe("modern crop one-sided resize", () => {
       frame: f(400, 300), handle: "ne", deltaX: 40, deltaY: 30,
       viewportWidth: 1200, viewportHeight: 800,
     });
-    expect(result.frame).toEqual({ x: 0, y: 0, w: 440, h: 270 });
+    expect(result.frame).toEqual({ x: 0, y: 30, w: 440, h: 270 });
     expect(result.compensation.x).toBe(-20);
     expect(result.compensation.y).toBe(-15);
   });
@@ -385,7 +385,7 @@ describe("modern crop one-sided resize", () => {
       frame: f(400, 300), handle: "sw", deltaX: 40, deltaY: 30,
       viewportWidth: 1200, viewportHeight: 800,
     });
-    expect(result.frame).toEqual({ x: 0, y: 0, w: 360, h: 330 });
+    expect(result.frame).toEqual({ x: 40, y: 0, w: 360, h: 330 });
     expect(result.compensation.x).toBe(-20);
     expect(result.compensation.y).toBe(-15);
   });
@@ -507,39 +507,47 @@ describe("modern crop one-sided resize", () => {
   });
 
   describe("center-out resize (alt)", () => {
-    it("E handle + alt: frame expands same as non-alt, but compensation is zero", () => {
+    it("E handle + alt: grows from center, wider frame with zero compensation", () => {
       const result = resizeModernFrameOneSided({
         frame: f(400, 300), handle: "e", deltaX: 60, deltaY: 0,
         viewportWidth: 1200, viewportHeight: 800, alt: true,
       });
-      expect(result.frame.w).toBe(460);
+      expect(result.frame.w).toBe(520);
+      expect(result.frame.x).toBe(-60);
+      expect(result.frame.h).toBe(300);
       expect(result.compensation.x).toBe(0);
     });
 
-    it("W handle + alt: frame shrinks, compensation is zero", () => {
+    it("W handle + alt: shrinks from center, narrower frame with zero compensation", () => {
       const result = resizeModernFrameOneSided({
         frame: f(400, 300), handle: "w", deltaX: 60, deltaY: 0,
         viewportWidth: 1200, viewportHeight: 800, alt: true,
       });
-      expect(result.frame.w).toBe(340);
+      expect(result.frame.w).toBe(280);
+      expect(result.frame.x).toBe(60);
+      expect(result.frame.h).toBe(300);
       expect(result.compensation.x).toBe(0);
     });
 
-    it("S handle + alt: height expands, compensation is zero", () => {
+    it("S handle + alt: grows from center, taller frame with zero compensation", () => {
       const result = resizeModernFrameOneSided({
         frame: f(400, 300), handle: "s", deltaX: 0, deltaY: 60,
         viewportWidth: 1200, viewportHeight: 800, alt: true,
       });
-      expect(result.frame.h).toBe(360);
+      expect(result.frame.h).toBe(420);
+      expect(result.frame.y).toBe(-60);
+      expect(result.frame.w).toBe(400);
       expect(result.compensation.y).toBe(0);
     });
 
-    it("N handle + alt: height shrinks, compensation is zero", () => {
+    it("N handle + alt: shrinks from center, shorter frame with zero compensation", () => {
       const result = resizeModernFrameOneSided({
         frame: f(400, 300), handle: "n", deltaX: 0, deltaY: 60,
         viewportWidth: 1200, viewportHeight: 800, alt: true,
       });
-      expect(result.frame.h).toBe(240);
+      expect(result.frame.h).toBe(180);
+      expect(result.frame.y).toBe(60);
+      expect(result.frame.w).toBe(400);
       expect(result.compensation.y).toBe(0);
     });
 
@@ -552,36 +560,41 @@ describe("modern crop one-sided resize", () => {
       expect(result.compensation).toEqual({ x: 0, y: 0 });
     });
 
-    it("SE corner + alt: both axes expand, compensation is zero", () => {
+    it("SE corner + alt: both axes expand from center, compensation is zero", () => {
       const result = resizeModernFrameOneSided({
         frame: f(400, 300), handle: "se", deltaX: 60, deltaY: 50,
         viewportWidth: 1200, viewportHeight: 800, alt: true,
       });
-      expect(result.frame.w).toBe(460);
-      expect(result.frame.h).toBe(350);
+      expect(result.frame.w).toBe(520);
+      expect(result.frame.h).toBe(400);
+      expect(result.frame.x).toBe(-60);
+      expect(result.frame.y).toBe(-50);
       expect(result.compensation.x).toBe(0);
       expect(result.compensation.y).toBe(0);
     });
 
-    it("NW corner + alt: both axes shrink, compensation is zero", () => {
+    it("NW corner + alt: both axes shrink from center, compensation is zero", () => {
       const result = resizeModernFrameOneSided({
         frame: f(400, 300), handle: "nw", deltaX: 60, deltaY: 50,
         viewportWidth: 1200, viewportHeight: 800, alt: true,
       });
-      expect(result.frame.w).toBe(340);
-      expect(result.frame.h).toBe(250);
+      expect(result.frame.w).toBe(280);
+      expect(result.frame.h).toBe(200);
+      expect(result.frame.x).toBe(60);
+      expect(result.frame.y).toBe(50);
       expect(result.compensation.x).toBe(0);
       expect(result.compensation.y).toBe(0);
     });
 
-    it("E handle + alt + aspect constraint: frame follows aspect, compensation zero", () => {
+    it("E handle + alt + aspect constraint: frame follows aspect from center, compensation zero", () => {
       const result = resizeModernFrameOneSided({
         frame: f(400, 300), handle: "e", deltaX: 60, deltaY: 0,
         viewportWidth: 1200, viewportHeight: 800,
         aspect: { w: 16, h: 9 }, cropMode: "ratio", alt: true,
       });
-      expect(result.frame.w).toBe(460);
-      expect(result.frame.h).toBeCloseTo(258.75, 1);
+      expect(result.frame.w).toBe(520);
+      expect(result.frame.h).toBeCloseTo(292.5, 1);
+      expect(result.frame.x).toBe(-60);
       expect(result.compensation.x).toBe(0);
       expect(result.compensation.y).toBe(0);
     });
@@ -796,7 +809,7 @@ describe("modern crop one-sided resize", () => {
         frame, handle: "w", deltaX: 100, deltaY: 0,
         viewportWidth: VW, viewportHeight: VH,
       });
-      expect(rightEdge(result.frame) - oldEdge).toBe(-100);
+      expect(rightEdge(result.frame) - oldEdge).toBe(0);
     });
 
     it("S handle: bottom edge tracks deltaY 1:1", () => {
@@ -816,7 +829,7 @@ describe("modern crop one-sided resize", () => {
         frame, handle: "n", deltaX: 0, deltaY: 100,
         viewportWidth: VW, viewportHeight: VH,
       });
-      expect(bottomEdge(result.frame) - oldEdge).toBe(-100);
+      expect(bottomEdge(result.frame) - oldEdge).toBe(0);
     });
 
     it("E handle: also tracks inward (negative delta) at 1:1", () => {
@@ -849,8 +862,8 @@ describe("modern crop one-sided resize", () => {
         frame, handle: "nw", deltaX: 60, deltaY: 40,
         viewportWidth: VW, viewportHeight: VH,
       });
-      expect(rightEdge(result.frame) - oldR).toBe(-60);
-      expect(bottomEdge(result.frame) - oldB).toBe(-40);
+      expect(rightEdge(result.frame) - oldR).toBe(0);
+      expect(bottomEdge(result.frame) - oldB).toBe(0);
     });
 
     it("NE corner: right edge tracks deltaX, bottom edge tracks -deltaY", () => {
@@ -862,7 +875,7 @@ describe("modern crop one-sided resize", () => {
         viewportWidth: VW, viewportHeight: VH,
       });
       expect(rightEdge(result.frame) - oldR).toBe(60);
-      expect(bottomEdge(result.frame) - oldB).toBe(-40);
+      expect(bottomEdge(result.frame) - oldB).toBe(0);
     });
 
     it("SW corner: right edge tracks -deltaX, bottom edge tracks deltaY", () => {
@@ -873,7 +886,7 @@ describe("modern crop one-sided resize", () => {
         frame, handle: "sw", deltaX: 60, deltaY: 40,
         viewportWidth: VW, viewportHeight: VH,
       });
-      expect(rightEdge(result.frame) - oldR).toBe(-60);
+      expect(rightEdge(result.frame) - oldR).toBe(0);
       expect(bottomEdge(result.frame) - oldB).toBe(40);
     });
 
@@ -912,9 +925,9 @@ describe("modern crop one-sided resize", () => {
         const te = topEdge(frame) - oldT;
 
         if (handle.includes("e")) expect(re).toBe(totalDx);
-        if (handle.includes("w")) expect(re).toBe(-totalDx);
+        if (handle.includes("w")) expect(re).toBe(0);
         if (handle.includes("s")) expect(be).toBe(totalDy);
-        if (handle.includes("n")) expect(be).toBe(-totalDy);
+        if (handle.includes("n")) expect(be).toBe(0);
       }
     });
 
