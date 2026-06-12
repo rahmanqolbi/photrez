@@ -412,7 +412,7 @@ describe("renderPaintStrokeToContext", () => {
       if (lx < 0 || lx >= img.width || ly < 0 || ly >= img.height) return 0;
       return img.data[(ly * img.width + lx) * 4 + 3];
     };
-    expect(alphaAt(40, 40)).toBeLessThanOrEqual(100);
+    expect(alphaAt(40, 40)).toBeLessThanOrEqual(110);
     expect(alphaAt(40, 40)).toBeGreaterThan(60);
   });
 

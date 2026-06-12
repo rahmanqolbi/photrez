@@ -50,8 +50,9 @@ export function brushAlphaAtDistance(
   if (hardRadius > 0 && distance <= hardRadius) return 1;
   const t = (distance - hardRadius) / Math.max(0.0001, radius - hardRadius);
   const v = 1 - t;
+  const vMapped = 3 * v * v - 2 * v * v * v;
   const rawAlpha = curve === "soft"
-    ? Math.pow(clamp01(v), 0.7 + 0.6 * h)
+    ? Math.pow(clamp01(vMapped), 0.7 + 0.6 * h)
     : falloff(v, curve);
   if (curve === "soft") {
     const peakMultiplier = 0.9 + 0.1 * h;

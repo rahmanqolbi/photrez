@@ -1,5 +1,27 @@
 # AI History — Photrez
 
+## [2026-06-12] POLISH — Implement Smoothstep Brush Falloff Curve [COMPLETE]
+
+### Kategori: POLISH / BRUSH / ERASER / UX / CALIBRATION
+
+**Root Cause:**
+The brush/eraser soft curve previously used a direct linear distance interpolation raised to an exponent: `Math.pow(clamp01(v), 0.7 + 0.6 * h)`. This created a discontinuity in the gradient slope at the boundaries (outer edge and inner hard core), causing a visual "sharp disk inside a soft glow" look.
+
+**Fix Rationale:**
+We mapped the normalized distance `v` using a Hermite interpolation / Smoothstep function `3v^2 - 2v^3` to ensure that the slope (derivative) of the falloff is 0 at both boundaries, producing a perfectly smooth gradient matching professional brush engines.
+
+**Rincian Perubahan:**
+1. `brushTipMask.ts` - Modified `brushAlphaAtDistance` to map `v` with a cubic Smoothstep function before applying the exponent.
+2. `paintStrokeRenderer.test.ts` - Slightly adjusted the overlapping stroke alpha upper bound assertion to 110 (from 100) to account for the fuller center profile of the smoothstep curve.
+3. `2026-06-12-smoothstep-brush-falloff-design.md` - Created and committed the design document for this change.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (all 809 tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+- PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
+
+---
+
 ## [2026-06-12] POLISH — Remove Inner Brush Hardness Indicator Ring [COMPLETE]
 
 ### Kategori: POLISH / BRUSH / ERASER / UX

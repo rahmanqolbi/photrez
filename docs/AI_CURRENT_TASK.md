@@ -332,3 +332,18 @@ Removing the inner dashed hardness ring from the brush/eraser cursor overlay to 
 - PASS: `pnpm --filter photrez-desktop test --run` (all 809 tests passed)
 - PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
 - PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
+
+### [2026-06-12] Implement Smoothstep Brush Falloff Curve [COMPLETE]
+
+Implementing the cubic Hermite / Smoothstep function ($3v^2 - 2v^3$) to map soft brush falloff distances, producing a perfectly smooth gradient transistion at both the core and edge boundaries matching Photoshop/Affinity brush profiles.
+
+**Done:**
+1. Modified `brushAlphaAtDistance` in `brushTipMask.ts` to map `v` with a cubic Smoothstep function before applying the exponent.
+2. Verified that all pixel-profile unit tests pass successfully.
+3. Slightly adjusted overlapping stroke alpha upper bound assertion in `paintStrokeRenderer.test.ts` to 110 (from 100) to account for the fuller center profile of the smoothstep curve.
+4. Confirmed that all 809 frontend unit tests and production build compilation pass successfully.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (all 809 tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+- PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
