@@ -9,7 +9,7 @@ export function OptionBar() {
   const { activeTool, layerTransformSession } = useEditor();
 
   return (
-    <div class="@container flex h-[44px] shrink-0 items-center gap-1.5 overflow-x-auto border-b border-editor-divider bg-editor-toolbar px-3">
+    <div class="@container flex h-[44px] shrink-0 items-center gap-1.5 border-b border-editor-divider bg-editor-toolbar px-3">
       <Show
         when={layerTransformSession()}
         fallback={

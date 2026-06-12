@@ -582,6 +582,14 @@ html, body {
 .panel-tab.active::after { content: ""; }
 .layer-row.selected { background: inherit; }
 
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+
 /*
 grid-template-rows: 52px 48px 56px 1fr 46px;
 grid-template-columns: 64px 1fr 520px;
