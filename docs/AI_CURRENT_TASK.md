@@ -4,19 +4,69 @@
 
 ## Current Tasks
 
-### [2026-06-12] Bug Fix — Modern Crop Geometry: Alt/Center-Out Resize Position Math [COMPLETE]
+### [2026-06-13] Bug Fix — Modern Crop: Reset Button in Ratio/Size Modes [COMPLETE]
 
 **Root Cause:**
-Commit 3cb2a89 introduced a bug in `resizeModernFrameOneSided` that applied frame position centering to ALL code paths, including non-alt (one-sided) resize. For one-sided, the anchored edge must stay fixed — x/y should remain unchanged. Only alt (center-out) mode should shift x/y to keep the center fixed.
+In `CropOptionBar.tsx`, the Reset button's click handler reset the Modern crop frame using `getDefaultModernCropFrame` but passed `aspect` as `cropMode() === "ratio" ? cropAspect() : null`. If `cropMode()` was `"size"`, it passed `null`, causing the reset cropbox to ignore the target size aspect ratio and fall back to the viewport aspect ratio.
 
-**Fix:**
-- `resizeModernFrameOneSided` now only adjusts x/y when `alt=true`; non-alt keeps x/y unchanged
-- Updated 11 test expectations across `modern-crop-geometry.test.ts` and `CropOverlay.test.tsx`
+**Done:**
+1. Updated `CropOptionBar.tsx` Reset button onClick handler to pass the correct aspect ratio for both `ratio` and `size` modes (`aspect: ea`) when resetting in Modern crop mode.
+2. Added unit tests in `CropOptionBar.test.tsx` verifying that resetting the cropbox in Size mode correctly preserves the target size's aspect ratio.
+
+**Verification:**
+- PASS: 54 test files, 813 frontend tests
+- PASS: TypeScript + Vite build
+
+### [2026-06-13] Bug Fix — Modern Crop: 1:1 Cursor Tracking & Lag in Center-Resizing [COMPLETE]
+
+**Root Cause:**
+Because the Modern Crop frame is always centered in the viewport, resizing by dragging a handle moves the frame boundaries symmetrically from both sides. With `effDx = deltaX` in one-sided mode, the handle only moves at half-speed on screen relative to the pointer (`deltaX / 2`), causing the mouse to drift ahead and feel "left behind" (laggy). To achieve pixel-perfect 1:1 cursor tracking on screen, the delta multipliers must always be doubled (`effDx = deltaX * 2`) for both Alt and non-Alt resizing, which matches the visual center-resizing nature of the viewport-fixed Modern frame.
+
+**Done:**
+1. Modified `resizeModernFrameOneSided` to double `deltaX` and `deltaY` by default (`effDx = deltaX * 2` and `effDy = deltaY * 2`) for both Alt and non-Alt cases, aligning screen boundary changes with the pointer 1:1.
+2. Updated the `handle-to-pointer tracking (regression)` assertions in `modern-crop-geometry.test.ts` to expect 1:1 pixel changes instead of half-speed changes.
+3. Updated the mock pointer event expectations in `CropOverlay.test.tsx` to align with 1:1 mouse tracking results.
 
 ### Verification
-- PASS: 54 test files, 811 frontend tests
+- PASS: 54 test files, 812 frontend tests
 - PASS: TypeScript + Vite build
-- PASS: 85 Rust core tests
+- PASS: 92 Rust workspace tests
+
+### [2026-06-13] Bug Fix — Modern Crop: Frame Visual Shift on Resize & Alt Modifier Key [COMPLETE]
+
+**Root Cause:**
+1. In `resizeModernFrameOneSided`, a recent change forced the frame coordinates `x, y` to shift in screen space (one-sidedly) during resize. In Modern crop, the crop frame is viewport-fixed and must always stay centered on the screen, with the image content panning/scaling underneath. Centering coordinates `(fw - newW)/2` must be used for the frame, and the one-sided anchoring must be achieved via the `compensation` offset instead.
+2. Erroneous diagonal drift occurred because resizing via side handles (like "n"/"s" or "w"/"e") applied compensation to the opposite axis, when that axis should have zero compensation to resize symmetrically.
+3. Alt key functionality was reported missing/non-responsive due to potential event-handling focus issues and default browser behavior on Windows. We must ensure `isAltPressed` is correctly reactive and snap behavior is disabled when Alt is held.
+
+**Done:**
+1. Reverted Modern crop frame coordinates to always center-resize on the screen: `x: params.frame.x + (fw - newW) / 2` and `y: params.frame.y + (fh - newH) / 2` (fixed the jumping frame issue).
+2. Corrected the `compensation` formulas to apply axis-specific one-sided offsets only when the handle includes the corresponding direction, and zero otherwise.
+3. Ensured Alt key modifier correctly disables snapping and enforces center-out resizing.
+4. Aligned the test suites `modern-crop-geometry.test.ts` and `CropOverlay.test.tsx` to match centered-resizing expectations.
+5. Prevented negative zero (`-0`) values from being produced by the division arithmetic in `compensation` calculations.
+
+### Verification
+- PASS: 54 test files, 812 frontend tests
+- PASS: TypeScript + Vite build
+- PASS: 92 Rust workspace tests
+
+### [2026-06-13] Bug Fix — Modern Crop: Compensation Over-Correction for W/N Handles [COMPLETE]
+
+**Root Cause:**
+In `resizeModernFrameOneSided`, frame position adjusts for "w"/"n" handles to anchor the opposite edge. But `compensation` was still applied on the same axis, creating a double shift — the crop rect anchor point drifted in document space.
+
+Specifically, `compensation.x = actualDw / 2` for "w" handles and `compensation.y = actualDh / 2` for "n" handles, but the frame position already handled anchoring, making compensation unnecessary (and harmful).
+
+**Fix:**
+- Non-shift path: compensation.x = 0 for "w" handles, compensation.y = 0 for "n" handles
+- Shift path: same zero-out for "w"/"n" handles
+- Added 3 combined tests (`resizeModernFrameOneSided` + `modernFrameToCropRect`) verifying anchor point stability in document space
+- Updated 10 test expectations across `modern-crop-geometry.test.ts`
+
+### Verification
+- PASS: 54 test files, 812 frontend tests
+- PASS: TypeScript + Vite build
 
 ### [2026-06-12] Option Bar Breakpoint Alignment & Ratio Text Wrap Fix [COMPLETE]
 

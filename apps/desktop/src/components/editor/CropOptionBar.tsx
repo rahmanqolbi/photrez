@@ -841,13 +841,15 @@ export function CropOptionBar() {
         onClick={() => {
           if (cropInteractionMode() === "modern") {
             resetModernCrop();
+            const sa = cropMode() === "size" && cropSizeTarget() ? cropSizeTarget() : null;
+            const ea = cropMode() === "ratio" ? cropAspect() : sa;
             setModernCropFrame(getDefaultModernCropFrame({
               viewportWidth: viewportWidth(),
               viewportHeight: viewportHeight(),
               docWidth: docWidth(),
               docHeight: docHeight(),
               zoom: zoom(),
-              aspect: cropMode() === "ratio" ? cropAspect() : null,
+              aspect: ea,
             }));
           } else {
             resetCropPreviewToCanvas({

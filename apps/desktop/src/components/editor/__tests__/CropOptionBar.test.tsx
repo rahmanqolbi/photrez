@@ -1680,5 +1680,36 @@ describe("CropOptionBar", () => {
         done();
       });
     });
+
+    it("resets modern crop frame preserving Size mode aspect ratio target", () => {
+      runWithContainer((container, done) => {
+        const [cropMode] = createSignal<"free" | "ratio" | "size">("size");
+        const [cropSizeTarget] = createSignal<{ w: number; h: number } | null>({ w: 800, h: 600 });
+        const setModernFrameSpy = vi.fn();
+        const resetModernCropSpy = vi.fn();
+
+        renderOptionBar({
+          ...modernContextBase,
+          cropInteractionMode: () => "modern" as const,
+          cropMode,
+          cropSizeTarget,
+          setModernCropFrame: setModernFrameSpy,
+          resetModernCrop: resetModernCropSpy,
+        }, container);
+
+        const resetButton = Array.from(container.querySelectorAll("button")).find(
+          (b) => b.textContent?.trim() === "Reset"
+        );
+        expect(resetButton).not.toBeUndefined();
+        resetButton!.click();
+
+        expect(resetModernCropSpy).toHaveBeenCalled();
+        expect(setModernFrameSpy).toHaveBeenCalled();
+        const frame = setModernFrameSpy.mock.lastCall?.[0];
+        // The reset frame should respect target size 800:600 = 4:3 aspect ratio
+        expect(frame.w / frame.h).toBeCloseTo(800 / 600, 1);
+        done();
+      });
+    });
   });
 });

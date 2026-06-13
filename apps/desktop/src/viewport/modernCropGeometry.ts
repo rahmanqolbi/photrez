@@ -209,8 +209,8 @@ export function resizeModernFrameOneSided(params: {
   const fh = params.frame.h;
 
   const isCorner = ["nw", "ne", "se", "sw"].includes(params.handle);
-  const effDx = params.alt ? params.deltaX * 2 : params.deltaX;
-  const effDy = params.alt ? params.deltaY * 2 : params.deltaY;
+  const effDx = params.deltaX * 2;
+  const effDy = params.deltaY * 2;
   let dw = 0;
   let dh = 0;
 
@@ -239,22 +239,26 @@ export function resizeModernFrameOneSided(params: {
     const resultCenterY = resized.y + resized.h / 2;
     return {
       frame: {
-        x: params.alt
-          ? params.frame.x + (fw - newW) / 2
-          : params.handle.includes("w")
-            ? params.frame.x + (fw - newW)
-            : params.frame.x,
-        y: params.alt
-          ? params.frame.y + (fh - newH) / 2
-          : params.handle.includes("n")
-            ? params.frame.y + (fh - newH)
-            : params.frame.y,
+        x: params.frame.x + (fw - newW) / 2,
+        y: params.frame.y + (fh - newH) / 2,
         w: newW,
         h: newH,
       },
       compensation: {
-        x: params.alt ? 0 : -resultCenterX || 0,
-        y: params.alt ? 0 : -resultCenterY || 0,
+        x: params.alt
+          ? 0
+          : params.handle.includes("w")
+            ? ((newW - fw) / 2) || 0
+            : params.handle.includes("e")
+              ? (-(newW - fw) / 2) || 0
+              : 0,
+        y: params.alt
+          ? 0
+          : params.handle.includes("n")
+            ? ((newH - fh) / 2) || 0
+            : params.handle.includes("s")
+              ? (-(newH - fh) / 2) || 0
+              : 0,
       },
     };
   }
@@ -296,22 +300,26 @@ export function resizeModernFrameOneSided(params: {
 
   return {
     frame: {
-      x: params.alt
-        ? params.frame.x + (fw - newW) / 2
-        : params.handle.includes("w")
-          ? params.frame.x + (fw - newW)
-          : params.frame.x,
-      y: params.alt
-        ? params.frame.y + (fh - newH) / 2
-        : params.handle.includes("n")
-          ? params.frame.y + (fh - newH)
-          : params.frame.y,
+      x: params.frame.x + (fw - newW) / 2,
+      y: params.frame.y + (fh - newH) / 2,
       w: newW,
       h: newH,
     },
     compensation: {
-      x: params.alt ? 0 : (params.handle.includes("w") ? actualDw : -actualDw) / 2 || 0,
-      y: params.alt ? 0 : (params.handle.includes("n") ? actualDh : -actualDh) / 2 || 0,
+      x: params.alt
+        ? 0
+        : params.handle.includes("w")
+          ? (actualDw / 2) || 0
+          : params.handle.includes("e")
+            ? (-actualDw / 2) || 0
+            : 0,
+      y: params.alt
+        ? 0
+        : params.handle.includes("n")
+          ? (actualDh / 2) || 0
+          : params.handle.includes("s")
+            ? (-actualDh / 2) || 0
+            : 0,
     },
   };
 }

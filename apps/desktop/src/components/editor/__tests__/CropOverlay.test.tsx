@@ -940,7 +940,7 @@ describe("CropOverlay viewport panning", () => {
         clientY: 400,
       }),
     );
-    expect(onFrameChange).toHaveBeenCalledWith({ x: 350, y: 300, w: 320, h: 200 });
+    expect(onFrameChange).toHaveBeenCalledWith({ x: 330, y: 300, w: 340, h: 200 });
 
     onImageTransformChange.mockClear();
     const rotateRing = container.querySelector("[data-modern-crop-rotate='ring']");
@@ -1393,7 +1393,7 @@ describe("CropOverlay viewport panning", () => {
       shiftKey: true,
     }));
 
-    expect(onFrameChange.mock.calls.at(-1)?.[0]).toEqual({ x: 300, y: 250, w: 480, h: 320 });
+    expect(onFrameChange.mock.calls.at(-1)?.[0]).toEqual({ x: 260, y: 240, w: 480, h: 320 });
 
     SVGElement.prototype.setPointerCapture = origSet;
     SVGElement.prototype.releasePointerCapture = origRelease;
