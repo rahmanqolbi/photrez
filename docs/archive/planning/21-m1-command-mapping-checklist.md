@@ -2,7 +2,7 @@
 
 Dokumen ini membantu mengganti placeholder pada:
 
-- `docs/20-github-actions-m1-template.md`
+- `docs/archive/planning/20-github-actions-m1-template.md`
 
 Tujuan:
 

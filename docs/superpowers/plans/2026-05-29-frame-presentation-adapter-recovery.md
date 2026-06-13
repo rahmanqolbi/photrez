@@ -48,7 +48,7 @@ Create:
   - Writes versioned files under app cache directory.
   - Deletes the previous preview file after a new one is written.
 
-- `docs/05-adr/0007-frame-presentation-adapter.md`
+- `docs/decisions/adr/0007-frame-presentation-adapter.md`
   - Records the architecture decision that the MVP uses a Rust-owned WebView presentation adapter instead of native wgpu surface presentation.
 
 Modify:
@@ -72,11 +72,11 @@ Modify:
 - `apps/desktop/src/__tests__/renderer.test.ts`
   - Keep existing tests if still useful, but do not treat CSS placeholder tests as proof of pixel rendering.
 
-- `docs/15-command-contract-spec.md`
+- `docs/reference/command-contract-spec.md`
   - Add `refresh_preview_frame` command contract.
   - Mark `trigger_render` and `update_viewport_state` as renderer-internal/legacy for the MVP adapter path.
 
-- `docs/38-usable-mvp-recovery-plan.md`
+- `docs/archive/usable-mvp-recovery-plan.md`
   - Add a note that P1 will be recovered via frame presentation adapter.
 
 - `docs/ARCHITECTURE.md`
@@ -668,7 +668,7 @@ The preview adapter renders explicitly through `refresh_preview_frame`, so app i
 Keep `trigger_render` and `update_viewport_state` registered only if existing frontend code or tests still reference them. If no code references them after Task 4, either:
 
 1. Remove both from `generate_handler!` and `get_contract_info`, or
-2. Leave them as no-op/internal commands and document them as legacy in `docs/15-command-contract-spec.md`.
+2. Leave them as no-op/internal commands and document them as legacy in `docs/reference/command-contract-spec.md`.
 
 Recommended MVP choice: leave `update_viewport_state` if transform or future renderer wiring still calls it; stop calling `trigger_render`.
 
@@ -766,14 +766,14 @@ git commit -m "fix: refresh preview after visible document mutations"
 
 ## Task 7: Add Command Contract and Architecture Docs
 
-- Create: `docs/05-adr/0007-frame-presentation-adapter.md`
-- Modify: `docs/15-command-contract-spec.md`
-- Modify: `docs/38-usable-mvp-recovery-plan.md`
+- Create: `docs/decisions/adr/0007-frame-presentation-adapter.md`
+- Modify: `docs/reference/command-contract-spec.md`
+- Modify: `docs/archive/usable-mvp-recovery-plan.md`
 - Modify: `docs/ARCHITECTURE.md`
 
 - [ ] **Step 1: Add ADR**
 
-Create `docs/05-adr/0007-frame-presentation-adapter.md`:
+Create `docs/decisions/adr/0007-frame-presentation-adapter.md`:
 
 ```md
 # ADR 0007: Frame Presentation Adapter for MVP Viewport Recovery
@@ -830,7 +830,7 @@ The native wgpu surface path is deferred. Future renderer work may replace CPU p
 
 - [ ] **Step 2: Update command contract**
 
-Add this section to `docs/15-command-contract-spec.md`:
+Add this section to `docs/reference/command-contract-spec.md`:
 
 ```md
 ### `refresh_preview_frame`
@@ -871,7 +871,7 @@ Also add `refresh_preview_frame` to the command list and note that `trigger_rend
 
 - [ ] **Step 3: Update recovery plan**
 
-In `docs/38-usable-mvp-recovery-plan.md`, under P1, add:
+In `docs/archive/usable-mvp-recovery-plan.md`, under P1, add:
 
 ```md
 Implementation decision 2026-05-29:
@@ -893,7 +893,7 @@ In `docs/ARCHITECTURE.md`, update the runtime status bullets to state:
 - [ ] **Step 5: Commit**
 
 ```powershell
-git add docs/05-adr/0007-frame-presentation-adapter.md docs/15-command-contract-spec.md docs/38-usable-mvp-recovery-plan.md docs/ARCHITECTURE.md
+git add docs/decisions/adr/0007-frame-presentation-adapter.md docs/reference/command-contract-spec.md docs/archive/usable-mvp-recovery-plan.md docs/ARCHITECTURE.md
 git commit -m "docs: record frame presentation adapter architecture"
 ```
 
@@ -1039,7 +1039,7 @@ This is not required for MVP recovery. Create follow-up issue or doc entry only 
 
 - [ ] **Step 1: Record offscreen wgpu target**
 
-Add a follow-up note to `docs/38-usable-mvp-recovery-plan.md`:
+Add a follow-up note to `docs/archive/usable-mvp-recovery-plan.md`:
 
 ```md
 Post-MVP renderer follow-up:

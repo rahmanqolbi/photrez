@@ -84,7 +84,7 @@ Required outcomes:
 - Keep document state unchanged on decode failure.
 - Add negative tests for invalid file bytes and over-budget images.
 - Add `open_image` and `trigger_render` to command contract docs or classify `trigger_render` as internal-only.
-- Align command error codes with `docs/35-error-code-registry.md`.
+- Align command error codes with `docs/reference/error-code-registry.md`.
 
 ### P3 - Editing Correctness
 

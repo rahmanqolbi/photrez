@@ -24,10 +24,10 @@ flowchart LR
 
 ## Critical Path
 
-The critical path runs through: **M1 → M2 → M3 → M4 → M5 → M6**.
+The critical path runs through: **M1 â†’ M2 â†’ M3 â†’ M4 â†’ M5 â†’ M6**.
 
 All milestones on this path are sequential blockers. The total estimated duration
-on the critical path is **28–41 working days** (approximately 6–9 weeks).
+on the critical path is **28â€“41 working days** (approximately 6â€“9 weeks).
 
 ## Parallel Work Opportunities
 
@@ -35,17 +35,17 @@ on the critical path is **28–41 working days** (approximately 6–9 weeks).
 | --- | --- | --- |
 | During M2 | Brush engine research and prototype (isolated crate) | Does not depend on document model API being stable |
 | During M3 | Export pipeline scaffold and encoder wiring (isolated crate) | Does not depend on selection/transform APIs |
-| During M4–M5 | CI hardening and perf measurement tooling | Infrastructure work, not feature-dependent |
+| During M4â€“M5 | CI hardening and perf measurement tooling | Infrastructure work, not feature-dependent |
 
-Exploiting parallel tracks can reduce the effective timeline by approximately **5–10 days**.
+Exploiting parallel tracks can reduce the effective timeline by approximately **5â€“10 days**.
 
 ## Total Estimated Timeline
 
 | Scenario | Duration | Conditions |
 | --- | --- | --- |
-| Sequential only | 28–41 working days | No parallel work, single contributor |
-| With parallel tracks | 23–33 working days | Parallel prep tasks utilized |
-| Aggressive | 20–28 working days | Experienced contributor, minimal blockers |
+| Sequential only | 28â€“41 working days | No parallel work, single contributor |
+| With parallel tracks | 23â€“33 working days | Parallel prep tasks utilized |
+| Aggressive | 20â€“28 working days | Experienced contributor, minimal blockers |
 
 ---
 
@@ -62,7 +62,7 @@ Definition of done:
 
 - App boots under budget target envelope baseline measurement recorded.
 
-Detailed execution plan: `docs/08-milestone-1-execution.md`.
+Detailed execution plan: `docs/archive/planning/08-milestone-1-execution.md`.
 
 ## Milestone 2 - Document and Layer Core
 
@@ -70,7 +70,7 @@ Estimated effort: `5-7 days`
 
 Dependencies: M1 complete (shell + core skeleton + command bridge working).
 
-- Implement document model per `docs/04-erd-or-data-model.md`.
+- Implement document model per `docs/spec/data-model.md`.
 - Implement layer basic operations (add/delete/reorder/opacity).
 - Implement undo/redo stack (50-step depth).
 - Add unit tests for layer workflows.
@@ -148,7 +148,7 @@ Dependencies: M5 complete (all features implemented and tested).
 Definition of done:
 
 - Installer `< 80 MB`, idle RAM `< 250 MB`, startup `< 2s`.
-- Performance evidence recorded per `docs/16-performance-measurement-protocol.md`.
+- Performance evidence recorded per `docs/reference/performance-measurement-protocol.md`.
 - Release candidate artifact produced.
 
 ## Risk Factors Affecting Timeline
@@ -160,4 +160,4 @@ Definition of done:
 | Scope creep requests during execution | May extend any milestone | Enforce `AGENTS.md` scope guard |
 | Dependency build issues (Tauri/wgpu) | May extend M1 | Pin dependency versions, test in CI early |
 
-See `docs/13-risk-register.md` for full risk tracking.
+See `docs/decisions/risk-register.md` for full risk tracking.

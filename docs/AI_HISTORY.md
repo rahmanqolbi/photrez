@@ -1,5 +1,33 @@
 # AI History — Photrez
 
+## [2026-06-13] RESTRUCTURE — Organize Documentation Folders and Update Contents [COMPLETE]
+
+### Kategori: RESTRUCTURE / DOCUMENTATION / RELINKING / CONTENT FIXES
+
+**Motivation:**
+The previous flat list of numbered documentation files in the `docs/` root directory was cluttered, duplicate-prefixed, and had gaps. Outdated files also contained incorrect keyboard shortcuts, missing packages in dependency inventories, obsolete Tauri commands, outdated risks, and misaligned CSS token syntax.
+
+**Fix Rationale:**
+Restructured the folder structure by moving files into `spec/`, `reference/`, and `decisions/` folders, clean-naming them without prefixes. Corrected documentation contents in `keyboard-shortcut-map.md`, `dependency-inventory.md`, `command-contract-spec.md`, `risk-register.md`, and `design-tokens.md`. Programmatically scanned and updated relative links across all `.md` and `.html` workspace files.
+
+**Files Changed/Moved:**
+- Moved spec files to `docs/spec/` (`product-scope.md`, `prd.md`, `trd.md`, `data-model.md`, `build-plan.md`).
+- Moved decisions files to `docs/decisions/` (`id-decision-log.md`, `risk-register.md`, `adr/` folder).
+- Moved references/inventories to `docs/reference/` (`command-contract-spec.md`, `performance-measurement-protocol.md`, `design-tokens.md`, `dependency-inventory.md`, `keyboard-shortcut-map.md`, `file-format-support.md`, `save-and-document-lifecycle.md`, `error-code-registry.md`, `glossary.md`, HTML mockups).
+- Moved usable recovery plan to `docs/archive/`.
+- Edited `docs/reference/keyboard-shortcut-map.md` (correct Escape crop tool behavior, add Shift+Click straight line, Shift+Drag lock axis, Alt-Hold eyedropper, nudge keys, brush shortcuts).
+- Edited `docs/reference/dependency-inventory.md` (add Vitest, Playwright, tailwindcss, @tailwindcss/vite, clsx, canvas, etc.; update Vite to 8).
+- Edited `docs/reference/command-contract-spec.md` (list actual implemented Tauri commands).
+- Edited `docs/decisions/risk-register.md` (close/mitigate installer size, contract drift, brush stability, and export consistency).
+- Edited `docs/reference/design-tokens.md` (direct pixel variables for radius tokens).
+- Updated `README.md`, `CONTRIBUTING.md`, `GOVERNANCE.md`, `docs/INDEX.md`, and all cross-references.
+
+**Verification:**
+- Verified by checking that relative links update cleanly across the repository.
+- Verified that the Vitest test suite and type-checks compile successfully.
+
+---
+
 ## [2026-06-13] POLISH — Standardize Opacity Slider Visuals [COMPLETE]
 
 ### Kategori: POLISH / UI / UX / SLIDERS / PROPERTIES PANEL
@@ -11,7 +39,7 @@ The Opacity slider in the Properties panel (Transform section) was styled as a d
 Replaced the direct range input with a styled custom container that places the visual `<Slider>` primitive below an overlayed transparent native `<input type="range">`. This preserves the 100% interactive range sliding behavior while displaying the exact thin track, active fill, and custom circular thumb layout of the design system.
 
 **Files Changed:**
-- `apps/desktop/src/components/editor/PropertiesPanel.tsx` — Standardize Opacity slider visuals using `<Slider>` container overlay.
+- `apps/desktop/src/components/editor/PropertiesPanel.tsx` â€” Standardize Opacity slider visuals using `<Slider>` container overlay.
 - `docs/AI_CURRENT_TASK.md`
 - `docs/AI_HISTORY.md`
 
@@ -21,7 +49,7 @@ Replaced the direct range input with a styled custom container that places the v
 
 ---
 
-## [2026-06-13] BUG FIX — Brush/Eraser No-Op After Move Pasteboard Deselect [COMPLETE]
+## [2026-06-13] BUG FIX â€” Brush/Eraser No-Op After Move Pasteboard Deselect [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / ERASER / MOVE TOOL STATE / WEBGL E2E
 
@@ -32,10 +60,10 @@ Move Tool pasteboard deselect cleared `engine.activeLayerId` by calling `engine.
 Separate transform selection from paint target ownership. Move Tool pasteboard clicks now clear only `selectedLayerId` and related transform UI state, leaving `engine.activeLayerId` intact for layer-editing tools. `BottomStatusBar` paint blocking now checks the active layer instead of the Move transform selection.
 
 **Files Changed:**
-- `apps/desktop/src/components/editor/CanvasViewport.tsx` — preserve engine active layer on Move pasteboard deselect
-- `apps/desktop/src/components/editor/BottomStatusBar.tsx` — use `activeLayerId` for Brush/Eraser paint blocking
-- `apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx` — update pasteboard deselect contract tests
-- `apps/desktop/e2e/editor-smoke.spec.ts` — add Brush/Eraser WebGL pixel regression after Move deselect
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` â€” preserve engine active layer on Move pasteboard deselect
+- `apps/desktop/src/components/editor/BottomStatusBar.tsx` â€” use `activeLayerId` for Brush/Eraser paint blocking
+- `apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx` â€” update pasteboard deselect contract tests
+- `apps/desktop/e2e/editor-smoke.spec.ts` â€” add Brush/Eraser WebGL pixel regression after Move deselect
 - `docs/AI_CURRENT_TASK.md`
 - `docs/AI_HISTORY.md`
 - `docs/FEATURES.md`
@@ -47,7 +75,7 @@ Separate transform selection from paint target ownership. Move Tool pasteboard c
 
 ---
 
-## [2026-06-13] BUG FIX — Transform HUD Scale + WebGL Document Clipping [COMPLETE]
+## [2026-06-13] BUG FIX â€” Transform HUD Scale + WebGL Document Clipping [COMPLETE]
 
 ### Kategori: BUG FIX / VIEWPORT / TRANSFORM HUD / WEBGL CLIPPING
 
@@ -63,8 +91,8 @@ Separate transform selection from paint target ownership. Move Tool pasteboard c
 Older history had related viewport entries around stale CSS scaling/backing buffers and visual drift, but no exact current entry for the WebGL final-pass full-viewport layer clipping regression. This fix records the new WebGL-specific clipping contract.
 
 **Files Changed:**
-- `apps/desktop/src/components/editor/TransformHud.tsx` — fixed screen-pixel HUD sizing
-- `apps/desktop/src/renderer/webgl2.ts` — added `projectDocumentScissor()` and final-pass scissor clipping
+- `apps/desktop/src/components/editor/TransformHud.tsx` â€” fixed screen-pixel HUD sizing
+- `apps/desktop/src/renderer/webgl2.ts` â€” added `projectDocumentScissor()` and final-pass scissor clipping
 - `apps/desktop/src/components/editor/__tests__/TransformHud.test.tsx`
 - `apps/desktop/src/renderer/__tests__/webgl2-scissor.test.ts`
 - `docs/AI_CURRENT_TASK.md`
@@ -78,7 +106,7 @@ Older history had related viewport entries around stale CSS scaling/backing buff
 
 ---
 
-## [2026-06-13] BUG FIX — Viewport/Move Tool UX Regression Pass [COMPLETE]
+## [2026-06-13] BUG FIX â€” Viewport/Move Tool UX Regression Pass [COMPLETE]
 
 ### Kategori: BUG FIX / VIEWPORT / MOVE TOOL / KEYBOARD ZOOM / CURSOR
 
@@ -93,10 +121,10 @@ Older history had related viewport entries around stale CSS scaling/backing buff
 3. Standardize zoom stepping to `1.25` in and `0.8` out for keyboard and Ctrl+wheel paths.
 
 **Files Changed:**
-- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx` — root cursor default; per-hit-zone cursor styles
-- `apps/desktop/src/components/editor/useSelectionTransformDrag.ts` — expose `rotateCursor` for rotate hit-zone styling
-- `apps/desktop/src/components/editor/useCanvasKeyboard.ts` — immediate keyboard zoom and instant Ctrl+0 fit
-- `apps/desktop/src/components/editor/usePanNavigation.ts` — stronger Ctrl+wheel zoom step
+- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx` â€” root cursor default; per-hit-zone cursor styles
+- `apps/desktop/src/components/editor/useSelectionTransformDrag.ts` â€” expose `rotateCursor` for rotate hit-zone styling
+- `apps/desktop/src/components/editor/useCanvasKeyboard.ts` â€” immediate keyboard zoom and instant Ctrl+0 fit
+- `apps/desktop/src/components/editor/usePanNavigation.ts` â€” stronger Ctrl+wheel zoom step
 - `apps/desktop/src/components/editor/__tests__/SelectionTransformOverlay.test.ts`
 - `apps/desktop/src/components/editor/__tests__/CanvasKeyboardLayerShortcuts.test.tsx`
 - `apps/desktop/src/components/editor/__tests__/usePanNavigation.test.tsx`
@@ -112,7 +140,7 @@ Older history had related viewport entries around stale CSS scaling/backing buff
 
 ---
 
-## [2026-06-13] BUG FIX — Move Tool WebGL Pasteboard Deselect Regression [COMPLETE]
+## [2026-06-13] BUG FIX â€” Move Tool WebGL Pasteboard Deselect Regression [COMPLETE]
 
 ### Kategori: BUG FIX / MOVE TOOL / WEBGL VIEWPORT / E2E
 
@@ -128,9 +156,9 @@ After the GPU viewport migration, the primary viewport canvas can cover the whol
 - Focused Move Tool tests also cover transform overlay alignment through fit/zoom/pan, Space+drag pan priority, auto-select, snapping/Alt, option bar behavior, and keyboard nudge.
 
 **Files Changed:**
-- `apps/desktop/src/components/editor/CanvasViewport.tsx` — classify canvas-targeted outside-artboard clicks as pasteboard while preserving crop no-box behavior
-- `apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx` — failing-first WebGL canvas pasteboard deselect regression
-- `apps/desktop/e2e/editor-smoke.spec.ts` — Move Tool deselect E2E at normal and zoomed viewport states
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` â€” classify canvas-targeted outside-artboard clicks as pasteboard while preserving crop no-box behavior
+- `apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx` â€” failing-first WebGL canvas pasteboard deselect regression
+- `apps/desktop/e2e/editor-smoke.spec.ts` â€” Move Tool deselect E2E at normal and zoomed viewport states
 - `docs/AI_CURRENT_TASK.md`
 - `docs/AI_HISTORY.md`
 - `docs/FEATURES.md`
@@ -142,7 +170,7 @@ After the GPU viewport migration, the primary viewport canvas can cover the whol
 
 ---
 
-## [2026-06-13] BUG FIX — Extended Viewport Edge Cases Audit (8 fixes) [COMPLETE]
+## [2026-06-13] BUG FIX â€” Extended Viewport Edge Cases Audit (8 fixes) [COMPLETE]
 
 ### Kategori: BUG FIX / VIEWPORT / STATE SYNC / EVENT SYSTEM
 
@@ -157,13 +185,13 @@ After the GPU viewport migration, the primary viewport canvas can cover the whol
 8. **P1-8 setPointerCapture no try/catch:** `useSelectionTransformDrag.ts` called `svg.setPointerCapture()` without try/catch. Fix: Wrapped in try/catch.
 
 **Files Changed:**
-- `apps/desktop/src/components/editor/workspaceSync.ts` — Added `setSelectedLayerId` to sync params + sync both IDs
-- `apps/desktop/src/components/editor/EditorContext.tsx` — Pass `setSelectedLayerId`, fix auto-select effect
-- `apps/desktop/src/components/editor/CanvasViewport.tsx` — `stopMomentum()` in container `onPointerDown`
-- `apps/desktop/src/viewport/viewportCamera.ts` — `onAnimationEnd` callback in `setState`, `pan`, `zoomToPoint`
-- `apps/desktop/src/components/editor/useSelectionTransformDrag.ts` — `layerId` in drag state, mid-drag cancel, try/catch for `setPointerCapture`
-- `apps/desktop/src/components/editor/AppTitleBar.tsx` — `defaultPrevented` guard
-- `apps/desktop/src/__tests__/viewportCamera.test.ts` — Added `rotation` property to ViewportState
+- `apps/desktop/src/components/editor/workspaceSync.ts` â€” Added `setSelectedLayerId` to sync params + sync both IDs
+- `apps/desktop/src/components/editor/EditorContext.tsx` â€” Pass `setSelectedLayerId`, fix auto-select effect
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` â€” `stopMomentum()` in container `onPointerDown`
+- `apps/desktop/src/viewport/viewportCamera.ts` â€” `onAnimationEnd` callback in `setState`, `pan`, `zoomToPoint`
+- `apps/desktop/src/components/editor/useSelectionTransformDrag.ts` â€” `layerId` in drag state, mid-drag cancel, try/catch for `setPointerCapture`
+- `apps/desktop/src/components/editor/AppTitleBar.tsx` â€” `defaultPrevented` guard
+- `apps/desktop/src/__tests__/viewportCamera.test.ts` â€” Added `rotation` property to ViewportState
 
 **Verification:**
 - PASS: 829 frontend unit tests (56 files)
@@ -172,7 +200,7 @@ After the GPU viewport migration, the primary viewport canvas can cover the whol
 
 ---
 
-## [2026-06-13] BUG FIX — Pasteboard Click Deselect + Fallback Coordinate Formulas [COMPLETE]
+## [2026-06-13] BUG FIX â€” Pasteboard Click Deselect + Fallback Coordinate Formulas [COMPLETE]
 
 ### Kategori: BUG FIX / VIEWPORT / COORDINATE SYSTEM / E2E
 
@@ -182,17 +210,17 @@ After the GPU viewport migration, the primary viewport canvas can cover the whol
 3. The Playwright test assertion expected "No selection" text, which is the fallback shown only when no document is open. After deselecting a layer with a document open, the status bar shows "Selected Layer: No active layer" instead.
 
 **Fix Rationale:**
-1. Added `[data-overlay-svg]` target recognition to `isPasteboardPointerDown` — when a click lands on the SVG overlay, check if the converted document position is outside document bounds; if so, classify as a pasteboard click so `handlePasteboardPointerDown` deselects the layer.
+1. Added `[data-overlay-svg]` target recognition to `isPasteboardPointerDown` â€” when a click lands on the SVG overlay, check if the converted document position is outside document bounds; if so, classify as a pasteboard click so `handlePasteboardPointerDown` deselects the layer.
 2. Fixed fallback formulas to subtract `pan()` before dividing by zoom: `{ x: (cx - pan().x) / zoom(), y: (cy - pan().y) / zoom() }`.
 3. Corrected Playwright test assertion from `"No selection"` to `/No active layer/`.
 4. Added dual coordinate system equivalency test (`coords.screenToDocument` vs `camera.screenToDocument`) across zoom/pan scenarios.
-5. Added Playwright E2E test for pasteboard click deselect at zoom ≠ 1.
+5. Added Playwright E2E test for pasteboard click deselect at zoom â‰  1.
 
 **Files Changed:**
-- `apps/desktop/src/components/editor/CanvasViewport.tsx` — `isPasteboardPointerDown` SVG overlay check + fallback formula fix
-- `apps/desktop/src/components/editor/useSelectionTransformDrag.ts` — fallback formula fix (2 locations)
-- `apps/desktop/e2e/editor-smoke.spec.ts` — test assertion fix + new zoom ≠ 1 test
-- `apps/desktop/src/__tests__/viewportCamera.test.ts` — dual coordinate equivalency test
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` â€” `isPasteboardPointerDown` SVG overlay check + fallback formula fix
+- `apps/desktop/src/components/editor/useSelectionTransformDrag.ts` â€” fallback formula fix (2 locations)
+- `apps/desktop/e2e/editor-smoke.spec.ts` â€” test assertion fix + new zoom â‰  1 test
+- `apps/desktop/src/__tests__/viewportCamera.test.ts` â€” dual coordinate equivalency test
 - `docs/AI_CURRENT_TASK.md`
 - `docs/AI_HISTORY.md`
 
@@ -201,7 +229,7 @@ After the GPU viewport migration, the primary viewport canvas can cover the whol
 - PASS: 13 Playwright E2E tests
 - PASS: `pnpm.cmd run build`
 
-## [2026-06-13] TEST HARDENING — Viewport Tool Alignment QA [COMPLETE]
+## [2026-06-13] TEST HARDENING â€” Viewport Tool Alignment QA [COMPLETE]
 
 ### Kategori: TEST / VIEWPORT / TOOL ALIGNMENT / E2E
 
@@ -225,7 +253,7 @@ Manual QA is too easy to miss viewport regressions because the visible bug depen
 - PASS: `pnpm.cmd --filter photrez-desktop test --run` (827 tests)
 - PASS: `pnpm.cmd run build`
 
-## [2026-06-13] BUG FIX — Viewport Camera Regression Recovery [COMPLETE]
+## [2026-06-13] BUG FIX â€” Viewport Camera Regression Recovery [COMPLETE]
 
 ### Kategori: BUG FIX / VIEWPORT / TOOL ALIGNMENT / FRONTEND
 
@@ -259,7 +287,7 @@ Manual QA is too easy to miss viewport regressions because the visible bug depen
 - `apps/desktop/src/components/editor/__tests__/viewport-state-sync.test.tsx`
 - `apps/desktop/src/__tests__/viewportCamera.test.ts`
 - `docs/plans/2026-06-13-gpu-smooth-zoom-transitions-design.md`
-- `docs/01-id-decision-log.md`
+- `docs/decisions/id-decision-log.md`
 - `docs/AI_CURRENT_TASK.md`
 - `docs/AI_HISTORY.md`
 - `docs/FEATURES.md`
@@ -271,7 +299,7 @@ Manual QA is too easy to miss viewport regressions because the visible bug depen
 - PASS: `cargo test -p photrez-core`
 - PASS: `cargo test --workspace`
 
-## [2026-06-13] PLANNING — Viewport Camera Regression Recovery Todo [COMPLETE]
+## [2026-06-13] PLANNING â€” Viewport Camera Regression Recovery Todo [COMPLETE]
 
 ### Kategori: PLANNING / VIEWPORT / TOOL ALIGNMENT
 
@@ -286,7 +314,7 @@ The GPU smooth zoom migration caused canvas/tool coordinate regressions, includi
 **Verification:**
 - Documentation-only change; no build/test execution required for this planning step.
 
-## [2026-06-13] BUG FIX — WebGL Viewport Alignment & Layout Restoration [COMPLETE]
+## [2026-06-13] BUG FIX â€” WebGL Viewport Alignment & Layout Restoration [COMPLETE]
 
 ### Kategori: BUG FIX / VIEWPORT / LAYOUT / STYLING / TS
 
@@ -311,10 +339,10 @@ The GPU smooth zoom migration caused canvas/tool coordinate regressions, includi
    - Added a layout regression test to prevent padding, gaps, or layout container modifications in `EditorShell.tsx`.
 
 **Verification:**
-- 55 test files, 824 frontend tests: ✅
-- TypeScript + Vite build: ✅
+- 55 test files, 824 frontend tests: âœ…
+- TypeScript + Vite build: âœ…
 
-## [2026-06-13] FEATURE — GPU-Accelerated Smooth Zoom [COMPLETE]
+## [2026-06-13] FEATURE â€” GPU-Accelerated Smooth Zoom [COMPLETE]
 
 ### Kategori: FEATURE / VIEWPORT / RENDERER / CAMERA / INTERACTION
 
@@ -340,11 +368,11 @@ Migrating viewport rendering pipeline from CSS transform-based zoom/pan to a mat
    - Resolved unit testing mocks to include `camera`. Corrected `BrushCursorOverlay` test assertions to expect screen-space scaling coordinates.
 
 **Verification:**
-- 55 test files, 823 frontend tests: ✅
-- TypeScript + Vite build: ✅
-- 92 Rust workspace tests: ✅
+- 55 test files, 823 frontend tests: âœ…
+- TypeScript + Vite build: âœ…
+- 92 Rust workspace tests: âœ…
 
-## [2026-06-13] BUG FIX — Modern Crop: Reset Button in Ratio/Size Modes [COMPLETE]
+## [2026-06-13] BUG FIX â€” Modern Crop: Reset Button in Ratio/Size Modes [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / GEOMETRY / TESTS / UI
 
@@ -358,10 +386,10 @@ In `CropOptionBar.tsx`, the Reset button's click handler reset the Modern crop f
    - Added `resets modern crop frame preserving Size mode aspect ratio target` unit test.
 
 **Verification:**
-- 54 test files, 813 frontend tests: ✅
-- TypeScript + Vite build: ✅
+- 54 test files, 813 frontend tests: âœ…
+- TypeScript + Vite build: âœ…
 
-## [2026-06-13] BUG FIX — Modern Crop: 1:1 Cursor Tracking & Lag in Center-Resizing [COMPLETE]
+## [2026-06-13] BUG FIX â€” Modern Crop: 1:1 Cursor Tracking & Lag in Center-Resizing [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / GEOMETRY / TESTS / UX
 
@@ -377,11 +405,11 @@ Because the Modern Crop frame is always centered in the viewport, resizing by dr
    - Updated mock pointer event expectations to match 1:1 mouse tracking.
 
 **Verification:**
-- 54 test files, 812 frontend tests: ✅
-- TypeScript + Vite build: ✅
-- 92 Rust workspace tests: ✅
+- 54 test files, 812 frontend tests: âœ…
+- TypeScript + Vite build: âœ…
+- 92 Rust workspace tests: âœ…
 
-## [2026-06-13] BUG FIX — Modern Crop: Frame Visual Shift on Resize & Alt Modifier Key [COMPLETE]
+## [2026-06-13] BUG FIX â€” Modern Crop: Frame Visual Shift on Resize & Alt Modifier Key [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / GEOMETRY / TESTS / MODIFIERS
 
@@ -399,46 +427,46 @@ Because the Modern Crop frame is always centered in the viewport, resizing by dr
    - Aligned 11 test assertions (E/W/N/S handles, ratio/size constraints, clamps, etc.) to expect centered frame position and correct compensation offsets.
 
 **Verification:**
-- 54 test files, 812 frontend tests: ✅
-- TypeScript + Vite build: ✅
-- 92 Rust workspace tests: ✅
+- 54 test files, 812 frontend tests: âœ…
+- TypeScript + Vite build: âœ…
+- 92 Rust workspace tests: âœ…
 
-## [2026-06-13] BUG FIX — Modern Crop: Compensation Over-Correction for W/N Handles [COMPLETE]
+## [2026-06-13] BUG FIX â€” Modern Crop: Compensation Over-Correction for W/N Handles [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / GEOMETRY / TESTS
 
 **Root Cause:**
-In `resizeModernFrameOneSided` (`apps/desktop/src/viewport/modernCropGeometry.ts`), frame position adjusts for "w"/"n" handles to anchor the opposite edge (uncommitted changes from previous fix). But `compensation` was still applied on the same axis — `compensation.x = actualDw / 2` for "w" and `compensation.y = actualDh / 2` for "n". This created a double-offset: the crop rect anchor point drifted by `actualDw / 2` in document space, causing the cropbox to shift toward the resize direction when shrinking.
+In `resizeModernFrameOneSided` (`apps/desktop/src/viewport/modernCropGeometry.ts`), frame position adjusts for "w"/"n" handles to anchor the opposite edge (uncommitted changes from previous fix). But `compensation` was still applied on the same axis â€” `compensation.x = actualDw / 2` for "w" and `compensation.y = actualDh / 2` for "n". This created a double-offset: the crop rect anchor point drifted by `actualDw / 2` in document space, causing the cropbox to shift toward the resize direction when shrinking.
 
 **Changes:**
-1. `resizeModernFrameOneSided` — both shift and non-shift paths now zero out compensation for "w" (x-axis) and "n" (y-axis) handles since frame position already handles anchoring.
-2. `modern-crop-geometry.test.ts` — updated test expectations and added 3 combined tests verifying crop rect anchor point stays fixed in document space via `modernFrameToCropRect`.
+1. `resizeModernFrameOneSided` â€” both shift and non-shift paths now zero out compensation for "w" (x-axis) and "n" (y-axis) handles since frame position already handles anchoring.
+2. `modern-crop-geometry.test.ts` â€” updated test expectations and added 3 combined tests verifying crop rect anchor point stays fixed in document space via `modernFrameToCropRect`.
 
 **Verification:**
-- 54 test files, 812 frontend tests: ✅
-- TypeScript + Vite build: ✅
-- 92 Rust workspace tests: ✅
+- 54 test files, 812 frontend tests: âœ…
+- TypeScript + Vite build: âœ…
+- 92 Rust workspace tests: âœ…
 
-## [2026-06-12] BUG FIX — Modern Crop Geometry: Alt/Center-Out Resize Position Math [COMPLETE]
+## [2026-06-12] BUG FIX â€” Modern Crop Geometry: Alt/Center-Out Resize Position Math [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / GEOMETRY / TESTS
 
 **Root Cause:**
-Commit 3cb2a89 introduced a bug in `resizeModernFrameOneSided` (`apps/desktop/src/viewport/modernCropGeometry.ts`) that applied frame position centering (`x: frame.x + (fw - newW) / 2`) to ALL code paths, including non-alt (one-sided) resize. For one-sided resize, the anchored edge must stay fixed — the x/y position should remain unchanged. Only alt (center-out) mode should shift x/y to keep the frame center fixed.
+Commit 3cb2a89 introduced a bug in `resizeModernFrameOneSided` (`apps/desktop/src/viewport/modernCropGeometry.ts`) that applied frame position centering (`x: frame.x + (fw - newW) / 2`) to ALL code paths, including non-alt (one-sided) resize. For one-sided resize, the anchored edge must stay fixed â€” the x/y position should remain unchanged. Only alt (center-out) mode should shift x/y to keep the frame center fixed.
 
 **Changes:**
-1. `resizeModernFrameOneSided` — frame position now only adjusts x/y when `alt=true`:
+1. `resizeModernFrameOneSided` â€” frame position now only adjusts x/y when `alt=true`:
    - Non-alt: `x = params.frame.x` (anchored edge stays fixed)
    - Alt: `x = params.frame.x + (fw - newW) / 2` (center stays fixed)
    - Same logic for y axis
 2. Updated test expectations in `modern-crop-geometry.test.ts` (10 tests) and `CropOverlay.test.tsx` (1 test) to match corrected geometry
 
 **Verification:**
-- 54 test files, 811 frontend tests: ✅
-- TypeScript + Vite build: ✅
-- 85 Rust core tests: ✅
+- 54 test files, 811 frontend tests: âœ…
+- TypeScript + Vite build: âœ…
+- 85 Rust core tests: âœ…
 
-## [2026-06-12] BUG FIX / POLISH — Option Bar Responsive Breakpoint & W/H Inputs Layout [COMPLETE]
+## [2026-06-12] BUG FIX / POLISH â€” Option Bar Responsive Breakpoint & W/H Inputs Layout [COMPLETE]
 
 ### Kategori: BUG FIX / POLISH / FRONTEND / UI / UX
 
@@ -462,7 +490,7 @@ Commit 3cb2a89 introduced a bug in `resizeModernFrameOneSided` (`apps/desktop/sr
 
 ---
 
-## [2026-06-12] FEATURE — Crop Option Bar UX Improvements [COMPLETE]
+## [2026-06-12] FEATURE â€” Crop Option Bar UX Improvements [COMPLETE]
 
 ### Kategori: FEATURE / CROP / FRONTEND / UI / UX
 
@@ -477,8 +505,8 @@ Pill preset bar yang lama memiliki banyak tombol preset horizontal yang memakan 
 5. Menambahkan sinkronisasi otomatis nilai input W/H dengan preset rasio yang dipilih agar input selalu ter-update.
 
 **Rincian Perubahan:**
-1. `CropOptionBar.tsx` — Menambahkan state dropdown, recent ratios, implementasi `handleLockCurrentShape` & `handleSwap`, restrukturisasi form input `[W] [Swap] [H]` di bar utama & `MoreDropdown`, sinkronisasi nilai input via `createEffect`, dan penghapusan tombol swap lama di grup rotasi.
-2. `CropOptionBar.test.tsx` — Memperbarui helper `clickPill` untuk membuka dropdown secara otomatis saat elemen preset atau mode tersembunyi ingin diklik, serta menambahkan pengujian swap W/H di mode Size.
+1. `CropOptionBar.tsx` â€” Menambahkan state dropdown, recent ratios, implementasi `handleLockCurrentShape` & `handleSwap`, restrukturisasi form input `[W] [Swap] [H]` di bar utama & `MoreDropdown`, sinkronisasi nilai input via `createEffect`, dan penghapusan tombol swap lama di grup rotasi.
+2. `CropOptionBar.test.tsx` â€” Memperbarui helper `clickPill` untuk membuka dropdown secara otomatis saat elemen preset atau mode tersembunyi ingin diklik, serta menambahkan pengujian swap W/H di mode Size.
 
 ### Verification
 - PASS: `pnpm --filter photrez-desktop test --run` (all 810 frontend tests passed)
@@ -487,7 +515,7 @@ Pill preset bar yang lama memiliki banyak tombol preset horizontal yang memakan 
 
 ---
 
-## [2026-06-12] BUG FIX — Brush Cursor Shown on Pan [COMPLETE]
+## [2026-06-12] BUG FIX â€” Brush Cursor Shown on Pan [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / ERASER / VIEWPORT / UX
 
@@ -498,8 +526,8 @@ Saat pengguna melakukan panning/navigasi pada viewport (misalnya dengan menahan 
 Mengirimkan status navigasi aktif (`isSpacePressed() || isPanning()`) dari viewport ke dalam komponen `<BrushCursorOverlay>` melalui properti `isPanning`. Ketika salah satu status tersebut bernilai `true`, lingkaran kursor brush/eraser akan disembunyikan secara otomatis dari layar (`!props?.isPanning`).
 
 **Rincian Perubahan:**
-1. `BrushCursorOverlay.tsx` — Menambahkan opsional properti `isPanning?: boolean` ke tipe props, serta memperbarui fungsi `show` untuk memastikan kursor lingkaran disembunyikan jika `isPanning` bernilai `true`.
-2. `CanvasViewport.tsx` — Menambahkan passing props `isPanning={isSpacePressed() || isPanning()}` ke pemanggilan `<BrushCursorOverlay>`.
+1. `BrushCursorOverlay.tsx` â€” Menambahkan opsional properti `isPanning?: boolean` ke tipe props, serta memperbarui fungsi `show` untuk memastikan kursor lingkaran disembunyikan jika `isPanning` bernilai `true`.
+2. `CanvasViewport.tsx` â€” Menambahkan passing props `isPanning={isSpacePressed() || isPanning()}` ke pemanggilan `<BrushCursorOverlay>`.
 
 ### Verification
 - PASS: `pnpm.cmd --filter photrez-desktop test --run` (all 810 frontend tests passed)
@@ -508,7 +536,7 @@ Mengirimkan status navigasi aktif (`isSpacePressed() || isPanning()`) dari viewp
 
 ---
 
-## [2026-06-12] BUG FIX — Brush Cursor Stuck on Zoom [COMPLETE]
+## [2026-06-12] BUG FIX â€” Brush Cursor Stuck on Zoom [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / ERASER / VIEWPORT / UX
 
@@ -519,7 +547,7 @@ Indikator visual berbentuk lingkaran kursor untuk tool brush dan eraser (`BrushC
 Menyimpan koordinat posisi mouse di client-space (`clientX`, `clientY`) setiap kali event `pointermove` terjadi. Menambahkan `createEffect` reaktif pada `BrushCursorOverlay.tsx` yang melacak sinyal `zoom()` dan `pan()`. Ketika viewport bergerak atau skala berubah, method `updatePosition()` akan secara otomatis dipanggil kembali untuk menghitung ulang posisi koordinat dokumen di bawah mouse dan memutakhirkan state secara reaktif, bahkan saat mouse diam tidak bergerak.
 
 **Rincian Perubahan:**
-1. `BrushCursorOverlay.tsx` — Menambahkan import `createEffect`, mendestrukturisasi sinyal `pan` dari `useEditor()`, meng-cache posisi screen mouse terbaru ke `lastClientX`/`lastClientY`, serta menambahkan `createEffect` yang reaktif terhadap `zoom` dan `pan` untuk memperbarui kalkulasi posisi dokumen kursor. Ditambahkan penanganan typeof *safety guard* pada sinyal `pan` untuk kompatibilitas mock pengujian unit.
+1. `BrushCursorOverlay.tsx` â€” Menambahkan import `createEffect`, mendestrukturisasi sinyal `pan` dari `useEditor()`, meng-cache posisi screen mouse terbaru ke `lastClientX`/`lastClientY`, serta menambahkan `createEffect` yang reaktif terhadap `zoom` dan `pan` untuk memperbarui kalkulasi posisi dokumen kursor. Ditambahkan penanganan typeof *safety guard* pada sinyal `pan` untuk kompatibilitas mock pengujian unit.
 
 ### Verification
 - PASS: `pnpm.cmd --filter photrez-desktop test --run` (all 810 frontend tests passed)
@@ -528,7 +556,7 @@ Menyimpan koordinat posisi mouse di client-space (`clientX`, `clientY`) setiap k
 
 ---
 
-## [2026-06-12] BUG FIX — Viewport WebGL Backing Resolution Clamping [COMPLETE]
+## [2026-06-12] BUG FIX â€” Viewport WebGL Backing Resolution Clamping [COMPLETE]
 
 ### Kategori: BUG FIX / VIEWPORT / RENDERER / UX
 
@@ -539,7 +567,7 @@ Saat pengguna melakukan zoom gambar hingga tingkat persentase tinggi (misalnya 1
 Membatasi secara aman ukuran buffer piksel internal canvas WebGL dan tekstur ping-pong ke limit aman maksimal sebesar **4096px** (atau batas GPU `maxTextureSize` jika lebih rendah). Batas ini sangat direkomendasikan karena didukung oleh 100% perangkat dan browser tanpa risiko kehabisan VRAM atau memicu limitasi browser. Agar tidak terjadi distorsi/penyok (*stretching*) pada rasio gambar, lebar dan tinggi diturunkan secara proporsional. Browser kemudian akan memperbesar visual buffer tersebut secara mulus ke ukuran aslinya di layar menggunakan akselerasi CSS `scale(...)` tanpa terjadi kerusakan memori GPU.
 
 **Rincian Perubahan:**
-1. `webgl2.ts` — Memperbarui method `resize` untuk mengkalkulasi limit `maxLimit` sebagai `Math.min(4096, this.capabilities.maxTextureSize || 4096)`, lalu melakukan penyesuaian skala proporsional pada `w` dan `h` jika melampaui limit tersebut sebelum dialokasikan ke `canvas.width`/`canvas.height` dan ping-pong FBO textures.
+1. `webgl2.ts` â€” Memperbarui method `resize` untuk mengkalkulasi limit `maxLimit` sebagai `Math.min(4096, this.capabilities.maxTextureSize || 4096)`, lalu melakukan penyesuaian skala proporsional pada `w` dan `h` jika melampaui limit tersebut sebelum dialokasikan ke `canvas.width`/`canvas.height` dan ping-pong FBO textures.
 
 ### Verification
 - PASS: `pnpm.cmd --filter photrez-desktop test --run` (all 810 frontend tests passed)
@@ -548,7 +576,7 @@ Membatasi secara aman ukuran buffer piksel internal canvas WebGL dan tekstur pin
 
 ---
 
-## [2026-06-12] POLISH — Brush Intermediate Hardness Mapping [COMPLETE]
+## [2026-06-12] POLISH â€” Brush Intermediate Hardness Mapping [COMPLETE]
 
 ### Kategori: POLISH / BRUSH / ERASER / HARDNESS / UX
 
@@ -571,7 +599,7 @@ Keep hardness 0 and the soft falloff profile unchanged, but remap intermediate h
 
 ---
 
-## [2026-06-12] FEATURE — Synchronize lastPaintCoords with Undo/Redo [COMPLETE]
+## [2026-06-12] FEATURE â€” Synchronize lastPaintCoords with Undo/Redo [COMPLETE]
 
 ### Kategori: FEATURE / BRUSH / ERASER / UX / HISTORY
 
@@ -593,7 +621,7 @@ Extend the document `CommandHistory` snapshot entry stack to store `lastPaintCoo
 
 ---
 
-## [2026-06-12] BUG FIX — Fix Shift-Click Straight Lines for Soft Brush [COMPLETE]
+## [2026-06-12] BUG FIX â€” Fix Shift-Click Straight Lines for Soft Brush [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / ERASER / UX
 
@@ -614,7 +642,7 @@ Update `onPaintStroke` to iterate over all newly added points in the stroke arra
 
 ---
 
-## [2026-06-12] POLISH — Implement Smoothstep Brush Falloff Curve [COMPLETE]
+## [2026-06-12] POLISH â€” Implement Smoothstep Brush Falloff Curve [COMPLETE]
 
 ### Kategori: POLISH / BRUSH / ERASER / UX / CALIBRATION
 
@@ -636,7 +664,7 @@ We mapped the normalized distance `v` using a Hermite interpolation / Smoothstep
 
 ---
 
-## [2026-06-12] POLISH — Remove Inner Brush Hardness Indicator Ring [COMPLETE]
+## [2026-06-12] POLISH â€” Remove Inner Brush Hardness Indicator Ring [COMPLETE]
 
 ### Kategori: POLISH / BRUSH / ERASER / UX
 
@@ -658,7 +686,7 @@ Remove the secondary inner dashed ring from `BrushCursorOverlay.tsx` to align Ph
 
 ---
 
-## [2026-06-12] FEATURE — Brush & Eraser UX Improvements [COMPLETE]
+## [2026-06-12] FEATURE â€” Brush & Eraser UX Improvements [COMPLETE]
 
 ### Kategori: FEATURE / BRUSH / ERASER / UX
 
@@ -685,7 +713,7 @@ Professional image editor UX requires smooth support for modifiers like Alt-hold
 
 ---
 
-## [2026-06-12] POLISH — Soft Eraser MVP Preset Polish [COMPLETE]
+## [2026-06-12] POLISH â€” Soft Eraser MVP Preset Polish [COMPLETE]
 
 ### Kategori: POLISH / ERASER / PRESETS / MVP
 
@@ -707,7 +735,7 @@ Keep core eraser rendering unchanged and improve the preset UX. `Soft Eraser` no
 
 ---
 
-## [2026-06-12] POLISH — Brush Preset UX Calibration [COMPLETE]
+## [2026-06-12] POLISH â€” Brush Preset UX Calibration [COMPLETE]
 
 ### Kategori: POLISH / BRUSH / PRESETS / UX
 
@@ -730,7 +758,7 @@ Keep the core brush engine stable and solve the UX through presets. `Soft Round`
 
 ---
 
-## [2026-06-12] POLISH — Brush Soft Round Fatter Center Calibration [COMPLETE]
+## [2026-06-12] POLISH â€” Brush Soft Round Fatter Center Calibration [COMPLETE]
 
 ### Kategori: POLISH / BRUSH / UX / CALIBRATION
 
@@ -753,7 +781,7 @@ Change the soft radial profile rather than raising flow again. Hardness 0 now us
 
 ---
 
-## [2026-06-12] POLISH — Brush Soft Round Opacity Body Calibration [COMPLETE]
+## [2026-06-12] POLISH â€” Brush Soft Round Opacity Body Calibration [COMPLETE]
 
 ### Kategori: POLISH / BRUSH / UX / CALIBRATION
 
@@ -776,7 +804,7 @@ Preserve the existing falloff shape, dab spacing, max-alpha stroke behavior, and
 
 ---
 
-## [2026-06-12] POLISH — Brush Soft Round Editor-Like Final Polish [COMPLETE]
+## [2026-06-12] POLISH â€” Brush Soft Round Editor-Like Final Polish [COMPLETE]
 
 ### Kategori: POLISH / BRUSH / UX / CALIBRATION
 
@@ -801,7 +829,7 @@ Keep the current falloff exponent, peak profile, and dab spacing stable, then ma
 
 ---
 
-## [2026-06-12] BUG FIX — Brush Effective Flow Hardness Scaling Calibration Tuning [COMPLETE]
+## [2026-06-12] BUG FIX â€” Brush Effective Flow Hardness Scaling Calibration Tuning [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / UX / CALIBRATION
 
@@ -823,7 +851,7 @@ Mengubah formula multiplier ke bentuk linear yang lebih kuat, yaitu `0.8 + 0.2 *
 
 ---
 
-## [2026-06-12] BUG FIX — Viewport Transition Jiggle [COMPLETE]
+## [2026-06-12] BUG FIX â€” Viewport Transition Jiggle [COMPLETE]
 
 ### Kategori: BUG FIX / VIEWPORT / UX
 
@@ -843,7 +871,7 @@ Menghapus seluruh transisi CSS (`transition: "none"`) pada visual canvas utama d
 
 ---
 
-## [2026-06-12] BUG FIX — Brush Effective Flow Hardness Scaling Calibration [COMPLETE]
+## [2026-06-12] BUG FIX â€” Brush Effective Flow Hardness Scaling Calibration [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / ERASER / UX / PERFORMANCE
 
@@ -868,7 +896,7 @@ Dengan Flow 100% dan max-alpha mask yang sangat kuat, goresan berukuran besar (m
 
 ---
 
-## [2026-06-12] BUG FIX — Brush Soft Exponent and Peak Multiplier Calibration [COMPLETE]
+## [2026-06-12] BUG FIX â€” Brush Soft Exponent and Peak Multiplier Calibration [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / ERASER / UX / PERFORMANCE
 
@@ -876,7 +904,7 @@ Dengan Flow 100% dan max-alpha mask yang sangat kuat, goresan berukuran besar (m
 Setting the soft brush falloff exponent to `2.2` proved too steep, resulting in a thin hot core surrounded by a muddy wide haze. Additionally, without a peak multiplier, the center of the brush tip remained at 100% (255) opacity, leading to a marker-like appearance where the center line was a hard solid stripe rather than a broad, gradual feather.
 
 **Fix Rationale:**
-1. Lowered the soft falloff curve exponent from `2.2` to `1.3` (inside the `1.25–1.4` range) in `brushTipMask.ts`.
+1. Lowered the soft falloff curve exponent from `2.2` to `1.3` (inside the `1.25â€“1.4` range) in `brushTipMask.ts`.
 2. Implemented a `softPeak` multiplier of `0.9 + 0.1 * h` for the `"soft"` curve, bringing down the maximum center alpha of the soft brush tip from `1.0` to `0.9` (at hardness 0) while keeping it fully solid at hardness 1.
 3. Locked and verified the resulting radial pixel-profile boundaries exactly: center 0.8-0.95, 25% radius 0.6-0.75, 50% radius 0.3-0.5, 75% radius 0.08-0.2, edge 0.
 
@@ -892,7 +920,7 @@ Setting the soft brush falloff exponent to `2.2` proved too steep, resulting in 
 
 ---
 
-## [2026-06-11] BUG FIX — Brush Soft Spacing, Subpixel Stamping, and Alpha Profile Calibration [COMPLETE]
+## [2026-06-11] BUG FIX â€” Brush Soft Spacing, Subpixel Stamping, and Alpha Profile Calibration [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / ERASER / UX / PERFORMANCE
 
@@ -915,7 +943,7 @@ Even though the spacing formula computed 3px spacing for size 70 hardness 0 brus
 
 ---
 
-## [2026-06-11] BUG FIX — Brush Visual Calibration and Pixel QA [COMPLETE]
+## [2026-06-11] BUG FIX â€” Brush Visual Calibration and Pixel QA [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / ERASER / UX / PERFORMANCE
 
@@ -939,7 +967,7 @@ Introduced a `"soft"` falloff curve (`Math.pow(1 - t, 0.75)`) that keeps the opa
 
 ---
 
-## [2026-06-11] PLANNING — Brush Visual Calibration and Pixel QA
+## [2026-06-11] PLANNING â€” Brush Visual Calibration and Pixel QA
 
 ### Kategori: PLANNING / BRUSH / ERASER / UX / PERFORMANCE
 
@@ -959,7 +987,7 @@ Plan baru memisahkan pekerjaan visual calibration dari plan engine. Agent beriku
 
 ---
 
-## [2026-06-11] BUG FIX — Brush Tip Mask Engine Performance [COMPLETE]
+## [2026-06-11] BUG FIX â€” Brush Tip Mask Engine Performance [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / ERASER / RENDERER / UX / PERFORMANCE
 
@@ -983,7 +1011,7 @@ Memindahkan tracking pointer drag interaktif di `useBrushOverlay.ts` ke mode inc
 
 ---
 
-## [2026-06-11] PLANNING REVISION — Brush Tip Mask Engine AI Handoff
+## [2026-06-11] PLANNING REVISION â€” Brush Tip Mask Engine AI Handoff
 
 ### Kategori: PLANNING / BRUSH / ERASER / RENDERER / UX / PERFORMANCE
 
@@ -999,11 +1027,11 @@ Plan direvisi untuk menjadikan `useBrushOverlay.ts` sebagai target utama: active
 **Rincian Dokumen:**
 1. Mengganti isi `docs/superpowers/plans/2026-06-11-brush-tip-mask-engine.md` dengan handoff plan yang lebih eksplisit.
 2. Menambahkan diagnosis implementasi saat ini, non-negotiable requirements, task breakdown, verification gate, manual QA, dan prompt copy-ready.
-3. Memperbarui `FEATURES.md` dan `docs/01-id-decision-log.md` agar status planning mencerminkan revisi handoff.
+3. Memperbarui `FEATURES.md` dan `docs/decisions/id-decision-log.md` agar status planning mencerminkan revisi handoff.
 
 ---
 
-## [2026-06-11] PLANNING — Brush Tip Mask Engine Replacement
+## [2026-06-11] PLANNING â€” Brush Tip Mask Engine Replacement
 
 ### Kategori: PLANNING / BRUSH / ERASER / RENDERER / UX / PERFORMANCE
 
@@ -1020,24 +1048,24 @@ Rencana baru memakai cached brush-tip alpha mask dan incremental dab stamping ke
 1. Menambahkan `docs/superpowers/plans/2026-06-11-brush-tip-mask-engine.md`.
 2. Menandai `docs/superpowers/plans/2026-06-11-brush-hardness-distance-field-soft-edge.md` sebagai superseded.
 3. Menambahkan prompt handoff copy-ready untuk model AI lain di dalam plan.
-4. Memperbarui `FEATURES.md` dan `docs/01-id-decision-log.md` dengan arah brush-tip mask engine.
+4. Memperbarui `FEATURES.md` dan `docs/decisions/id-decision-log.md` dengan arah brush-tip mask engine.
 
 ---
 
-## [2026-06-11] BUG FIX — Brush Hardness Distance-Field Soft Edge [COMPLETE]
+## [2026-06-11] BUG FIX â€” Brush Hardness Distance-Field Soft Edge [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / ERASER / RENDERER / UX
 
 **Root Cause:**
-Implementasi soft brush sebelumnya (hardness < 1) menggunakan Canvas `shadowBlur` + `shadowOffsetX` yang menggambar satu garis path lalu memproyeksikan bayangan kembali ke posisi layar. Pendekatan ini menghasilkan visual soft brush yang ukuran dan feather behavior-nya bergantung pada implementasi Gaussian blur browser, sehingga perceived diameter soft brush tidak akurat — `hardness=0` menghasilkan core sempit dengan blur, bukan full-diameter feathered brush.
+Implementasi soft brush sebelumnya (hardness < 1) menggunakan Canvas `shadowBlur` + `shadowOffsetX` yang menggambar satu garis path lalu memproyeksikan bayangan kembali ke posisi layar. Pendekatan ini menghasilkan visual soft brush yang ukuran dan feather behavior-nya bergantung pada implementasi Gaussian blur browser, sehingga perceived diameter soft brush tidak akurat â€” `hardness=0` menghasilkan core sempit dengan blur, bukan full-diameter feathered brush.
 
 **Fix Rationale:**
-Mengganti pendekatan shadowBlur dengan per-stroke distance-field alpha mask di ImageData. Setiap pixel dalam bounding box stroke dihitung jarak terdekatnya ke path stroke menggunakan `distanceToSegment` dan `distanceToStrokePath`. Alpha pixel ditentukan oleh `brushAlphaAtDistance` yang menggunakan smoothstep Hermite falloff dari hard radius (hardness × radius) ke outer radius (size/2). Composite alpha dilakukan sekali per pixel (source-over untuk brush, destination-out manual untuk eraser), mencegah akumulasi alpha dalam satu stroke.
+Mengganti pendekatan shadowBlur dengan per-stroke distance-field alpha mask di ImageData. Setiap pixel dalam bounding box stroke dihitung jarak terdekatnya ke path stroke menggunakan `distanceToSegment` dan `distanceToStrokePath`. Alpha pixel ditentukan oleh `brushAlphaAtDistance` yang menggunakan smoothstep Hermite falloff dari hard radius (hardness Ã— radius) ke outer radius (size/2). Composite alpha dilakukan sekali per pixel (source-over untuk brush, destination-out manual untuk eraser), mencegah akumulasi alpha dalam satu stroke.
 
 **Rincian Perubahan:**
-1. `paintStrokeRenderer.ts` — Menambahkan 7 helper: `smoothstep01`, `brushAlphaAtDistance`, `distanceToSegment`, `parsePaintColor`, `getStrokeBounds`, `distanceToStrokePath`, `renderSoftStrokeToImageData`. Mengganti branch `shadowOffsetX`/`shadowBlur` dengan `renderSoftStrokeToImageData` untuk soft brush (hardness < 1).
-2. `paintStrokeRenderer.test.ts` — Menambahkan 10 test baru (7 pure-function untuk smoothstep, brushAlphaAtDistance, distanceToSegment; 3 render integration untuk mask dimension, eraser alpha reduction, bounds clipping). Total 38 test di file ini.
-3. `useBrushOverlay.ts` — Tidak ada perubahan; lock transparency (lines 87-91) dan eraser path (lines 62-76) sudah benar dan dipertahankan.
+1. `paintStrokeRenderer.ts` â€” Menambahkan 7 helper: `smoothstep01`, `brushAlphaAtDistance`, `distanceToSegment`, `parsePaintColor`, `getStrokeBounds`, `distanceToStrokePath`, `renderSoftStrokeToImageData`. Mengganti branch `shadowOffsetX`/`shadowBlur` dengan `renderSoftStrokeToImageData` untuk soft brush (hardness < 1).
+2. `paintStrokeRenderer.test.ts` â€” Menambahkan 10 test baru (7 pure-function untuk smoothstep, brushAlphaAtDistance, distanceToSegment; 3 render integration untuk mask dimension, eraser alpha reduction, bounds clipping). Total 38 test di file ini.
+3. `useBrushOverlay.ts` â€” Tidak ada perubahan; lock transparency (lines 87-91) dan eraser path (lines 62-76) sudah benar dan dipertahankan.
 
 **Verification:**
 4 commits, semua lolos pre-commit pipeline:
@@ -1052,7 +1080,7 @@ Mengganti pendekatan shadowBlur dengan per-stroke distance-field alpha mask di I
 
 ---
 
-## [2026-06-11] PLANNING — Brush Hardness Distance-Field Soft Edge
+## [2026-06-11] PLANNING â€” Brush Hardness Distance-Field Soft Edge
 
 ### Kategori: PLANNING / BRUSH / ERASER / RENDERER / UX
 
@@ -1068,11 +1096,11 @@ Rencana baru mengarahkan implementasi ke per-stroke distance-field alpha mask: s
 **Rincian Dokumen:**
 1. Menambahkan `docs/superpowers/plans/2026-06-11-brush-hardness-distance-field-soft-edge.md`.
 2. Menandai rencana ini di `FEATURES.md` bagian Maintenance / Architecture Planning.
-3. Menambahkan keputusan rendering brush hardness di `docs/01-id-decision-log.md`.
+3. Menambahkan keputusan rendering brush hardness di `docs/decisions/id-decision-log.md`.
 
 ---
 
-## [2026-06-11] BUG FIX — Soft Brush Visible Diameter Calibration [COMPLETE]
+## [2026-06-11] BUG FIX â€” Soft Brush Visible Diameter Calibration [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / RENDERER / UX
 
@@ -1087,12 +1115,12 @@ Dengan merumuskan $W + 3B = \text{size}$ dan menetapkan rasio center solid $W = 
 Ketika disubstitusikan, didapat: $\text{size} \times (0.4 + 0.6H) + 3 \times \text{size} \times 0.2 \times (1 - H) = \text{size}$. Persamaan ini menjamin coretan selalu berada tepat di dalam batas kursor lingkaran visual kuas dan dapat di-*scale* dengan sempurna ke segala ukuran piksel.
 
 **Rincian Perubahan:**
-1. `paintStrokeRenderer.ts` — Memperbarui koefisien perataan pada formula kalkulasi `coreWidth` dan `shadowBlur` kuas lembut.
-2. `paintStrokeRenderer.test.ts` — Menyelaraskan nilai assertion pengujian unit (`shadowBlur`, `lineWidth`, `arc` radius) dengan koefisien rumus kalibrasi yang baru.
+1. `paintStrokeRenderer.ts` â€” Memperbarui koefisien perataan pada formula kalkulasi `coreWidth` dan `shadowBlur` kuas lembut.
+2. `paintStrokeRenderer.test.ts` â€” Menyelaraskan nilai assertion pengujian unit (`shadowBlur`, `lineWidth`, `arc` radius) dengan koefisien rumus kalibrasi yang baru.
 
 ---
 
-## [2026-06-11] BUG FIX — Soft Brush Perceived Size Adjustment [COMPLETE]
+## [2026-06-11] BUG FIX â€” Soft Brush Perceived Size Adjustment [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / RENDERER / UX
 
@@ -1106,12 +1134,12 @@ Mengubah formula kalkulasi agar lebar core lebih besar dari radius dispersi blur
 Pada `hardness = 0`, ini menghasilkan `coreWidth = 0.5 * size` dan `blur = 0.25 * size`, menjamin pusat coretan tetap solid (opaque) dan pendaran gradien menyebar secara proporsional.
 
 **Rincian Perubahan:**
-1. `paintStrokeRenderer.ts` — Memperbarui rumus kalkulasi `coreWidth` dan `blur` untuk goresan kuas lembut.
-2. `paintStrokeRenderer.test.ts` — Memperbarui assertion pengujian unit (`shadowBlur`, `lineWidth`, `arc` radius) untuk mencocokkan hasil dari rumus baru.
+1. `paintStrokeRenderer.ts` â€” Memperbarui rumus kalkulasi `coreWidth` dan `blur` untuk goresan kuas lembut.
+2. `paintStrokeRenderer.test.ts` â€” Memperbarui assertion pengujian unit (`shadowBlur`, `lineWidth`, `arc` radius) untuk mencocokkan hasil dari rumus baru.
 
 ---
 
-## [2026-06-11] BUG FIX — Viewport Zoom/Pan Resetting on Undo/Redo [COMPLETE]
+## [2026-06-11] BUG FIX â€” Viewport Zoom/Pan Resetting on Undo/Redo [COMPLETE]
 
 ### Kategori: BUG FIX / VIEWPORT / HISTORY / UX
 
@@ -1122,12 +1150,12 @@ Saat membuat snapshot riwayat (`engine.snapshot()`), status viewport saat ini (t
 Mengubah metode `restore` pada `DocumentEngine` untuk menerima parameter opsi tambahan `{ restoreViewport?: boolean }`. Secara default opsi ini bernilai `false`, yang berarti `restore` akan mempertahankan (preserve) koordinat pan dan tingkat zoom viewport aktif pengguna alih-alih menimpanya dengan data dari snapshot. Opsi `{ restoreViewport: true }` hanya dipasang pada kasus pengujian unit (unit tests) yang secara eksplisit menguji pemulihan viewport dari snapshot.
 
 **Rincian Perubahan:**
-1. `document.ts` — Memperbarui metode `restore` pada kelas `DocumentEngine` agar menyalin viewport aktif saat ini, menjalankan pemulihan snapshot, dan menulis kembali viewport aktif tersebut jika opsi `restoreViewport` bernilai false/undefined.
-2. `errorResilience.test.ts` & `document.test.ts` — Memperbarui pemanggilan `engine.restore(snap)` dengan parameter `{ restoreViewport: true }` pada skenario pengujian unit yang memvalidasi pemulihan viewport dari snapshot.
+1. `document.ts` â€” Memperbarui metode `restore` pada kelas `DocumentEngine` agar menyalin viewport aktif saat ini, menjalankan pemulihan snapshot, dan menulis kembali viewport aktif tersebut jika opsi `restoreViewport` bernilai false/undefined.
+2. `errorResilience.test.ts` & `document.test.ts` â€” Memperbarui pemanggilan `engine.restore(snap)` dengan parameter `{ restoreViewport: true }` pada skenario pengujian unit yang memvalidasi pemulihan viewport dari snapshot.
 
 ---
 
-## [2026-06-11] FEATURE — Soft Brush Stroke Unified Path & shadowOffset Rendering [COMPLETE]
+## [2026-06-11] FEATURE â€” Soft Brush Stroke Unified Path & shadowOffset Rendering [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / RENDERER / UX
 
@@ -1138,13 +1166,13 @@ Goresan kuas lembut (`hardness = 0`) yang digambar menggunakan serangkaian dab (
 Mengubah metode penggambaran dari cap radial gradien berulang menjadi **satu garis utuh (Unified Path)** menggunakan kombinasi `shadowOffsetX` dan `shadowBlur` di Canvas 2D. Dengan memposisikan koordinat penggambaran garis padat (core) jauh di luar layar (misal digeser sejauh `-20000` piksel) dan memproyeksikan bayangan lembutnya kembali ke posisi asli, kita mendapatkan tepian kuas lembut yang 100% seragam tanpa ada sambungan tumpang tindih. Lebar core dan ukuran blur bayangan dihitung secara dinamis dari ukuran kuas dan persentase hardness.
 
 **Rincian Perubahan:**
-1. `paintStrokeRenderer.ts` — Mengubah `renderPaintStrokeToContext` untuk menggambar satu garis terpadu menggunakan bayangan offset (`shadowOffsetX = 20000`, `shadowBlur = size - coreWidth`) ketika hardness < 1. Untuk kuas keras (hardness = 1), gambar garis padat biasa tanpa bayangan. Jika goresan hanya memiliki 1 koordinat (titik), gambar titik tunggal menggunakan `arc`.
-2. `useBrushOverlay.ts` — Memperbarui `onPaintStroke` untuk menghapus overlay canvas/eraser buffer dan menggambar ulang seluruh koordinat (`localPoints`) dari awal garis pada setiap event gerakan mouse (pointer move).
-3. `paintStrokeRenderer.test.ts` — Memperbarui pengujian unit untuk mencocokkan parameter path baru (`shadowBlur`, `shadowOffsetX`, `lineWidth`, `lineTo`, `moveTo`) dan menghapus pengujian radial gradient yang sudah usang.
+1. `paintStrokeRenderer.ts` â€” Mengubah `renderPaintStrokeToContext` untuk menggambar satu garis terpadu menggunakan bayangan offset (`shadowOffsetX = 20000`, `shadowBlur = size - coreWidth`) ketika hardness < 1. Untuk kuas keras (hardness = 1), gambar garis padat biasa tanpa bayangan. Jika goresan hanya memiliki 1 koordinat (titik), gambar titik tunggal menggunakan `arc`.
+2. `useBrushOverlay.ts` â€” Memperbarui `onPaintStroke` untuk menghapus overlay canvas/eraser buffer dan menggambar ulang seluruh koordinat (`localPoints`) dari awal garis pada setiap event gerakan mouse (pointer move).
+3. `paintStrokeRenderer.test.ts` â€” Memperbarui pengujian unit untuk mencocokkan parameter path baru (`shadowBlur`, `shadowOffsetX`, `lineWidth`, `lineTo`, `moveTo`) dan menghapus pengujian radial gradient yang sudah usang.
 
 ---
 
-## [2026-06-11] BUG FIX — Brush Soft Edge Overlap Accumulation [COMPLETE]
+## [2026-06-11] BUG FIX â€” Brush Soft Edge Overlap Accumulation [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / RENDERER / UX
 
@@ -1155,11 +1183,11 @@ Saat menggambar stroke kuas dengan `hardness = 0`, tepi luar dari lingkaran dab 
 Mengubah kejatuhan transparansi gradien kuas dari model linear ke model non-linear (cubic falloff) menggunakan persamaan $(1 - t)^3$. Dengan kurva kubik ini, tingkat transparansi individual di tepi luar satu dab kuas berkurang secara eksponensial menjadi sangat kecil (misalnya `0.008` pada radius 80%). Hasilnya, meskipun bertumpuk berulang-ulang saat kuas diseret, akumulasi nilainya tidak akan mencapai batas solid dan tepi lintasan kuas akan tetap mempertahankan kelembutannya (soft, fuzzy edges).
 
 **Rincian Perubahan:**
-1. `paintStrokeRenderer.ts` — Mengubah pembuatan `addColorStop` pada radial gradient brush dabs. Sekarang loop iteratif menambahkan 6 titik perhentian gradien (stops) dari `hardness` ke `1.0` dengan menghitung tingkat transparansi kubik `Math.pow(1 - t, 3)`.
+1. `paintStrokeRenderer.ts` â€” Mengubah pembuatan `addColorStop` pada radial gradient brush dabs. Sekarang loop iteratif menambahkan 6 titik perhentian gradien (stops) dari `hardness` ke `1.0` dengan menghitung tingkat transparansi kubik `Math.pow(1 - t, 3)`.
 
 ---
 
-## [2026-06-11] BUG FIX — Brush Tool Smoothing Slider, Transformed Layer Preview and Commit Alignment [COMPLETE]
+## [2026-06-11] BUG FIX â€” Brush Tool Smoothing Slider, Transformed Layer Preview and Commit Alignment [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / ERASER / FRONTEND / UX
 
@@ -1176,13 +1204,13 @@ Mengubah kejatuhan transparansi gradien kuas dari model linear ke model non-line
 4. **State Snapshot Before Clear**: Menyimpan kondisi stroke (`hasPoints`) sebelum memicu `handlePointerUp`, dan menggunakan referensi boolean tersebut untuk menentukan apakah `commitBrushStroke` perlu dipicu.
 
 **Rincian Perubahan:**
-1. `useCanvasPointerTools.ts` — Mengimpor dan membungkus smoothing slider value menggunakan `smoothingToWindowSize`. Menyimpan status `hasPoints` sebelum memanggil `handlePointerUp` dan menggunakannya sebagai kondisi commit.
-2. `useBrushOverlay.ts` — Menghapus penggambaran `layer.imageBitmap` pada `onPaintStroke` untuk brush non-eraser. Memperbarui `commitBrushStroke` untuk menggambar `layer.imageBitmap` pada kanvas snapshot sebelum goresan kuas.
-3. `CanvasViewport.tsx` — Menambahkan `activeLayer` memo dan `overlayCanvasStyle` memo, lalu menyematkan `overlayCanvasStyle()` pada elemen overlay `<canvas>`.
+1. `useCanvasPointerTools.ts` â€” Mengimpor dan membungkus smoothing slider value menggunakan `smoothingToWindowSize`. Menyimpan status `hasPoints` sebelum memanggil `handlePointerUp` dan menggunakannya sebagai kondisi commit.
+2. `useBrushOverlay.ts` â€” Menghapus penggambaran `layer.imageBitmap` pada `onPaintStroke` untuk brush non-eraser. Memperbarui `commitBrushStroke` untuk menggambar `layer.imageBitmap` pada kanvas snapshot sebelum goresan kuas.
+3. `CanvasViewport.tsx` â€” Menambahkan `activeLayer` memo dan `overlayCanvasStyle` memo, lalu menyematkan `overlayCanvasStyle()` pada elemen overlay `<canvas>`.
 
 ---
 
-## [2026-06-11] BUG FIX — Classic Rotated Crop Side Resize Axis, Pivot Drift, and Mouse Cursor Rotation [COMPLETE]
+## [2026-06-11] BUG FIX â€” Classic Rotated Crop Side Resize Axis, Pivot Drift, and Mouse Cursor Rotation [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX
 
@@ -1199,14 +1227,14 @@ Mengubah kejatuhan transparansi gradien kuas dari model linear ke model non-line
 4. **Kursor Hover Reaktif**: Mengubah penentuan kursor di dalam perulangan `For` pada `CropOverlayHandles.tsx` menjadi sebuah fungsi reaktif (`const cursor = () => ...`) dan memanggilnya di binding style `cursor: cursor()`. Dengan begitu, SolidJS dapat melacak ketergantungan `props.cropRotation` secara dinamis dan memperbarui CSS kursor pada handle seketika saat cropbox di-rotate, bahkan sebelum di-click.
 
 **Rincian Perubahan:**
-1. `useCropOverlayDrag.ts` — Menyederhanakan penentuan delta dengan selalu memproyeksikan delta mouse ke sumbu lokal cropbox. Menambahkan fungsi `getHandleAnchorLocalOffset` dan kalkulasi offset translasi ter-rotate untuk mengoreksi posisi `x`/`y` agar sisi anchor seberang tetap stasioner.
-2. `useCropOverlayDrag.ts` — Memperbarui `resolvedCursor` untuk mengalirkan `cropRotationValue()` ke `getCursorForHandle` dan mengunci target handle selama drag aktif.
-3. `CropOverlayHandles.tsx` — Mengubah deklarasi variabel `cursor` menjadi fungsi lambda `cursor()` reaktif agar pembaruan rotasi memicu perubahan kursor secara dinamis pada event hover.
-4. `CropOverlay.test.tsx` — Memperbarui assertion pengujian unit resize sisi Classic Crop yang ter-rotate (45°, 90°, 180°) agar merefleksikan posisi `x`/`y` baru yang ter-pivot secara presisi dan benar.
+1. `useCropOverlayDrag.ts` â€” Menyederhanakan penentuan delta dengan selalu memproyeksikan delta mouse ke sumbu lokal cropbox. Menambahkan fungsi `getHandleAnchorLocalOffset` dan kalkulasi offset translasi ter-rotate untuk mengoreksi posisi `x`/`y` agar sisi anchor seberang tetap stasioner.
+2. `useCropOverlayDrag.ts` â€” Memperbarui `resolvedCursor` untuk mengalirkan `cropRotationValue()` ke `getCursorForHandle` dan mengunci target handle selama drag aktif.
+3. `CropOverlayHandles.tsx` â€” Mengubah deklarasi variabel `cursor` menjadi fungsi lambda `cursor()` reaktif agar pembaruan rotasi memicu perubahan kursor secara dinamis pada event hover.
+4. `CropOverlay.test.tsx` â€” Memperbarui assertion pengujian unit resize sisi Classic Crop yang ter-rotate (45Â°, 90Â°, 180Â°) agar merefleksikan posisi `x`/`y` baru yang ter-pivot secara presisi dan benar.
 
 ---
 
-## [2026-06-10] FEATURE — Modern Crop Drag Centering and Viewport Reset on Click [COMPLETE]
+## [2026-06-10] FEATURE â€” Modern Crop Drag Centering and Viewport Reset on Click [COMPLETE]
 
 ### Kategori: FEATURE / CROP / VIEWPORT / UX
 
@@ -1215,16 +1243,16 @@ Mengubah kejatuhan transparansi gradien kuas dari model linear ke model non-line
 2. Drag-to-create crop frames in Modern mode should be positioned accurately (centered in the viewport) instead of hardcoding coordinates to `(0,0)` (which aligned the frame to the top-left of the viewport).
 
 **Implementation:**
-1. `useCanvasPointerTools.ts` — destructured `setPan` from the editor context.
+1. `useCanvasPointerTools.ts` â€” destructured `setPan` from the editor context.
 2. In Classic and Modern crop mode click fallback (inside `onCanvasPointerUp`), added pan centering logic:
    - Resets viewport coordinates to place the document center exactly in the center of the viewport.
    - For Modern crop, also resets `modernCropImageTransform` offsets (`offsetX`, `offsetY`, `rotation: 0`, `scale: 1`).
 3. In Modern `commitDragCreateFrame`, positioned the newly created frame at `x: (vw - clamped.w) / 2, y: (vh - clamped.h) / 2` to match the viewport center, rather than hardcoding it to `(0,0)`.
-4. `CanvasViewport.test.tsx` — updated Classic and Modern crop click-to-create frame tests to set a non-zero viewport pan before click and assert that the viewport gets panned back to `(0,0)` (centered position) after the click. Also added centering assertions to the drag-create aspect test.
+4. `CanvasViewport.test.tsx` â€” updated Classic and Modern crop click-to-create frame tests to set a non-zero viewport pan before click and assert that the viewport gets panned back to `(0,0)` (centered position) after the click. Also added centering assertions to the drag-create aspect test.
 
 ---
 
-## [2026-06-10] BUG FIX — Modern Crop Fill BG Panning Lag [COMPLETE]
+## [2026-06-10] BUG FIX â€” Modern Crop Fill BG Panning Lag [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UI
 
@@ -1233,12 +1261,12 @@ Mengubah kejatuhan transparansi gradien kuas dari model linear ke model non-line
 **Fix Rationale:** Position `modernCropFillPreviewStyle` directly using the crop frame's actual coordinates (`frame.x` and `frame.y`) to ensure it always moves with the frame.
 
 **Rincian Perubahan:**
-1. `CanvasViewport.tsx` — updated `modernCropFillPreviewStyle` CSS positioning to use `frame.x` and `frame.y` instead of hardcoded center offsets.
-2. `CanvasViewport.test.tsx` — bound `setModernFrameState` inside `TestConsumer` and added a unit test verifying positioning accuracy of the modern crop fill preview on frame movement.
+1. `CanvasViewport.tsx` â€” updated `modernCropFillPreviewStyle` CSS positioning to use `frame.x` and `frame.y` instead of hardcoded center offsets.
+2. `CanvasViewport.test.tsx` â€” bound `setModernFrameState` inside `TestConsumer` and added a unit test verifying positioning accuracy of the modern crop fill preview on frame movement.
 
 ---
 
-## [2026-06-10] FEATURE — Smart Guides (Crop Classic) [COMPLETE]
+## [2026-06-10] FEATURE â€” Smart Guides (Crop Classic) [COMPLETE]
 
 ### Kategori: FEATURE / CROP / UX / SNAP
 
@@ -1251,11 +1279,11 @@ Mengubah kejatuhan transparansi gradien kuas dari model linear ke model non-line
 4. Updated `SmartGuides.tsx` to render `line.color` (default magenta #ff00ff for move tool, cyan #00ffff with dasharray `"4 2"` for crop)
 5. Added 3 new tests covering rule-of-thirds targets, "new" handle snap, and cyan line color
 
-**No changes needed elsewhere** — `onSnapLines` flow from `CropOverlay` → `CanvasViewport` → `SmartGuides` already wired correctly.
+**No changes needed elsewhere** â€” `onSnapLines` flow from `CropOverlay` â†’ `CanvasViewport` â†’ `SmartGuides` already wired correctly.
 
-**Modern mode** snap still separate (needs screen→doc coordinate conversion).
+**Modern mode** snap still separate (needs screenâ†’doc coordinate conversion).
 
-## [2026-06-10] FEATURE — Ratio Pill Bar [COMPLETE]
+## [2026-06-10] FEATURE â€” Ratio Pill Bar [COMPLETE]
 
 ### Kategori: FEATURE / CROP / UX / FRONTEND
 
@@ -1268,13 +1296,13 @@ Mengubah kejatuhan transparansi gradien kuas dari model linear ke model non-line
 4. "+" pill toggles inline W:H `EditableNumField` fields, initialized from current `cropAspect()`
 5. Custom W:H submit auto-closes fields and switches to Ratio mode
 6. 17+ tests migrated from `fireModeChange`/`firePresetChange` to `clickPill(container, label)`
-7. Fixed: `createSignal(() => cropAspect()?.w ?? 16)` evaluated lambda as value → used plain value + `onClick` initializer
+7. Fixed: `createSignal(() => cropAspect()?.w ?? 16)` evaluated lambda as value â†’ used plain value + `onClick` initializer
 
 **Fixes:**
 - Custom W:H signals initialized from `cropAspect()` on "+" click (not stale defaults)
 - W/H `EditableNumField` only submits when value differs from `props.value` (+/- 0.0001)
 
-## [2026-06-08] FEATURE — Crop Fill Background WYSIWYG Preview [COMPLETE]
+## [2026-06-08] FEATURE â€” Crop Fill Background WYSIWYG Preview [COMPLETE]
 
 ### Kategori: FEATURE / CROP / FRONTEND / ENGINE / UX
 
@@ -1283,12 +1311,12 @@ Mengubah kejatuhan transparansi gradien kuas dari model linear ke model non-line
 **Implementation Rationale:** Treat fill as crop-local state so custom crop fill does not mutate the global background swatch. Resolve the actual fill color at apply time and pass it through all crop commit paths. Bake the fill as a bottom raster layer so undo/redo and exports see real pixels instead of a renderer-only preview.
 
 **Rincian Perubahan:**
-1. `cropState.ts` / `EditorContext.tsx` — Added crop fill enabled/source/custom color state to the editor context.
-2. `CropOptionBar.tsx` — Added Fill BG toggle, color input, and "Use BG" return action. Background-source mode follows the live editor background swatch; custom mode stays crop-local.
-3. `CanvasViewport.tsx` — Added Classic and Modern fill preview layers behind the WebGL canvas/crop output so empty areas show the selected fill immediately.
-4. `cropToolActions.ts`, `CanvasViewport.tsx`, `useCanvasKeyboard.ts` — Routed option-bar Apply, overlay apply, and Enter-key apply through the same resolved crop fill color.
-5. `cropApply.ts` / `document.ts` — Extended apply options and bake the selected fill color into a bottom `Crop Fill Background` raster layer.
-6. Tests — Added coverage for default background source, live background color updates, custom override without global swatch mutation, preview presence for Modern/Classic, apply baking for canvas expansion and rotated crop corners, and undo/redo restoration.
+1. `cropState.ts` / `EditorContext.tsx` â€” Added crop fill enabled/source/custom color state to the editor context.
+2. `CropOptionBar.tsx` â€” Added Fill BG toggle, color input, and "Use BG" return action. Background-source mode follows the live editor background swatch; custom mode stays crop-local.
+3. `CanvasViewport.tsx` â€” Added Classic and Modern fill preview layers behind the WebGL canvas/crop output so empty areas show the selected fill immediately.
+4. `cropToolActions.ts`, `CanvasViewport.tsx`, `useCanvasKeyboard.ts` â€” Routed option-bar Apply, overlay apply, and Enter-key apply through the same resolved crop fill color.
+5. `cropApply.ts` / `document.ts` â€” Extended apply options and bake the selected fill color into a bottom `Crop Fill Background` raster layer.
+6. Tests â€” Added coverage for default background source, live background color updates, custom override without global swatch mutation, preview presence for Modern/Classic, apply baking for canvas expansion and rotated crop corners, and undo/redo restoration.
 
 ### Verification Results
 - PASS: `pnpm --filter photrez-desktop exec vitest run src/engine/__tests__/postCropAlignment.test.ts src/engine/__tests__/cropUndoIntegration.test.ts src/components/editor/__tests__/CropOptionBar.test.tsx src/components/editor/__tests__/CanvasViewport.test.tsx --pool=threads --maxWorkers=1` (103 tests)
@@ -1297,21 +1325,21 @@ Mengubah kejatuhan transparansi gradien kuas dari model linear ke model non-line
 
 ---
 
-## [2026-06-09] FEATURE — Brainstorm: Modern Crop Power Features [COMPLETE]
+## [2026-06-09] FEATURE â€” Brainstorm: Modern Crop Power Features [COMPLETE]
 
 ### Kategori: FEATURE / CROP / DESIGN / UX
 
 **User Goal:** Brainstorm 4 power features for the drag-to-create crop workflow after basic implementation was complete.
 
 **Sesi Brainstorming (Visual Companion):**
-1. **Ratio Pill Bar** — Replace mode selector + preset dropdown with pill bar in Option Bar. Pills: Free, 1:1, 16:9, 4:3, 3:2, 21:9 + Custom. Visible in Free/Ratio mode, hidden in Size mode. Pill click auto-switches mode. Shift temporary overrides to 1:1.
-2. **Center-Out Drag** — Alt = center-out (symmetric growth from center). Shift = square constrains. Alt+Shift = center-out square. Mid-drag flip between modifiers.
-3. **Smart Guides** — Snap to document edges, document center (V+H), rule of thirds (⅓ + ⅔). Cyan dashed lines, ~5px threshold.
-4. **Canvas Expansion** — Directional (match drag direction). Auto-trigger when crop frame exceeds document bounds. On apply, canvas resizes to expanded bounding box.
+1. **Ratio Pill Bar** â€” Replace mode selector + preset dropdown with pill bar in Option Bar. Pills: Free, 1:1, 16:9, 4:3, 3:2, 21:9 + Custom. Visible in Free/Ratio mode, hidden in Size mode. Pill click auto-switches mode. Shift temporary overrides to 1:1.
+2. **Center-Out Drag** â€” Alt = center-out (symmetric growth from center). Shift = square constrains. Alt+Shift = center-out square. Mid-drag flip between modifiers.
+3. **Smart Guides** â€” Snap to document edges, document center (V+H), rule of thirds (â…“ + â…”). Cyan dashed lines, ~5px threshold.
+4. **Canvas Expansion** â€” Directional (match drag direction). Auto-trigger when crop frame exceeds document bounds. On apply, canvas resizes to expanded bounding box.
 
 **Keputusan Design:**
 - Pill bar pertama (value tertinggi, scope terkecil), lalu Smart Guides, Center-Out Drag, Canvas Expansion.
-- Alt/Shift sebagai orthogonal modifiers — Alt = center-out, Shift = square, Alt+Shift = keduanya.
+- Alt/Shift sebagai orthogonal modifiers â€” Alt = center-out, Shift = square, Alt+Shift = keduanya.
 - Smart guides hanya document-level (tidak multi-frame atau golden ratio untuk MVP).
 - Semua rasio selalu tersedia regardless of orientation.
 - Custom rasio via inline W:H fields (post-MVP untuk kustomisasi lebih lanjut).
@@ -1323,21 +1351,21 @@ Mengubah kejatuhan transparansi gradien kuas dari model linear ke model non-line
 
 ---
 
-## [2026-06-09] BUG FIX — Drag-to-Create Preview Sizing (Border→Outline) [COMPLETE]
+## [2026-06-09] BUG FIX â€” Drag-to-Create Preview Sizing (Borderâ†’Outline) [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX
 
 **Root Cause:** The rubber-band selection preview (`cropDragPreview`) used `border: 1.5px dashed` with default `box-sizing: content-box`, adding 3px to both width/height of the rendered preview element. The final crop frame (SVG overlay) used `stroke` (~1.125px outside each side), making the frame visually ~0.75px smaller per side than the preview. Additionally, `Math.round` on frame dimensions introduced up to 0.5px sizing error per axis.
 
 **Fix:**
-1. Switched preview from `border` to `outline` — outline doesn't affect the box model, so preview visual size now matches content area exactly.
-2. Removed `Math.round` from frame dimension clamping — frame now uses exact floating-point selection size.
+1. Switched preview from `border` to `outline` â€” outline doesn't affect the box model, so preview visual size now matches content area exactly.
+2. Removed `Math.round` from frame dimension clamping â€” frame now uses exact floating-point selection size.
 
 **Verification:** Build passes, 755 tests pass.
 
 ---
 
-## [2026-06-08] BUG FIX — Classic Rotated Crop Resize Axis [COMPLETE]
+## [2026-06-08] BUG FIX â€” Classic Rotated Crop Resize Axis [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX
 
@@ -1346,9 +1374,9 @@ Mengubah kejatuhan transparansi gradien kuas dari model linear ke model non-line
 **Fix Rationale:** Resize deltas must be converted from screen/document axes into the crop box's local axes before width/height math runs. Move and rotation interactions should remain unchanged.
 
 **Rincian Perubahan:**
-1. `cropGeometry.ts` — Added `screenDeltaToRotatedCropLocalDelta()` to inverse-rotate pointer deltas by the active crop rotation.
-2. `useCropOverlayDrag.ts` — Classic Crop resize now uses the local delta before calling `applyCropResizeHandle()`.
-3. `crop-geometry.test.ts` — Added regression coverage for rotated crop resize delta mapping, including 90-degree axis conversion and east-handle resize behavior.
+1. `cropGeometry.ts` â€” Added `screenDeltaToRotatedCropLocalDelta()` to inverse-rotate pointer deltas by the active crop rotation.
+2. `useCropOverlayDrag.ts` â€” Classic Crop resize now uses the local delta before calling `applyCropResizeHandle()`.
+3. `crop-geometry.test.ts` â€” Added regression coverage for rotated crop resize delta mapping, including 90-degree axis conversion and east-handle resize behavior.
 
 ### Verification Results
 - PASS: `pnpm --filter photrez-desktop exec vitest run src/__tests__/crop-geometry.test.ts src/components/editor/__tests__/CropOverlay.test.tsx --pool=threads --maxWorkers=1` (70 tests)
@@ -1357,7 +1385,7 @@ Mengubah kejatuhan transparansi gradien kuas dari model linear ke model non-line
 
 ---
 
-## [2026-06-08] BUG FIX — Crop Rotate Regression Recovery [COMPLETE]
+## [2026-06-08] BUG FIX â€” Crop Rotate Regression Recovery [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX
 
@@ -1366,9 +1394,9 @@ Mengubah kejatuhan transparansi gradien kuas dari model linear ke model non-line
 **Fix Rationale:** Treat this as a narrow recovery, not a crop behavior rewrite. Modern Crop must apply the same pivot transform directly to the rendered image canvas when crop is active. Classic Crop should keep move/resize geometry unchanged and remove only the stale arc rotate UI so the shared outside band owns rotation.
 
 **Rincian Perubahan:**
-1. `CanvasViewport.tsx` — When Modern Crop is active, the WebGL canvas now uses document-size CSS dimensions and applies `modernImageTransformStyle()` directly, so the image rotates around the existing Modern Crop pivot.
-2. `CropOverlayHandles.tsx` — Removed old Classic corner arc rotate paths and related props/imports; resize handles remain unchanged.
-3. `CropOverlay.tsx` — Removed the now-unused `rotateOuter` prop wiring to `CropOverlayHandles`.
+1. `CanvasViewport.tsx` â€” When Modern Crop is active, the WebGL canvas now uses document-size CSS dimensions and applies `modernImageTransformStyle()` directly, so the image rotates around the existing Modern Crop pivot.
+2. `CropOverlayHandles.tsx` â€” Removed old Classic corner arc rotate paths and related props/imports; resize handles remain unchanged.
+3. `CropOverlay.tsx` â€” Removed the now-unused `rotateOuter` prop wiring to `CropOverlayHandles`.
 
 ### Verification Results
 - PASS: `pnpm --filter photrez-desktop exec vitest run src/components/editor/__tests__/CropOverlay.test.tsx src/components/editor/__tests__/rotateBand.test.ts --pool=threads --maxWorkers=1` (42 tests)
@@ -1377,21 +1405,21 @@ Mengubah kejatuhan transparansi gradien kuas dari model linear ke model non-line
 
 ---
 
-## [2026-06-08] BUG FIX — Size Mode Frame Fitting + Crop Re-entry Sync [COMPLETE]
+## [2026-06-08] BUG FIX â€” Size Mode Frame Fitting + Crop Re-entry Sync [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / UX
 
-**Bug 1 — Size mode preview used raw target dimensions:**
-`fitFrameToMaxBounds(target * zoom)` preserved literal target pixel size, so a 100×100 target produced a tiny 100×100 frame instead of filling the canvas at 1:1 aspect.
+**Bug 1 â€” Size mode preview used raw target dimensions:**
+`fitFrameToMaxBounds(target * zoom)` preserved literal target pixel size, so a 100Ã—100 target produced a tiny 100Ã—100 frame instead of filling the canvas at 1:1 aspect.
 
 **Fix (CropOptionBar.tsx):** Replaced with `setModernFrameToAspect({ w: target.w, h: target.h })` in all 4 Size mode paths. Frame now always fills canvas at target's aspect ratio, matching Ratio mode semantics.
 
-**Bug 2 — Modern crop session key ignored mode/values:**
+**Bug 2 â€” Modern crop session key ignored mode/values:**
 Session key `${activeDocumentId}:${viewport}x${viewportH}:${zoom}` didn't track `cropMode` or size/ratio values. Changing modes mid-session or re-entering crop didn't refit the frame. Size mode passed `aspect: null`, defaulting to canvas aspect.
 
 **Fix (CanvasViewport.tsx):** Extended session key to `${...}:${mode}:${aspectKey}`. Computes aspect from mode: Ratio uses `cropAspect()`, Size uses target aspect, Free uses null.
 
-**Bug 3 — Classic crop had no entry initialization:**
+**Bug 3 â€” Classic crop had no entry initialization:**
 No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ratio mode with no rect left preview empty while controls showed correct values.
 
 **Fix (CanvasViewport.tsx):** Added `createEffect` that initializes `cropRect` via `fitCropRectToAspect` when entering Classic crop in constrained mode with no rect and no hidden preview.
@@ -1399,12 +1427,12 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 **New tests (11 total):** 6 in CropOptionBar.test.tsx (small/wide/tall targets, input edits, swap), 5 in CanvasViewport.test.tsx (entry in Size/Ratio/Free modes, mode switching).
 
 **Verification:**
-- `pnpm.cmd run build` — PASS
-- `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` — 692/692 tests, 50 files
+- `pnpm.cmd run build` â€” PASS
+- `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` â€” 692/692 tests, 50 files
 
 ---
 
-## [2026-06-08] BUG FIX — Classic Crop State Leaks Across Document Switches [COMPLETE]
+## [2026-06-08] BUG FIX â€” Classic Crop State Leaks Across Document Switches [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / DOCUMENT MANAGEMENT
 
@@ -1424,20 +1452,20 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-08] BUG FIX — Crop Mode Select Stale Application [COMPLETE]
+## [2026-06-08] BUG FIX â€” Crop Mode Select Stale Application [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / UX
 
-**Root Cause:** The crop mode `<select>` Free/Ratio/Size `onChange` handler in `CropOptionBar.tsx` had `if (cropRect())` guard, which excluded Modern mode entirely (`cropRect()` is always null in Modern mode — it uses `modernCropFrame`). No `mode === "free"` branch existed. Modern frame updates were never called in the handler — only Classic `setCropRect()` was called.
+**Root Cause:** The crop mode `<select>` Free/Ratio/Size `onChange` handler in `CropOptionBar.tsx` had `if (cropRect())` guard, which excluded Modern mode entirely (`cropRect()` is always null in Modern mode â€” it uses `modernCropFrame`). No `mode === "free"` branch existed. Modern frame updates were never called in the handler â€” only Classic `setCropRect()` was called.
 
 **Fix Rationale:** Remove the `if (cropRect())` guard so mode changes apply regardless of interaction mode. Add explicit branches for all three modes:
 - **Free**: release constraint without changing frame geometry.
-- **Ratio**: set `cropAspect` (default 16:9), fit frame — `setModernFrameToAspect` for Modern, `fitCropRectToAspect` for Classic.
-- **Size**: set `cropSizeTarget` (default 800×600), resize frame — `setModernCropFrame({ w: targetW * zoom(), h: targetH * zoom() })` for Modern, `fitCropRectToAspect` for Classic.
+- **Ratio**: set `cropAspect` (default 16:9), fit frame â€” `setModernFrameToAspect` for Modern, `fitCropRectToAspect` for Classic.
+- **Size**: set `cropSizeTarget` (default 800Ã—600), resize frame â€” `setModernCropFrame({ w: targetW * zoom(), h: targetH * zoom() })` for Modern, `fitCropRectToAspect` for Classic.
 
 **Rincian Perubahan:**
-1. `CropOptionBar.tsx` — rewrote `<select onChange>` handler: removed `cropRect()` guard, added `free`/`ratio`/`size` branches, added Modern frame updates via `setModernFrameToAspect` and `setModernCropFrame`.
-2. `CropOptionBar.test.tsx` — added 8 regression tests covering Free→Ratio (Classic+Modern), Free→Size (Classic+Modern), Ratio→Free (Classic+Modern), Ratio→Size (Classic), Size→Free (Classic).
+1. `CropOptionBar.tsx` â€” rewrote `<select onChange>` handler: removed `cropRect()` guard, added `free`/`ratio`/`size` branches, added Modern frame updates via `setModernFrameToAspect` and `setModernCropFrame`.
+2. `CropOptionBar.test.tsx` â€” added 8 regression tests covering Freeâ†’Ratio (Classic+Modern), Freeâ†’Size (Classic+Modern), Ratioâ†’Free (Classic+Modern), Ratioâ†’Size (Classic), Sizeâ†’Free (Classic).
 
 ### Verification Results
 - PASS: `pnpm.cmd --filter photrez-desktop exec vitest run src/components/editor/__tests__/CropOptionBar.test.tsx` (12 tests: 8 new + 4 existing)
@@ -1446,22 +1474,22 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-08] BUG FIX — Crop Mode/Layout Changes Stale Frame [COMPLETE]
+## [2026-06-08] BUG FIX â€” Crop Mode/Layout Changes Stale Frame [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / UX
 
 **Root Cause:** Even after Phase 1 made mode selection apply immediately, the frame could still be stale/oversized because:
-1. `setModernFrameToAspect` preserved current frame size and just adjusted one axis — no canvas-bounds check.
-2. Size mode assigned `target * zoom` directly without clamping — large targets produced oversized frames.
+1. `setModernFrameToAspect` preserved current frame size and just adjusted one axis â€” no canvas-bounds check.
+2. Size mode assigned `target * zoom` directly without clamping â€” large targets produced oversized frames.
 3. `handlePresetChange("custom")` only handled Classic mode, not Modern.
 4. Swap button Size/Free paths assigned without clamping.
-5. Mode → Free did not clamp oversized frame.
+5. Mode â†’ Free did not clamp oversized frame.
 
 **Fix Rationale:** Add `fitFrameToMaxBounds` helper that scales down preserving aspect if frame exceeds `min(viewportW, docW * zoom)`. Use it in all frame-setting paths. Rewrite `setModernFrameToAspect` to delegate to `getDefaultModernCropFrame` which always returns the max canvas-fitting frame at the given aspect.
 
 **Rincian Perubahan:**
-1. `CropOptionBar.tsx` — new `fitFrameToMaxBounds` helper; `setModernFrameToAspect` rewritten; 8 paths updated to clamp: mode→Free, mode→Size, Size W input, Size H input, preset→custom, swap Size, swap Free.
-2. `CropOptionBar.test.tsx` — 7 new tests: repeated mode cycling (5 transitions), Size→Free oversized clamp, ratio preset change, custom ratio, Classic mode cycling.
+1. `CropOptionBar.tsx` â€” new `fitFrameToMaxBounds` helper; `setModernFrameToAspect` rewritten; 8 paths updated to clamp: modeâ†’Free, modeâ†’Size, Size W input, Size H input, presetâ†’custom, swap Size, swap Free.
+2. `CropOptionBar.test.tsx` â€” 7 new tests: repeated mode cycling (5 transitions), Sizeâ†’Free oversized clamp, ratio preset change, custom ratio, Classic mode cycling.
 
 ### Verification Results
 - PASS: `pnpm.cmd --filter photrez-desktop exec vitest run src/components/editor/__tests__/CropOptionBar.test.tsx` (19 tests)
@@ -1470,19 +1498,19 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-08] BUG FIX — Global Focus Halo (focus-visible) [COMPLETE]
+## [2026-06-08] BUG FIX â€” Global Focus Halo (focus-visible) [COMPLETE]
 
 ### Kategori: BUG FIX / UI / ACCESSIBILITY / CSS
 
-**Root Cause:** `index.css` had `* { @apply outline-none }` which uses the universal selector (specificity 0,0,0), too weak to override the browser default `:focus { outline: auto }` (specificity 0,1,0). Tailwind v4's `outline-none` produces `outline: 2px solid transparent; outline-offset: 2px`, which on dark backgrounds renders as a visible white-ish anti-aliased edge artifact. No `:focus-visible` rules existed, so mouse clicks and keyboard Tab produced the same persistent "halo" visual. Keyboard accessibility was broken — no visible focus indicator for Tab navigation.
+**Root Cause:** `index.css` had `* { @apply outline-none }` which uses the universal selector (specificity 0,0,0), too weak to override the browser default `:focus { outline: auto }` (specificity 0,1,0). Tailwind v4's `outline-none` produces `outline: 2px solid transparent; outline-offset: 2px`, which on dark backgrounds renders as a visible white-ish anti-aliased edge artifact. No `:focus-visible` rules existed, so mouse clicks and keyboard Tab produced the same persistent "halo" visual. Keyboard accessibility was broken â€” no visible focus indicator for Tab navigation.
 
-**Fix Rationale:** Remove `outline-none` from the `*` reset (it was too weak anyway). Add `:focus:not(:focus-visible)` to suppress the transparent outline for mouse clicks (keeping transparent outline structure for forced-colors mode compat). Add `:focus-visible` with accent-colored 2px outline for keyboard focus navigation. This applies globally to all interactive elements — toolbar buttons, tabs, panel buttons, controls — without per-component changes.
+**Fix Rationale:** Remove `outline-none` from the `*` reset (it was too weak anyway). Add `:focus:not(:focus-visible)` to suppress the transparent outline for mouse clicks (keeping transparent outline structure for forced-colors mode compat). Add `:focus-visible` with accent-colored 2px outline for keyboard focus navigation. This applies globally to all interactive elements â€” toolbar buttons, tabs, panel buttons, controls â€” without per-component changes.
 
 **Rincian Perubahan:**
 1. Removed `outline-none` from `* { @apply ... }` in `index.css` base layer.
-2. Added `:focus:not(:focus-visible)` rule — `outline: 2px solid transparent !important; outline-offset: 2px !important` — suppresses mouse focus artifact.
-3. Added `:focus-visible` rule — `outline: 2px solid var(--color-accent, #E15A17) !important; outline-offset: 2px !important` — visible accent indicator for keyboard Tab navigation.
-4. No component-level changes needed — global CSS handles all interactive elements.
+2. Added `:focus:not(:focus-visible)` rule â€” `outline: 2px solid transparent !important; outline-offset: 2px !important` â€” suppresses mouse focus artifact.
+3. Added `:focus-visible` rule â€” `outline: 2px solid var(--color-accent, #E15A17) !important; outline-offset: 2px !important` â€” visible accent indicator for keyboard Tab navigation.
+4. No component-level changes needed â€” global CSS handles all interactive elements.
 
 ### Files Changed:
 - `apps/desktop/src/index.css`
@@ -1495,7 +1523,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-07] BUG FIX — Modern Crop Apply Rotation Sign [COMPLETE]
+## [2026-06-07] BUG FIX â€” Modern Crop Apply Rotation Sign [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX
 
@@ -1528,7 +1556,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-07] BUG FIX — Modern Crop Visual Apply and Rotated Drag Direction [COMPLETE]
+## [2026-06-07] BUG FIX â€” Modern Crop Visual Apply and Rotated Drag Direction [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX
 
@@ -1560,7 +1588,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-07] BUG FIX — Crop Apply Recenters Viewport After Commit [COMPLETE]
+## [2026-06-07] BUG FIX â€” Crop Apply Recenters Viewport After Commit [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX
 
@@ -1593,7 +1621,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-07] BUG FIX — Modern Crop Modifier and Shortcut Parity [COMPLETE]
+## [2026-06-07] BUG FIX â€” Modern Crop Modifier and Shortcut Parity [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX
 
@@ -1625,7 +1653,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-07] BUG FIX — Modern Crop Rotation Pivot Uses Cropbox Center [COMPLETE]
+## [2026-06-07] BUG FIX â€” Modern Crop Rotation Pivot Uses Cropbox Center [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX
 
@@ -1654,30 +1682,30 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-07] FEATURE — Modern Crop: Projected Canvas Bounds [COMPLETE]
+## [2026-06-07] FEATURE â€” Modern Crop: Projected Canvas Bounds [COMPLETE]
 
 ### Kategori: FEATURE / CROP / FRONTEND / UX
 
-**Root Cause:** Modern crop frame size was tied to viewport dimensions only (`viewportWidth`/`viewportHeight`), ignoring the projected canvas size (`docWidth × zoom × scale`). This meant zoom in/out did not adjust the crop frame, and the frame could be arbitrarily large or small relative to the actual canvas content.
+**Root Cause:** Modern crop frame size was tied to viewport dimensions only (`viewportWidth`/`viewportHeight`), ignoring the projected canvas size (`docWidth Ã— zoom Ã— scale`). This meant zoom in/out did not adjust the crop frame, and the frame could be arbitrarily large or small relative to the actual canvas content.
 
-**Fix Rationale:** Frame size should track the projected canvas bounds — the visible canvas size at the current zoom level. The frame fits within `min(viewport, projected canvas)`, recomputes on zoom changes, and resize interactions clamp to projected bounds. This keeps the crop frame visually aligned with the document content.
+**Fix Rationale:** Frame size should track the projected canvas bounds â€” the visible canvas size at the current zoom level. The frame fits within `min(viewport, projected canvas)`, recomputes on zoom changes, and resize interactions clamp to projected bounds. This keeps the crop frame visually aligned with the document content.
 
 **Rincian Perubahan:**
-1. Added `getProjectedCanvasSize()` helper to `modernCropGeometry.ts` — computes `docWidth × zoom × scale` and `docHeight × zoom × scale`.
-2. Added `clampFrameToProjectedBounds()` helper — clamps frame w/h to projected canvas size with minimum 24px.
-3. Updated `getDefaultModernCropFrame()` — frame fits within `min(viewport, projected canvas)`. Added optional `scale` param (defaults to 1).
-4. Updated `resizeModernFrameFromCenter()` and `resizeModernFrameOneSided()` — accept `projectedWidth`/`projectedHeight` as max bounds (fall back to viewport if not provided).
-5. Updated `CanvasViewport.tsx` — session key now includes zoom so frame recomputes on zoom changes. Passes `scale` from `modernCropImageTransform` and computed `projectedWidth`/`projectedHeight` to overlay.
-6. Updated `ModernCropOverlay.tsx` — added `projectedWidth`/`projectedHeight` props, resize handler passes projected bounds to `resizeModernFrameOneSided`.
-7. Updated `CropOverlay.test.tsx` — added missing `projectedWidth`/`projectedHeight` props to test render.
+1. Added `getProjectedCanvasSize()` helper to `modernCropGeometry.ts` â€” computes `docWidth Ã— zoom Ã— scale` and `docHeight Ã— zoom Ã— scale`.
+2. Added `clampFrameToProjectedBounds()` helper â€” clamps frame w/h to projected canvas size with minimum 24px.
+3. Updated `getDefaultModernCropFrame()` â€” frame fits within `min(viewport, projected canvas)`. Added optional `scale` param (defaults to 1).
+4. Updated `resizeModernFrameFromCenter()` and `resizeModernFrameOneSided()` â€” accept `projectedWidth`/`projectedHeight` as max bounds (fall back to viewport if not provided).
+5. Updated `CanvasViewport.tsx` â€” session key now includes zoom so frame recomputes on zoom changes. Passes `scale` from `modernCropImageTransform` and computed `projectedWidth`/`projectedHeight` to overlay.
+6. Updated `ModernCropOverlay.tsx` â€” added `projectedWidth`/`projectedHeight` props, resize handler passes projected bounds to `resizeModernFrameOneSided`.
+7. Updated `CropOverlay.test.tsx` â€” added missing `projectedWidth`/`projectedHeight` props to test render.
 8. Added 4 new tests: `getProjectedCanvasSize`, `clampFrameToProjectedBounds`, projected bounds clamping for center and one-sided resize. Updated 3 existing tests for new semantics.
 
 ### Files Changed:
-- `apps/desktop/src/viewport/modernCropGeometry.ts` — added `getProjectedCanvasSize`, `clampFrameToProjectedBounds`, updated `getDefaultModernCropFrame`, `resizeModernFrameFromCenter`, `resizeModernFrameOneSided`
-- `apps/desktop/src/components/editor/CanvasViewport.tsx` — zoom in session key, scale param, projected bounds computation
-- `apps/desktop/src/components/editor/ModernCropOverlay.tsx` — projectedWidth/projectedHeight props, resize handler update
-- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` — added projectedWidth/projectedHeight to test render
-- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — 4 new tests, 3 updated tests
+- `apps/desktop/src/viewport/modernCropGeometry.ts` â€” added `getProjectedCanvasSize`, `clampFrameToProjectedBounds`, updated `getDefaultModernCropFrame`, `resizeModernFrameFromCenter`, `resizeModernFrameOneSided`
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` â€” zoom in session key, scale param, projected bounds computation
+- `apps/desktop/src/components/editor/ModernCropOverlay.tsx` â€” projectedWidth/projectedHeight props, resize handler update
+- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` â€” added projectedWidth/projectedHeight to test render
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` â€” 4 new tests, 3 updated tests
 
 ### Verification Results
 - PASS: `npx vitest run src/__tests__/modern-crop-geometry.test.ts` (37 tests)
@@ -1686,7 +1714,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-07] FEATURE — Modern Crop: Size Mode Resize + Undo/Redo [COMPLETE]
+## [2026-06-07] FEATURE â€” Modern Crop: Size Mode Resize + Undo/Redo [COMPLETE]
 
 ### Kategori: FEATURE / CROP / FRONTEND / UX
 
@@ -1695,22 +1723,22 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 **Fix Rationale:** Size mode should preserve the target-size aspect ratio during resize (same constraint behavior as ratio mode, but using `cropSizeTarget` as the aspect source). A dedicated undo/redo stack lets the user step through frame resize, image drag, and image rotation operations independently from the classic crop undo stack and the global document history.
 
 **Rincian Perubahan:**
-1. Added `cropMode` parameter to `resizeModernFrameFromCenter` — when `"size"` or `"ratio"`, the aspect ratio constraint is active. CanvasViewport computes effective aspect from `cropSizeTarget` when in size mode.
+1. Added `cropMode` parameter to `resizeModernFrameFromCenter` â€” when `"size"` or `"ratio"`, the aspect ratio constraint is active. CanvasViewport computes effective aspect from `cropSizeTarget` when in size mode.
 2. Added `commitModernCropState`, `undoModernCrop`, `redoModernCrop` to `modernCropState.ts` with dedicated undo/redo stacks. `resetModernCrop` clears both stacks.
 3. Added `onModernCropCommit` callback prop to `ModernCropOverlay`, called at the start of every drag (move/resize/rotate). CanvasViewport wires it to `commitModernCropState`.
-4. Added Ctrl+Z/Y (or Cmd+Z/Y) keyboard shortcuts in `useCanvasKeyboard.ts` for modern crop undo/redo — also wired for classic crop undo/redo.
+4. Added Ctrl+Z/Y (or Cmd+Z/Y) keyboard shortcuts in `useCanvasKeyboard.ts` for modern crop undo/redo â€” also wired for classic crop undo/redo.
 5. Exposed `commitModernCropState`, `canModernCropUndo`, `canModernCropRedo`, `undoModernCrop`, `redoModernCrop` through `EditorContext`.
 6. Added 19 new tests: size-mode constrain preserves aspect ratio, center stays fixed during N/S/E/corner resize, undo/redo commit/restore/clear/stack behavior.
 
 ### Files Changed:
-- `apps/desktop/src/viewport/modernCropGeometry.ts` — added `cropMode` param to `resizeModernFrameFromCenter`
-- `apps/desktop/src/components/editor/modernCropState.ts` — undo/redo stacks + helpers
-- `apps/desktop/src/components/editor/ModernCropOverlay.tsx` — `onModernCropCommit` prop, wired on drag start
-- `apps/desktop/src/components/editor/CanvasViewport.tsx` — size mode aspect, `onModernCropCommit`, destructure `commitModernCropState`
-- `apps/desktop/src/components/editor/EditorContext.tsx` — expose modern undo/redo
-- `apps/desktop/src/components/editor/useCanvasKeyboard.ts` — Ctrl+Z/Y for modern/classic crop undo/redo, destructure new functions + `cropInteractionMode`
-- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — 6 new tests: size mode, center stability
-- `apps/desktop/src/__tests__/modern-crop-state.test.ts` — NEW: 10 undo/redo tests
+- `apps/desktop/src/viewport/modernCropGeometry.ts` â€” added `cropMode` param to `resizeModernFrameFromCenter`
+- `apps/desktop/src/components/editor/modernCropState.ts` â€” undo/redo stacks + helpers
+- `apps/desktop/src/components/editor/ModernCropOverlay.tsx` â€” `onModernCropCommit` prop, wired on drag start
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` â€” size mode aspect, `onModernCropCommit`, destructure `commitModernCropState`
+- `apps/desktop/src/components/editor/EditorContext.tsx` â€” expose modern undo/redo
+- `apps/desktop/src/components/editor/useCanvasKeyboard.ts` â€” Ctrl+Z/Y for modern/classic crop undo/redo, destructure new functions + `cropInteractionMode`
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` â€” 6 new tests: size mode, center stability
+- `apps/desktop/src/__tests__/modern-crop-state.test.ts` â€” NEW: 10 undo/redo tests
 - `docs/AI_CURRENT_TASK.md`
 - `docs/AI_HISTORY.md`
 
@@ -1721,7 +1749,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-07] BUG FIX — Modern Crop Rotate and Initial Fit Regression [COMPLETE]
+## [2026-06-07] BUG FIX â€” Modern Crop Rotate and Initial Fit Regression [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX
 
@@ -1751,7 +1779,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-07] FEATURE — Modern vs Classic Crop Redesign with Separate Coordinate Models [COMPLETE]
+## [2026-06-07] FEATURE â€” Modern vs Classic Crop Redesign with Separate Coordinate Models [COMPLETE]
 
 ### Kategori: FEATURE / CROP / FRONTEND / UX
 
@@ -1791,7 +1819,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-07] BUG FIX — Crop UX Clarification: Modern Drag Uses Viewport Model [COMPLETE]
+## [2026-06-07] BUG FIX â€” Crop UX Clarification: Modern Drag Uses Viewport Model [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX
 
@@ -1820,7 +1848,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-07] FEATURE — Crop Interaction Modes: Modern + Classic [COMPLETE]
+## [2026-06-07] FEATURE â€” Crop Interaction Modes: Modern + Classic [COMPLETE]
 
 ### Kategori: FEATURE / FRONTEND / UI
 
@@ -1829,13 +1857,13 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 - **Classic**: crop box bergerak di atas gambar (move rect tanpa counter-pan). Pasteboard click create/hide preview.
 
 **Rincian Perubahan:**
-1. **New signal `cropInteractionMode`** — `"modern" | "classic"` default `"modern"`, di `editorState.ts`.
-2. **New signal `cropContentOffset`** — `{ x, y }` default `{0,0}`, di `cropState.ts`. Menyimpan offset image terhadap crop frame untuk Modern mode.
-3. **Modern mode** — `createEffect` auto-create full-canvas frame saat masuk crop tool. Drag inside update `cropContentOffset` (bukan `cropRect`). `createEffect` lain apply offset sebagai `translate3d()` pada canvas element, image bergeser sementara SVG frame tetap di posisi `cropRect` yang unchanged.
-4. **Classic mode** — Drag inside gerakkan `cropRect` TANPA counter-pan viewport → box visual bergerak di atas image. Viewport pan tidak berubah.
-5. **Mode toggle** — Segmented control di `CropOptionBar.tsx`.
-6. **Transition rules** — Modern→Classic: bake offset ke rect (`rect.x -= offset.x`). Classic→Modern: keep rect atau auto-create frame.
-7. **Apply crop** — `applyCropPreview` bake offset: `{ x: rect.x - offset.x, y: rect.y - offset.y }`.
+1. **New signal `cropInteractionMode`** â€” `"modern" | "classic"` default `"modern"`, di `editorState.ts`.
+2. **New signal `cropContentOffset`** â€” `{ x, y }` default `{0,0}`, di `cropState.ts`. Menyimpan offset image terhadap crop frame untuk Modern mode.
+3. **Modern mode** â€” `createEffect` auto-create full-canvas frame saat masuk crop tool. Drag inside update `cropContentOffset` (bukan `cropRect`). `createEffect` lain apply offset sebagai `translate3d()` pada canvas element, image bergeser sementara SVG frame tetap di posisi `cropRect` yang unchanged.
+4. **Classic mode** â€” Drag inside gerakkan `cropRect` TANPA counter-pan viewport â†’ box visual bergerak di atas image. Viewport pan tidak berubah.
+5. **Mode toggle** â€” Segmented control di `CropOptionBar.tsx`.
+6. **Transition rules** â€” Modernâ†’Classic: bake offset ke rect (`rect.x -= offset.x`). Classicâ†’Modern: keep rect atau auto-create frame.
+7. **Apply crop** â€” `applyCropPreview` bake offset: `{ x: rect.x - offset.x, y: rect.y - offset.y }`.
 8. **No pasteboard crop in Modern**.
 
 ### Files Changed:
@@ -1857,18 +1885,18 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-07] FEATURE — Crop Overlay Visual Polish [COMPLETE]
+## [2026-06-07] FEATURE â€” Crop Overlay Visual Polish [COMPLETE]
 
 ### Kategori: FEATURE / FRONTEND / UI
 
-**Deskripsi:** Polish crop overlay styling untuk tampilan profesional, tenang, dan utilitarian — mengurangi visual noise sambil mempertahankan fungsionalitas penuh.
+**Deskripsi:** Polish crop overlay styling untuk tampilan profesional, tenang, dan utilitarian â€” mengurangi visual noise sambil mempertahankan fungsionalitas penuh.
 
 **Rincian Perubahan:**
-1. **Corner brackets dihapus** — `CropOverlayGuides.tsx` tidak lagi merender `CornerBrackets`. Fungsi dan komponen terkait dihapus. L-shaped corner marks redundant karena border + handles sudah memberi batas visual.
-2. **Rotate ring hidden** — Ring putih besar di tiap sudut sebelumnya selalu terlihat (`opacity: 0.6`). Sekarang tersembunyi (`opacity: 0`) dan muncul hanya saat hover corner (`opacity: 0.8`, warna orange #E15A17). Hit zone transparan tetap aktif untuk rotasi.
-3. **Opacity grid seragam 30%** — Semua mode guide (thirds/grid/diagonal/golden) menggunakan `rgba(255,255,255,0.3)`.
-4. **Handle corner lebih halus** — Default fill `rgba(255,255,255,0.75)`, stroke `rgba(0,0,0,0.35)`. Hover: `rgba(255,255,255,0.9)`. Active: orange #E15A17. Ditambah `rx=1`/`ry=1` untuk rounded corners subtle.
-5. **Dual-border** — Satu border dark outline (`rgba(0,0,0,0.45)`, 1.5px) di bawah border putih (`rgba(255,255,255,0.85)`, 0.75px) agar crop box terbaca di gambar gelap maupun terang.
+1. **Corner brackets dihapus** â€” `CropOverlayGuides.tsx` tidak lagi merender `CornerBrackets`. Fungsi dan komponen terkait dihapus. L-shaped corner marks redundant karena border + handles sudah memberi batas visual.
+2. **Rotate ring hidden** â€” Ring putih besar di tiap sudut sebelumnya selalu terlihat (`opacity: 0.6`). Sekarang tersembunyi (`opacity: 0`) dan muncul hanya saat hover corner (`opacity: 0.8`, warna orange #E15A17). Hit zone transparan tetap aktif untuk rotasi.
+3. **Opacity grid seragam 30%** â€” Semua mode guide (thirds/grid/diagonal/golden) menggunakan `rgba(255,255,255,0.3)`.
+4. **Handle corner lebih halus** â€” Default fill `rgba(255,255,255,0.75)`, stroke `rgba(0,0,0,0.35)`. Hover: `rgba(255,255,255,0.9)`. Active: orange #E15A17. Ditambah `rx=1`/`ry=1` untuk rounded corners subtle.
+5. **Dual-border** â€” Satu border dark outline (`rgba(0,0,0,0.45)`, 1.5px) di bawah border putih (`rgba(255,255,255,0.85)`, 0.75px) agar crop box terbaca di gambar gelap maupun terang.
 
 ### Files Changed:
 - `apps/desktop/src/components/editor/CropOverlayGuides.tsx`
@@ -1881,17 +1909,17 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-07] BUG FIX — Canvas Quality: Sync WebGL Backing Buffer on Zoom Changes [COMPLETE]
+## [2026-06-07] BUG FIX â€” Canvas Quality: Sync WebGL Backing Buffer on Zoom Changes [COMPLETE]
 
 ### Kategori: BUG FIX / RENDERER / FRONTEND
 
-**Root Cause:** `WebGL2Backend.resize()` was only called on document switch (`activeDocumentId` change) and window resize (ResizeObserver) — never on zoom changes via wheel or keyboard. When zoom changed, the CSS `scale(${zoom})` transform stretched (zoom in) or compressed (zoom out) the stale-resolution WebGL canvas buffer, causing the browser to interpolate the image → soft/blurry appearance.
+**Root Cause:** `WebGL2Backend.resize()` was only called on document switch (`activeDocumentId` change) and window resize (ResizeObserver) â€” never on zoom changes via wheel or keyboard. When zoom changed, the CSS `scale(${zoom})` transform stretched (zoom in) or compressed (zoom out) the stale-resolution WebGL canvas buffer, causing the browser to interpolate the image â†’ soft/blurry appearance.
 
-**Fix Rationale:** Added a SolidJS `createEffect` in `useViewportRenderer.ts` that tracks the `zoom()` signal and calls `resizeRenderer()` (which invokes `WebGL2Backend.resize(docW, docH, zoom, dpr)`) whenever zoom changes. This ensures the WebGL canvas backing buffer always matches `Math.round(docWidth × zoom × devicePixelRatio)`, so the CSS `scale()` transform operates on a correctly-sized buffer → pixel-perfect 1:1 mapping between buffer pixels and device pixels at any zoom level.
+**Fix Rationale:** Added a SolidJS `createEffect` in `useViewportRenderer.ts` that tracks the `zoom()` signal and calls `resizeRenderer()` (which invokes `WebGL2Backend.resize(docW, docH, zoom, dpr)`) whenever zoom changes. This ensures the WebGL canvas backing buffer always matches `Math.round(docWidth Ã— zoom Ã— devicePixelRatio)`, so the CSS `scale()` transform operates on a correctly-sized buffer â†’ pixel-perfect 1:1 mapping between buffer pixels and device pixels at any zoom level.
 
 ### Files Changed:
-- `apps/desktop/src/components/editor/useViewportRenderer.ts` — added zoom signal tracking effect, imported `zoom` from `useEditor()`
-- `apps/desktop/src/__tests__/renderer.test.ts` — added 2 regression tests for canvas backing resolution math
+- `apps/desktop/src/components/editor/useViewportRenderer.ts` â€” added zoom signal tracking effect, imported `zoom` from `useEditor()`
+- `apps/desktop/src/__tests__/renderer.test.ts` â€” added 2 regression tests for canvas backing resolution math
 
 ### Verification Results
 - PASS: `pnpm.cmd run build` (tsc + Vite)
@@ -1899,7 +1927,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-07] FEATURE — Ctrl+Shift+Z Redo Shortcut [COMPLETE]
+## [2026-06-07] FEATURE â€” Ctrl+Shift+Z Redo Shortcut [COMPLETE]
 
 ### Kategori: FEATURE / FRONTEND / SHORTCUTS
 
@@ -1907,11 +1935,11 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 **Rincian Perubahan:**
 1. Added `Ctrl+Shift+Z` check before `Ctrl+Z` in `AppTitleBar.tsx` to avoid `Shift` being ignored.
-2. Updated keyboard shortcut test in `keyboard-shortcuts.test.ts` to verify `Ctrl+Shift+Z` → redo and `Ctrl+Z` → undo with explicit `shiftKey` check.
+2. Updated keyboard shortcut test in `keyboard-shortcuts.test.ts` to verify `Ctrl+Shift+Z` â†’ redo and `Ctrl+Z` â†’ undo with explicit `shiftKey` check.
 
 ### Files Changed:
-- `apps/desktop/src/components/editor/AppTitleBar.tsx` — added `Ctrl+Shift+Z` → `handleRedo()` before `Ctrl+Z` → `handleUndo()`
-- `apps/desktop/src/__tests__/keyboard-shortcuts.test.ts` — added `Ctrl+Shift+Z` redo test, updated `Ctrl+Z` undo test to check `!shiftKey`
+- `apps/desktop/src/components/editor/AppTitleBar.tsx` â€” added `Ctrl+Shift+Z` â†’ `handleRedo()` before `Ctrl+Z` â†’ `handleUndo()`
+- `apps/desktop/src/__tests__/keyboard-shortcuts.test.ts` â€” added `Ctrl+Shift+Z` redo test, updated `Ctrl+Z` undo test to check `!shiftKey`
 
 ### Verification Results
 - PASS: `pnpm.cmd run build` (tsc + Vite)
@@ -1919,38 +1947,38 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-06] FEATURE — Brush/Eraser Tool UX Phase 2: Flow, Smoothing, Presets, Context Menu [COMPLETE]
+## [2026-06-06] FEATURE â€” Brush/Eraser Tool UX Phase 2: Flow, Smoothing, Presets, Context Menu [COMPLETE]
 
 ### Kategori: FEATURE / BRUSH / ERASER / FRONTEND / UX
 
-**Deskripsi:** Brush/Eraser Tool UX Phase 2 — flow control, smoothing engine, brush presets, right-click context menu, and keyboard shortcuts for hardness adjustment.
+**Deskripsi:** Brush/Eraser Tool UX Phase 2 â€” flow control, smoothing engine, brush presets, right-click context menu, and keyboard shortcuts for hardness adjustment.
 
 **Rincian Perubahan:**
-1. **Flow control** — Added `flow` field (0–100%) to `PaintToolSettings`/`PaintToolState`. Flow multiplier applied in `renderPaintStrokeToContext()` via `ctx.globalAlpha = settings.opacity * settings.flow`. Default 100%.
-2. **Smoothing engine** — `PaintSmoother` class in `paintSmoothing.ts` with exponential-decay weighted moving average over circular buffer. `smoothingToWindowSize()` maps 0–100 → 1–10 points.
-3. **Brush presets** — `BrushPreset` interface + `BRUSH_PRESETS` array: 6 presets (Hard Round, Soft Round, Detail, Large Soft, Hard Eraser, Soft Eraser). `applyPaintPreset()` returns `Partial<PaintToolState>` for the target tool.
-4. **Preset tracking** — `brushPresetId`/`eraserPresetId` signals in editor state. Manual edit to any setting clears the active preset id to `null`.
-5. **Enhanced option bar** — Flow input, Smoothing input, Preset dropdown in `BrushOptionBar.tsx`. Eraser tool still shows "Hard 100" button.
-6. **Right-click context menu** — `BrushContextMenu.tsx` floating panel near cursor (clamped to viewport). Size/Hardness/Strength range sliders + 2×3 preset grid + Reset button. Opens on `contextmenu` event on `#canvas-container`, closes on outside click/Escape. Only for brush/eraser tools, not while Space held.
-7. **Keyboard shortcuts** — `[`/`]` for size adjustment (5px step), Shift+`[`/`]` for hardness adjustment (10% step). Added to `useCanvasKeyboard.ts`.
-8. **Smoothing integration** — `PaintSmoother` instantiated in `useCanvasPointerTools`, smoothed points in pointerdown/move/up. `reset()` on pointerdown/cancel/lostcapture. `setWindowSize()` from active settings.
-9. **Right-click guard** — `e.button === 2` early return in `onCanvasPointerDown` prevents paint stroke start on right-click.
+1. **Flow control** â€” Added `flow` field (0â€“100%) to `PaintToolSettings`/`PaintToolState`. Flow multiplier applied in `renderPaintStrokeToContext()` via `ctx.globalAlpha = settings.opacity * settings.flow`. Default 100%.
+2. **Smoothing engine** â€” `PaintSmoother` class in `paintSmoothing.ts` with exponential-decay weighted moving average over circular buffer. `smoothingToWindowSize()` maps 0â€“100 â†’ 1â€“10 points.
+3. **Brush presets** â€” `BrushPreset` interface + `BRUSH_PRESETS` array: 6 presets (Hard Round, Soft Round, Detail, Large Soft, Hard Eraser, Soft Eraser). `applyPaintPreset()` returns `Partial<PaintToolState>` for the target tool.
+4. **Preset tracking** â€” `brushPresetId`/`eraserPresetId` signals in editor state. Manual edit to any setting clears the active preset id to `null`.
+5. **Enhanced option bar** â€” Flow input, Smoothing input, Preset dropdown in `BrushOptionBar.tsx`. Eraser tool still shows "Hard 100" button.
+6. **Right-click context menu** â€” `BrushContextMenu.tsx` floating panel near cursor (clamped to viewport). Size/Hardness/Strength range sliders + 2Ã—3 preset grid + Reset button. Opens on `contextmenu` event on `#canvas-container`, closes on outside click/Escape. Only for brush/eraser tools, not while Space held.
+7. **Keyboard shortcuts** â€” `[`/`]` for size adjustment (5px step), Shift+`[`/`]` for hardness adjustment (10% step). Added to `useCanvasKeyboard.ts`.
+8. **Smoothing integration** â€” `PaintSmoother` instantiated in `useCanvasPointerTools`, smoothed points in pointerdown/move/up. `reset()` on pointerdown/cancel/lostcapture. `setWindowSize()` from active settings.
+9. **Right-click guard** â€” `e.button === 2` early return in `onCanvasPointerDown` prevents paint stroke start on right-click.
 
 **Files Changed/Added:**
-- [MODIFY] `apps/desktop/src/components/editor/brushToolState.ts` — flow, smoothing, presets, `applyPaintPreset`, `clampPaintSmoothing`, `adjustPaintHardness`
-- [NEW] `apps/desktop/src/components/editor/paintSmoothing.ts` — `PaintSmoother` class, `smoothingToWindowSize`
-- [MODIFY] `apps/desktop/src/components/editor/paintStrokeRenderer.ts` — `globalAlpha = opacity * flow`
-- [MODIFY] `apps/desktop/src/components/editor/useCanvasPointerTools.ts` — PaintSmoother, smoothed points, right-click guard
-- [MODIFY] `apps/desktop/src/components/editor/useCanvasKeyboard.ts` — `[`/`]` size + Shift+`[`/`]` hardness shortcuts
-- [MODIFY] `apps/desktop/src/components/editor/BrushOptionBar.tsx` — Flow, Smoothing, Preset dropdown, clearPresetId
-- [NEW] `apps/desktop/src/components/editor/BrushContextMenu.tsx` — Right-click context menu
-- [MODIFY] `apps/desktop/src/components/editor/CanvasViewport.tsx` — Mount `<BrushContextMenu />`
-- [MODIFY] `apps/desktop/src/components/editor/editorState.ts` — brushFlow, brushSmoothing, eraserFlow, eraserSmoothing, brushPresetId, eraserPresetId
-- [MODIFY] `apps/desktop/src/components/editor/EditorContext.tsx` — 12 new interface members
-- [NEW] `apps/desktop/src/components/editor/__tests__/paintSmoothing.test.ts` — 5 smoothing tests
-- [NEW] `apps/desktop/src/components/editor/__tests__/BrushContextMenu.test.tsx` — 5 context menu tests
-- [MODIFY] `apps/desktop/src/components/editor/__tests__/BrushOptionBar.test.tsx` — 5 flow/smoothing/preset tests
-- [MODIFY] `apps/desktop/src/components/editor/__tests__/paintStrokeRenderer.test.ts` — flow multiplier test
+- [MODIFY] `apps/desktop/src/components/editor/brushToolState.ts` â€” flow, smoothing, presets, `applyPaintPreset`, `clampPaintSmoothing`, `adjustPaintHardness`
+- [NEW] `apps/desktop/src/components/editor/paintSmoothing.ts` â€” `PaintSmoother` class, `smoothingToWindowSize`
+- [MODIFY] `apps/desktop/src/components/editor/paintStrokeRenderer.ts` â€” `globalAlpha = opacity * flow`
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasPointerTools.ts` â€” PaintSmoother, smoothed points, right-click guard
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasKeyboard.ts` â€” `[`/`]` size + Shift+`[`/`]` hardness shortcuts
+- [MODIFY] `apps/desktop/src/components/editor/BrushOptionBar.tsx` â€” Flow, Smoothing, Preset dropdown, clearPresetId
+- [NEW] `apps/desktop/src/components/editor/BrushContextMenu.tsx` â€” Right-click context menu
+- [MODIFY] `apps/desktop/src/components/editor/CanvasViewport.tsx` â€” Mount `<BrushContextMenu />`
+- [MODIFY] `apps/desktop/src/components/editor/editorState.ts` â€” brushFlow, brushSmoothing, eraserFlow, eraserSmoothing, brushPresetId, eraserPresetId
+- [MODIFY] `apps/desktop/src/components/editor/EditorContext.tsx` â€” 12 new interface members
+- [NEW] `apps/desktop/src/components/editor/__tests__/paintSmoothing.test.ts` â€” 5 smoothing tests
+- [NEW] `apps/desktop/src/components/editor/__tests__/BrushContextMenu.test.tsx` â€” 5 context menu tests
+- [MODIFY] `apps/desktop/src/components/editor/__tests__/BrushOptionBar.test.tsx` â€” 5 flow/smoothing/preset tests
+- [MODIFY] `apps/desktop/src/components/editor/__tests__/paintStrokeRenderer.test.ts` â€” flow multiplier test
 - [ADD] `docs/superpowers/specs/2026-06-06-brush-eraser-ux-phase2-design.md`
 - [ADD] `docs/superpowers/plans/2026-06-06-brush-eraser-ux-phase2.md`
 - [MODIFY] `docs/AI_CURRENT_TASK.md`
@@ -1964,7 +1992,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-06] FEATURE — Brush and Eraser Tool Improvements [COMPLETE]
+## [2026-06-06] FEATURE â€” Brush and Eraser Tool Improvements [COMPLETE]
 
 ### Kategori: FEATURE / BRUSH / ERASER / FRONTEND
 
@@ -2002,7 +2030,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 - PASS: `pnpm.cmd --filter photrez-desktop test -- --pool=threads --maxWorkers=1` (433 tests, 41 files)
 - PASS: `pnpm.cmd run build` (tsc + Vite production build)
 
-## [2026-06-06] FIX — Brush/Eraser Tool Post-Review Fixes
+## [2026-06-06] FIX â€” Brush/Eraser Tool Post-Review Fixes
 
 ### Kategori: FIX / BRUSH / ERASER / FRONTEND
 
@@ -2011,16 +2039,16 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 2. Hardness=100% membuat radial gradient dengan radius start==end (special-case solid fill untuk hard brush)
 3. No-op history entry untuk blocked stroke (history commit dipindahkan ke caller setelah guard block check)
 4. `settings: any` pada `useCanvasPointerTools.ts` interface (diganti ke `PaintToolSettings`)
-5. Potensi mojibake pada separator dimensi di BottomStatusBar (`×` diganti ASCII `x`)
+5. Potensi mojibake pada separator dimensi di BottomStatusBar (`Ã—` diganti ASCII `x`)
 6. Test coverage hardness=1 solid fill dengan mock ctx
 
 **Files Changed:**
-- [MODIFY] `apps/desktop/src/components/editor/BrushCursorOverlay.tsx` — gunakan `screenToDocument`, tambah `workspace`
-- [MODIFY] `apps/desktop/src/components/editor/paintStrokeRenderer.ts` — solid fill untuk hardness >= 1
-- [MODIFY] `apps/desktop/src/viewport/input-handler.ts` — hapus `history.commit` dari brush/eraser case
-- [MODIFY] `apps/desktop/src/components/editor/useCanvasPointerTools.ts` — guard block check; import `DocumentEngine`, `PaintToolSettings`, `getPaintToolBlockReason`; type `any` → `PaintToolSettings`; `commitBrushStroke` engine type
-- [MODIFY] `apps/desktop/src/components/editor/BottomStatusBar.tsx` — `×` → `x`
-- [MODIFY] `apps/desktop/src/components/editor/__tests__/paintStrokeRenderer.test.ts` — test hardness=1 dan <1 dengan mock ctx
+- [MODIFY] `apps/desktop/src/components/editor/BrushCursorOverlay.tsx` â€” gunakan `screenToDocument`, tambah `workspace`
+- [MODIFY] `apps/desktop/src/components/editor/paintStrokeRenderer.ts` â€” solid fill untuk hardness >= 1
+- [MODIFY] `apps/desktop/src/viewport/input-handler.ts` â€” hapus `history.commit` dari brush/eraser case
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasPointerTools.ts` â€” guard block check; import `DocumentEngine`, `PaintToolSettings`, `getPaintToolBlockReason`; type `any` â†’ `PaintToolSettings`; `commitBrushStroke` engine type
+- [MODIFY] `apps/desktop/src/components/editor/BottomStatusBar.tsx` â€” `Ã—` â†’ `x`
+- [MODIFY] `apps/desktop/src/components/editor/__tests__/paintStrokeRenderer.test.ts` â€” test hardness=1 dan <1 dengan mock ctx
 
 **Remaining design decisions (non-blocking):**
 - Opacity per-dab: current semantics = "flow" (accumulative). If "strength" (max opacity) is desired, renderer needs temp mask + single composite
@@ -2030,22 +2058,22 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 - PASS: 42/42 targeted tests across 7 files (`brushToolState`, `BrushOptionBar`, `BrushCursorOverlay`, `paintStrokeRenderer`, `input-handler-move`, `input-handler-snap`, `keyboard-shortcuts`)
 - PASS: `npx tsc --noEmit --skipLibCheck` (clean compile)
 
-## [2026-06-06] FIX — Round 2: Zoom Cursor, Pointer Cancel, Layer-Local Coords, Async Race
+## [2026-06-06] FIX â€” Round 2: Zoom Cursor, Pointer Cancel, Layer-Local Coords, Async Race
 
 ### Kategori: FIX / BRUSH / ERASER / FRONTEND
 
 **Deskripsi:** Perbaikan lanjutan berdasarkan code review depth:
-1. Brush cursor radius salah saat zoom ≠ 1 (radius dibagi zoom padahal SVG sudah di dalam `scale(zoom)`). Sekarang `r={radius()}` tanpa `/ zoom()`.
-2. Pointer cancel / lost capture tidak ditangani — stroke aktif bisa tertinggal. Tambah `onPointerCancel` di canvas yang commit stroke partial + reset state.
+1. Brush cursor radius salah saat zoom â‰  1 (radius dibagi zoom padahal SVG sudah di dalam `scale(zoom)`). Sekarang `r={radius()}` tanpa `/ zoom()`.
+2. Pointer cancel / lost capture tidak ditangani â€” stroke aktif bisa tertinggal. Tambah `onPointerCancel` di canvas yang commit stroke partial + reset state.
 3. Koordinat stroke masih document-space, tidak layer-local. Untuk layer dengan transform/offset/scale/rotation, stroke bisa meleset. Tambah `documentToLayerLocal()` di `transformGeometry.ts` dan konversi di `useBrushOverlay.ts`.
 4. Async commit race: `createImageBitmap` bisa selesai setelah layer dihapus/diganti. Tambah guard `workspace.getActiveEngine() === engine && engine.getLayer(layerId)` setelah await.
 
 **Files Changed:**
-- [MODIFY] `apps/desktop/src/components/editor/BrushCursorOverlay.tsx` — hapus `/ zoom()` dari radius
-- [MODIFY] `apps/desktop/src/components/editor/useBrushOverlay.ts` — konversi document-to-layer-local; async race guard
-- [MODIFY] `apps/desktop/src/components/editor/useCanvasPointerTools.ts` — tambah `onCanvasPointerCancel`
-- [MODIFY] `apps/desktop/src/components/editor/CanvasViewport.tsx` — bind `onPointerCancel`
-- [MODIFY] `apps/desktop/src/viewport/transformGeometry.ts` — tambah `documentToLayerLocal()`
+- [MODIFY] `apps/desktop/src/components/editor/BrushCursorOverlay.tsx` â€” hapus `/ zoom()` dari radius
+- [MODIFY] `apps/desktop/src/components/editor/useBrushOverlay.ts` â€” konversi document-to-layer-local; async race guard
+- [MODIFY] `apps/desktop/src/components/editor/useCanvasPointerTools.ts` â€” tambah `onCanvasPointerCancel`
+- [MODIFY] `apps/desktop/src/components/editor/CanvasViewport.tsx` â€” bind `onPointerCancel`
+- [MODIFY] `apps/desktop/src/viewport/transformGeometry.ts` â€” tambah `documentToLayerLocal()`
 
 **Verifikasi:**
 - PASS: 42/42 targeted tests (7 files)
@@ -2055,7 +2083,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-06] PLANNING — Brush and Eraser Tool Improvements Plan [COMPLETE]
+## [2026-06-06] PLANNING â€” Brush and Eraser Tool Improvements Plan [COMPLETE]
 
 ### Kategori: PLANNING / BRUSH / ERASER / FRONTEND
 
@@ -2075,7 +2103,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-05] BUG FIX — Crop Mode Pasteboard Panning Regression [COMPLETE]
+## [2026-06-05] BUG FIX â€” Crop Mode Pasteboard Panning Regression [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / POINTER ROUTING
 
@@ -2099,7 +2127,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-05] BUG FIX — Crop Apply Geometry and Texture Sync [COMPLETE]
+## [2026-06-05] BUG FIX â€” Crop Apply Geometry and Texture Sync [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / ENGINE
 
@@ -2129,7 +2157,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-05] BUG FIX — Crop Hidden Preview Restore Continuation [COMPLETE]
+## [2026-06-05] BUG FIX â€” Crop Hidden Preview Restore Continuation [COMPLETE]
 
 ### Kategori: BUG FIX / UX / CROP / FRONTEND
 
@@ -2155,7 +2183,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-05] PLANNING — Crop Outside-Canvas Drag Plan Revision [COMPLETE]
+## [2026-06-05] PLANNING â€” Crop Outside-Canvas Drag Plan Revision [COMPLETE]
 
 ### Kategori: PLANNING / UX / CROP / FRONTEND
 
@@ -2175,7 +2203,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-05] PLANNING — Crop Hidden Preview Restore Correction Plan [COMPLETE]
+## [2026-06-05] PLANNING â€” Crop Hidden Preview Restore Correction Plan [COMPLETE]
 
 ### Kategori: PLANNING / UX / CROP / FRONTEND
 
@@ -2195,7 +2223,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-05] FEATURE — Crop Interaction Model [COMPLETE]
+## [2026-06-05] FEATURE â€” Crop Interaction Model [COMPLETE]
 
 ### Kategori: FEATURE / UX / CROP / FRONTEND
 
@@ -2225,7 +2253,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-05] FEATURE — Browser Smoke Test Layer [COMPLETE]
+## [2026-06-05] FEATURE â€” Browser Smoke Test Layer [COMPLETE]
 
 ### Kategori: FEATURE / TESTING / FRONTEND / E2E
 
@@ -2256,7 +2284,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-05] MAINTENANCE — Third-Party Software Name Cleanup [COMPLETE]
+## [2026-06-05] MAINTENANCE â€” Third-Party Software Name Cleanup [COMPLETE]
 
 ### Kategori: MAINTENANCE / DOCS / SOURCE COMMENTS / BRANDING
 
@@ -2275,7 +2303,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-05] PLANNING — Crop Interaction Model Plan [COMPLETE]
+## [2026-06-05] PLANNING â€” Crop Interaction Model Plan [COMPLETE]
 
 ### Kategori: PLANNING / UX / CROP / FRONTEND
 
@@ -2293,7 +2321,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-05] BUG FIX — Crop Cancel Stays In Crop Tool [COMPLETE]
+## [2026-06-05] BUG FIX â€” Crop Cancel Stays In Crop Tool [COMPLETE]
 
 ### Kategori: BUG FIX / UX / CROP / FRONTEND
 
@@ -2313,12 +2341,12 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 - [MODIFY] `docs/plans/task.md`
 
 **Verifikasi:**
-- ✅ `pnpm.cmd --filter photrez-desktop test -- CropOptionBar`: PASS (308/308 frontend tests passing)
-- ✅ `pnpm.cmd run build`: PASS (tsc compilation successful, Vite bundle built)
+- âœ… `pnpm.cmd --filter photrez-desktop test -- CropOptionBar`: PASS (308/308 frontend tests passing)
+- âœ… `pnpm.cmd run build`: PASS (tsc compilation successful, Vite bundle built)
 
 ---
 
-## [2026-06-05] FEATURE — Pasteboard Click Policy [COMPLETE]
+## [2026-06-05] FEATURE â€” Pasteboard Click Policy [COMPLETE]
 
 ### Kategori: FEATURE / UX / VIEWPORT / FRONTEND
 
@@ -2331,13 +2359,13 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 - [MODIFY] `apps/desktop/src/components/editor/CanvasViewport.tsx`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS (Vite & tsc compile clean)
-- ✅ `pnpm --filter photrez-desktop test`: PASS (307/307 tests passing, including component integration tests)
-- ✅ `cargo test --workspace`: PASS (85/85 tests passing)
+- âœ… `pnpm run build`: PASS (Vite & tsc compile clean)
+- âœ… `pnpm --filter photrez-desktop test`: PASS (307/307 tests passing, including component integration tests)
+- âœ… `cargo test --workspace`: PASS (85/85 tests passing)
 
 ---
 
-## [2026-06-05] PLANNING — Pasteboard Click Policy Plan [COMPLETE]
+## [2026-06-05] PLANNING â€” Pasteboard Click Policy Plan [COMPLETE]
 
 ### Kategori: PLANNING / UX / VIEWPORT / FRONTEND
 
@@ -2355,7 +2383,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-05] FEATURE — Transform Session Hardening and Contextual Option Bar [COMPLETE]
+## [2026-06-05] FEATURE â€” Transform Session Hardening and Contextual Option Bar [COMPLETE]
 
 ### Kategori: FEATURE / UX / TRANSFORM / FRONTEND
 
@@ -2379,14 +2407,14 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 - [MODIFY] `apps/desktop/src/components/editor/__tests__/transformSession.test.ts`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS (tsc compilation successful, Vite bundle built)
-- ✅ `pnpm --filter photrez-desktop test`: PASS (295/295 tests passing, including new TransformOptionBar and SelectionTransformOverlay Escape tests)
-- ✅ `cargo test -p photrez-core`: PASS (85/85 tests passing)
-- ✅ `cargo test --workspace`: PASS (85/85 tests passing)
+- âœ… `pnpm run build`: PASS (tsc compilation successful, Vite bundle built)
+- âœ… `pnpm --filter photrez-desktop test`: PASS (295/295 tests passing, including new TransformOptionBar and SelectionTransformOverlay Escape tests)
+- âœ… `cargo test -p photrez-core`: PASS (85/85 tests passing)
+- âœ… `cargo test --workspace`: PASS (85/85 tests passing)
 
 ---
 
-## [2026-06-05] PLANNING — Transform Session Hardening + Contextual Option Bar Plan [COMPLETE]
+## [2026-06-05] PLANNING â€” Transform Session Hardening + Contextual Option Bar Plan [COMPLETE]
 
 ### Kategori: PLANNING / UX / TRANSFORM / FRONTEND
 
@@ -2404,7 +2432,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-05] FEATURE — Photoshop-Style Transform Session UX [COMPLETE]
+## [2026-06-05] FEATURE â€” Photoshop-Style Transform Session UX [COMPLETE]
 
 ### Kategori: FEATURE / UX / TRANSFORM / FRONTEND
 
@@ -2445,13 +2473,13 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 - [MODIFY] `docs/AI_HISTORY.md`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS
-- ✅ `pnpm --filter photrez-desktop test`: 289/289 tests PASS (including new transform session helper tests and drag handler regression tests)
-- ✅ `cargo test --workspace`: 85/85 tests PASS
+- âœ… `pnpm run build`: PASS
+- âœ… `pnpm --filter photrez-desktop test`: 289/289 tests PASS (including new transform session helper tests and drag handler regression tests)
+- âœ… `cargo test --workspace`: 85/85 tests PASS
 
 ---
 
-## [2026-06-05] PLANNING — Transform Session UX Implementation Plan [COMPLETE]
+## [2026-06-05] PLANNING â€” Transform Session UX Implementation Plan [COMPLETE]
 
 ### Kategori: PLANNING / UX / TRANSFORM / FRONTEND
 
@@ -2469,7 +2497,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-05] BUG FIX — Rotate Handle Hover Cursor Outside Boundary Fix [COMPLETE]
+## [2026-06-05] BUG FIX â€” Rotate Handle Hover Cursor Outside Boundary Fix [COMPLETE]
 
 ### Kategori: BUG FIX / OVERLAY / INTERACTION
 
@@ -2495,13 +2523,13 @@ Membatasi area deteksi rotasi agar hanya aktif pada 270 derajat bagian luar sudu
 - [MODIFY] `docs/AI_HISTORY.md`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS
-- ✅ `pnpm --filter photrez-desktop test`: 286/286 tests PASS
-- ✅ `cargo test --workspace`: 85/85 tests PASS
+- âœ… `pnpm run build`: PASS
+- âœ… `pnpm --filter photrez-desktop test`: 286/286 tests PASS
+- âœ… `cargo test --workspace`: 85/85 tests PASS
 
 ---
 
-## [2026-06-04] FEATURE — Crop Option Bar Dropdown Visual Refinement [COMPLETE]
+## [2026-06-04] FEATURE â€” Crop Option Bar Dropdown Visual Refinement [COMPLETE]
 
 ### Kategori: FEATURE / UI / FRONTEND / CROP / OPTION BAR / UX
 
@@ -2524,12 +2552,12 @@ Membatasi area deteksi rotasi agar hanya aktif pada 270 derajat bagian luar sudu
 - [MODIFY] `docs/AI_HISTORY.md`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS
-- ✅ `pnpm --filter photrez-desktop test`: PASS (286/286 tests passing, including CropOptionBar.test.tsx regression suite)
+- âœ… `pnpm run build`: PASS
+- âœ… `pnpm --filter photrez-desktop test`: PASS (286/286 tests passing, including CropOptionBar.test.tsx regression suite)
 
 ---
 
-## [2026-06-04] BUG FIX — Crop Option Bar Centered Auto-Fit on Input changes [COMPLETE]
+## [2026-06-04] BUG FIX â€” Crop Option Bar Centered Auto-Fit on Input changes [COMPLETE]
 
 ### Kategori: BUG FIX / UI / FRONTEND / CROP / OPTION BAR / UX
 
@@ -2552,12 +2580,12 @@ Membatasi area deteksi rotasi agar hanya aktif pada 270 derajat bagian luar sudu
 - [MODIFY] `docs/AI_HISTORY.md`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS
-- ✅ `pnpm --filter photrez-desktop test`: PASS (286/286 tests passing)
+- âœ… `pnpm run build`: PASS
+- âœ… `pnpm --filter photrez-desktop test`: PASS (286/286 tests passing)
 
 ---
 
-## [2026-06-04] FEATURE — Crop Option Bar Photoshop Pain Points & Input Fixes [COMPLETE]
+## [2026-06-04] FEATURE â€” Crop Option Bar Photoshop Pain Points & Input Fixes [COMPLETE]
 
 ### Kategori: FEATURE / BUG FIX / UI / FRONTEND / CROP / OPTION BAR / UX
 
@@ -2592,12 +2620,12 @@ Membatasi area deteksi rotasi agar hanya aktif pada 270 derajat bagian luar sudu
 - [MODIFY] `docs/AI_HISTORY.md`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS
-- ✅ `pnpm --filter photrez-desktop test`: PASS (283/283 tests passing)
+- âœ… `pnpm run build`: PASS
+- âœ… `pnpm --filter photrez-desktop test`: PASS (283/283 tests passing)
 
 ---
 
-## [2026-06-04] FEATURE — Crop Tool Option Bar Visual & UX Improvements [COMPLETE]
+## [2026-06-04] FEATURE â€” Crop Tool Option Bar Visual & UX Improvements [COMPLETE]
 
 ### Kategori: FEATURE / UI / FRONTEND / CROP / OPTION BAR / UX
 
@@ -2606,7 +2634,7 @@ Membatasi area deteksi rotasi agar hanya aktif pada 270 derajat bagian luar sudu
 **Rincian Perubahan:**
 1. **Custom Select Dropdowns (`CropOptionBar.tsx`)**: Desain ulang selektor Dropdown bawaan (Crop Mode, Preset, dan Guide Mode) menggunakan pembungkus custom dengan chevron overlay absolut. Menambahkan transisi focus-ring dan warna border untuk kecocokan tema gelap.
 2. **Standardisasi Ikon Lucide (`icons.tsx`, `CropOptionBar.tsx`)**:
-   - Mengganti simbol teks rotasi/swap (`↺`, `↻`, `↔`) dengan ikon Lucide resolusi tinggi yang terintegrasi (`rotate-ccw`, `rotate-cw`, `swap`).
+   - Mengganti simbol teks rotasi/swap (`â†º`, `â†»`, `â†”`) dengan ikon Lucide resolusi tinggi yang terintegrasi (`rotate-ccw`, `rotate-cw`, `swap`).
    - Mendaftarkan ikon `RotateCcw` dan `ArrowLeftRight` pada `icons.tsx`.
 3. **Penyelarasan UX & Tooltip (`CropOptionBar.tsx`)**:
    - Menambahkan atribut `title` sebagai tooltip bantu untuk semua tombol aksi bertipe ikon saja.
@@ -2620,12 +2648,12 @@ Membatasi area deteksi rotasi agar hanya aktif pada 270 derajat bagian luar sudu
 - [MODIFY] `docs/AI_CURRENT_TASK.md`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS (Vite + tsc)
-- ✅ `pnpm --filter photrez-desktop test`: PASS (283/283 tests passing)
+- âœ… `pnpm run build`: PASS (Vite + tsc)
+- âœ… `pnpm --filter photrez-desktop test`: PASS (283/283 tests passing)
 
 ---
 
-## [2026-06-04] FEATURE — Move Tool Option Bar Visual & UX Improvements [COMPLETE]
+## [2026-06-04] FEATURE â€” Move Tool Option Bar Visual & UX Improvements [COMPLETE]
 
 ### Kategori: FEATURE / UI / FRONTEND / MOVE / OPTION BAR / UX
 
@@ -2648,13 +2676,13 @@ Membatasi area deteksi rotasi agar hanya aktif pada 270 derajat bagian luar sudu
 - [NEW] `docs/plans/2026-06-04-move-option-bar-ux-design.md`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS
-- ✅ `pnpm --filter photrez-desktop test`: PASS (283/283 tests passing)
-- ✅ `cargo test --workspace`: PASS (85/85 tests passing)
+- âœ… `pnpm run build`: PASS
+- âœ… `pnpm --filter photrez-desktop test`: PASS (283/283 tests passing)
+- âœ… `cargo test --workspace`: PASS (85/85 tests passing)
 
 ---
 
-## [2026-06-04] FEATURE — Layer Merge Keyboard Shortcuts [COMPLETE]
+## [2026-06-04] FEATURE â€” Layer Merge Keyboard Shortcuts [COMPLETE]
 
 ### Kategori: FEATURE / UI / FRONTEND / LAYERS / KEYBOARD / WEBGL / HISTORY
 
@@ -2679,14 +2707,14 @@ Membatasi area deteksi rotasi agar hanya aktif pada 270 derajat bagian luar sudu
 - [MODIFY] `docs/FEATURES.md`
 
 **Verifikasi:**
-- ✅ `pnpm.cmd --filter photrez-desktop test -- --run apps/desktop/src/components/editor/__tests__/CanvasKeyboardLayerShortcuts.test.tsx`: PASS (283/283 via vitest run)
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `pnpm.cmd --filter photrez-desktop test -- --pool=threads --maxWorkers=1`: PASS (283/283)
-- ⚠️ `pnpm.cmd --filter photrez-desktop test`: gagal start beberapa Vitest fork worker (`Timeout waiting for worker to respond`) pada mode default, bukan assertion failure; rerun serial/threads pass penuh.
+- âœ… `pnpm.cmd --filter photrez-desktop test -- --run apps/desktop/src/components/editor/__tests__/CanvasKeyboardLayerShortcuts.test.tsx`: PASS (283/283 via vitest run)
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `pnpm.cmd --filter photrez-desktop test -- --pool=threads --maxWorkers=1`: PASS (283/283)
+- âš ï¸ `pnpm.cmd --filter photrez-desktop test`: gagal start beberapa Vitest fork worker (`Timeout waiting for worker to respond`) pada mode default, bukan assertion failure; rerun serial/threads pass penuh.
 
 ---
 
-## [2026-06-04] BUG FIX — Layer Tab Actions and Undo Wiring [COMPLETE]
+## [2026-06-04] BUG FIX â€” Layer Tab Actions and Undo Wiring [COMPLETE]
 
 ### Kategori: BUG FIX / UI / FRONTEND / LAYERS / WEBGL / HISTORY
 
@@ -2714,13 +2742,13 @@ Membatasi area deteksi rotasi agar hanya aktif pada 270 derajat bagian luar sudu
 - [NEW] `apps/desktop/src/components/editor/__tests__/LayersPanel.test.tsx`
 
 **Verifikasi:**
-- ✅ `pnpm.cmd --filter photrez-desktop test -- --run apps/desktop/src/components/editor/__tests__/LayersPanel.test.tsx`: PASS
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `pnpm.cmd --filter photrez-desktop test`: PASS (281/281)
+- âœ… `pnpm.cmd --filter photrez-desktop test -- --run apps/desktop/src/components/editor/__tests__/LayersPanel.test.tsx`: PASS
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `pnpm.cmd --filter photrez-desktop test`: PASS (281/281)
 
 ---
 
-## [2026-06-04] BUG FIX — Navigator Drag UX Terasa Licin [COMPLETE]
+## [2026-06-04] BUG FIX â€” Navigator Drag UX Terasa Licin [COMPLETE]
 
 ### Kategori: BUG FIX / UI / FRONTEND / NAVIGATOR / VIEWPORT / UX
 
@@ -2741,13 +2769,13 @@ Navigator sebelumnya memakai model `panToNavigatorCoord()` untuk semua pointer m
 - [MODIFY] `apps/desktop/src/components/editor/__tests__/Navigator.test.tsx`
 
 **Verifikasi:**
-- ✅ `pnpm.cmd --filter photrez-desktop test -- --run apps/desktop/src/components/editor/__tests__/Navigator.test.tsx`: PASS
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `pnpm.cmd --filter photrez-desktop test`: PASS (275/275)
+- âœ… `pnpm.cmd --filter photrez-desktop test -- --run apps/desktop/src/components/editor/__tests__/Navigator.test.tsx`: PASS
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `pnpm.cmd --filter photrez-desktop test`: PASS (275/275)
 
 ---
 
-## [2026-06-04] BUG FIX — Layer Terbalik Secara Vertikal pada WebGL FBO Pipeline [COMPLETE]
+## [2026-06-04] BUG FIX â€” Layer Terbalik Secara Vertikal pada WebGL FBO Pipeline [COMPLETE]
 
 ### Kategori: BUG FIX / RENDERER / WEBGL / TEXTURE / FLIP
 
@@ -2768,13 +2796,13 @@ WebGL framebuffer (FBO) merekam hasil gambar dengan titik asal koordinat (Y=0) d
 - [MODIFY] [webgl2.ts](file:///d:/Project/image-studio/apps/desktop/src/renderer/webgl2.ts)
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS
-- ✅ `pnpm --filter photrez-desktop test`: 271/271 PASS (vitest)
-- ✅ Layer gambar terbuka kembali dengan arah tegak normal yang benar.
+- âœ… `pnpm run build`: PASS
+- âœ… `pnpm --filter photrez-desktop test`: 271/271 PASS (vitest)
+- âœ… Layer gambar terbuka kembali dengan arah tegak normal yang benar.
 
 ---
 
-## [2026-06-04] FEATURE — WebGL GPU Layer Blend Modes Rendering [COMPLETE]
+## [2026-06-04] FEATURE â€” WebGL GPU Layer Blend Modes Rendering [COMPLETE]
 
 ### Kategori: FEATURE / RENDERER / WEBGL / LAYERS / BLEND MODES
 
@@ -2787,7 +2815,7 @@ WebGL framebuffer (FBO) merekam hasil gambar dengan titik asal koordinat (Y=0) d
    - Mengimplementasikan Porter-Duff alpha-corrected compositing formula untuk blending warna semi-transparan yang presisi secara matematis.
 2. **Ping-Pong Pipeline (`webgl2.ts`)**:
    - Membuat sepasang Framebuffer Objects (FBO) dan WebGLTextures ping-pong.
-   - Mengatur rekondisi/resize otomatis ping-pong textures di fungsi `resize()` sesuai resolusi target canvas viewport (`canvas.width` × `canvas.height`).
+   - Mengatur rekondisi/resize otomatis ping-pong textures di fungsi `resize()` sesuai resolusi target canvas viewport (`canvas.width` Ã— `canvas.height`).
    - Menyempurnakan alur `render()` agar secara berurutan menggambar layer terbawah secara normal ke FBO 0, dan layer-layer di atasnya menggunakan shader blend modes dengan membaca isi texture FBO sebelumnya sebagai backdrop.
    - Menggambar hasil compositing akhir FBO ke viewport utama layar di atas pola checkerboard transparency grid.
 3. **Resource Cleanup (`webgl2.ts`)**:
@@ -2798,13 +2826,13 @@ WebGL framebuffer (FBO) merekam hasil gambar dengan titik asal koordinat (Y=0) d
 - [MODIFY] [webgl2.ts](file:///d:/Project/image-studio/apps/desktop/src/renderer/webgl2.ts)
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS
-- ✅ `pnpm --filter photrez-desktop test`: 271/271 PASS (vitest)
-- ✅ `cargo test --workspace`: 85/85 PASS
+- âœ… `pnpm run build`: PASS
+- âœ… `pnpm --filter photrez-desktop test`: 271/271 PASS (vitest)
+- âœ… `cargo test --workspace`: 85/85 PASS
 
 ---
 
-## [2026-06-04] REFACTOR — Scalability and Maintainability Refactor (Waves 3 - 10) [COMPLETE]
+## [2026-06-04] REFACTOR â€” Scalability and Maintainability Refactor (Waves 3 - 10) [COMPLETE]
 
 ### Kategori: REFACTOR / FRONTEND / SOLIDJS / TYPESCRIPT / ARCHITECTURE
 
@@ -2858,24 +2886,24 @@ WebGL framebuffer (FBO) merekam hasil gambar dengan titik asal koordinat (Y=0) d
 - [MODIFY] [EditorContext.tsx](file:///d:/Project/image-studio/apps/desktop/src/components/editor/EditorContext.tsx)
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS (Vite + TypeScript compiler)
-- ✅ `pnpm --filter photrez-desktop test`: 271/271 PASS (vitest)
-- ✅ `cargo test --workspace`: 85/85 PASS
+- âœ… `pnpm run build`: PASS (Vite + TypeScript compiler)
+- âœ… `pnpm --filter photrez-desktop test`: 271/271 PASS (vitest)
+- âœ… `cargo test --workspace`: 85/85 PASS
 
 ---
 
-## [2026-06-04] REFACTOR — Separation of Concerns Refactoring (File Splitting) [COMPLETE]
+## [2026-06-04] REFACTOR â€” Separation of Concerns Refactoring (File Splitting) [COMPLETE]
 
 ### Kategori: REFACTOR / FRONTEND / SOLIDJS / TYPESCRIPT / ARCHITECTURE
 
 **Deskripsi:** Refactoring dan pemisahan concern (Separation of Concerns) pada file frontend terbesar (`CanvasViewport.tsx` dan `LayersPanel.tsx`) ke dalam sub-komponen dan custom hook modular. Memperbaiki arsitektur dan maintainabilitas tanpa mengubah perilaku fungsional aplikasi.
 
 **Rincian Perubahan:**
-1. **`CanvasViewport.tsx` (1112 → 713 lines)**:
+1. **`CanvasViewport.tsx` (1112 â†’ 713 lines)**:
    - Mengekstrak handler keyboard global (Photoshop navigation, crop enter/escape, zoom, nudge) ke `useCanvasKeyboard.ts`.
    - Mengekstrak visual overlay canvas brush, event `onPaintStroke()`, dan method `commitBrushStroke()` ke `useBrushOverlay.ts`.
    - Mengekstrak physics momentum inersia, pointer viewport panning, dan penanganan scroll wheel ke `usePanNavigation.ts`.
-2. **`LayersPanel.tsx` (732 → 190 lines)**:
+2. **`LayersPanel.tsx` (732 â†’ 190 lines)**:
    - Mengekstrak rendering baris layer list ke komponen `LayerItem.tsx`.
    - Mengekstrak pointer-based drag-and-drop layer reordering ke custom hook `useLayerDragReorder.ts`.
    - Mengekstrak seluruh handler mutasi layer dan toggle lock status (add, delete, duplicate, merge, flatten, locks) ke custom hook `useLayerActions.ts`.
@@ -2893,12 +2921,12 @@ WebGL framebuffer (FBO) merekam hasil gambar dengan titik asal koordinat (Y=0) d
 - [MODIFY] `apps/desktop/src/components/editor/LayersPanel.tsx`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS (Vite + TypeScript compiler)
-- ✅ `pnpm --filter photrez-desktop test`: 271/271 PASS (vitest)
+- âœ… `pnpm run build`: PASS (Vite + TypeScript compiler)
+- âœ… `pnpm --filter photrez-desktop test`: 271/271 PASS (vitest)
 
 ---
 
-## [2026-06-04] FEATURE — Interactive Navigator Panel [COMPLETE]
+## [2026-06-04] FEATURE â€” Interactive Navigator Panel [COMPLETE]
 
 ### Kategori: FEATURE / NAVIGATOR / VIEWPORT / ZOOM / PAN / UI / UX
 
@@ -2927,12 +2955,12 @@ WebGL framebuffer (FBO) merekam hasil gambar dengan titik asal koordinat (Y=0) d
 - [MODIFY] `apps/desktop/src/components/editor/CanvasViewport.tsx`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS
-- ✅ `vitest`: 271/271 PASS
+- âœ… `pnpm run build`: PASS
+- âœ… `vitest`: 271/271 PASS
 
 ---
 
-## [2026-06-04] BUG FIX — Duplikasi Layer Menghasilkan Gambar Kosong (Missing WebGL Sync) [COMPLETE]
+## [2026-06-04] BUG FIX â€” Duplikasi Layer Menghasilkan Gambar Kosong (Missing WebGL Sync) [COMPLETE]
 
 ### Kategori: BUG FIX / LAYERS / WEBGL / SHORTCUT
 
@@ -2952,16 +2980,16 @@ Melakukan sinkronisasi upload bitmap ke WebGL backend setelah operasi duplikasi:
 - `apps/desktop/src/components/editor/CanvasViewport.tsx`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS
+- âœ… `pnpm run build`: PASS
 - Duplikasi layer kini menampilkan gambar salinan yang identik di viewport canvas secara instan.
 
 ---
 
-## [2026-06-04] BUG FIX — Layer Drag Reorder Tidak Berfungsi di Tauri [COMPLETE]
+## [2026-06-04] BUG FIX â€” Layer Drag Reorder Tidak Berfungsi di Tauri [COMPLETE]
 
 ### Kategori: BUG FIX / LAYERS / DRAG-AND-DROP / TAURI
 
-**Deskripsi:** Layer drag-and-drop reorder pada Layers Panel tidak berfungsi — layer terlihat "muted" saat di-drag tetapi tidak pernah berpindah posisi.
+**Deskripsi:** Layer drag-and-drop reorder pada Layers Panel tidak berfungsi â€” layer terlihat "muted" saat di-drag tetapi tidak pernah berpindah posisi.
 
 **Root Cause:**
 HTML5 Drag and Drop API (`draggable`, `onDragStart`, `onDragOver`, `onDrop`) tidak reliabel di Tauri webview pada Windows. Tauri mengintercept drag events di level OS (untuk file drops, dll), sehingga event `dragover`/`drop` tidak pernah sampai ke handler JavaScript.
@@ -2983,12 +3011,12 @@ Visual feedback ditingkatkan agar lebih jelas:
 - `apps/desktop/src/components/editor/LayersPanel.tsx`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS (TypeScript + Vite production build)
-- ✅ Layer drag reorder berfungsi dengan pointer events di Tauri webview
+- âœ… `pnpm run build`: PASS (TypeScript + Vite production build)
+- âœ… Layer drag reorder berfungsi dengan pointer events di Tauri webview
 
 ---
 
-## [2026-06-04] FEATURE — Layer & UX System Overhaul [COMPLETE]
+## [2026-06-04] FEATURE â€” Layer & UX System Overhaul [COMPLETE]
 
 ### Kategori: FEATURE / LAYERS / UI / UX
 
@@ -3018,12 +3046,12 @@ Visual feedback ditingkatkan agar lebih jelas:
 - `apps/desktop/src/components/editor/CanvasViewport.tsx`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS (Vite + TypeScript production build compiler)
-- ✅ `pnpm --filter photrez-desktop test`: 272/272 PASS (vitest)
+- âœ… `pnpm run build`: PASS (Vite + TypeScript production build compiler)
+- âœ… `pnpm --filter photrez-desktop test`: 272/272 PASS (vitest)
 
 ---
 
-## [2026-06-03] BUG FIX — Crop Rotate Hit Zone & Cursor [COMPLETE]
+## [2026-06-03] BUG FIX â€” Crop Rotate Hit Zone & Cursor [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / ROTATION / CURSOR / UX
 
@@ -3031,20 +3059,20 @@ Visual feedback ditingkatkan agar lebih jelas:
 
 **Root Cause:**
 
-1. **Rotate hit zone terlalu kecil:** `ROTATE_OUTER = 24`, `HANDLE_HIT = 20` → donut ring hanya 4px tebal di zoom=1. Bandingkan dengan SelectionTransformOverlay yang punya `ROTATE_OUTER = 44` dan `HANDLE_HIT = 16` → ring 28px.
+1. **Rotate hit zone terlalu kecil:** `ROTATE_OUTER = 24`, `HANDLE_HIT = 20` â†’ donut ring hanya 4px tebal di zoom=1. Bandingkan dengan SelectionTransformOverlay yang punya `ROTATE_OUTER = 44` dan `HANDLE_HIT = 16` â†’ ring 28px.
 
 2. **Cursor revert ke crosshair saat drag rotate (triple root cause):**
-   - `startDrag` memanggil `svgRef.setPointerCapture()` → browser fire `pointerleave` pada elemen rotate zone `<path>` → handler `onPointerLeave` panggil `setHover(null)` + `setHoverPos(null)` → `hoverHandle()` jadi null.
-   - `resolvedCursor` memo hanya cek `hoverHandle()`, tidak pernah cek `dragState()` — jadi saat `hoverHandle = null`, return `"crosshair"` meskipun rotation drag sedang aktif.
+   - `startDrag` memanggil `svgRef.setPointerCapture()` â†’ browser fire `pointerleave` pada elemen rotate zone `<path>` â†’ handler `onPointerLeave` panggil `setHover(null)` + `setHoverPos(null)` â†’ `hoverHandle()` jadi null.
+   - `resolvedCursor` memo hanya cek `hoverHandle()`, tidak pernah cek `dragState()` â€” jadi saat `hoverHandle = null`, return `"crosshair"` meskipun rotation drag sedang aktif.
    - `style={{ cursor: resolvedCursor() }}` object form tidak reactive di SolidJS untuk SVG element (sama persis dengan bug CanvasViewport cursor yang sudah di-fix sebelumnya).
 
 **Logika Perbaikan (Fix Rationale):**
 
-1. `ROTATE_OUTER = 44` → ring 24px tebal (sama dengan SelectionTransformOverlay).
+1. `ROTATE_OUTER = 44` â†’ ring 24px tebal (sama dengan SelectionTransformOverlay).
 2. `resolvedCursor` sekarang cek `dragState()` dulu: jika ada rotation drag aktif, selalu return rotate cursor tanpa peduli `hoverHandle()`.
 3. `rotateCursor` fallback ke `"grabbing"` saat `hoverPos` null tapi rotation drag aktif.
-4. Semua `onPointerLeave` handler di-guard dengan `if (!dragState())` — jangan clear hover saat drag aktif.
-5. Ganti `style={{ cursor: ... }}` → `style:cursor={resolvedCursor()}` (reactive property binding).
+4. Semua `onPointerLeave` handler di-guard dengan `if (!dragState())` â€” jangan clear hover saat drag aktif.
+5. Ganti `style={{ cursor: ... }}` â†’ `style:cursor={resolvedCursor()}` (reactive property binding).
 6. Extend `SvgSVGAttributes<T>` di `vite-env.d.ts` untuk support `style:${string}` pada SVG elements.
 
 **Files Changed:**
@@ -3052,12 +3080,12 @@ Visual feedback ditingkatkan agar lebih jelas:
 - `apps/desktop/src/vite-env.d.ts`: SvgSVGAttributes extension
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS (2028 modules, ~6.2s)
-- ✅ `pnpm --filter photrez-desktop test`: 267/267 PASS (21 files)
+- âœ… `pnpm run build`: PASS (2028 modules, ~6.2s)
+- âœ… `pnpm --filter photrez-desktop test`: 267/267 PASS (21 files)
 
 ---
 
-## [2026-06-03] BUG FIX — Rotation Direction Alignment (Shader + Geometry + Tests) [COMPLETE]
+## [2026-06-03] BUG FIX â€” Rotation Direction Alignment (Shader + Geometry + Tests) [COMPLETE]
 
 ### Kategori: BUG FIX / TRANSFORM / ROTATION / SHADER / GEOMETRY
 
@@ -3067,37 +3095,37 @@ Visual feedback ditingkatkan agar lebih jelas:
 
 1. **Rotate zone terlalu kecil di SelectionTransformOverlay:** `ROTATE_OUTER = 24` (4px ring). Diubah ke `44` (24px ring) agar mudah di-hover.
 
-2. **Bounding box expand/shrink on rotation:** Overlay menggunakan AABB `<rect>` di luar rotated group. Saat layer di-rotate, AABB meluas/menyempit — confusing. Fix: pindah `<rect>` + handles ke dalam `<g transform="rotate(...)">` agar bounding box selalu mengikuti layer corners.
+2. **Bounding box expand/shrink on rotation:** Overlay menggunakan AABB `<rect>` di luar rotated group. Saat layer di-rotate, AABB meluas/menyempit â€” confusing. Fix: pindah `<rect>` + handles ke dalam `<g transform="rotate(...)">` agar bounding box selalu mengikuti layer corners.
 
-3. **Shader rotation negated:** `-radians(u_layerRotation)` membalik arah rotasi. Fix: `radians(u_layerRotation)` — sekarang image rotate searah SVG handles.
+3. **Shader rotation negated:** `-radians(u_layerRotation)` membalik arah rotasi. Fix: `radians(u_layerRotation)` â€” sekarang image rotate searah SVG handles.
 
-4. **rotatePoint sign:** `rad = -deg * DEG` membalik arah. Fix: `rad = deg * DEG` — positive deg = CW di screen space (Y-down).
+4. **rotatePoint sign:** `rad = -deg * DEG` membalik arah. Fix: `rad = deg * DEG` â€” positive deg = CW di screen space (Y-down).
 
 **Deviasi:**
 - Convention "positive = CW" sudah didokumentasikan sejak Photosho-like Free Transform (2026-06-02) tapi implementasi shader dan rotatePoint tidak konsisten.
-- `applyResizeHandle` sudah menggunakan `rad = -rotation * DEG` (negated) — ini benar untuk screen-to-local conversion (screen coords → layer local coords perlu inverse rotation).
+- `applyResizeHandle` sudah menggunakan `rad = -rotation * DEG` (negated) â€” ini benar untuk screen-to-local conversion (screen coords â†’ layer local coords perlu inverse rotation).
 
 **Logika Perbaikan (Fix Rationale):**
 - `rotatePoint(deg)`: positive = CW rotation in screen space. Standard rotation matrix, no negation.
-- Shader: `radians(u_layerRotation)` — positive angle → standard CW rotation matrix.
-- `applyResizeHandle`: tetap pakai `rad = -rotation * DEG` karena mengonversi screen-space delta ke local layer-space — ini adalah inverse rotation.
-- Tests: semua test corner expectations diperbaiki, +18 new tests (applyResizeHandle dengan rotation, cursor rotation untuk ±90°/±45°, all-8-handles distinct cursors, flipX cursor, shader rotation invariants).
+- Shader: `radians(u_layerRotation)` â€” positive angle â†’ standard CW rotation matrix.
+- `applyResizeHandle`: tetap pakai `rad = -rotation * DEG` karena mengonversi screen-space delta ke local layer-space â€” ini adalah inverse rotation.
+- Tests: semua test corner expectations diperbaiki, +18 new tests (applyResizeHandle dengan rotation, cursor rotation untuk Â±90Â°/Â±45Â°, all-8-handles distinct cursors, flipX cursor, shader rotation invariants).
 
 **Files Changed:**
 - `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: +ROTATE_OUTER, rotated `<g>` bounding box
-- `apps/desktop/src/renderer/shaders.ts`: `-radians` → `radians`
+- `apps/desktop/src/renderer/shaders.ts`: `-radians` â†’ `radians`
 - `apps/desktop/src/viewport/transformGeometry.ts`: `rotatePoint` sign fix
 - `apps/desktop/src/__tests__/transform-geometry.test.ts`: +18 tests, update expectations
 - `apps/desktop/src/__tests__/renderer.test.ts`: +3 shader rotation invariant tests
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS (2028 modules, ~6.3s)
-- ✅ `pnpm --filter photrez-desktop test`: 267/267 PASS (21 test files)
-- ✅ `cargo test --workspace`: 85/85 PASS
+- âœ… `pnpm run build`: PASS (2028 modules, ~6.3s)
+- âœ… `pnpm --filter photrez-desktop test`: 267/267 PASS (21 test files)
+- âœ… `cargo test --workspace`: 85/85 PASS
 
 ---
 
-## [2026-06-03] BUG FIX — Crop UI Alignment, Position & Scaling Polish [COMPLETE]
+## [2026-06-03] BUG FIX â€” Crop UI Alignment, Position & Scaling Polish [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / UI / ALIGNMENT / POSITIONING
 
@@ -3114,12 +3142,12 @@ Visual feedback ditingkatkan agar lebih jelas:
 - `apps/desktop/src/viewport/cropSnap.ts`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS
-- ✅ `pnpm --filter photrez-desktop test`: 245/245 PASS
-- ✅ `cargo test --workspace`: 85/85 PASS
+- âœ… `pnpm run build`: PASS
+- âœ… `pnpm --filter photrez-desktop test`: 245/245 PASS
+- âœ… `cargo test --workspace`: 85/85 PASS
 
 ---
-## [2026-06-03] FEATURE — Photoshop-Style Crop Moving Panning [COMPLETE]
+## [2026-06-03] FEATURE â€” Photoshop-Style Crop Moving Panning [COMPLETE]
 
 ### Kategori: FEATURE / CROP / VIEWPORT / PANNING
 
@@ -3138,12 +3166,12 @@ Visual feedback ditingkatkan agar lebih jelas:
 - `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS
-- ✅ `pnpm --filter photrez-desktop test`: 245/245 PASS
-- ✅ `cargo test --workspace`: 85/85 PASS
+- âœ… `pnpm run build`: PASS
+- âœ… `pnpm --filter photrez-desktop test`: 245/245 PASS
+- âœ… `cargo test --workspace`: 85/85 PASS
 
 ---
-## [2026-06-03] FEATURE — Crop Tool Rotation [COMPLETE]
+## [2026-06-03] FEATURE â€” Crop Tool Rotation [COMPLETE]
 
 ### Kategori: FEATURE / CROP / ROTATION / UX
 
@@ -3154,7 +3182,7 @@ Visual feedback ditingkatkan agar lebih jelas:
 2. **document.ts**: Modifikasi `applyCrop` untuk menghitung koordinat pusat crop box, memutar vektor koordinat pusat layer seputar crop center sebesar `-cropRotation` (counter-clockwise), mengupdate rotasi layer, dan mendukung transform baking pada OffscreenCanvas jika `deleteCroppedPixels` aktif.
 3. **CanvasViewport.tsx**: Menerapkan gaya CSS `transform: rotate(${-cropRotation}deg)` pada WebGL canvas element serta artboard border & shadow div agar keduanya berputar selaras. Menyalurkan parameter `rotation` ke `engine.applyCrop` pada Enter keydown handler.
 4. **OptionBar.tsx**: Menghubungkan tombol APPLY dan Reset dengan signal `cropRotation` serta menambahkan field readout `Angle`.
-5. **CropOverlay.tsx**: Menambahkan hit zone berupa donut path transparan di sekitar 4 handles sudut. Menambahkan signal `hoverPos` untuk memperbarui dynamic rotate cursor secara kontinu saat hover. Mengimplementasikan pointerdown/pointermove untuk menghitung delta angle (snapping ke kelipatan 15° jika Shift ditekan) dan memperbarui tooltip visual dengan nilai derajat sudut. Merotasi rect dan mask shield dalam SVG agar area gelap (dim mask) memotong area canvas secara akurat sesuai sudut rotasi.
+5. **CropOverlay.tsx**: Menambahkan hit zone berupa donut path transparan di sekitar 4 handles sudut. Menambahkan signal `hoverPos` untuk memperbarui dynamic rotate cursor secara kontinu saat hover. Mengimplementasikan pointerdown/pointermove untuk menghitung delta angle (snapping ke kelipatan 15Â° jika Shift ditekan) dan memperbarui tooltip visual dengan nilai derajat sudut. Merotasi rect dan mask shield dalam SVG agar area gelap (dim mask) memotong area canvas secara akurat sesuai sudut rotasi.
 6. **Unit Tests**: Menambahkan unit test baru di `document.test.ts` untuk memverifikasi pergeseran koordinat pusat layer dan update rotasi layer akibat crop rotation.
 
 **Files Changed:**
@@ -3166,12 +3194,12 @@ Visual feedback ditingkatkan agar lebih jelas:
 - `apps/desktop/src/engine/__tests__/document.test.ts`
 
 **Verifikasi:**
-- ✅ `pnpm run build`: PASS (Vite + TypeScript build)
-- ✅ `pnpm --filter photrez-desktop test`: 244/244 PASS (vitest)
-- ✅ `cargo test --workspace`: 85/85 PASS
+- âœ… `pnpm run build`: PASS (Vite + TypeScript build)
+- âœ… `pnpm --filter photrez-desktop test`: 244/244 PASS (vitest)
+- âœ… `cargo test --workspace`: 85/85 PASS
 
 ---
-## [2026-06-03] FEATURE — Photoshop-Style Crop Box Canvas Expansion [COMPLETE]
+## [2026-06-03] FEATURE â€” Photoshop-Style Crop Box Canvas Expansion [COMPLETE]
 
 ### Kategori: FEATURE / CROP / VIEWPORT / BOUNDS
 
@@ -3187,17 +3215,17 @@ Visual feedback ditingkatkan agar lebih jelas:
 - `apps/desktop/src/viewport/cropGeometry.ts`
 - `apps/desktop/src/components/editor/CanvasViewport.tsx`
 - `apps/desktop/src/__tests__/crop-geometry.test.ts`
-- `docs/01-prd.md`
-- `docs/35-error-code-registry.md`
+- `docs/spec/prd.md`
+- `docs/reference/error-code-registry.md`
 
 **Verifikasi:**
-- ✅ `npx vitest run`: 243/243 PASS
-- ✅ `npx tsc --noEmit`: PASS
-- ✅ `pnpm build`: PASS
-- ✅ `cargo test --workspace`: 85/85 PASS
+- âœ… `npx vitest run`: 243/243 PASS
+- âœ… `npx tsc --noEmit`: PASS
+- âœ… `pnpm build`: PASS
+- âœ… `cargo test --workspace`: 85/85 PASS
 
 ---
-## [2026-06-03] BUG FIX — Fix Crop Box Integration & Typing [COMPLETE]
+## [2026-06-03] BUG FIX â€” Fix Crop Box Integration & Typing [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / INFRASTRUCTURE / TYPING
 
@@ -3219,26 +3247,26 @@ Visual feedback ditingkatkan agar lebih jelas:
 - `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx`
 
 **Verifikasi:**
-- ✅ `npx tsc --noEmit`: PASS (no compile errors)
-- ✅ `npx vitest run`: 242/242 PASS
-- ✅ `pnpm build`: PASS
-- ✅ `cargo test --workspace`: 85/85 PASS
+- âœ… `npx tsc --noEmit`: PASS (no compile errors)
+- âœ… `npx vitest run`: 242/242 PASS
+- âœ… `pnpm build`: PASS
+- âœ… `cargo test --workspace`: 85/85 PASS
 
 ---
-## [2026-06-03] FEATURE — Move Tool Rotate Polish (Cursor, Hit Area, Behavior) [COMPLETE]
+## [2026-06-03] FEATURE â€” Move Tool Rotate Polish (Cursor, Hit Area, Behavior) [COMPLETE]
 
 ### Kategori: FEATURE / MOVE TOOL / CURSOR / UX / ROTATE
 
 **Deskripsi:** Full polish rotate layer interaction: dynamic SVG rotate cursor, broad hit area matching reference, continuous hover tracking, rotation normalization, cursor ownership on overlay.
 
 **Changes:**
-1. `cursorRotate.ts` — Port dynamic rotate cursor from reference: SVG data-URI cursor rotated per degree, cached max 360 entries.
-2. `cursorResolver.ts` — Branch `rotate` returns dynamic cursor via `getRotateCursorByPos()` when `hoverPos` + `layerBoundingBox` available; static rotate cursor fallback if missing.
-3. `EditorContext.tsx` — Added `hoverPos` signal.
-4. `SelectionTransformOverlay.tsx` — Emit `hoverPos` on rotate zone enter; continuously track hover via `detectHandle` + `getNearestRotateCorner`; resolved cursor applied to root SVG; removed hardcoded cursor from individual elements.
-5. `CanvasViewport.tsx` — `layerBoundingBox` uses document-space AABB; clears hover when tool is not move.
-6. `transformGeometry.ts` — Added `normalizeRotation()` ([-180, 180] range); fixed `detectHandle` rotate: only outside core + inside expanded bounds; added `getNearestRotateCorner()`, `pointToLayerLocal()`.
-7. Tests — `move-rotate-cursor.test.ts` (3 tests), extended `transform-geometry.test.ts` (+12 tests), extended `cursor-resolver.test.ts` (+8 tests).
+1. `cursorRotate.ts` â€” Port dynamic rotate cursor from reference: SVG data-URI cursor rotated per degree, cached max 360 entries.
+2. `cursorResolver.ts` â€” Branch `rotate` returns dynamic cursor via `getRotateCursorByPos()` when `hoverPos` + `layerBoundingBox` available; static rotate cursor fallback if missing.
+3. `EditorContext.tsx` â€” Added `hoverPos` signal.
+4. `SelectionTransformOverlay.tsx` â€” Emit `hoverPos` on rotate zone enter; continuously track hover via `detectHandle` + `getNearestRotateCorner`; resolved cursor applied to root SVG; removed hardcoded cursor from individual elements.
+5. `CanvasViewport.tsx` â€” `layerBoundingBox` uses document-space AABB; clears hover when tool is not move.
+6. `transformGeometry.ts` â€” Added `normalizeRotation()` ([-180, 180] range); fixed `detectHandle` rotate: only outside core + inside expanded bounds; added `getNearestRotateCorner()`, `pointToLayerLocal()`.
+7. Tests â€” `move-rotate-cursor.test.ts` (3 tests), extended `transform-geometry.test.ts` (+12 tests), extended `cursor-resolver.test.ts` (+8 tests).
 
 **Files Changed:**
 - `cursorRotate.ts`, `cursorResolver.ts`, `transformGeometry.ts`
@@ -3246,19 +3274,19 @@ Visual feedback ditingkatkan agar lebih jelas:
 - `move-rotate-cursor.test.ts` (NEW), `transform-geometry.test.ts`, `cursor-resolver.test.ts`
 
 **Verifikasi:**
-- ✅ `npx vitest run`: 241/242 PASS (1 pre-existing CropOverlay failure)
-- ✅ `npx vite build`: PASS
-- ✅ `cargo test --workspace`: 85/85 PASS
+- âœ… `npx vitest run`: 241/242 PASS (1 pre-existing CropOverlay failure)
+- âœ… `npx vite build`: PASS
+- âœ… `cargo test --workspace`: 85/85 PASS
 
 ---
-## [2026-06-03] FEATURE — Move Tool Rotate Cursor Polish [COMPLETE]
+## [2026-06-03] FEATURE â€” Move Tool Rotate Cursor Polish [COMPLETE]
 
 ### Kategori: FEATURE / MOVE TOOL / CURSOR / UX
 
 **Deskripsi:** Polish rotate layer interaction di Move Tool dengan dynamic SVG rotate cursor yang mengikuti posisi mouse, menggantikan cursor `crosshair` generic.
 
 **Root Cause:**
-1. Cursor rotate masih `crosshair` — tidak informatif arah rotasi.
+1. Cursor rotate masih `crosshair` â€” tidak informatif arah rotasi.
 2. Tidak ada visual feedback arah rotasi saat hover/drag.
 3. Referensi `aplikasi-cetak-massal` punya cursor dinamis yang lebih baik.
 
@@ -3273,12 +3301,12 @@ Visual feedback ditingkatkan agar lebih jelas:
 - `cursorRotate.ts` (NEW), `cursorResolver.ts`, `EditorContext.tsx`, `SelectionTransformOverlay.tsx`, `CanvasViewport.tsx`, `cursor-rotate.test.ts` (NEW)
 
 **Verifikasi:**
-- ✅ `npx vitest run cursor-rotate cursor-resolver`: 28/28 PASS
-- ✅ `npx vite build`: PASS
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `npx vitest run cursor-rotate cursor-resolver`: 28/28 PASS
+- âœ… `npx vite build`: PASS
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 ---
-## [2026-06-02] BUG FIX — Crop Tool Cursor + Small Hit Targets [COMPLETE]
+## [2026-06-02] BUG FIX â€” Crop Tool Cursor + Small Hit Targets [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / UX / CURSOR
 
@@ -3291,32 +3319,32 @@ Visual feedback ditingkatkan agar lebih jelas:
 
 **Perbaikan:**
 1. Pola `SelectionTransformOverlay`: transparent hit rects 20/zoom + `cursor` per handle/move zone.
-2. `onHoverHandleChange` prop → `setHoverHandle` di `CanvasViewport`.
+2. `onHoverHandleChange` prop â†’ `setHoverHandle` di `CanvasViewport`.
 3. `cursorResolver` crop branch: resize cursors via `getCursorForHandle`, `move` di dalam box.
 
 **Files Changed:**
 - `CropOverlay.tsx`, `CanvasViewport.tsx`, `cursorResolver.ts`, tests
 
 **Verifikasi:**
-- ✅ ReadLints clean
-- ⚠️ vitest blocked (Shell preToolUse hook)
+- âœ… ReadLints clean
+- âš ï¸ vitest blocked (Shell preToolUse hook)
 
 ---
-## [2026-06-02] FEATURE — Crop Document Bounds + Full Snapping [COMPLETE]
+## [2026-06-02] FEATURE â€” Crop Document Bounds + Full Snapping [COMPLETE]
 
 ### Kategori: FEATURE / CROP / SNAPPING / UX
 
 **Deskripsi:** Crop box bisa keluar dari canvas; snapping crop belum ada. User minta perilaku seperti referensi `aplikasi-cetak-massal`.
 
 **Perbaikan:**
-1. `constrainCropRectToDocument` — crop rect selalu sepenuhnya di dalam dokumen.
-2. `cropSnap.ts` — snap ke canvas (0, center, edge) + layer visible edges/centers; handle-aware untuk move/resize.
-3. CropOverlay + CanvasViewport — Smart Guides saat drag crop; Alt menonaktifkan snap (sama Move Tool); toggle Snap di option bar (`moveSnapEnabled`).
+1. `constrainCropRectToDocument` â€” crop rect selalu sepenuhnya di dalam dokumen.
+2. `cropSnap.ts` â€” snap ke canvas (0, center, edge) + layer visible edges/centers; handle-aware untuk move/resize.
+3. CropOverlay + CanvasViewport â€” Smart Guides saat drag crop; Alt menonaktifkan snap (sama Move Tool); toggle Snap di option bar (`moveSnapEnabled`).
 
 **Files Changed:** `cropGeometry.ts`, `cropSnap.ts`, `CropOverlay.tsx`, `CanvasViewport.tsx`, tests
 
 ---
-## [2026-06-02] BUG FIX — Crop Box Not Updating During Resize Drag [COMPLETE]
+## [2026-06-02] BUG FIX â€” Crop Box Not Updating During Resize Drag [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / UI / REACTIVITY
 
@@ -3337,18 +3365,18 @@ Visual feedback ditingkatkan agar lebih jelas:
 - `docs/FEATURES.md`
 
 **Verifikasi:**
-- ✅ `ReadLints` (edited files): no linter errors
-- ⚠️ `rtk npx vitest run apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` blocked by `preToolUse hook` (Shell not executable in this session)
+- âœ… `ReadLints` (edited files): no linter errors
+- âš ï¸ `rtk npx vitest run apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` blocked by `preToolUse hook` (Shell not executable in this session)
 
 ---
-## [2026-06-02] BUG FIX — Crop Box Invisible on Tool Activation [COMPLETE]
+## [2026-06-02] BUG FIX â€” Crop Box Invisible on Tool Activation [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / UI / VIEWPORT
 
 **Deskripsi:** Crop box tidak muncul saat Crop Tool diaktifkan. Root cause: `cropRect` tetap `null` sampai user drag di canvas.
 
 **Root Cause:**
-1. Tidak ada logic untuk bikin initial crop rect saat tool crop aktif — `cropRect` default `null`.
+1. Tidak ada logic untuk bikin initial crop rect saat tool crop aktif â€” `cropRect` default `null`.
 2. `<CropOverlay>` hanya render kalau `props.cropRect` non-null.
 3. CropOverlay di shared SVG yang parent-nya `pointer-events: none`, jadi handle tidak bisa interaksi.
 
@@ -3361,11 +3389,11 @@ Visual feedback ditingkatkan agar lebih jelas:
 - `apps/desktop/src/components/editor/CanvasViewport.tsx`: `ensureCropRect`, activeTool effect, document reinit, crop SVG separator
 
 **Verifikasi:**
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 182 PASS (17 files)
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 182 PASS (17 files)
 
 ---
-## [2026-06-02] FEATURE — OptionBar Crop Section Rewrite [COMPLETE]
+## [2026-06-02] FEATURE â€” OptionBar Crop Section Rewrite [COMPLETE]
 
 ### Kategori: FEATURE / CROP / OPTION BAR / UI
 
@@ -3376,22 +3404,22 @@ Visual feedback ditingkatkan agar lebih jelas:
 - Free mode: display-only W/H fields showing current `cropRect` dimensions
 - Ratio mode: editable aspect ratio W:H fields via `EditableNumField`, updates `cropAspect` signal
 - Size mode: editable target W/H with `px` suffix via `EditableNumField`, updates `cropSizeTarget` signal
-- Swap W/H button (`↔`) — swaps cropRect, cropAspect, and cropSizeTarget simultaneously
+- Swap W/H button (`â†”`) â€” swaps cropRect, cropAspect, and cropSizeTarget simultaneously
 - Guide overlay dropdown (None / Thirds / Grid / Diagonal / Golden) wiring ke `cropGuideMode`
 - Delete cropped pixels toggle via `ToggleBtn` + `cropDeletePixels` signal
-- Reset button — resets cropRect to full document bounds
-- Cancel button — clears cropRect + switches to move tool
-- APPLY button — commits history, calls `engine.cropCanvas`, clears cropRect, switches to move
+- Reset button â€” resets cropRect to full document bounds
+- Cancel button â€” clears cropRect + switches to move tool
+- APPLY button â€” commits history, calls `engine.cropCanvas`, clears cropRect, switches to move
 
 **Files Changed:**
 - `apps/desktop/src/components/editor/OptionBar.tsx`: expanded `useEditor()` destructuring with 6 crop signals; replaced old crop fields + apply button with interactive mode/guide/delete/swap/reset/cancel/apply controls
 
 **Verifikasi:**
-- ✅ `pnpm.cmd run build`: PASS (TypeScript + Vite)
-- ✅ `npx vitest run`: 182 PASS (17 files)
-- ✅ `cargo test -p photrez-core`: 85/85 PASS (via pre-commit hook)
+- âœ… `pnpm.cmd run build`: PASS (TypeScript + Vite)
+- âœ… `npx vitest run`: 182 PASS (17 files)
+- âœ… `cargo test -p photrez-core`: 85/85 PASS (via pre-commit hook)
 
-## [2026-06-10] FEATURE — Viewport-Aware Modern Crop Frame Position [COMPLETE]
+## [2026-06-10] FEATURE â€” Viewport-Aware Modern Crop Frame Position [COMPLETE]
 
 ### Kategori: FEATURE / CROP / VIEWPORT / UX
 
@@ -3400,19 +3428,19 @@ Visual feedback ditingkatkan agar lebih jelas:
 **Design:** `docs/superpowers/specs/2026-06-10-viewport-crop-frame-position-design.md`
 
 **Implementation:**
-1. `ModernCropFrame` interface changed from `{w,h}` to `{x,y,w,h}` (required fields) — frame position is now stored explicitly rather than derived from viewport center.
-2. `getModernCropFrameScreenRect` no longer centers frame — returns `{x: frame.x, y: frame.y, w: frame.w, h: frame.h}` directly.
+1. `ModernCropFrame` interface changed from `{w,h}` to `{x,y,w,h}` (required fields) â€” frame position is now stored explicitly rather than derived from viewport center.
+2. `getModernCropFrameScreenRect` no longer centers frame â€” returns `{x: frame.x, y: frame.y, w: frame.w, h: frame.h}` directly.
 3. `getDefaultModernCropFrame` returns centered `{x,y,w,h}`.
-4. `centerModernCropFrame()` helper added — recomputes centered x,y from viewport size.
+4. `centerModernCropFrame()` helper added â€” recomputes centered x,y from viewport size.
 5. `clampFrameToProjectedBounds` preserves `x,y` from input.
 6. `resizeModernFrameFromCenter` and `resizeModernFrameOneSided` return `{x,y,w,h}` (x,y passed through).
-7. `shiftModernCropFrame(dx, dy)` added to `usePanNavigation.ts` — called in all 4 pan paths (scroll, shift+scroll, space+drag, momentum) to move frame position along with viewport.
+7. `shiftModernCropFrame(dx, dy)` added to `usePanNavigation.ts` â€” called in all 4 pan paths (scroll, shift+scroll, space+drag, momentum) to move frame position along with viewport.
 8. `fitToScreenAndRender` in `useViewportRenderer.ts` recenters frame after fit-to-screen (Ctrl+0).
 9. Space+drag handler uses `actualDx/Dy` (engine viewport delta after `setViewport`) to account for potential clamping.
 10. `modernCropState.ts` imports `ModernCropFrame`/`ModernCropImageTransform` from `modernCropGeometry.ts` (removed local duplicates).
 11. All frame literals across 4 source files + 3 test files updated to include `x,y`.
 12. Canvas Expansion visual indicator entry already in history above.
-13. Engine test for non-fill directional expansion: `applyCrop(-25,-30,150,160)` on 100×100 doc.
+13. Engine test for non-fill directional expansion: `applyCrop(-25,-30,150,160)` on 100Ã—100 doc.
 
 **Still pending:**
 - Zoom handler (Ctrl+scroll, Ctrl+=/-) does not adjust frame position yet.
@@ -3424,7 +3452,7 @@ Visual feedback ditingkatkan agar lebih jelas:
 
 ---
 
-## [2026-06-10] BUG FIX — Fill Box Stuck + Pan Reset on Crop Entry [COMPLETE]
+## [2026-06-10] BUG FIX â€” Fill Box Stuck + Pan Reset on Crop Entry [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / VIEWPORT / UX
 
@@ -3432,23 +3460,23 @@ Visual feedback ditingkatkan agar lebih jelas:
 1. Canvas expansion fill indicator (dashed canvas boundary + subtle fill) must move with viewport during pan.
 2. On entering Crop tool, document + crop frame must be centered, not at top-left corner.
 
-**Root Cause 1 — Fill box not reactive:**
+**Root Cause 1 â€” Fill box not reactive:**
 `canvasScreenRect` was computed inline inside a `<Show>` render prop function. SolidJS's `Show` component creates a memo for the `when` condition, but inline signal accesses inside the children function may not reliably propagate to the template when the `when` condition stays truthy. `pan()` changes during scroll/pan were not triggering re-render of the expansion fill/dashed rect.
 
 **Fix 1:** Moved `canvasScreenRect` into a top-level `createMemo` at the `CanvasViewport` component level, outside any `Show` render prop. The memo tracks `pan()`, `offsetX/Y`, `rotation`, `docWidth`, `zoom`, and `scale`. When any dependency changes, the memo re-evaluates and the new value is passed directly as a prop to `ModernCropOverlay`.
 
-**Root Cause 2 — Pan reset to (0,0) not centering:**
+**Root Cause 2 â€” Pan reset to (0,0) not centering:**
 Setting `pan = {x: 0, y: 0}` positions the document's top-left at the viewport's top-left corner, not center.
 
 **Fix 2:** On Modern crop session entry (new session key), compute the correct centering pan:
 ```
-panX = (viewportWidth − docWidth × zoom × scale) / 2
-panY = (viewportHeight − docHeight × zoom × scale) / 2
+panX = (viewportWidth âˆ’ docWidth Ã— zoom Ã— scale) / 2
+panY = (viewportHeight âˆ’ docHeight Ã— zoom Ã— scale) / 2
 ```
 Applied via both `setPan()` signal and `engine.setViewport()`. Zoom is preserved.
 
 **Files Changed:**
-- `CanvasViewport.tsx` — added `canvasScreenRect` memo, `setPan` destructuring, centering pan calc in session key effect, replaced inline `canvasScreenRect` with memo
+- `CanvasViewport.tsx` â€” added `canvasScreenRect` memo, `setPan` destructuring, centering pan calc in session key effect, replaced inline `canvasScreenRect` with memo
 
 ### Verification
 - PASS: `pnpm.cmd run build`
@@ -3457,11 +3485,11 @@ Applied via both `setPan()` signal and `engine.setViewport()`. Zoom is preserved
 ---
 
 > Dokumen ini mencatat SEMUA perubahan signifikan yang dibuat oleh AI.
-> Urutan: terbaru di atas. Jangan hapus entri lama — hanya tambahkan di atas.
+> Urutan: terbaru di atas. Jangan hapus entri lama â€” hanya tambahkan di atas.
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_CURRENT_TASK.md` (status), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
 ---
-## [2026-06-02] FEATURE — CropOverlay Full Rewrite [COMPLETE]
+## [2026-06-02] FEATURE â€” CropOverlay Full Rewrite [COMPLETE]
 
 ### Kategori: FEATURE / CROP / UI
 
@@ -3480,11 +3508,11 @@ Applied via both `setPan()` signal and `engine.setViewport()`. Zoom is preserved
 - Pointer event strategy: `createEffect` + `addEventListener` on `<g>` ref (not JSX `onPointerDown`), avoids SolidJS re-render pointer capture issues
 
 **Verifikasi:**
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 182 PASS (17 files)
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 182 PASS (17 files)
 
 ---
-## [2026-06-02] FEATURE — CanvasViewport Crop Wiring [COMPLETE]
+## [2026-06-02] FEATURE â€” CanvasViewport Crop Wiring [COMPLETE]
 
 ### Kategori: FEATURE / CROP / VIEWPORT / UI
 
@@ -3495,34 +3523,34 @@ Applied via both `setPan()` signal and `engine.setViewport()`. Zoom is preserved
 - `apps/desktop/src/components/editor/CropOverlay.tsx`: extend props interface
 
 **Verifikasi:**
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 182/182 PASS (17 files, +14)
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 182/182 PASS (17 files, +14)
 
 ---
-## [2026-06-02] BUG FIX — Option Bar Locked Layer Clarity [COMPLETE]
+## [2026-06-02] BUG FIX â€” Option Bar Locked Layer Clarity [COMPLETE]
 
 ### Kategori: BUG FIX / OPTION BAR / UI / LOCK
 
-**Deskripsi:** X/Y/R option bar fields seolah tidak mengupdate transform ketika layer locked. Root cause rangkap: (1) handleFlip dan handleResetTransform tidak punya locked guard — flip/reset tetap jalan meski layer locked; (2) tidak ada visual indikasi bahwa layer locked — field terlihat editable tapi submit silently ignored; (3) Flip/Reset buttons tidak menampilkan disabled state.
+**Deskripsi:** X/Y/R option bar fields seolah tidak mengupdate transform ketika layer locked. Root cause rangkap: (1) handleFlip dan handleResetTransform tidak punya locked guard â€” flip/reset tetap jalan meski layer locked; (2) tidak ada visual indikasi bahwa layer locked â€” field terlihat editable tapi submit silently ignored; (3) Flip/Reset buttons tidak menampilkan disabled state.
 
 **Fix Rationale:**
-1. `activeLayerSafe()` — helper yang baca langsung dari `engine.getLayer(id)` (bukan layers signal), untuk fresh state
-2. `isLocked()` — derived signal dari `activeLayerSafe()?.locked ?? false`
-3. `handleFlip` + `handleResetTransform` — tambah `if (isLocked()) return;` guard
-4. "Locked" pill indicator — muncul di option bar saat `isLocked()`, dengan lock icon + amber border/tint
-5. Flip div — `opacity-30 pointer-events-none` saat locked
-6. Reset button — `disabled` attribute + `text-editor-text-dim/30 cursor-default` saat locked
-7. X/Y/R EditableNumField — sudah support `disabled` prop, tinggal pass `isLocked()`
+1. `activeLayerSafe()` â€” helper yang baca langsung dari `engine.getLayer(id)` (bukan layers signal), untuk fresh state
+2. `isLocked()` â€” derived signal dari `activeLayerSafe()?.locked ?? false`
+3. `handleFlip` + `handleResetTransform` â€” tambah `if (isLocked()) return;` guard
+4. "Locked" pill indicator â€” muncul di option bar saat `isLocked()`, dengan lock icon + amber border/tint
+5. Flip div â€” `opacity-30 pointer-events-none` saat locked
+6. Reset button â€” `disabled` attribute + `text-editor-text-dim/30 cursor-default` saat locked
+7. X/Y/R EditableNumField â€” sudah support `disabled` prop, tinggal pass `isLocked()`
 
 **Files Changed:**
 - `apps/desktop/src/components/editor/OptionBar.tsx`: +activeLayerSafe/isLocked helpers, locked guards di flip/reset, "Locked" pill, disabled styles untuk Flip/Reset saat locked
 
 **Verifikasi:**
-- `pnpm.cmd run build`: ✅
-- `npx vitest run`: ✅ (168/168)
+- `pnpm.cmd run build`: âœ…
+- `npx vitest run`: âœ… (168/168)
 
 ---
-## [2026-06-02] FEATURE — Move Tool Option Bar Hybrid [COMPLETE]
+## [2026-06-02] FEATURE â€” Move Tool Option Bar Hybrid [COMPLETE]
 
 ### Kategori: FEATURE / MOVE TOOL / OPTION BAR / UI
 
@@ -3546,12 +3574,12 @@ Applied via both `setPan()` signal and `engine.setViewport()`. Zoom is preserved
 - `docs/AI_HISTORY.md`: entry ini
 
 **Verifikasi:**
-- `pnpm.cmd run build`: ✅
-- `npx vitest run`: ✅ (168/168, +1)
-- `cargo test -p photrez-core`: ✅ (85/85)
+- `pnpm.cmd run build`: âœ…
+- `npx vitest run`: âœ… (168/168, +1)
+- `cargo test -p photrez-core`: âœ… (85/85)
 
 ---
-## [2026-06-02] FEATURE — Overlay Move Tool Alt Snap Disable + Guardrail Docs [COMPLETE]
+## [2026-06-02] FEATURE â€” Overlay Move Tool Alt Snap Disable + Guardrail Docs [COMPLETE]
 
 ### Kategori: FEATURE / SNAPPING / OVERLAY / DOCUMENTATION
 
@@ -3566,22 +3594,22 @@ Applied via both `setPan()` signal and `engine.setViewport()`. Zoom is preserved
 - `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: +!e.altKey guard, +else onSnapClear
 - `apps/desktop/src/components/editor/__tests__/SelectionTransformOverlay.test.ts`: +1 regression test
 - `docs/AI_CONTEXT.md`: +Move Tool Runtime Assumptions section
-- `docs/ARCHITECTURE.md`: test count 162→167
-- `docs/FEATURES.md`: test count 166→167
+- `docs/ARCHITECTURE.md`: test count 162â†’167
+- `docs/FEATURES.md`: test count 166â†’167
 - `docs/AI_HISTORY.md`: entry ini
 - `docs/AI_CURRENT_TASK.md`: entry ini
 
 **Verifikasi:**
-- `pnpm.cmd run build`: ✅
-- `npx vitest run`: ✅ (167/167)
-- `cargo test -p photrez-core`: ✅ (85/85)
+- `pnpm.cmd run build`: âœ…
+- `npx vitest run`: âœ… (167/167)
+- `cargo test -p photrez-core`: âœ… (85/85)
 
 ---
-## [2026-06-02] BUG FIX — Stuck Snap Indicators on Overlay Move Drag End [COMPLETE]
+## [2026-06-02] BUG FIX â€” Stuck Snap Indicators on Overlay Move Drag End [COMPLETE]
 
 ### Kategori: BUG FIX / SNAPPING / OVERLAY
 
-**Deskripsi:** Snap indicator (magenta guide lines) tetap terlihat setelah move/drag selesai di overlay path (`SelectionTransformOverlay.tsx`). Root cause: overlay's pointerup/pointercancel/lostpointercapture/Escape handler tidak pernah membersihkan `snapLines` signal — HANYA membersihkan HUD dan drag state. Canvas path (`input-handler.ts`) sudah benar dengan `onSnapLines?.([])` di `handlePointerUp`.
+**Deskripsi:** Snap indicator (magenta guide lines) tetap terlihat setelah move/drag selesai di overlay path (`SelectionTransformOverlay.tsx`). Root cause: overlay's pointerup/pointercancel/lostpointercapture/Escape handler tidak pernah membersihkan `snapLines` signal â€” HANYA membersihkan HUD dan drag state. Canvas path (`input-handler.ts`) sudah benar dengan `onSnapLines?.([])` di `handlePointerUp`.
 
 **Fix Rationale:**
 1. Tambah `onSnapClear` prop di `SelectionTransformOverlayProps`
@@ -3594,14 +3622,14 @@ Applied via both `setPan()` signal and `engine.setViewport()`. Zoom is preserved
 - `apps/desktop/src/components/editor/__tests__/SelectionTransformOverlay.test.ts`: +4 regression tests
 - `docs/AI_CURRENT_TASK.md`: new entry
 - `docs/AI_HISTORY.md`: entry ini
-- `docs/FEATURES.md`: test count 162→166
+- `docs/FEATURES.md`: test count 162â†’166
 
 **Verifikasi:**
 - `pnpm.cmd run build`: ? (pending)
 - `npx vitest run`: ? (pending)
 
 ---
-## [2026-06-02] FEATURE — Docs Sync: MVP Runtime Architecture v2 [COMPLETE]
+## [2026-06-02] FEATURE â€” Docs Sync: MVP Runtime Architecture v2 [COMPLETE]
 
 ### Kategori: DOCUMENTATION / ARCHITECTURE / CLEANUP
 
@@ -3610,19 +3638,19 @@ Applied via both `setPan()` signal and `engine.setViewport()`. Zoom is preserved
 **Files Changed:**
 - `docs/AI_CONTEXT.md`: stack line, section 6 rewrite, rule #3 exception
 - `docs/ARCHITECTURE.md`: overview, status, stack table, source of truth
-- `docs/02-architecture.md`: +section 11 MVP Runtime Reality (current stack, data flow, ownership, migration path)
-- `docs/03-trd.md`: runtime stack, scalability, maintainability
-- `docs/01-id-decision-log.md`: split architecture row into future + MVP
-- `docs/FEATURES.md`: wgpu→WebGL2 canvas
+- `docs/ARCHITECTURE.md`: +section 11 MVP Runtime Reality (current stack, data flow, ownership, migration path)
+- `docs/spec/trd.md`: runtime stack, scalability, maintainability
+- `docs/decisions/id-decision-log.md`: split architecture row into future + MVP
+- `docs/FEATURES.md`: wgpuâ†’WebGL2 canvas
 - `docs/AI_CURRENT_TASK.md`: new entry
 - `docs/AI_HISTORY.md`: entry ini
 
 **Verifikasi:**
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 162 PASS
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 162 PASS
 
 ---
-## [2026-06-02] FEATURE — Canvas Edge Snap Boost [COMPLETE]
+## [2026-06-02] FEATURE â€” Canvas Edge Snap Boost [COMPLETE]
 
 ### Kategori: FEATURE / SNAPPING / UX
 
@@ -3637,66 +3665,66 @@ Applied via both `setPan()` signal and `engine.setViewport()`. Zoom is preserved
 - `apps/desktop/src/viewport/smartGuides.ts`: priority-aware computeSnapAdjustment + SnapRect fields
 - `apps/desktop/src/components/editor/CanvasViewport.tsx`: tag canvas targets with threshold/priority
 - `apps/desktop/src/__tests__/snap-adjustment.test.ts`: +7 regression tests (threshold, priority, backward compat)
-- `docs/FEATURES.md`: test count 155→162, new snap boost row
-- `docs/ARCHITECTURE.md`: test count 154→162
+- `docs/FEATURES.md`: test count 155â†’162, new snap boost row
+- `docs/ARCHITECTURE.md`: test count 154â†’162
 - `docs/AI_HISTORY.md`: entry ini
 - `docs/superpowers/specs/2026-06-02-canvas-edge-snap-boost-design.md`: design spec
 - `docs/superpowers/plans/2026-06-02-canvas-edge-snap-boost.md`: implementation plan
 
 **Verifikasi:**
-- ✅ `npx vitest run`: 162 PASS (16 test files, +7 new tests)
-- ✅ `pnpm run build`: PASS (TypeScript + Vite)
+- âœ… `npx vitest run`: 162 PASS (16 test files, +7 new tests)
+- âœ… `pnpm run build`: PASS (TypeScript + Vite)
 
 ---
-## [2026-06-02] BUG FIX — Handle-Axis Projection for Corner Resize (Corrected Perpendicular Axis) [COMPLETE]
+## [2026-06-02] BUG FIX â€” Handle-Axis Projection for Corner Resize (Corrected Perpendicular Axis) [COMPLETE]
 
 ### Kategori: BUG FIX / TRANSFORM / GEOMETRY
 
-**Deskripsi:** Fix sebelumnya menggunakan aspect-ratio diagonal (dari opposite anchor ke dragged corner) sebagai projection axis. User melaporkan "masih nggak ada bedanya" — gerakan NE/SW pada SE handle tetap mengubah ukuran. Root cause: axis yang benar adalah handle/cursor diagonal (45°), bukan object aspect diagonal.
+**Deskripsi:** Fix sebelumnya menggunakan aspect-ratio diagonal (dari opposite anchor ke dragged corner) sebagai projection axis. User melaporkan "masih nggak ada bedanya" â€” gerakan NE/SW pada SE handle tetap mengubah ukuran. Root cause: axis yang benar adalah handle/cursor diagonal (45Â°), bukan object aspect diagonal.
 
 **Akar Masalah (Root Cause):**
 
 Fix sebelumnya menggunakan object-aspect diagonal:
 ```
-SE: (oldW, oldH) — diagonal dari opposite anchor ke corner
+SE: (oldW, oldH) â€” diagonal dari opposite anchor ke corner
 ```
-Untuk object 200×100, axis ini = (200, 100) → berat ke X. Gerakan NE/SW (20, -20) punya dot product non-zero: `20×200 + (-20)×100 = 2000 ≠ 0` → resize tetap terjadi.
+Untuk object 200Ã—100, axis ini = (200, 100) â†’ berat ke X. Gerakan NE/SW (20, -20) punya dot product non-zero: `20Ã—200 + (-20)Ã—100 = 2000 â‰  0` â†’ resize tetap terjadi.
 
 **Logika Perbaikan (Fix Rationale):**
 
-Ganti projection axis dari object-aspect diagonal ke handle/cursor diagonal (45° di screen space, sama di local space karena rotasi dikompensasi):
+Ganti projection axis dari object-aspect diagonal ke handle/cursor diagonal (45Â° di screen space, sama di local space karena rotasi dikompensasi):
 ```
 SE: (1, 1), NE: (1, -1), SW: (-1, 1), NW: (-1, -1)
 factor = 1 + (dx*hx + dy*hy) / (oldW + oldH)
 ```
-Untuk object 200×100, SE handle (hx=1, hy=1), gerakan (20, -20):
-`projected = 20×1 + (-20)×1 = 0` → factor = 1 → no resize ✓
+Untuk object 200Ã—100, SE handle (hx=1, hy=1), gerakan (20, -20):
+`projected = 20Ã—1 + (-20)Ã—1 = 0` â†’ factor = 1 â†’ no resize âœ“
 
 **Files Changed:**
-- `apps/desktop/src/viewport/transformGeometry.ts`: `applyResizeHandle` — projection axis dari aspect-diagonal ke handle-axis
+- `apps/desktop/src/viewport/transformGeometry.ts`: `applyResizeHandle` â€” projection axis dari aspect-diagonal ke handle-axis
 - `apps/desktop/src/__tests__/transform-geometry.test.ts`: update expectations + new regression test
-- `docs/FEATURES.md`: test count 154→155
+- `docs/FEATURES.md`: test count 154â†’155
 - `docs/AI_HISTORY.md`: entry ini
 - `docs/AI_CURRENT_TASK.md`: entry ini
 
 **Verifikasi:**
-- ✅ `npx vitest run`: 155 PASS (16 test files, +1 regression test)
+- âœ… `npx vitest run`: 155 PASS (16 test files, +1 regression test)
 
 ---
-## [2026-06-02] BUG FIX — Photoshop-Style Diagonal Projection for Corner Resize (Perpendicular Drift) [COMPLETE]
+## [2026-06-02] BUG FIX â€” Photoshop-Style Diagonal Projection for Corner Resize (Perpendicular Drift) [COMPLETE]
 
 ### Kategori: BUG FIX / TRANSFORM / GEOMETRY
 
-**Deskripsi:** Saat resize corner handle default proportional, gerakan mouse yang tegak lurus terhadap diagonal resize tetap mengubah ukuran gambar. Fix: project mouse delta ke diagonal vector dari opposite anchor ke dragged handle — komponen perpendicular diabaikan.
+**Deskripsi:** Saat resize corner handle default proportional, gerakan mouse yang tegak lurus terhadap diagonal resize tetap mengubah ukuran gambar. Fix: project mouse delta ke diagonal vector dari opposite anchor ke dragged handle â€” komponen perpendicular diabaikan.
 
 **Akar Masalah (Root Cause):**
 
 `applyResizeHandle()` menggunakan axis dominance:
 ```ts
 if (Math.abs(localDx) > Math.abs(localDy)) {
-  vh = vw / aspect;      // dy-dominated → adjust vw
+  vh = vw / aspect;      // dy-dominated â†’ adjust vw
 } else {
-  vw = vh * aspect;      // dx-dominated → adjust vh
+  vw = vh * aspect;      // dx-dominated â†’ adjust vh
 }
 ```
 Ini memilih satu axis (yang dominan), lalu menyesuaikan axis lain. Gerakan diagonal apapun tetap mengubah width ATAU height, termasuk gerakan perpendicular yang di Photoshop tidak mengubah ukuran.
@@ -3705,7 +3733,7 @@ Ini memilih satu axis (yang dominan), lalu menyesuaikan axis lain. Gerakan diago
 
 Untuk corner proportional resize, gunakan vector projection:
 
-1. Tentukan diagonal vector dari opposite anchor ke dragged corner (mis. SE → (oldW, oldH))
+1. Tentukan diagonal vector dari opposite anchor ke dragged corner (mis. SE â†’ (oldW, oldH))
 2. Normalisasi ke unit vector, hitung dot product dengan local delta:
    ```
    projected = localDx * ux + localDy * uy
@@ -3713,7 +3741,7 @@ Untuk corner proportional resize, gunakan vector projection:
    ```
 3. Hitung `vw = oldW * factor`, `vh = oldH * factor`
 4. Reposition berdasarkan anchor (w/n adjustment)
-5. Clamp faktor supaya width/height ≥ 1px
+5. Clamp faktor supaya width/height â‰¥ 1px
 6. Non-corner handles + Shift-free scaling tetap pakai independent axis delta
 
 **Files Changed:**
@@ -3723,11 +3751,11 @@ Untuk corner proportional resize, gunakan vector projection:
 - `docs/AI_HISTORY.md`: entry ini
 
 ---
-## [2026-06-02] BUG FIX — Resize Handle Pointer Capture Lost/Stuck During Fast Drag (Root SVG Capture) [COMPLETE]
+## [2026-06-02] BUG FIX â€” Resize Handle Pointer Capture Lost/Stuck During Fast Drag (Root SVG Capture) [COMPLETE]
 
 ### Kategori: BUG FIX / OVERLAY / POINTER EVENTS
 
-**Deskripsi:** Resize handle pointer capture bisa "lost" saat resize terlalu cepat karena `setPointerCapture()` dipanggil pada elemen SVG handle individual yang DOM node-nya bisa diganti selama Solid re-render. Akibatnya `pointermove`/`pointerup` tidak pernah diterima setelah re-render, dan `dragState` stuck non-null — transform tidak bisa dihentikan.
+**Deskripsi:** Resize handle pointer capture bisa "lost" saat resize terlalu cepat karena `setPointerCapture()` dipanggil pada elemen SVG handle individual yang DOM node-nya bisa diganti selama Solid re-render. Akibatnya `pointermove`/`pointerup` tidak pernah diterima setelah re-render, dan `dragState` stuck non-null â€” transform tidak bisa dihentikan.
 
 **Akar Masalah (Root Cause):**
 
@@ -3737,15 +3765,15 @@ const target = e.currentTarget as HTMLElement;
 target.setPointerCapture(e.pointerId);
 ```
 
-`e.currentTarget` adalah elemen handle SVG (mis. `<rect data-handle="se">`) yang berada di dalam `<For>` loop. Saat `handlePointerMove` memanggil `engine.transformLayer()`, Solid memicu `syncState()` via `workspace.onChange()`, menyebabkan re-render selection overlay. Re-render ini bisa mengganti DOM node handle (Solid's `<For>` creates new array objects each render → new DOM nodes). Jika node yang memiliki active pointer capture diganti, browser kehilangan pointer capture, dan event `pointermove`/`pointerup` berikutnya tidak pernah sampai ke handler.
+`e.currentTarget` adalah elemen handle SVG (mis. `<rect data-handle="se">`) yang berada di dalam `<For>` loop. Saat `handlePointerMove` memanggil `engine.transformLayer()`, Solid memicu `syncState()` via `workspace.onChange()`, menyebabkan re-render selection overlay. Re-render ini bisa mengganti DOM node handle (Solid's `<For>` creates new array objects each render â†’ new DOM nodes). Jika node yang memiliki active pointer capture diganti, browser kehilangan pointer capture, dan event `pointermove`/`pointerup` berikutnya tidak pernah sampai ke handler.
 
 **Logika Perbaikan (Fix Rationale):**
 
-1. **Capture ke root `<svg>`** — root SVG (`overlaySvgRef`) tetap mounted selama `<Show when={getLayer()}>` aktif (layer masih visible dan tidak di-unmount saat drag). Capture pada root SVG tidak hilang meskipun child `<g>`/`<rect>` handle berubah.
-2. **Simpan `pointerId` di dragState** — filter event dengan `e.pointerId !== drag.pointerId` untuk menghindari konflik multi-pointer.
-3. **Pindah handler ke root SVG** — `onPointerMove`/`onPointerUp`/`onPointerCancel`/`onLostPointerCapture` pada `<svg>` (bukan per-handle). `onPointerDown` tetap di handle untuk memulai drag.
-4. **Stabilkan `<For>` array** — `HANDLE_TYPES` sebagai const array string literal, bukan array object baru per render. Mengurangi DOM churn.
-5. **Escape handler** — release pointer capture sebelum cleanup.
+1. **Capture ke root `<svg>`** â€” root SVG (`overlaySvgRef`) tetap mounted selama `<Show when={getLayer()}>` aktif (layer masih visible dan tidak di-unmount saat drag). Capture pada root SVG tidak hilang meskipun child `<g>`/`<rect>` handle berubah.
+2. **Simpan `pointerId` di dragState** â€” filter event dengan `e.pointerId !== drag.pointerId` untuk menghindari konflik multi-pointer.
+3. **Pindah handler ke root SVG** â€” `onPointerMove`/`onPointerUp`/`onPointerCancel`/`onLostPointerCapture` pada `<svg>` (bukan per-handle). `onPointerDown` tetap di handle untuk memulai drag.
+4. **Stabilkan `<For>` array** â€” `HANDLE_TYPES` sebagai const array string literal, bukan array object baru per render. Mengurangi DOM churn.
+5. **Escape handler** â€” release pointer capture sebelum cleanup.
 
 **Files Changed:**
 - `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: root SVG ref + pointer capture, pointerId filter, root SVG event handlers, stable HANDLE_TYPES (const), `data-overlay-svg`/`data-handle` attr
@@ -3755,7 +3783,7 @@ target.setPointerCapture(e.pointerId);
 - `docs/AI_HISTORY.md`: entry ini
 
 ---
-## [2026-06-02] BUG FIX — Vertical Flip Regresi (Shader UV Double Y-Flip) [COMPLETE]
+## [2026-06-02] BUG FIX â€” Vertical Flip Regresi (Shader UV Double Y-Flip) [COMPLETE]
 
 ### Kategori: BUG FIX / RENDERER / SHADER
 
@@ -3765,51 +3793,51 @@ target.setPointerCapture(e.pointerId);
 
 Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu lagi menyebabkan double-flip:
 
-1. **View matrix flip (BENAR)** — `computeViewMatrix()` di `webgl2.ts:293`: `m[5] = -2.0 / docH`. Ini membalik document Y-axis (`y=0 → NDC top, y=docH → NDC bottom`) agar rendering konsisten dengan CSS y-down convention. **WAJIB ada.**
+1. **View matrix flip (BENAR)** â€” `computeViewMatrix()` di `webgl2.ts:293`: `m[5] = -2.0 / docH`. Ini membalik document Y-axis (`y=0 â†’ NDC top, y=docH â†’ NDC bottom`) agar rendering konsisten dengan CSS y-down convention. **WAJIB ada.**
 
-2. **Texture UV flip (SALAH — regresi)** — `v_texCoord = vec2(pos.x, 1.0 - pos.y)` di `shaders.ts:23`. Ini membalik texture coordinate Y, menyebabkan:
-   - `pos.y = 0` (visually TOP, setelah view matrix flip) → `v_texCoord.y = 1` → texel di baris terakhir texture → **bottom of image** ✗
+2. **Texture UV flip (SALAH â€” regresi)** â€” `v_texCoord = vec2(pos.x, 1.0 - pos.y)` di `shaders.ts:23`. Ini membalik texture coordinate Y, menyebabkan:
+   - `pos.y = 0` (visually TOP, setelah view matrix flip) â†’ `v_texCoord.y = 1` â†’ texel di baris terakhir texture â†’ **bottom of image** âœ—
    
    Dengan `UNPACK_FLIP_Y_WEBGL = false` (default), texel `v=0` adalah row 0 dari source image = top of image. Tanpa UV flip:
-   - `pos.y = 0` (visual TOP) → `v_texCoord.y = 0` → texel row 0 → **top of image** ✓
+   - `pos.y = 0` (visual TOP) â†’ `v_texCoord.y = 0` â†’ texel row 0 â†’ **top of image** âœ“
 
 **Regresi diperkenalkan di:** Commit `2fa63a0` (fix: P0 center-anchored flip). Commit `6ad3d70` sebelumnya sudah benar menghapus UV flip dengan komentar "Y-axis already handled by view matrix flip", tetapi `2fa63a0` secara tidak sengaja mengembalikan `1.0 - pos.y` tanpa menyadari bahwa view matrix sudah melakukan flip.
 
 **Logika Perbaikan (Fix Rationale):**
 
-- `computeViewMatrix()` → Y-flip document space (wajib untuk CSS coordinate convention)
-- `UNPACK_FLIP_Y_WEBGL = false` → texel v=0 = first uploaded row = top of image
-- `v_texCoord = vec2(pos.x, pos.y)` → visual top (pos.y=0) maps to top of image (v=0) ✓
-- Hapus `1.0 - pos.y` → eliminasi double-flip
+- `computeViewMatrix()` â†’ Y-flip document space (wajib untuk CSS coordinate convention)
+- `UNPACK_FLIP_Y_WEBGL = false` â†’ texel v=0 = first uploaded row = top of image
+- `v_texCoord = vec2(pos.x, pos.y)` â†’ visual top (pos.y=0) maps to top of image (v=0) âœ“
+- Hapus `1.0 - pos.y` â†’ eliminasi double-flip
 
 **Files Changed:**
-- `apps/desktop/src/renderer/shaders.ts`: `v_texCoord = vec2(pos.x, 1.0 - pos.y)` → `vec2(pos.x, pos.y)` + komentar menjelaskan mengapa no UV flip
-- `apps/desktop/src/__tests__/renderer.test.ts`: +regression test "should NOT double-flip texture Y" — assert shader source menggunakan `pos.y` dan TIDAK mengandung `1.0 - pos`
+- `apps/desktop/src/renderer/shaders.ts`: `v_texCoord = vec2(pos.x, 1.0 - pos.y)` â†’ `vec2(pos.x, pos.y)` + komentar menjelaskan mengapa no UV flip
+- `apps/desktop/src/__tests__/renderer.test.ts`: +regression test "should NOT double-flip texture Y" â€” assert shader source menggunakan `pos.y` dan TIDAK mengandung `1.0 - pos`
 - `docs/AI_CURRENT_TASK.md`: new entry for this fix
 - `docs/AI_HISTORY.md`: entry ini
 
 **Verifikasi Final:**
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 147/147 PASS (15 test files, +1 regression test)
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 147/147 PASS (15 test files, +1 regression test)
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 **Catatan:**
-- Checkerboard shader tidak terpengaruh — menggunakan `gl_FragCoord.xy` bukan `v_texCoord` untuk pattern
-- `flipH`/`flipV` booleans di layer transform tidak terkait — keduanya default `false` untuk layer baru
-- Regression test adalah string assertion pada `VERTEX_SHADER_SOURCE` — cukup sensitif untuk menangkap re-introduksi `1.0 - pos` di masa depan
+- Checkerboard shader tidak terpengaruh â€” menggunakan `gl_FragCoord.xy` bukan `v_texCoord` untuk pattern
+- `flipH`/`flipV` booleans di layer transform tidak terkait â€” keduanya default `false` untuk layer baru
+- Regression test adalah string assertion pada `VERTEX_SHADER_SOURCE` â€” cukup sensitif untuk menangkap re-introduksi `1.0 - pos` di masa depan
 
 ---
 
-## [2026-06-02] BUG FIX CAMPAIGN — Center-Anchored Flip, Overlay Reactivity, Snap+HUD Unification, Rotation Drag Fix [COMPLETE]
+## [2026-06-02] BUG FIX CAMPAIGN â€” Center-Anchored Flip, Overlay Reactivity, Snap+HUD Unification, Rotation Drag Fix [COMPLETE]
 
 ### Kategori: BUG FIX / TRANSFORM / OVERLAY / SNAP / HUD / VIEWPORT
 
-**Deskripsi:** Bugfix campaign pasca Photoshop-like Free Transform. Memperbaiki 7 kategori P0/P1 bugs: (1) HEAD tidak buildable dari clean checkout — vite-tsconfig-paths stale refs; (2) flip semantics salah — shader flip dulu baru center, geometry helpers encode flip sign ke scaleX; (3) overlay AABB tidak reaktif — syncState shallow-copy layer objects; (4) overlay pointer layering — move zone di belakang handles; (5) move drag tidak lewat snap pipeline; (6) HUD position pakai raw clientX/zoom bukan screenToDocument; (7) rotation drag coordinate space salah.
+**Deskripsi:** Bugfix campaign pasca Photoshop-like Free Transform. Memperbaiki 7 kategori P0/P1 bugs: (1) HEAD tidak buildable dari clean checkout â€” vite-tsconfig-paths stale refs; (2) flip semantics salah â€” shader flip dulu baru center, geometry helpers encode flip sign ke scaleX; (3) overlay AABB tidak reaktif â€” syncState shallow-copy layer objects; (4) overlay pointer layering â€” move zone di belakang handles; (5) move drag tidak lewat snap pipeline; (6) HUD position pakai raw clientX/zoom bukan screenToDocument; (7) rotation drag coordinate space salah.
 
 **Files Changed:**
 - `apps/desktop/src/viewport/transformGeometry.ts`: remove sxSign usage, positive scaleX
 - `apps/desktop/src/__tests__/transform-geometry.test.ts`: +4 flip-semantics tests (146 total)
-- `apps/desktop/src/renderer/shaders.ts`: center-anchored flip (`center → flip`, not `flip → center`)
+- `apps/desktop/src/renderer/shaders.ts`: center-anchored flip (`center â†’ flip`, not `flip â†’ center`)
 - `apps/desktop/src/renderer/webgl2.ts`: flipSign from booleans, not sign(scaleX)
 - `apps/desktop/src/components/editor/EditorContext.tsx`: deep-clone layer objects in syncState
 - `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: move zone before handles, Escape clears HUD, onComputeSnap, onScreenToDoc
@@ -3824,68 +3852,68 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 - `docs/AI_HISTORY.md`: entry ini
 
 **Verifikasi Final:**
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 146/146 PASS (15 test files)
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 146/146 PASS (15 test files)
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 **Key Decisions:**
 - ScaleX/ScaleY = positive magnitude only; flipH/flipV booleans carry mirror
-- Center-anchored flip: `localPos → subtract center → flip → rotate → add center`
+- Center-anchored flip: `localPos â†’ subtract center â†’ flip â†’ rotate â†’ add center`
 - CW rotation unified: shader negates rad, rotatePoint negates rad, SVG rotate() positive, all tests assert CW
 - Overlay reactivity requires deep clone in syncState for Solid reactivity to fire
 - HUD uses document-space coords from screenToDocument()
 
 ---
 
-## [2026-06-02] FEATURE — Precision Move Pack (keyboard nudge, canvas auto-select, transform HUD, snap feedback) [COMPLETE]
+## [2026-06-02] FEATURE â€” Precision Move Pack (keyboard nudge, canvas auto-select, transform HUD, snap feedback) [COMPLETE]
 
 ### Kategori: FEATURE / VIEWPORT / MOVE TOOL / UX
 
-**Deskripsi:** Enhance Move Tool dengan 4 peningkatan presisi: (1) keyboard nudge Arrow=1px / Shift+Arrow=10px, (2) canvas auto-select via transformed polygon hit-test, (3) transform HUD near cursor showing ΔX/ΔY, W/H/%, angle, (4) snap feedback label on HUD when snap lines active.
+**Deskripsi:** Enhance Move Tool dengan 4 peningkatan presisi: (1) keyboard nudge Arrow=1px / Shift+Arrow=10px, (2) canvas auto-select via transformed polygon hit-test, (3) transform HUD near cursor showing Î”X/Î”Y, W/H/%, angle, (4) snap feedback label on HUD when snap lines active.
 
 **Files Changed:**
-- `apps/desktop/src/viewport/layerHitTest.ts`: NEW — `hitTestLayer`, `hitTestLayers` pure helpers (ray-casting point-in-polygon)
-- `apps/desktop/src/__tests__/layer-hit-test.test.ts`: NEW — 8 unit tests
-- `apps/desktop/src/components/editor/TransformHud.tsx`: NEW — SVG HUD component with `createMemo`, `HudMode` type
-- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: MODIFIED — `onHudUpdate` prop, `snapActive` prop, HUD emits per drag branch + clear on pointer-up
-- `apps/desktop/src/components/editor/CanvasViewport.tsx`: MODIFIED — auto-select before `prepareToolContext()`, keyboard nudge in `handleKeyDown`, `hudInfo` signal, HUD wiring
+- `apps/desktop/src/viewport/layerHitTest.ts`: NEW â€” `hitTestLayer`, `hitTestLayers` pure helpers (ray-casting point-in-polygon)
+- `apps/desktop/src/__tests__/layer-hit-test.test.ts`: NEW â€” 8 unit tests
+- `apps/desktop/src/components/editor/TransformHud.tsx`: NEW â€” SVG HUD component with `createMemo`, `HudMode` type
+- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: MODIFIED â€” `onHudUpdate` prop, `snapActive` prop, HUD emits per drag branch + clear on pointer-up
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`: MODIFIED â€” auto-select before `prepareToolContext()`, keyboard nudge in `handleKeyDown`, `hudInfo` signal, HUD wiring
 - `docs/AI_CURRENT_TASK.md`: completion entry
 - `docs/AI_HISTORY.md`: entry ini
 - `docs/FEATURES.md`: +5 rows in Selection + Move + Transform
 
 **Verifikasi Final:**
-- ✅ `npx vitest run`: 142/142 PASS (15 test files)
-- ✅ `pnpm.cmd run build`: PASS (6.07s, 2025 modules)
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `npx vitest run`: 142/142 PASS (15 test files)
+- âœ… `pnpm.cmd run build`: PASS (6.07s, 2025 modules)
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 **Catatan:**
 - Canvas auto-select uses transformed polygon hit-test (ray-casting, not AABB) so rotated layers feel correct
 - Nudge commits history once per non-repeat keydown only; holding arrow doesn't spam undo stack
-- Nudge does NOT trigger snapping — it's explicit precision move, not drag behavior
+- Nudge does NOT trigger snapping â€” it's explicit precision move, not drag behavior
 - Transform HUD is transient SVG overlay with `pointer-events: none`, no state persistence, positioned near cursor in document space
 - HUD "snap" label dynamically appears when `snapLines().length > 0` during drag
-- Code review found 6 issues (1 critical, 2 important, 3 minor) — all fixed before commit
-- All 5 commits in Precision Move Pack: layerHitTest → auto-select → nudge → HUD → fix reviews
+- Code review found 6 issues (1 critical, 2 important, 3 minor) â€” all fixed before commit
+- All 5 commits in Precision Move Pack: layerHitTest â†’ auto-select â†’ nudge â†’ HUD â†’ fix reviews
 
 ---
-## [2026-06-02] FEATURE — Remove vite-tsconfig-paths Plugin (Use Native Vite Resolver) [COMPLETE]
+## [2026-06-02] FEATURE â€” Remove vite-tsconfig-paths Plugin (Use Native Vite Resolver) [COMPLETE]
 
 ### Kategori: FEATURE / BUILD CONFIG / INFRASTRUCTURE
 
-**Deskripsi:** Vite >= 6 (termasuk Vite 8.0.14 yang dipakai proyek ini) mendukung resolusi `tsconfig.paths` secara native lewat opsi `resolve.tsconfigPaths`. Plugin `vite-tsconfig-paths` menjadi redundan dan Vite memunculkan warning setiap kali build/dev dijalankan. Task ini menghapus plugin dan menggantinya dengan opsi native, sambil menjaga perilaku module resolution tetap identik (alias `@/*` → `./src/*`).
+**Deskripsi:** Vite >= 6 (termasuk Vite 8.0.14 yang dipakai proyek ini) mendukung resolusi `tsconfig.paths` secara native lewat opsi `resolve.tsconfigPaths`. Plugin `vite-tsconfig-paths` menjadi redundan dan Vite memunculkan warning setiap kali build/dev dijalankan. Task ini menghapus plugin dan menggantinya dengan opsi native, sambil menjaga perilaku module resolution tetap identik (alias `@/*` â†’ `./src/*`).
 
 **Files Changed:**
 - `apps/desktop/vite.config.ts`: hapus import `tsconfigPaths`, hapus dari array `plugins`, tambah `resolve: { tsconfigPaths: true }`.
 - `apps/desktop/package.json`: hapus `vite-tsconfig-paths@^6.1.1` dari `devDependencies`.
-- `pnpm-lock.yaml`: regenerated (`pnpm install` sukses, −3 packages, tidak ada orphan lockfile entry).
+- `pnpm-lock.yaml`: regenerated (`pnpm install` sukses, âˆ’3 packages, tidak ada orphan lockfile entry).
 - `docs/AI_CURRENT_TASK.md`: entri completion.
 - `docs/AI_HISTORY.md`: entri ini.
 - `docs/FEATURES.md`: baris baru di section Infrastructure.
 
 **Verifikasi Final:**
-- ✅ `pnpm.cmd run build`: PASS (7.69s, 2022 modules transformed). Warning plugin `vite-tsconfig-paths` sudah hilang.
-- ✅ `pnpm.cmd --filter photrez-desktop test`: 114/114 PASS (13 test files, 36.70s).
-- ✅ `pnpm.cmd install`: sukses regenerate lockfile.
+- âœ… `pnpm.cmd run build`: PASS (7.69s, 2022 modules transformed). Warning plugin `vite-tsconfig-paths` sudah hilang.
+- âœ… `pnpm.cmd --filter photrez-desktop test`: 114/114 PASS (13 test files, 36.70s).
+- âœ… `pnpm.cmd install`: sukses regenerate lockfile.
 
 **Catatan:**
 - Perilaku module resolution identik: `tsconfig.json` `"paths": { "@/*": ["./src/*"] }` dibaca langsung oleh native Vite resolver.
@@ -3903,62 +3931,62 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 
 | Date | Entry |
 |---|---|
-| 2026-06-01 | FEATURE — Move Tool Snapping End-to-End [COMPLETE] |
-| 2026-06-01 | TEST FIX — Input Handler Snap Pointer-Up Cleanup Test Review [COMPLETE] |
-| 2026-06-01 | BUG FIX — computeSnapAdjustment Non-Finite Guide Line Endpoints (Code Review) [COMPLETE] |
-| 2026-06-01 | FEATURE — Move Tool Snapping (Task 2: computeSnapAdjustment) [COMPLETE] |
-| 2026-06-01 | BUG FIX — SelectionTransformOverlay Blocks Panning Cursor + Pointer Events [COMPLETE] |
-| 2026-06-01 | BUG FIX — Cursor Imperative Sync via createEffect [COMPLETE] |
-| 2026-06-01 | BUG FIX — Cursor Style Non-Reactive in SolidJS [SUPERSEDED] |
-| 2026-06-01 | BUG FIX + REFACTOR — View Matrix uses documentSize, not canvasSize [COMPLETE] |
-| 2026-06-01 | FEATURE — HiDPI Sharpness + Snap-Fit Transition [COMPLETE] |
-| 2026-06-01 | REFACTOR — Viewport Code Simplification (A+B+C+D) [COMPLETE] |
-| 2026-06-01 | BUG FIX — Viewport Canvas Positioning (Double Position: Flex Static + CSS Transform) [COMPLETE] |
-| 2026-05-31 | BUG FIX — Viewport Architecture Fixes (Double Sync, Stable ToolContext, Brush Accumulator, ImageBitmap Leak) [COMPLETE] |
-| 2026-05-31 | REFACTOR — Viewport Architecture Cleanup (Dead Code Removal, State Sync Consolidation, Per-Instance Stroke Points) [COMPLETE] |
-| 2026-05-31 | BUG FIX — CSS Transform Coordinate Regressions [COMPLETE] |
-| 2026-05-31 | BUG FIX — Double Viewport Transform (WebGL + CSS) [COMPLETE] |
-| 2026-05-31 | FEATURE — Viewport UX Migration & Overlay System [COMPLETE] |
-| 2026-05-31 | FEATURE — UX Overlays: Hover Highlight, Smart Guides, Brush Cursor [COMPLETE] |
-| 2026-05-31 | FEATURE — High-Fidelity Photoshop-style Viewport Navigation & Kinetic Panning [COMPLETE] |
-| 2026-05-31 | FEATURE — High-Fidelity Photoshop-style Move & Transform Overlay [COMPLETE] |
-| 2026-05-30 | BUG FIX — Custom Manifest Compiler & WebView2Loader Linking Workaround [COMPLETE] |
-| 2026-05-30 | FEATURE / REFACTOR / ARCHITECTURE — Architecture Migration v2 with Modular UI Alignment [COMPLETE] |
-| 2026-05-30 | FEATURE / UI / POLISH — Diagonal Swatches, Tab Typography & Layout Polish [COMPLETE] |
-| 2026-05-30 | DOCUMENTATION — Style Guide & Design Tokens Synchronization [COMPLETE] |
-| 2026-05-30 | FEATURE — Solid + Tailwind Editor Shell Integration [COMPLETE] |
-| 2026-05-30 | FEATURE — AppShell Grid Layout Restructure [COMPLETE] |
-| 2026-05-29 | FEATURE — LeftToolRail Reference Matching [COMPLETE] |
-| 2026-05-29 | FEATURE — Titlebar Reference Matching [COMPLETE] |
-| 2026-05-29 | FEATURE — photrez High-Fidelity Reference Slice [COMPLETE] |
-| 2026-05-29 | FEATURE — High-Fidelity LUMINARIS Visual Overhaul & Slicing [COMPLETE] |
-| 2026-05-29 | FEATURE — Mockup UI Slicing [COMPLETE] |
-| 2026-05-28 | FEATURE — Tasks 4-5: On-Demand Rendering & Frontend Render Trigger [COMPLETE] |
-| 2026-05-28 | FEATURE — Task 5: Remove Canvas 2D Fallback from Frontend [COMPLETE] |
-| 2026-05-28 | FEATURE — Tasks 5-10: Frontend Viewport Integration [COMPLETE] |
-| 2026-05-28 | FEATURE — M6: Perf Gate + Packaging [COMPLETE] |
-| 2026-05-28 | FEATURE — M3 Completion: Transform Handles & Controls |
-| 2026-05-28 | FEATURE — Tasks 9-11: Flip Shortcuts, ESC Cancel, Rotation Snapping |
-| 2026-05-28 | FEATURE — Milestone 5: Export Pipeline & Color Selection |
-| 2026-05-28 | FEATURE — Milestone 4: Brush & Eraser Engine |
-| 2026-05-28 | FEATURE — Milestone 3: Selection, Transform, Crop, and Resize |
-| 2026-05-28 | FEATURE — Milestone 2, Task 2: UI Layer Reordering Controls in Right Inspector |
-| 2026-05-28 | FEATURE — Milestone 2, Task 1: BitmapData & Memory Budget in Rust Core |
-| 2026-05-28 | FEATURE — Right Inspector Idea A (Recessed Layers & History Compartment) |
-| 2026-05-28 | FEATURE — Inspector UX Polish (Pill Tabs & Properties Unification) |
-| 2026-05-27 | FEATURE — Segmented Transform Matrix Coordinate Grid |
-| 2026-05-27 | FEATURE — Flush-Left Anchor Active Tool Indicator (Option A) |
-| 2026-05-27 | FEATURE — Left Tool Rail Polish (Mechanical Desktop Aesthetics) |
-| 2026-05-27 | FEATURE — UI Visual De-cluttering (Airy & Lightweight) |
-| 2026-05-27 | FEATURE — Modular Hardware Chassis UI Redesign |
-| 2026-05-27 | FEATURE — Proportional Fix: Rail 48×36 / Top Bar 44px |
-| 2026-05-27 | CLEANUP — Remove Command Palette UI Button (Out of MVP Scope) |
-| 2026-05-27 | FEATURE — Inspector Panel Polish (Collapsible Sections, Tabs, Hover Refinements) |
-| 2026-05-27 | BUG FIX — Tailwind CDN Conflict & Tokens Migration |
-| 2026-05-27 | FEATURE — Milestone 1 Shell Foundation & Photon Amber UI Redesign |
-| 2026-05-27 | DOCS — AI Context Documentation System |
-| 2026-06-02 | BUG FIX — CropOverlay Pointer Capture + Full Crop MVP [COMPLETE] |
-| 2026-06-03 | CROP IMPROVEMENT — 7 Incremental Tasks [COMPLETE] |
+| 2026-06-01 | FEATURE â€” Move Tool Snapping End-to-End [COMPLETE] |
+| 2026-06-01 | TEST FIX â€” Input Handler Snap Pointer-Up Cleanup Test Review [COMPLETE] |
+| 2026-06-01 | BUG FIX â€” computeSnapAdjustment Non-Finite Guide Line Endpoints (Code Review) [COMPLETE] |
+| 2026-06-01 | FEATURE â€” Move Tool Snapping (Task 2: computeSnapAdjustment) [COMPLETE] |
+| 2026-06-01 | BUG FIX â€” SelectionTransformOverlay Blocks Panning Cursor + Pointer Events [COMPLETE] |
+| 2026-06-01 | BUG FIX â€” Cursor Imperative Sync via createEffect [COMPLETE] |
+| 2026-06-01 | BUG FIX â€” Cursor Style Non-Reactive in SolidJS [SUPERSEDED] |
+| 2026-06-01 | BUG FIX + REFACTOR â€” View Matrix uses documentSize, not canvasSize [COMPLETE] |
+| 2026-06-01 | FEATURE â€” HiDPI Sharpness + Snap-Fit Transition [COMPLETE] |
+| 2026-06-01 | REFACTOR â€” Viewport Code Simplification (A+B+C+D) [COMPLETE] |
+| 2026-06-01 | BUG FIX â€” Viewport Canvas Positioning (Double Position: Flex Static + CSS Transform) [COMPLETE] |
+| 2026-05-31 | BUG FIX â€” Viewport Architecture Fixes (Double Sync, Stable ToolContext, Brush Accumulator, ImageBitmap Leak) [COMPLETE] |
+| 2026-05-31 | REFACTOR â€” Viewport Architecture Cleanup (Dead Code Removal, State Sync Consolidation, Per-Instance Stroke Points) [COMPLETE] |
+| 2026-05-31 | BUG FIX â€” CSS Transform Coordinate Regressions [COMPLETE] |
+| 2026-05-31 | BUG FIX â€” Double Viewport Transform (WebGL + CSS) [COMPLETE] |
+| 2026-05-31 | FEATURE â€” Viewport UX Migration & Overlay System [COMPLETE] |
+| 2026-05-31 | FEATURE â€” UX Overlays: Hover Highlight, Smart Guides, Brush Cursor [COMPLETE] |
+| 2026-05-31 | FEATURE â€” High-Fidelity Photoshop-style Viewport Navigation & Kinetic Panning [COMPLETE] |
+| 2026-05-31 | FEATURE â€” High-Fidelity Photoshop-style Move & Transform Overlay [COMPLETE] |
+| 2026-05-30 | BUG FIX â€” Custom Manifest Compiler & WebView2Loader Linking Workaround [COMPLETE] |
+| 2026-05-30 | FEATURE / REFACTOR / ARCHITECTURE â€” Architecture Migration v2 with Modular UI Alignment [COMPLETE] |
+| 2026-05-30 | FEATURE / UI / POLISH â€” Diagonal Swatches, Tab Typography & Layout Polish [COMPLETE] |
+| 2026-05-30 | DOCUMENTATION â€” Style Guide & Design Tokens Synchronization [COMPLETE] |
+| 2026-05-30 | FEATURE â€” Solid + Tailwind Editor Shell Integration [COMPLETE] |
+| 2026-05-30 | FEATURE â€” AppShell Grid Layout Restructure [COMPLETE] |
+| 2026-05-29 | FEATURE â€” LeftToolRail Reference Matching [COMPLETE] |
+| 2026-05-29 | FEATURE â€” Titlebar Reference Matching [COMPLETE] |
+| 2026-05-29 | FEATURE â€” photrez High-Fidelity Reference Slice [COMPLETE] |
+| 2026-05-29 | FEATURE â€” High-Fidelity LUMINARIS Visual Overhaul & Slicing [COMPLETE] |
+| 2026-05-29 | FEATURE â€” Mockup UI Slicing [COMPLETE] |
+| 2026-05-28 | FEATURE â€” Tasks 4-5: On-Demand Rendering & Frontend Render Trigger [COMPLETE] |
+| 2026-05-28 | FEATURE â€” Task 5: Remove Canvas 2D Fallback from Frontend [COMPLETE] |
+| 2026-05-28 | FEATURE â€” Tasks 5-10: Frontend Viewport Integration [COMPLETE] |
+| 2026-05-28 | FEATURE â€” M6: Perf Gate + Packaging [COMPLETE] |
+| 2026-05-28 | FEATURE â€” M3 Completion: Transform Handles & Controls |
+| 2026-05-28 | FEATURE â€” Tasks 9-11: Flip Shortcuts, ESC Cancel, Rotation Snapping |
+| 2026-05-28 | FEATURE â€” Milestone 5: Export Pipeline & Color Selection |
+| 2026-05-28 | FEATURE â€” Milestone 4: Brush & Eraser Engine |
+| 2026-05-28 | FEATURE â€” Milestone 3: Selection, Transform, Crop, and Resize |
+| 2026-05-28 | FEATURE â€” Milestone 2, Task 2: UI Layer Reordering Controls in Right Inspector |
+| 2026-05-28 | FEATURE â€” Milestone 2, Task 1: BitmapData & Memory Budget in Rust Core |
+| 2026-05-28 | FEATURE â€” Right Inspector Idea A (Recessed Layers & History Compartment) |
+| 2026-05-28 | FEATURE â€” Inspector UX Polish (Pill Tabs & Properties Unification) |
+| 2026-05-27 | FEATURE â€” Segmented Transform Matrix Coordinate Grid |
+| 2026-05-27 | FEATURE â€” Flush-Left Anchor Active Tool Indicator (Option A) |
+| 2026-05-27 | FEATURE â€” Left Tool Rail Polish (Mechanical Desktop Aesthetics) |
+| 2026-05-27 | FEATURE â€” UI Visual De-cluttering (Airy & Lightweight) |
+| 2026-05-27 | FEATURE â€” Modular Hardware Chassis UI Redesign |
+| 2026-05-27 | FEATURE â€” Proportional Fix: Rail 48Ã—36 / Top Bar 44px |
+| 2026-05-27 | CLEANUP â€” Remove Command Palette UI Button (Out of MVP Scope) |
+| 2026-05-27 | FEATURE â€” Inspector Panel Polish (Collapsible Sections, Tabs, Hover Refinements) |
+| 2026-05-27 | BUG FIX â€” Tailwind CDN Conflict & Tokens Migration |
+| 2026-05-27 | FEATURE â€” Milestone 1 Shell Foundation & Photon Amber UI Redesign |
+| 2026-05-27 | DOCS â€” AI Context Documentation System |
+| 2026-06-02 | BUG FIX â€” CropOverlay Pointer Capture + Full Crop MVP [COMPLETE] |
+| 2026-06-03 | CROP IMPROVEMENT â€” 7 Incremental Tasks [COMPLETE] |
 
 ## [2026-06-04] PLAN - Scalability and Maintainability Refactor Plan [PLANNING COMPLETE]
 
@@ -3992,16 +4020,16 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 
 ---
 
-## [2026-06-06] FEATURE — MVP Release Blockers Phase 1: Resize Canvas Dialog, Aspect Ratio Lock, Layer Delete Confirmation [COMPLETE]
+## [2026-06-06] FEATURE â€” MVP Release Blockers Phase 1: Resize Canvas Dialog, Aspect Ratio Lock, Layer Delete Confirmation [COMPLETE]
 
 ### Kategori: FEATURE / UI / LAYER
 
 ### Changes
 
-1. **Resize Canvas Dialog** (`apps/desktop/src/components/editor/ResizeCanvasModal.tsx` — NEW)
+1. **Resize Canvas Dialog** (`apps/desktop/src/components/editor/ResizeCanvasModal.tsx` â€” NEW)
    - Modal dialog with W/H number inputs, aspect ratio lock toggle (link/unlock icon), px unit.
    - Opens via `showResizeDialog` signal in `editorState.ts`, exposed through `EditorContext.tsx`.
-   - Apply flow: `history.commit()` → `engine.resizeCanvas()` → `renderer.resize()` → re-upload layer textures → `syncViewport()` → `requestRender()`. Supports undo.
+   - Apply flow: `history.commit()` â†’ `engine.resizeCanvas()` â†’ `renderer.resize()` â†’ re-upload layer textures â†’ `syncViewport()` â†’ `requestRender()`. Supports undo.
    - Wired into Image menu (`AppTitleBar.tsx`) and Canvas Properties panel (`CanvasProperties.tsx`).
    - Mounted in `EditorShell.tsx`.
 
@@ -4009,43 +4037,43 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
    - Added `window.confirm()` with layer name and "This can be undone." before deletion.
    - Existing last-layer guard preserved.
 
-3. **Focused Tests** (`ResizeCanvasModal.test.tsx`, `DeleteLayerConfirm.test.tsx` — NEW)
+3. **Focused Tests** (`ResizeCanvasModal.test.tsx`, `DeleteLayerConfirm.test.tsx` â€” NEW)
    - 12 new tests covering dialog render, aspect ratio toggle, apply/cancel/Escape, undoability, and delete confirm/cancel/last-layer guard.
 
 ### Verification
-- `pnpm run build` — PASS
-- `pnpm --filter photrez-desktop test` — 524 tests, 45 files — PASS
+- `pnpm run build` â€” PASS
+- `pnpm --filter photrez-desktop test` â€” 524 tests, 45 files â€” PASS
 
 ---
 
-## [2026-06-06] FEATURE — Export End-to-End Pipeline [COMPLETE]
+## [2026-06-06] FEATURE â€” Export End-to-End Pipeline [COMPLETE]
 
 ### Kategori: FEATURE / EXPORT / UI / FRONTEND
 
 ### Changes
 
-1. **Export pipeline** (`apps/desktop/src/components/editor/exportDocument.ts` — NEW)
-   - `encodeComposite()` — composites all visible layers (with transforms, opacity, flip/rotate) onto OffscreenCanvas → encodes to PNG/JPEG/WebP via `canvas.convertToBlob()`.
+1. **Export pipeline** (`apps/desktop/src/components/editor/exportDocument.ts` â€” NEW)
+   - `encodeComposite()` â€” composites all visible layers (with transforms, opacity, flip/rotate) onto OffscreenCanvas â†’ encodes to PNG/JPEG/WebP via `canvas.convertToBlob()`.
    - White background pre-fill for JPEG (alpha not supported).
-   - `exportActiveDocument()` — opens native save dialog → encode → write via Tauri `writeFileBytes`.
+   - `exportActiveDocument()` â€” opens native save dialog â†’ encode â†’ write via Tauri `writeFileBytes`.
 
-2. **ExportDialog** (`apps/desktop/src/components/editor/ExportDialog.tsx` — NEW)
+2. **ExportDialog** (`apps/desktop/src/components/editor/ExportDialog.tsx` â€” NEW)
    - Three-segment format selector (PNG / JPEG / WebP), quality range slider (shown only for JPEG/WebP, default 90%).
    - Async export with spinner loading state, success message with filename, error display.
    - Escape/Cancel/backdrop-close dismiss.
    - Signal `showExportDialog` added to `editorState.ts` / `EditorContext.tsx`.
 
 3. **Entry points wired**
-   - **RightDock** `ExportButton` → `onClick` opens dialog.
-   - **Ctrl+S** keyboard shortcut → opens dialog (MVP: Save = Export).
+   - **RightDock** `ExportButton` â†’ `onClick` opens dialog.
+   - **Ctrl+S** keyboard shortcut â†’ opens dialog (MVP: Save = Export).
    - No File > Save menu dropdown (File menu currently opens images; dedicated menu deferred).
 
 4. **Tests** (3 new files, 8 new tests)
-   - `ExportDialog.test.tsx` — renders/format switch/quality slider/cancel/Escape.
-   - `exportDocument.test.ts` — encodeComposite produces non-empty bytes.
-   - `editor-smoke.spec.ts` — 2 E2E tests: export dialog UI flow + Ctrl+S shortcut.
+   - `ExportDialog.test.tsx` â€” renders/format switch/quality slider/cancel/Escape.
+   - `exportDocument.test.ts` â€” encodeComposite produces non-empty bytes.
+   - `editor-smoke.spec.ts` â€” 2 E2E tests: export dialog UI flow + Ctrl+S shortcut.
 
-### Changes (second pass — blend mode parity + E2E format verification)
+### Changes (second pass â€” blend mode parity + E2E format verification)
 
 1. **Export compositing rewritten** (`exportDocument.ts`)
    - Now uses `drawLayerToContext` from `layerComposite.ts` instead of inline compositing.
@@ -4053,21 +4081,21 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
    - Known limitation noted: Canvas 2D vs GLSL may differ at alpha edge cases (negligible for MVP).
 
 2. **Parity E2E tests added** (2 new E2E tests)
-   - `encodeComposite produces valid format headers matching canvas dimensions` — verifies PNG/JPEG/WebP magic bytes, non-empty output.
-   - `export compositing matches document dimensions and blend mode + transform parity` — verifies 320×240 output, scaled/rotated/multiply-blended layers, invisible layer exclusion.
+   - `encodeComposite produces valid format headers matching canvas dimensions` â€” verifies PNG/JPEG/WebP magic bytes, non-empty output.
+   - `export compositing matches document dimensions and blend mode + transform parity` â€” verifies 320Ã—240 output, scaled/rotated/multiply-blended layers, invisible layer exclusion.
 
 ### Verification (final)
-- `pnpm run build` — PASS
-- `pnpm --filter photrez-desktop test` — 538 tests, 47 files — PASS
-- `playwright test --grep "export dialog|encodeComposite|export compositing"` — 4/4 PASS
-- `cargo test -p photrez-core` — 85 tests — PASS
+- `pnpm run build` â€” PASS
+- `pnpm --filter photrez-desktop test` â€” 538 tests, 47 files â€” PASS
+- `playwright test --grep "export dialog|encodeComposite|export compositing"` â€” 4/4 PASS
+- `cargo test -p photrez-core` â€” 85 tests â€” PASS
 
-### Changes (third pass — file I/O Rust tests + export data flow E2E)
+### Changes (third pass â€” file I/O Rust tests + export data flow E2E)
 
 1. **Rust file I/O unit tests** (`apps/desktop/src-tauri/src/main.rs`)
    - Added `#[cfg(test)] mod tests` with 7 tests covering:
      - `write_file_bytes` creates file with correct content (temp dir)
-     - Write → read roundtrip with PNG binary data (header + IHDR + IEND)
+     - Write â†’ read roundtrip with PNG binary data (header + IHDR + IEND)
      - Invalid base64 returns `E_VALIDATION` error
      - Write to invalid path returns `E_IO` error
      - `read_file_bytes` on nonexistent file returns `E_IO` error
@@ -4075,48 +4103,48 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
      - `get_contract_info` lists all supported commands
 
 2. **Export data flow E2E test** (e2e/editor-smoke.spec.ts)
-   - `export data flow: encodeComposite → base64 → file write roundtrip`
-   - Simulates the full frontend → Tauri bridge → disk write pipeline:
+   - `export data flow: encodeComposite â†’ base64 â†’ file write roundtrip`
+   - Simulates the full frontend â†’ Tauri bridge â†’ disk write pipeline:
      - `encodeComposite` produces raw PNG bytes
      - Bytes encoded to base64 (same as `native.ts` `writeFileBytes`)
      - Base64 decoded back to bytes (same as `main.rs` `write_file_bytes`)
      - Roundtrip verified byte-for-byte exact match
-     - Decoded bytes produce valid 16×16 PNG image via `createImageBitmap`
+     - Decoded bytes produce valid 16Ã—16 PNG image via `createImageBitmap`
 
 3. **Manual verification steps documented** in AI_CURRENT_TASK.md
    - Steps to run `pnpm tauri dev`, create doc, draw, Ctrl+S, save as PNG/JPEG/WebP
    - Verify file opens in external viewer at correct dimensions with non-blank content
 
 ### Verification
-- `pnpm run build` — PASS
-- `pnpm --filter photrez-desktop test` — 538 tests, 47 files — PASS
-- `playwright test --grep "export dialog|encodeComposite|export compositing|export data flow"` — 5/5 PASS
-- `cargo test -p photrez-desktop` — 7 file I/O tests — PASS
-- `cargo test -p photrez-core` — 85 tests — PASS
+- `pnpm run build` â€” PASS
+- `pnpm --filter photrez-desktop test` â€” 538 tests, 47 files â€” PASS
+- `playwright test --grep "export dialog|encodeComposite|export compositing|export data flow"` â€” 5/5 PASS
+- `cargo test -p photrez-desktop` â€” 7 file I/O tests â€” PASS
+- `cargo test -p photrez-core` â€” 85 tests â€” PASS
 
 ---
 
-## [2026-06-08] BUG FIX — Crop State Edge Cases (3 Bugs) [COMPLETE]
+## [2026-06-08] BUG FIX â€” Crop State Edge Cases (3 Bugs) [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND
 
 ### Root Cause & Fix Rationale per Bug
 
-**Bug A — `pendingPasteboardCropGesture` leak on pointercancel:**
+**Bug A â€” `pendingPasteboardCropGesture` leak on pointercancel:**
 - **Root Cause:** `CanvasViewport` had no `pointercancel` handler for pasteboard crop gestures. Only `handlePasteboardPointerUp` cleared `pendingPasteboardCropGesture`. When `pointercancel` arrived (e.g., browser cancels pointer mid-drag), the signal stayed set, corrupting the next pasteboard interaction.
 - **Fix:** Added `handlePasteboardPointerCancel()` that clears `pendingPasteboardCropGesture` matching the cancelled `pointerId`. Routed container `onPointerCancel` through this new handler before delegating to `onViewportPointerCancel`.
 
-**Bug B — Modern crop image transform leaks across tool switches:**
-- **Root Cause:** The `createEffect` that initializes modern crop state on entering the Crop tool nulled `lastModernCropSessionKey` on tool exit but never called `resetModernCrop()`. On re-entry, `modernCropImageTransform` retained `offsetX/offsetY/rotation/scale` from the previous session, while `modernCropFrame` was re-created from scratch — the mismatched transform could position the image incorrectly.
+**Bug B â€” Modern crop image transform leaks across tool switches:**
+- **Root Cause:** The `createEffect` that initializes modern crop state on entering the Crop tool nulled `lastModernCropSessionKey` on tool exit but never called `resetModernCrop()`. On re-entry, `modernCropImageTransform` retained `offsetX/offsetY/rotation/scale` from the previous session, while `modernCropFrame` was re-created from scratch â€” the mismatched transform could position the image incorrectly.
 - **Fix:** Added `resetModernCrop()` call in the createEffect's early-return path when `activeTool() !== "crop"` and a session was previously active (`lastModernCropSessionKey !== null`).
 
-**Bug C — ModernCropOverlay drag state not cleared on lostpointercapture:**
+**Bug C â€” ModernCropOverlay drag state not cleared on lostpointercapture:**
 - **Root Cause:** `clearDrag` in `ModernCropOverlay` did not call `releasePointerCapture()` and did not fire `onModernCropCommit`, so if `lostpointercapture` fired mid-drag, the drag state persisted without committing the undo snapshot.
-- **Note:** Added regression test proving `clearDrag` fires on `lostpointercapture`. The existing `clearDrag` + `pointerup` path already handles state teardown correctly — the test validates that lostpointercapture triggers exactly one cleanup cycle.
+- **Note:** Added regression test proving `clearDrag` fires on `lostpointercapture`. The existing `clearDrag` + `pointerup` path already handles state teardown correctly â€” the test validates that lostpointercapture triggers exactly one cleanup cycle.
 
 ### Files Changed
-- `apps/desktop/src/components/editor/CanvasViewport.tsx` — Bug A (handlePasteboardPointerCancel) + Bug B (resetModernCrop on tool exit)
-- `apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx` — 3 new regression tests, added `setModernImageTransform` to test consumer
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` â€” Bug A (handlePasteboardPointerCancel) + Bug B (resetModernCrop on tool exit)
+- `apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx` â€” 3 new regression tests, added `setModernImageTransform` to test consumer
 
 ### Verification
 - PASS: `pnpm.cmd exec vitest run src/components/editor/__tests__/CanvasViewport.test.tsx` (33 tests, +3 new)
@@ -4125,25 +4153,25 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 
 ---
 
-## [2026-06-08] BUG FIX — Crop & Transform lostpointercapture Defensive Gaps (2 Bugs) [COMPLETE]
+## [2026-06-08] BUG FIX â€” Crop & Transform lostpointercapture Defensive Gaps (2 Bugs) [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / TRANSFORM / FRONTEND
 
 ### Root Cause & Fix Rationale per Bug
 
-**Bug D — Classic crop `handleLostPointerCapture` pointerId guard:**
-- **Root Cause:** `handleLostPointerCapture` in `useCropOverlayDrag.ts` guarded on `e.pointerId !== drag.pointerId` and returned early. When a browser/platform edge case fires `lostpointercapture` with a different pointerId than the stored drag pointerId, `dragState` stays non-null — the overlay enters a stuck-drag state. Additionally, unlike `clearDrag`, `handleLostPointerCapture` did not call `commitCropState` for resize/move drags, losing the undo snapshot when capture was lost during drag.
+**Bug D â€” Classic crop `handleLostPointerCapture` pointerId guard:**
+- **Root Cause:** `handleLostPointerCapture` in `useCropOverlayDrag.ts` guarded on `e.pointerId !== drag.pointerId` and returned early. When a browser/platform edge case fires `lostpointercapture` with a different pointerId than the stored drag pointerId, `dragState` stays non-null â€” the overlay enters a stuck-drag state. Additionally, unlike `clearDrag`, `handleLostPointerCapture` did not call `commitCropState` for resize/move drags, losing the undo snapshot when capture was lost during drag.
 - **Fix:** Removed pointerId guard from `handleLostPointerCapture` (defensive: any lostcapture should clean up regardless of pointerId). Added `commitCropState` call for non-rotate resize/move drags to match `clearDrag` behavior.
 
-**Bug E — SelectionTransformOverlay `handleLostPointerCapture` pointerId guard:**
-- **Root Cause:** Same pattern as Bug D — `useSelectionTransformDrag.ts:324-326` guarded on pointerId and returned early, leaving `dragState` stuck if pointerId mismatched on `lostpointercapture`.
+**Bug E â€” SelectionTransformOverlay `handleLostPointerCapture` pointerId guard:**
+- **Root Cause:** Same pattern as Bug D â€” `useSelectionTransformDrag.ts:324-326` guarded on pointerId and returned early, leaving `dragState` stuck if pointerId mismatched on `lostpointercapture`.
 - **Fix:** Removed pointerId guard. No extra commit needed (transform overlay applies changes live via `scheduler.requestRender()` during drag).
 
 ### Files Changed
-- `apps/desktop/src/components/editor/useCropOverlayDrag.ts` — Bug D
-- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` — regression test
-- `apps/desktop/src/components/editor/useSelectionTransformDrag.ts` — Bug E
-- `apps/desktop/src/components/editor/__tests__/SelectionTransformOverlay.test.ts` — regression test
+- `apps/desktop/src/components/editor/useCropOverlayDrag.ts` â€” Bug D
+- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` â€” regression test
+- `apps/desktop/src/components/editor/useSelectionTransformDrag.ts` â€” Bug E
+- `apps/desktop/src/components/editor/__tests__/SelectionTransformOverlay.test.ts` â€” regression test
 
 ### Verification
 - PASS: `pnpm.cmd exec vitest run src/components/editor/__tests__/CropOverlay.test.tsx` (22 tests, +1 new)
@@ -4151,15 +4179,15 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 - PASS: `pnpm.cmd run build`
 - PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (610 tests, 50 files)
 
-## [2026-06-08] BUG FIX — Tool Switch Mid-Drag Commit Leak [COMPLETE]
+## [2026-06-08] BUG FIX â€” Tool Switch Mid-Drag Commit Leak [COMPLETE]
 
 ### Kategori: BUG FIX / TOOL / FRONTEND / INPUT
 
-**Root Cause:** `handlePointerMove`/`handlePointerUp` in `input-handler.ts` received tool as parameter from caller passed `activeTool()` (current tool, not drag-start tool). When user switched tools mid-drag (e.g., brush → crop), the wrong tool branch ran:
+**Root Cause:** `handlePointerMove`/`handlePointerUp` in `input-handler.ts` received tool as parameter from caller passed `activeTool()` (current tool, not drag-start tool). When user switched tools mid-drag (e.g., brush â†’ crop), the wrong tool branch ran:
 - Brush stroke data lost (never committed via `onPaintStroke`)
 - Spurious crop rect creation from brush coordinates
 
-**Fix Rationale:** Storing the tool at pointerdown ensures all drag events use the initiating tool regardless of tool switches during the drag. Backwards-compatible — only adds defense path for tool-switch mid-drag.
+**Fix Rationale:** Storing the tool at pointerdown ensures all drag events use the initiating tool regardless of tool switches during the drag. Backwards-compatible â€” only adds defense path for tool-switch mid-drag.
 
 **Rincian Perubahan:**
 1. Added `dragTool: ToolType | null` to `ToolContext` interface
@@ -4169,10 +4197,10 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 5. `dragTool` cleared on pointerup/pointercancel/lostpointercapture via `interactiveState.dragTool = null`
 
 ### Files Changed:
-- `apps/desktop/src/viewport/input-handler.ts` — `ToolContext.dragTool` + `handlePointerDown`/`handlePointerMove`/`handlePointerUp` updated
-- `apps/desktop/src/components/editor/useCanvasPointerTools.ts` — `dragTool` in commit guards + cleanup
-- `apps/desktop/src/__tests__/input-handler-move.test.ts` — 2 dragTool regression tests
-- `apps/desktop/src/__tests__/input-handler-snap.test.ts` — context objects updated with `dragTool: null`
+- `apps/desktop/src/viewport/input-handler.ts` â€” `ToolContext.dragTool` + `handlePointerDown`/`handlePointerMove`/`handlePointerUp` updated
+- `apps/desktop/src/components/editor/useCanvasPointerTools.ts` â€” `dragTool` in commit guards + cleanup
+- `apps/desktop/src/__tests__/input-handler-move.test.ts` â€” 2 dragTool regression tests
+- `apps/desktop/src/__tests__/input-handler-snap.test.ts` â€” context objects updated with `dragTool: null`
 - `docs/AI_CURRENT_TASK.md`
 - `docs/AI_HISTORY.md`
 
@@ -4182,13 +4210,13 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 - PASS: `pnpm.cmd run build`
 - PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (612 tests, 50 files)
 
-## [2026-06-08] ADVERSARIAL BUG HUNT — Escape During Crop Drag Overridden [COMPLETE]
+## [2026-06-08] ADVERSARIAL BUG HUNT â€” Escape During Crop Drag Overridden [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / INPUT
 
-**Root Cause (Bug G — Classic Crop):** `useCropOverlayDrag` had no window keydown listener for Escape. When the keyboard handler called `discardCropSession`, it reset `cropRect()` but the SVG's `dragState` remained active → subsequent `pointermove` recalculated from `dragState.startRect` and overwrote the reset.
+**Root Cause (Bug G â€” Classic Crop):** `useCropOverlayDrag` had no window keydown listener for Escape. When the keyboard handler called `discardCropSession`, it reset `cropRect()` but the SVG's `dragState` remained active â†’ subsequent `pointermove` recalculated from `dragState.startRect` and overwrote the reset.
 
-**Root Cause (Bug H — Modern Crop):** Same pattern. `ModernCropOverlay` managed its own local `dragState` with no Escape handling. `resetModernCrop()` reset frame/transform signals, but `dragState` stayed active → `pointermove` recalculated from start state and overrode the reset.
+**Root Cause (Bug H â€” Modern Crop):** Same pattern. `ModernCropOverlay` managed its own local `dragState` with no Escape handling. `resetModernCrop()` reset frame/transform signals, but `dragState` stayed active â†’ `pointermove` recalculated from start state and overrode the reset.
 
 **Fix Rationale:** Both classic and modern crop overlays need to cancel their internal drag state when the user presses Escape. The fix mirrors the existing Escape handler in `useSelectionTransformDrag.ts:334-357`: restore to pre-drag state, release pointer capture, clear drag state.
 
@@ -4197,9 +4225,9 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 2. `ModernCropOverlay.tsx`: Added `onMount` with `window.addEventListener("keydown")` that calls `clearDrag()` on Escape. Added `onMount`/`onCleanup` to imports.
 
 ### Files Changed:
-- `apps/desktop/src/components/editor/useCropOverlayDrag.ts` — Bug G fix
-- `apps/desktop/src/components/editor/ModernCropOverlay.tsx` — Bug H fix
-- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` — 4 new tests
+- `apps/desktop/src/components/editor/useCropOverlayDrag.ts` â€” Bug G fix
+- `apps/desktop/src/components/editor/ModernCropOverlay.tsx` â€” Bug H fix
+- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` â€” 4 new tests
 - `docs/AI_CURRENT_TASK.md`
 - `docs/AI_HISTORY.md`
 
@@ -4207,13 +4235,13 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 - PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (616 tests, 50 files)
 - PASS: `pnpm.cmd run build`
 
-## [2026-06-10] BUG FIX — Modern Mode Pasteboard Drag & Frame Bounds [COMPLETE]
+## [2026-06-10] BUG FIX â€” Modern Mode Pasteboard Drag & Frame Bounds [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX
 
 **Root Cause:** 
 1. Pasteboard clicks (outside canvas) in Modern mode never reached the drag-create handler because the SVG overlay (`pointer-events: auto`, z-index: 40) captured clicks and `isPasteboardPointerDown` only checked `e.target === canvasContainerRef`.
-2. Snap conversion used `pan.x/pan.y` (Classic mode doc origin) to convert screen→doc coords, but Modern mode uses CSS transforms at `left: 0, top: 0`. Stale `pan` values from Classic mode caused wrong snap positions.
+2. Snap conversion used `pan.x/pan.y` (Classic mode doc origin) to convert screenâ†’doc coords, but Modern mode uses CSS transforms at `left: 0, top: 0`. Stale `pan` values from Classic mode caused wrong snap positions.
 3. `clampFrameToProjectedBounds` capped frame dimensions at projected canvas size (`docWidth * zoom`), preventing frame from exceeding the document.
 
 **User Requirements:**
@@ -4223,45 +4251,45 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 - Crosshair cursor on pasteboard when no frame exists
 
 **Rincian Perubahan:**
-1. `CanvasViewport.tsx` — `isPasteboardPointerDown` now detects clicks on `[data-modern-crop-overlay]` outside interactive children (handles, move rect, rotate ring). Routes Modern mode pasteboard clicks to `onCanvasPointerDown`. Adds crosshair cursor style on viewport container when `crop + modern + !frame`.
-2. `useCanvasPointerTools.ts` — Snap conversion uses `docOriginX/Y = canvasRect - containerRect` instead of `pan.x/pan.y`. `commitDragCreateFrame` uses raw viewport selection (no document clamp). Clears `modernCropFrame` once drag exceeds threshold.
-3. `modernCropGeometry.ts` — Removed `Math.min(projected.w, ...)` upper cap from `clampFrameToProjectedBounds`.
+1. `CanvasViewport.tsx` â€” `isPasteboardPointerDown` now detects clicks on `[data-modern-crop-overlay]` outside interactive children (handles, move rect, rotate ring). Routes Modern mode pasteboard clicks to `onCanvasPointerDown`. Adds crosshair cursor style on viewport container when `crop + modern + !frame`.
+2. `useCanvasPointerTools.ts` â€” Snap conversion uses `docOriginX/Y = canvasRect - containerRect` instead of `pan.x/pan.y`. `commitDragCreateFrame` uses raw viewport selection (no document clamp). Clears `modernCropFrame` once drag exceeds threshold.
+3. `modernCropGeometry.ts` â€” Removed `Math.min(projected.w, ...)` upper cap from `clampFrameToProjectedBounds`.
 
 ### Files Changed:
 - `apps/desktop/src/components/editor/CanvasViewport.tsx`
 - `apps/desktop/src/components/editor/useCanvasPointerTools.ts`
 - `apps/desktop/src/viewport/modernCropGeometry.ts`
-- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — updated test name + expectations
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` â€” updated test name + expectations
 
 ### Verification
 - PASS: `pnpm run build`
 - PASS: `pnpm --filter photrez-desktop test` (774 tests, 52 files)
 - PASS: `cargo test -p photrez-core` (85 tests)
 
-## [2026-06-10] Canvas Expansion — Visual Indicator + Tests [COMPLETE]
+## [2026-06-10] Canvas Expansion â€” Visual Indicator + Tests [COMPLETE]
 
 ### Implementasi
-1. **Visual indicator** — `ModernCropOverlay.tsx`: When crop frame exceeds projected canvas, renders a dashed white rect at canvas boundary + subtle `rgba(255,255,255,0.08)` fill in expansion areas (masked to frame minus canvas intersection). Gated on rotation=0 (non-rotated).
-2. **`canvasScreenRect` prop** — passed from `CanvasViewport.tsx:733-741`: computed as `{ x: panX + offsetX, y: panY + offsetY, w: projectedW, h: projectedH }`. Null when rotation !== 0.
-3. **Engine test** — `postCropAlignment.test.ts:391-408`: verifies canvas expands directionally without fill (`applyCrop(-25, -30, 150, 160)` on 100×100 doc → doc becomes 150×160, photo layer bakes to new size).
+1. **Visual indicator** â€” `ModernCropOverlay.tsx`: When crop frame exceeds projected canvas, renders a dashed white rect at canvas boundary + subtle `rgba(255,255,255,0.08)` fill in expansion areas (masked to frame minus canvas intersection). Gated on rotation=0 (non-rotated).
+2. **`canvasScreenRect` prop** â€” passed from `CanvasViewport.tsx:733-741`: computed as `{ x: panX + offsetX, y: panY + offsetY, w: projectedW, h: projectedH }`. Null when rotation !== 0.
+3. **Engine test** â€” `postCropAlignment.test.ts:391-408`: verifies canvas expands directionally without fill (`applyCrop(-25, -30, 150, 160)` on 100Ã—100 doc â†’ doc becomes 150Ã—160, photo layer bakes to new size).
 
 ### Files Changed:
-- `apps/desktop/src/components/editor/ModernCropOverlay.tsx` — expansion mask + dashed boundary + subtle fill
-- `apps/desktop/src/components/editor/CanvasViewport.tsx` — passes `canvasScreenRect` prop
-- `apps/desktop/src/engine/__tests__/postCropAlignment.test.ts` — new canvas expansion test without fill
+- `apps/desktop/src/components/editor/ModernCropOverlay.tsx` â€” expansion mask + dashed boundary + subtle fill
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` â€” passes `canvasScreenRect` prop
+- `apps/desktop/src/engine/__tests__/postCropAlignment.test.ts` â€” new canvas expansion test without fill
 
 ### Verification
 - PASS: `pnpm run build` (tsc + Vite)
 - PASS: `npx vitest run` (775 tests, 52 files)
 - PASS: `cargo test -p photrez-core` (85 tests)
 
-## [2026-06-10] — Center-Out Drag Verified + Modern Snap Bug Fix
+## [2026-06-10] â€” Center-Out Drag Verified + Modern Snap Bug Fix
 
 ### Kategori: INVESTIGATION / CROP / SNAP / BUG FIX
 
 **Center-Out Drag Investigation:**
-- Classic mode: `applyCropResizeHandle` already correct — `effDx = _alt ? dx * 2 : dx` + `applyCenterResize`
-- Modern mode: `effDx = params.deltaX * 2` is CORRECT for both center-out and one-sided (edge position = center + w/2, so 2× delta keeps 1:1 cursor tracking). The alt difference is in compensation: `params.alt ? 0 : ...` (alt = no compensation, center stays fixed).
+- Classic mode: `applyCropResizeHandle` already correct â€” `effDx = _alt ? dx * 2 : dx` + `applyCenterResize`
+- Modern mode: `effDx = params.deltaX * 2` is CORRECT for both center-out and one-sided (edge position = center + w/2, so 2Ã— delta keeps 1:1 cursor tracking). The alt difference is in compensation: `params.alt ? 0 : ...` (alt = no compensation, center stays fixed).
 - No code change needed. Added 9 new tests proving alt=center-out behavior.
 
 **Modern Snap Bug Fix:**
@@ -4270,8 +4298,8 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 - Fix: store snapped preview rect in `modernDragSnappedPreview`, use it in `commitDragCreateFrame` when available, fallback to raw coordinates otherwise
 
 **Files Changed:**
-- `apps/desktop/src/components/editor/useCanvasPointerTools.ts` — snap-to-commit consistency
-- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — 9 new center-out tests
+- `apps/desktop/src/components/editor/useCanvasPointerTools.ts` â€” snap-to-commit consistency
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` â€” 9 new center-out tests
 
 ### Verification
 - PASS: `npx vitest run` (774 tests, 52 files)
@@ -4279,33 +4307,33 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 
 ---
 
-## [2026-06-09] BUG FIX — Modern Crop Double-Click Commit, Escape Cancel, Click-to-Create Frame [COMPLETE]
+## [2026-06-09] BUG FIX â€” Modern Crop Double-Click Commit, Escape Cancel, Click-to-Create Frame [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX
 
 **User Goal:** (1) Escape/Cancel must clear crop box but stay in crop tool. (2) After dismiss, clicking canvas must create a new default crop frame. (3) Double-click on crop box must commit crop preview.
 
-**Root Cause 1 — `createEffect` auto-recreates frame after Escape:**
+**Root Cause 1 â€” `createEffect` auto-recreates frame after Escape:**
 `CanvasViewport.tsx` had `if (isModernCrop && (!modernCropFrame() || shouldRefresh))`. When `resetModernCrop()` nulled the frame on Escape, the `!modernCropFrame()` condition immediately recreated it, undoing the user's dismissal.
 
-**Fix 1:** Changed condition to `if (isModernCrop && shouldRefresh)` — only recreate on session key change (document, zoom, mode, aspect), not when frame is null.
+**Fix 1:** Changed condition to `if (isModernCrop && shouldRefresh)` â€” only recreate on session key change (document, zoom, mode, aspect), not when frame is null.
 
-**Root Cause 2 — No canvas click handler for modern crop mode:**
-When the frame is null (user dismissed by Escape), clicking the canvas did nothing because `useCanvasPointerTools.ts` had no modern crop handler — only Classic crop pasteboard logic.
+**Root Cause 2 â€” No canvas click handler for modern crop mode:**
+When the frame is null (user dismissed by Escape), clicking the canvas did nothing because `useCanvasPointerTools.ts` had no modern crop handler â€” only Classic crop pasteboard logic.
 
 **Fix 2:** Added a canvas click handler for modern mode (no frame) that calls `setModernCropFrame(getDefaultModernCropFrame(...))` with the current crop mode aspect, same logic as the `createEffect`.
 
-**Root Cause 3 — `e.preventDefault()` in `capture()` suppresses mouse events including `dblclick`:**
-`ModernCropOverlay.tsx` `capture()` called `e.preventDefault()` which, per the Pointer Events spec, prevents the browser from synthesizing `mousedown`/`mouseup`/`click`/`dblclick` from pointer events. Since both clicks during a double-click are dispatched through pointer capture (redirected to SVG via `setPointerCapture`), and `mouseup` generates `click`, and two `click`s generate `dblclick` — but `preventDefault()` killed `mousedown` at the source. Combined with `e.stopPropagation()` which prevented the second `pointerdown` from firing SVG's handler, no detection path existed.
+**Root Cause 3 â€” `e.preventDefault()` in `capture()` suppresses mouse events including `dblclick`:**
+`ModernCropOverlay.tsx` `capture()` called `e.preventDefault()` which, per the Pointer Events spec, prevents the browser from synthesizing `mousedown`/`mouseup`/`click`/`dblclick` from pointer events. Since both clicks during a double-click are dispatched through pointer capture (redirected to SVG via `setPointerCapture`), and `mouseup` generates `click`, and two `click`s generate `dblclick` â€” but `preventDefault()` killed `mousedown` at the source. Combined with `e.stopPropagation()` which prevented the second `pointerdown` from firing SVG's handler, no detection path existed.
 
-**Fix 3:** Removed `e.preventDefault()` from `capture()`, keeping `stopPropagation()` and pointer capture. Now the browser naturally generates `mousedown`/`mouseup`/`click`/`dblclick` from pointer events. Both `click` events fire on `<svg>` (nearest common ancestor of `mousedown` on `<rect>` and `mouseup` on SVG via capture). Browser detects two `click`s on same element → fires `dblclick` on `<svg>`. Added `onDblClick` to `<svg>` that calls `props.onApplyCrop?.()` after `elementFromPoint` verifies cursor is over `[data-modern-crop-move]`.
+**Fix 3:** Removed `e.preventDefault()` from `capture()`, keeping `stopPropagation()` and pointer capture. Now the browser naturally generates `mousedown`/`mouseup`/`click`/`dblclick` from pointer events. Both `click` events fire on `<svg>` (nearest common ancestor of `mousedown` on `<rect>` and `mouseup` on SVG via capture). Browser detects two `click`s on same element â†’ fires `dblclick` on `<svg>`. Added `onDblClick` to `<svg>` that calls `props.onApplyCrop?.()` after `elementFromPoint` verifies cursor is over `[data-modern-crop-move]`.
 
 ### Rincian Perubahan:
-1. `CanvasViewport.tsx` — `createEffect`: `!modernCropFrame()` removed from refresh guard
-2. `useCanvasPointerTools.ts` — Added modern crop canvas click handler that creates default frame
-3. `ModernCropOverlay.tsx` — `capture()`: removed `e.preventDefault()`, added `onDblClick` to `<svg>` with `elementFromPoint` verification
-4. `modernCropState.ts` — reverted (no `modernCropDismissed` signal needed)
-5. `EditorContext.tsx` — reverted
+1. `CanvasViewport.tsx` â€” `createEffect`: `!modernCropFrame()` removed from refresh guard
+2. `useCanvasPointerTools.ts` â€” Added modern crop canvas click handler that creates default frame
+3. `ModernCropOverlay.tsx` â€” `capture()`: removed `e.preventDefault()`, added `onDblClick` to `<svg>` with `elementFromPoint` verification
+4. `modernCropState.ts` â€” reverted (no `modernCropDismissed` signal needed)
+5. `EditorContext.tsx` â€” reverted
 
 ### Files Changed:
 - `apps/desktop/src/components/editor/CanvasViewport.tsx`
@@ -4318,30 +4346,30 @@ When the frame is null (user dismissed by Escape), clicking the canvas did nothi
 
 ---
 
-## [2026-06-09] FEATURE — Post-Crop Move Tool Clean State [COMPLETE]
+## [2026-06-09] FEATURE â€” Post-Crop Move Tool Clean State [COMPLETE]
 
 ### Kategori: FEATURE / MOVE / FRONTEND / UX
 
-**User Goal:** After applying crop, switching to Move Tool should show a completely clean state — no transform bounding box, no handles, no layer-specific UI — until the user explicitly clicks a layer.
+**User Goal:** After applying crop, switching to Move Tool should show a completely clean state â€” no transform bounding box, no handles, no layer-specific UI â€” until the user explicitly clicks a layer.
 
 **Root Cause:** `activeLayerId` was the sole signal driving both engine working-layer logic and UI selection display. After crop apply, the engine active layer was set to null, but the UI had no way to distinguish "no layer selected" from "layer is selected, waiting for workspace sync."
 
 **Fix Rationale:** Introduced `selectedLayerId` as a dedicated UI-level selection signal, independent from `activeLayerId` (engine-level working layer). After crop apply, both are cleared to null. Layer click, auto-select, and Escape all update `selectedLayerId` appropriately.
 
 **Rincian Perubahan:**
-1. `editorState.ts` — Added `selectedLayerId` signal, initialized to null.
-2. `EditorContext.tsx` — Exposed `selectedLayerId` + `setSelectedLayerId` in interface and context value. Added `createEffect` that initializes `selectedLayerId` from `activeLayerId` when null.
-3. `cropToolActions.ts` — `applyCropPreview` now accepts `setSelectedLayerId` param and calls `setSelectedLayerId(null)` + `engine.setActiveLayer(null)` after crop.
-4. `CanvasViewport.tsx` — Passes `setSelectedLayerId` to all crop apply callers (Classic apply, Modern apply, pasteboard clear-active-layer).
-5. `CropOptionBar.tsx` — Passes `setSelectedLayerId` in `applyCurrentCrop`.
-6. `useCanvasKeyboard.ts` — Escape deselect clears both `selectedLayerId` and engine active layer for Move tool. Passes `setSelectedLayerId` to both Modern and Classic crop Enter handlers.
-7. `useLayerActions.ts` — `handleSelectLayer` calls both `engine.setActiveLayer(id)` and `setSelectedLayerId(id)`.
-8. `useCanvasPointerTools.ts` — Auto-select sets `selectedLayerId` on hit; empty canvas click clears both.
-9. `useSelectionTransformDrag.ts` — Uses `selectedLayerId` instead of `activeLayerId` for transform overlay layer lookup.
-10. `PropertiesPanel.tsx` — Uses `selectedLayerId` for layer/opacity display.
-11. `MoveOptionBar.tsx` — Uses `selectedLayerId`; wraps layer-specific controls (X/Y/W/H/R, Align, Flip, Reset) in `<Show when={selectedLayerId()}>`.
-12. `LayersPanel.tsx` — Uses `selectedLayerId` for `isActive` on LayerItem.
-13. `BottomStatusBar.tsx` — Uses `selectedLayerId` for layer name display.
+1. `editorState.ts` â€” Added `selectedLayerId` signal, initialized to null.
+2. `EditorContext.tsx` â€” Exposed `selectedLayerId` + `setSelectedLayerId` in interface and context value. Added `createEffect` that initializes `selectedLayerId` from `activeLayerId` when null.
+3. `cropToolActions.ts` â€” `applyCropPreview` now accepts `setSelectedLayerId` param and calls `setSelectedLayerId(null)` + `engine.setActiveLayer(null)` after crop.
+4. `CanvasViewport.tsx` â€” Passes `setSelectedLayerId` to all crop apply callers (Classic apply, Modern apply, pasteboard clear-active-layer).
+5. `CropOptionBar.tsx` â€” Passes `setSelectedLayerId` in `applyCurrentCrop`.
+6. `useCanvasKeyboard.ts` â€” Escape deselect clears both `selectedLayerId` and engine active layer for Move tool. Passes `setSelectedLayerId` to both Modern and Classic crop Enter handlers.
+7. `useLayerActions.ts` â€” `handleSelectLayer` calls both `engine.setActiveLayer(id)` and `setSelectedLayerId(id)`.
+8. `useCanvasPointerTools.ts` â€” Auto-select sets `selectedLayerId` on hit; empty canvas click clears both.
+9. `useSelectionTransformDrag.ts` â€” Uses `selectedLayerId` instead of `activeLayerId` for transform overlay layer lookup.
+10. `PropertiesPanel.tsx` â€” Uses `selectedLayerId` for layer/opacity display.
+11. `MoveOptionBar.tsx` â€” Uses `selectedLayerId`; wraps layer-specific controls (X/Y/W/H/R, Align, Flip, Reset) in `<Show when={selectedLayerId()}>`.
+12. `LayersPanel.tsx` â€” Uses `selectedLayerId` for `isActive` on LayerItem.
+13. `BottomStatusBar.tsx` â€” Uses `selectedLayerId` for layer name display.
 
 ### Files Changed:
 - `apps/desktop/src/components/editor/editorState.ts`
@@ -4365,7 +4393,7 @@ When the frame is null (user dismissed by Escape), clicking the canvas did nothi
 - PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (737 tests, 52 files)
 - PASS: `pnpm.cmd run build` (tsc + Vite)
 
-## [2026-06-09] BUG FIX — Crop Fill Background Disappears After Deselect + Canvas Select Not Working [COMPLETE]
+## [2026-06-09] BUG FIX â€” Crop Fill Background Disappears After Deselect + Canvas Select Not Working [COMPLETE]
 
 ### Kategori: BUG FIX / RENDERER / WEBGL / COMPOSITING / UI
 
@@ -4373,11 +4401,11 @@ When the frame is null (user dismissed by Escape), clicking the canvas did nothi
 
 **Root Causes:**
 
-1. **GL_INVALID_OPERATION: Intra-frame feedback loop (stale TEXTURE1 binding in compositing loop).** In `webgl2.ts render()`, the FBO compositing loop's composite pass binds TEXTURE1 to `pingPongTextures[prevFboIndex]`. After the FBO swap (prevFboIndex = currFboIndex), the next iteration's COPY pass executes with TEXTURE1 still bound to the OLD prevFboIndex — which is now the CURRENT FBO's color attachment. WebGL detects the feedback loop at draw time and **silently drops the draw call**. This occurs with 3+ layers. Initial fix (unbind TEXTURE0/1 at render start) addressed cross-frame stale bindings but missed this intra-frame case.
+1. **GL_INVALID_OPERATION: Intra-frame feedback loop (stale TEXTURE1 binding in compositing loop).** In `webgl2.ts render()`, the FBO compositing loop's composite pass binds TEXTURE1 to `pingPongTextures[prevFboIndex]`. After the FBO swap (prevFboIndex = currFboIndex), the next iteration's COPY pass executes with TEXTURE1 still bound to the OLD prevFboIndex â€” which is now the CURRENT FBO's color attachment. WebGL detects the feedback loop at draw time and **silently drops the draw call**. This occurs with 3+ layers. Initial fix (unbind TEXTURE0/1 at render start) addressed cross-frame stale bindings but missed this intra-frame case.
 
 2. **GL_BLEND double-compositing.** `gl.enable(gl.BLEND)` with `gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)` was set during initialization and never disabled during FBO compositing. The shader already performs manual `src OVER dst` compositing via `u_useBackdrop` and `blendColors()`. With GL_BLEND also active, every draw to the FBO was double-blended.
 
-3. **Brush overlay `<div>` blocks canvas pointer events.** In `CanvasViewport.tsx`, the brush overlay `<div>` (line 527) is positioned above the main canvas in DOM order with no `pointer-events: none`. All clicks within the document area hit this div instead of the canvas, so `onCanvasPointerDown` is never called — auto-select cannot work.
+3. **Brush overlay `<div>` blocks canvas pointer events.** In `CanvasViewport.tsx`, the brush overlay `<div>` (line 527) is positioned above the main canvas in DOM order with no `pointer-events: none`. All clicks within the document area hit this div instead of the canvas, so `onCanvasPointerDown` is never called â€” auto-select cannot work.
 
 **Fix Rationale:**
 1. Unbind TEXTURE1 to null after each composite pass (before the FBO swap) to prevent stale intra-frame bindings.
@@ -4385,13 +4413,13 @@ When the frame is null (user dismissed by Escape), clicking the canvas did nothi
 3. Add `"pointer-events": "none"` to the brush overlay div so pointer events reach the main canvas.
 
 **Rincian Perubahan:**
-1. `webgl2.ts render()` — Unbind TEXTURE1 after each composite draw (line 304), before FBO swap, preventing intra-frame feedback loop.
-2. `webgl2.ts render()` — Added `gl.activeTexture(gl.TEXTURE0/1); gl.bindTexture(gl.TEXTURE_2D, null)` at start to clear stale cross-frame bindings.
-3. `webgl2.ts render()` — Added `gl.disable(gl.BLEND)` before FBO compositing loop.
-4. `webgl2.ts render()` — Added `gl.enable(gl.BLEND)` before final screen render pass.
-5. `CanvasViewport.tsx` — Added `"pointer-events": "none"` to brush overlay div style.
-6. `cropApply.ts` — Added `ctx.clearRect(0, 0, finalW, finalH)` before `drawImage` (defensive).
-7. `postCropAlignment.test.ts` — Added `clearRect` to mock OffscreenCanvas context.
+1. `webgl2.ts render()` â€” Unbind TEXTURE1 after each composite draw (line 304), before FBO swap, preventing intra-frame feedback loop.
+2. `webgl2.ts render()` â€” Added `gl.activeTexture(gl.TEXTURE0/1); gl.bindTexture(gl.TEXTURE_2D, null)` at start to clear stale cross-frame bindings.
+3. `webgl2.ts render()` â€” Added `gl.disable(gl.BLEND)` before FBO compositing loop.
+4. `webgl2.ts render()` â€” Added `gl.enable(gl.BLEND)` before final screen render pass.
+5. `CanvasViewport.tsx` â€” Added `"pointer-events": "none"` to brush overlay div style.
+6. `cropApply.ts` â€” Added `ctx.clearRect(0, 0, finalW, finalH)` before `drawImage` (defensive).
+7. `postCropAlignment.test.ts` â€” Added `clearRect` to mock OffscreenCanvas context.
 
 ### Files Changed:
 - `apps/desktop/src/renderer/webgl2.ts`
@@ -4403,23 +4431,23 @@ When the frame is null (user dismissed by Escape), clicking the canvas did nothi
 - PASS: `pnpm.cmd --filter photrez-desktop test --run` (738 tests, 52 files)
 - PASS: `pnpm.cmd run build` (tsc + Vite)
 
-## [2026-06-08] REGRESSION FIX — Modern Crop Resize Handle Lag [COMPLETE]
+## [2026-06-08] REGRESSION FIX â€” Modern Crop Resize Handle Lag [COMPLETE]
 
 ### Kategori: BUG FIX / MODERN CROP / FRONTEND / UX
 
-**Root Cause:** Bug J ("Modern Crop Resize Cursor Lag") was incompletely applied in the previous session — it only doubled deltas for the Alt (center-pivot) path but left `effDx = params.deltaX` for the primary non-Alt path. Since the crop frame is centered in the viewport (`screenX = (viewportWidth - frame.w) / 2`), `d(rightEdge)/d(frameW) = 1/2`. With non-doubled deltas, a 100px mouse drag only moved the right edge 50px — **50% lag**.
+**Root Cause:** Bug J ("Modern Crop Resize Cursor Lag") was incompletely applied in the previous session â€” it only doubled deltas for the Alt (center-pivot) path but left `effDx = params.deltaX` for the primary non-Alt path. Since the crop frame is centered in the viewport (`screenX = (viewportWidth - frame.w) / 2`), `d(rightEdge)/d(frameW) = 1/2`. With non-doubled deltas, a 100px mouse drag only moved the right edge 50px â€” **50% lag**.
 
 **Fix Rationale:** The delta doubling is a coordinate-system requirement (centered frame), not a modifier-key behavior. Always double deltas regardless of Alt. The compensation formula handles the visual "one-sided vs center" distinction. The shift+corner proportional path also passes doubled deltas to `applyCropResizeHandle` for the same centering reason.
 
 **Rincian Perubahan:**
-1. `resizeModernFrameOneSided`: Removed the `alt ? ... : ...` guard — `effDx = params.deltaX * 2` (always double).
+1. `resizeModernFrameOneSided`: Removed the `alt ? ... : ...` guard â€” `effDx = params.deltaX * 2` (always double).
 2. `applyCropResizeHandle` call in shift+corner path: passes `params.deltaX * 2` and `params.deltaY * 2`.
 3. Tests: Updated resize coordinate expectations in ~25 existing tests + 12 new handle-tracking regression tests proving 1:1 edge-to-pointer tracking for all 8 handles, multi-move sequences (no drift), and aspect-ratio constrained edges.
 
 ### Files Changed:
-- `apps/desktop/src/viewport/modernCropGeometry.ts` — unconditional delta doubling
-- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — updated + 12 new tests (63 total)
-- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` — updated 2 expected values
+- `apps/desktop/src/viewport/modernCropGeometry.ts` â€” unconditional delta doubling
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` â€” updated + 12 new tests (63 total)
+- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` â€” updated 2 expected values
 
 ### Verification
 - PASS: `npx vitest run src/__tests__/modern-crop-geometry.test.ts` (63 tests)
@@ -4428,7 +4456,7 @@ When the frame is null (user dismissed by Escape), clicking the canvas did nothi
 
 ---
 
-## [2026-06-08] BUG FIX — Modern Crop Fixed-Ratio Corner Resize Non-Monotonic [COMPLETE]
+## [2026-06-08] BUG FIX â€” Modern Crop Fixed-Ratio Corner Resize Non-Monotonic [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND
 
@@ -4440,7 +4468,7 @@ if (Math.abs(dw) >= Math.abs(dh)) {
   newH = fh + dh; newW = newH * aspect;  // height-driven
 }
 ```
-When `|dw| ≈ |dh|` (common during diagonal drags along the ratio diagonal), small pointer noise oscillated the threshold, flip-flopping between the two paths. Because the aspect ratio amplifies the delta differently through each path (`width ratio = 1` vs `width ratio = useAspect`), per-move delta magnitudes varied by up to `useAspect ×` (e.g., 1.777× for 16:9), causing visible grow-fast/grow-slow cycles.
+When `|dw| â‰ˆ |dh|` (common during diagonal drags along the ratio diagonal), small pointer noise oscillated the threshold, flip-flopping between the two paths. Because the aspect ratio amplifies the delta differently through each path (`width ratio = 1` vs `width ratio = useAspect`), per-move delta magnitudes varied by up to `useAspect Ã—` (e.g., 1.777Ã— for 16:9), causing visible grow-fast/grow-slow cycles.
 
 **Fix Rationale:** Mirror the same diagonal projection approach used in `applyResizeHandle` (`transformGeometry.ts:210-233`) and `applyProportionalCornerResize`/`applyAspectCornerResize` (`cropGeometry.ts:45-69,71-86`). Project both `effDx`/`effDy` onto the handle diagonal (`projected = effDx*hx + effDy*hy`), compute a smooth scaling `factor = max(minFactor, 1 + projected/sumWH)`, then derive `newW = fw * factor`, `newH = newW / useAspect`. This blends both axes through a single smooth factor, eliminating the threshold discontinuity.
 
@@ -4448,11 +4476,11 @@ When `|dw| ≈ |dh|` (common during diagonal drags along the ratio diagonal), sm
 1. `resizeModernFrameOneSided`: Replaced corner aspect path axis-threshold with diagonal projection. Uses `effDx`/`effDy` (raw delta, handle direction) and `hx`/`hy` corner diagonal signs.
 2. `resizeModernFrameFromCenter`: Same fix. Uses `params.deltaX`/`params.deltaY` doubled by `*2` convention matching centered resize.
 3. Updated 1 existing test expectation (SE corner ratio mode).
-4. Added 10 new regression tests: outward/inward monotonic sequences with axis flips for SE/NW/NE/SW corners (one-sided + centered), delta-ratio stability test (<1.3× swing vs old ~1.777×), and all-four-corners ratio invariant.
+4. Added 10 new regression tests: outward/inward monotonic sequences with axis flips for SE/NW/NE/SW corners (one-sided + centered), delta-ratio stability test (<1.3Ã— swing vs old ~1.777Ã—), and all-four-corners ratio invariant.
 
 ### Files Changed:
-- `apps/desktop/src/viewport/modernCropGeometry.ts` — both resize functions corner aspect paths
-- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — 10 new + 1 updated test
+- `apps/desktop/src/viewport/modernCropGeometry.ts` â€” both resize functions corner aspect paths
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` â€” 10 new + 1 updated test
 
 ### Verification
 - PASS: `pnpm.cmd exec vitest run src/__tests__/modern-crop-geometry.test.ts` (51 tests)
@@ -4461,7 +4489,7 @@ When `|dw| ≈ |dh|` (common during diagonal drags along the ratio diagonal), sm
 
 ---
 
-## [2026-06-08] BUG FIX — Crop Fixed-Ratio Corner Resize Reverse-Drag Jitter [COMPLETE]
+## [2026-06-08] BUG FIX â€” Crop Fixed-Ratio Corner Resize Reverse-Drag Jitter [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND
 
@@ -4476,16 +4504,16 @@ When `|dw| ≈ |dh|` (common during diagonal drags along the ratio diagonal), sm
 4. Added 15 new regression tests: reverse diagonal drag on all 4 corners, axis-crossing stability (dx oscillates, dy oscillates), min-size clamping at aspect-ratio minimum, and Size mode reverse drag.
 
 ### Files Changed:
-- `apps/desktop/src/viewport/cropGeometry.ts` — `applyAspectCornerResize` projection fix
-- `apps/desktop/src/__tests__/crop-geometry.test.ts` — 15 new + 4 updated tests
+- `apps/desktop/src/viewport/cropGeometry.ts` â€” `applyAspectCornerResize` projection fix
+- `apps/desktop/src/__tests__/crop-geometry.test.ts` â€” 15 new + 4 updated tests
 
 ### Verification
 - PASS: `pnpm.cmd exec vitest run src/__tests__/crop-geometry.test.ts` (36 tests)
 - PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (631 tests, 50 files)
 - PASS: `pnpm.cmd run build`
-- Risk items verified safe: R1 (Space+brush → lostcapture fallback), R2 (modern crop coords), R4 (rapid pointerdown), R6 (Ctrl+Z mid-brush), R7 (transform Escape already handled)
+- Risk items verified safe: R1 (Space+brush â†’ lostcapture fallback), R2 (modern crop coords), R4 (rapid pointerdown), R6 (Ctrl+Z mid-brush), R7 (transform Escape already handled)
 
-## [2026-06-08] BUG FIX — Modern Crop Resize Beyond Projected Canvas [COMPLETE]
+## [2026-06-08] BUG FIX â€” Modern Crop Resize Beyond Projected Canvas [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND
 
@@ -4495,12 +4523,12 @@ When `|dw| ≈ |dh|` (common during diagonal drags along the ratio diagonal), sm
 
 **Rincian Perubahan:**
 1. `resizeModernFrameFromCenter`: Removed `maxW`/`maxH` upper clamp from return. Changed from `Math.min(maxW, Math.max(minSize, ...))` to just `Math.max(minSize, ...)`.
-2. `resizeModernFrameOneSided`: Removed all upper-bound clamps — free resize path, shift proportional path, and aspect-locked path. Removed `maxW`/`maxH` computation entirely.
-3. Tests: Updated "clamps center resize" and "clamps one-sided resize" to "allows beyond projected canvas bounds" — verifying frame now exceeds projected dimensions.
+2. `resizeModernFrameOneSided`: Removed all upper-bound clamps â€” free resize path, shift proportional path, and aspect-locked path. Removed `maxW`/`maxH` computation entirely.
+3. Tests: Updated "clamps center resize" and "clamps one-sided resize" to "allows beyond projected canvas bounds" â€” verifying frame now exceeds projected dimensions.
 
 ### Files Changed:
-- `apps/desktop/src/viewport/modernCropGeometry.ts` — removed upper-bound clamps
-- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — updated 2 tests
+- `apps/desktop/src/viewport/modernCropGeometry.ts` â€” removed upper-bound clamps
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` â€” updated 2 tests
 
 ### Verification
 - PASS: `pnpm.cmd exec vitest run src/__tests__/modern-crop-geometry.test.ts` (41 tests)
@@ -4509,11 +4537,11 @@ When `|dw| ≈ |dh|` (common during diagonal drags along the ratio diagonal), sm
 
 ---
 
-## [2026-06-08] BUG FIX — Modern Crop Resize Cursor Lag (Doubled Delta) [COMPLETE]
+## [2026-06-08] BUG FIX â€” Modern Crop Resize Cursor Lag (Doubled Delta) [COMPLETE]
 
 ### Kategori: BUG FIX / CROP / FRONTEND / UX
 
-**Root Cause:** Modern crop frame is centered in the viewport with CSS `x = (viewportWidth - frame.w) / 2`. When the user drags a resize handle, `d(right_edge) / d(deltaX) = 1/2` because both `x` and `frame.w` change with the delta. Dividing the delta by 2 in frame-width space means the cursor moves 2× faster than the frame width — the cursor visually pulls away from the crop edge during resize.
+**Root Cause:** Modern crop frame is centered in the viewport with CSS `x = (viewportWidth - frame.w) / 2`. When the user drags a resize handle, `d(right_edge) / d(deltaX) = 1/2` because both `x` and `frame.w` change with the delta. Dividing the delta by 2 in frame-width space means the cursor moves 2Ã— faster than the frame width â€” the cursor visually pulls away from the crop edge during resize.
 
 **Fix Rationale:** The delta applied to `frame.w` must be doubled to achieve 1:1 cursor tracking since the frame is centered. This applies regardless of Alt modifier (which controls center-resize vs one-sided, not cursor tracking). The proportional shift path also needs doubled deltas for the same reason.
 
@@ -4523,8 +4551,8 @@ When `|dw| ≈ |dh|` (common during diagonal drags along the ratio diagonal), sm
 3. Tests: Updated resize coordinate expectations in 2 tests to reflect doubled effective delta.
 
 ### Files Changed:
-- `apps/desktop/src/viewport/modernCropGeometry.ts` — double resize deltas
-- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` — updated expectations
+- `apps/desktop/src/viewport/modernCropGeometry.ts` â€” double resize deltas
+- `apps/desktop/src/__tests__/modern-crop-geometry.test.ts` â€” updated expectations
 
 ### Verification
 - PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (616 tests, 50 files)

@@ -815,20 +815,20 @@ Store screenshots in the normal manual QA location used by the project, or attac
 - Modify: `docs/AI_CURRENT_TASK.md`
 - Modify: `docs/AI_HISTORY.md`
 - Modify: `docs/FEATURES.md`
-- Modify: `docs/01-id-decision-log.md`
+- Modify: `docs/decisions/id-decision-log.md`
 
 - [ ] **Step 1: Update `FEATURES.md`**
 
 In Brush + Eraser, replace:
 
 ```md
-| ✅ DONE      | Soft edge rendering via unified path & shadowOffset falloff (no alpha accumulation) |
+| âœ… DONE      | Soft edge rendering via unified path & shadowOffset falloff (no alpha accumulation) |
 ```
 
 with:
 
 ```md
-| ✅ DONE      | Soft edge rendering via per-stroke distance-field alpha mask (full-diameter hardness=0 feather, no within-stroke alpha accumulation) |
+| âœ… DONE      | Soft edge rendering via per-stroke distance-field alpha mask (full-diameter hardness=0 feather, no within-stroke alpha accumulation) |
 ```
 
 - [ ] **Step 2: Append `AI_HISTORY.md` entry**
@@ -836,7 +836,7 @@ with:
 Append near the top:
 
 ```md
-## [2026-06-11] BUG FIX — Brush Hardness Distance-Field Soft Edge [COMPLETE]
+## [2026-06-11] BUG FIX â€” Brush Hardness Distance-Field Soft Edge [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH / ERASER / RENDERER / UX
 
@@ -847,8 +847,8 @@ The previous `shadowBlur` soft-brush approximation prevented dab overlap accumul
 Render each soft stroke as a deterministic distance-field alpha mask. Hardness controls the solid inner radius, the outer radius always remains `size / 2`, and pixels inside the feather band use smoothstep falloff. Each pixel is composited once per stroke based on nearest path distance, preventing within-stroke alpha buildup.
 
 **Rincian Perubahan:**
-1. `paintStrokeRenderer.ts` — Added hardness falloff helpers and distance-field mask rendering for soft brush/eraser strokes.
-2. `paintStrokeRenderer.test.ts` — Added alpha-profile, overlap, eraser, and bounded-region regression tests.
+1. `paintStrokeRenderer.ts` â€” Added hardness falloff helpers and distance-field mask rendering for soft brush/eraser strokes.
+2. `paintStrokeRenderer.test.ts` â€” Added alpha-profile, overlap, eraser, and bounded-region regression tests.
 
 ### Verification
 - PASS: `pnpm.cmd --filter photrez-desktop exec vitest run src/components/editor/__tests__/paintStrokeRenderer.test.ts --run`
@@ -878,7 +878,7 @@ Append:
 Run:
 
 ```powershell
-git diff -- docs/AI_CURRENT_TASK.md docs/AI_HISTORY.md docs/FEATURES.md docs/01-id-decision-log.md
+git diff -- docs/AI_CURRENT_TASK.md docs/AI_HISTORY.md docs/FEATURES.md docs/decisions/id-decision-log.md
 ```
 
 Expected: textual diff only. If Git reports `Binary files differ`, stop and fix encoding before continuing.
@@ -888,7 +888,7 @@ Expected: textual diff only. If Git reports `Binary files differ`, stop and fix 
 Run:
 
 ```powershell
-git add docs/AI_CURRENT_TASK.md docs/AI_HISTORY.md docs/FEATURES.md docs/01-id-decision-log.md
+git add docs/AI_CURRENT_TASK.md docs/AI_HISTORY.md docs/FEATURES.md docs/decisions/id-decision-log.md
 git commit -m "docs: record brush hardness mask rendering"
 ```
 

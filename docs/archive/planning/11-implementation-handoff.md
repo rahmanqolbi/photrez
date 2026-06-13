@@ -12,7 +12,7 @@ Use this template to hand over implementation tasks to any AI coding agent.
 ## Global Rules (Always Include)
 
 - Follow `AGENTS.md`.
-- Follow `docs/00-product-scope.md`, `docs/01-prd.md`, `docs/02-architecture.md`, `docs/03-trd.md`.
+- Follow `docs/spec/product-scope.md`, `docs/spec/prd.md`, `docs/ARCHITECTURE.md`, `docs/spec/trd.md`.
 - Keep changes in scope.
 - Do not start unrelated refactors.
 - Report blockers explicitly.

@@ -2,9 +2,9 @@
 
 This document defines minimum testing expectations for Photrez.
 Detailed milestone mapping reference:
-`docs/17-test-matrix-by-milestone.md`.
+`docs/archive/planning/17-test-matrix-by-milestone.md`.
 CI automation reference:
-`docs/18-ci-verification-plan.md`.
+`docs/archive/planning/18-ci-verification-plan.md`.
 
 ## Principles
 
@@ -25,7 +25,7 @@ command request/response shape, including `contract_version` and deterministic e
 basic viewport and redraw sanity.
 4. Performance checks:
 startup, idle RAM, and package size against project budgets.
-Method reference: `docs/16-performance-measurement-protocol.md`.
+Method reference: `docs/reference/performance-measurement-protocol.md`.
 
 ## Milestone-Based Minimums
 
@@ -44,7 +44,7 @@ Method reference: `docs/16-performance-measurement-protocol.md`.
 
 - Repeatable performance measurement run.
 - Evidence recorded for installer size, idle RAM, startup time.
-- Measurement must follow `docs/16-performance-measurement-protocol.md`.
+- Measurement must follow `docs/reference/performance-measurement-protocol.md`.
 
 ## Merge Gate (Minimum)
 

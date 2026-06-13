@@ -246,7 +246,7 @@
 | ✅ DONE      | Studio input styling (inset depth)         |
 | ✅ DONE      | Range slider (Photon Amber thumb)          |
 | ✅ DONE      | Panel headers                              |
-| ✅ DONE      | Modular Hardware Chassis layout (rounded + gap-1.5) |
+| ✅ DONE      | Docked Precision layout (panels flush to window edges, inner rounding only) |
 | ✅ DONE      | Visual De-cluttering & Airy/Lightweight UI Polishing |
 | ✅ DONE      | Flush-Left Anchor active tool indicator (Option A) |
 | ✅ DONE      | Segmented Transform matrix coordinate grid (Figma-style) |
@@ -279,11 +279,12 @@
 | ✅ DONE      | SolidJS + TypeScript + Vite                |
 | ✅ DONE      | Rust workspace (core + render crates)      |
 | ✅ DONE      | Tailwind CSS v4                            |
-| ✅ DONE      | Documentation suite (37+ docs)             |
+| ✅ DONE      | Restructured documentation suite (organized into spec/, reference/, decisions/) |
 | ⬜ TODO      | CI pipeline (GitHub Actions)               |
-| ✅ DONE      | Unit tests (core crate) — 69 tests         |
+| ✅ DONE      | Unit tests (core crate) — 85 tests, 92 workspace total |
 | ✅ DONE      | Contract tests (IPC commands) — 13 tests   |
-| ✅ DONE      | Frontend tests — 765 passing tests (52 files) |
+| ✅ DONE      | Frontend tests — 837 passing tests (59 files) |
+| ✅ DONE      | E2E browser tests — 14 Playwright tests    |
 | ✅ DONE      | M6 Perf Gate (all metrics PASS)            |
 | ✅ DONE      | Native Vite tsconfig paths (removed `vite-tsconfig-paths` plugin) |
 | ✅ DONE      | Release candidate (MSI + NSIS installers)  |

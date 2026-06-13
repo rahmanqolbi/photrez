@@ -21,7 +21,7 @@ A task is `Ready` only if all items below are satisfied.
 6. Verification commands are provided (or justified if temporarily unavailable).
 7. Dependencies/blocked-by items are identified.
 8. Relevant source-of-truth docs are referenced.
-9. Risk impact is checked against `docs/13-risk-register.md`.
+9. Risk impact is checked against `docs/decisions/risk-register.md`.
 10. Output format is defined (summary, files changed, verification, risks/blockers).
 
 If one item is missing, task status must remain `Not Ready`.
@@ -89,8 +89,8 @@ Output Format:
 
 - User approval to implement is explicit.
 - Acceptance criteria and verification commands exist.
-- Risk check references `docs/13-risk-register.md`.
-- Scope matches `docs/00-product-scope.md`.
+- Risk check references `docs/decisions/risk-register.md`.
+- Scope matches `docs/spec/product-scope.md`.
 
 ### Review/audit
 
@@ -108,5 +108,5 @@ Output Format:
 
 Before execution, use:
 
-- `docs/12-agent-context-pack.md` for quick context.
-- `docs/11-implementation-handoff.md` for task prompt template.
+- `docs/archive/planning/12-agent-context-pack.md` for quick context.
+- `docs/archive/planning/11-implementation-handoff.md` for task prompt template.

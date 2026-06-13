@@ -8,24 +8,24 @@ Build Photrez according to the locked MVP scope and architecture documents.
 
 ## Required Read Order (Before Any Task)
 
-1. `docs/AI_CONTEXT.md` — **START HERE** (master AI rules + cross-reference map)
-2. `docs/AI_CURRENT_TASK.md` — Active task status
-3. `docs/FEATURES.md` — Feature implementation status
-4. `docs/ARCHITECTURE.md` — Runtime architecture reference
-5. `docs/AI_HISTORY.md` — Change history log
+1. `docs/AI_CONTEXT.md` â€” **START HERE** (master AI rules + cross-reference map)
+2. `docs/AI_CURRENT_TASK.md` â€” Active task status
+3. `docs/FEATURES.md` â€” Feature implementation status
+4. `docs/ARCHITECTURE.md` â€” Runtime architecture reference
+5. `docs/AI_HISTORY.md` â€” Change history log
 
 ## AI Documentation Protocol
 
 - When **any** AI doc is mentioned (`AI_CONTEXT`, `AI_CURRENT_TASK`, `AI_HISTORY`, `FEATURES`, `ARCHITECTURE`), read **ALL 5** automatically.
 - Before modifying code: update `AI_CURRENT_TASK.md` with what you're doing.
 - After completing work: update `AI_HISTORY.md` and `FEATURES.md` with results.
-- Never truncate or overwrite history in these files — only append.
+- Never truncate or overwrite history in these files â€” only append.
 
 ## Working Mode
 
 - If user says focus on docs, do not start implementation code.
 - If user says wait for command, do not execute build implementation.
-- Keep decisions synchronized in `docs/01-id-decision-log.md`.
+- Keep decisions synchronized in `docs/decisions/id-decision-log.md`.
 
 ## Definition of Done for Any Delivery
 
@@ -61,5 +61,5 @@ pnpm.cmd tauri dev                      # Verify app compiles AND launches
 
 Notes:
 - `cargo check -p photrez-desktop` will fail due to pre-existing `windres` toolchain issue.
-- Use `pnpm.cmd tauri dev` (or `cargo run`) to verify binary compile — bypasses windres.
-- `cargo test -p photrez-core` only verifies core crate — NOT the binary crate.
+- Use `pnpm.cmd tauri dev` (or `cargo run`) to verify binary compile â€” bypasses windres.
+- `cargo test -p photrez-core` only verifies core crate â€” NOT the binary crate.

@@ -15,11 +15,11 @@ Tujuannya: mengurangi ambiguitas, menjaga scope, dan memastikan output konsisten
 Saat ada konflik, ikuti urutan ini:
 
 1. `AGENTS.md`
-2. `docs/00-product-scope.md`
-3. `docs/03-trd.md`
-4. `docs/02-architecture.md`
-5. `docs/01-prd.md`
-6. `docs/01-id-decision-log.md`
+2. `docs/spec/product-scope.md`
+3. `docs/spec/trd.md`
+4. `docs/ARCHITECTURE.md`
+5. `docs/spec/prd.md`
+6. `docs/decisions/id-decision-log.md`
 
 ## 3) Locked MVP Constraints
 
@@ -61,7 +61,7 @@ Jika perubahan berpotensi melanggar budget, wajib tulis warning eksplisit.
 - `Implementation-approved`: boleh code dengan verifikasi wajib.
 - `Review/audit`: findings dulu, urut severity, sertakan referensi file.
 
-Template detail ada di `docs/11-implementation-handoff.md`.
+Template detail ada di `docs/archive/planning/11-implementation-handoff.md`.
 
 ## 7) Required Output Format (Minimal)
 
@@ -90,6 +90,6 @@ Sebelum selesai, laporkan:
 Berhenti dan minta konfirmasi jika:
 
 - Request bertentangan dengan `00-product-scope.md`
-- Ada breaking change kontrak command (`docs/03-trd.md` / ADR-0002)
+- Ada breaking change kontrak command (`docs/spec/trd.md` / ADR-0002)
 - Butuh keputusan arsitektur baru yang belum ada ADR
 - Diminta implementasi saat mode masih docs-only

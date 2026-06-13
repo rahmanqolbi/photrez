@@ -4,9 +4,9 @@ Thanks for contributing.
 
 ## Ground Rules
 
-- Keep changes aligned with MVP scope in `docs/00-product-scope.md`.
-- Follow architecture boundaries in `docs/02-architecture.md`.
-- Follow technical constraints in `docs/03-trd.md`.
+- Keep changes aligned with MVP scope in `docs/spec/product-scope.md`.
+- Follow architecture boundaries in `docs/ARCHITECTURE.md`.
+- Follow technical constraints in `docs/spec/trd.md`.
 - Do not introduce non-MVP features without explicit approval.
 
 ## Pull Request Requirements
@@ -26,4 +26,4 @@ Thanks for contributing.
 
 - PR must pass agreed checks (tests, lint/type-check when available).
 - High-risk changes require at least one additional reviewer.
-- Breaking changes require an ADR entry under `docs/05-adr/`.
+- Breaking changes require an ADR entry under `docs/decisions/adr/`.

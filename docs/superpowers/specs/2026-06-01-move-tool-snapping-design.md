@@ -218,7 +218,7 @@ Rationale:
   - `apps/desktop/src/components/editor/CanvasViewport.tsx`
     (target generation + Alt flag plumbing)
   - New unit tests for the helper.
-- No new public Tauri command. No change to `docs/03-trd.md`
+- No new public Tauri command. No change to `docs/spec/trd.md`
   command envelopes. No ADR update required.
 - The verification pipeline from `AGENTS.md` still applies:
   - `pnpm.cmd run build`

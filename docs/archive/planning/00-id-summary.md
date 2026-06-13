@@ -3,7 +3,7 @@
 Dokumen ini merangkum isi file utama agar cepat dipahami tanpa harus membaca versi Inggris penuh.
 
 ## 00 - Vision and Strategy
-File: `docs/00-vision-and-strategy.md`
+File: `docs/archive/planning/00-vision-and-strategy.md`
 
 - Nama kerja produk: `Photrez`.
 - Arah produk: editor gambar desktop yang ringan, cepat, dan praktis untuk kebutuhan desain harian.
@@ -16,7 +16,7 @@ File: `docs/00-vision-and-strategy.md`
   - Layer C: platform jangka panjang (plugin, template ecosystem, cloud optional).
 
 ## 00 - Product Scope (MVP v1 Lock)
-File: `docs/00-product-scope.md`
+File: `docs/spec/product-scope.md`
 
 - Ini dokumen batasan tegas untuk v1.
 - Fitur v1 yang dikunci:
@@ -38,7 +38,7 @@ File: `docs/00-product-scope.md`
   - Startup `< 2 detik` (baseline device 4GB RAM + SSD)
 
 ## 01 - PRD
-File: `docs/01-prd.md`
+File: `docs/spec/prd.md`
 
 - Menjelaskan masalah, target user, tujuan produk, dan kebutuhan MVP.
 - Sudah punya acceptance criteria per fitur, sehingga nanti pengujian lebih objektif.
@@ -51,7 +51,7 @@ File: `docs/01-prd.md`
   - Default color profile: `sRGB` (locked).
 
 ## 02 - Architecture
-File: `docs/02-architecture.md`
+File: `docs/ARCHITECTURE.md`
 
 - Arsitektur 3 lapis:
   - Shell (`Tauri`): lifecycle app, dialog file, integrasi OS, command bridge.
@@ -74,7 +74,7 @@ File: `docs/02-architecture.md`
   - Fail-closed saat parsing gagal.
 
 ## 03 - TRD
-File: `docs/03-trd.md`
+File: `docs/spec/trd.md`
 
 - Menerjemahkan PRD ke requirement teknis yang implementable.
 - Menjelaskan requirement fungsional per area:

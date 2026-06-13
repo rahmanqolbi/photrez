@@ -308,7 +308,7 @@ Dialog requirements:
 
 - Allows multi-select.
 - Filters supported image formats.
-- Supported import formats should follow `docs/33-file-format-support.md`.
+- Supported import formats should follow `docs/reference/file-format-support.md`.
 - For each selected file, backend attempts to create a document session.
 
 Result:
@@ -602,7 +602,7 @@ When active document mutates:
 - brush/eraser must mark changed layer dirty.
 - crop/resize/transform must mark affected document/layers dirty.
 
-Renderer test failure is already listed in `docs/38-usable-mvp-recovery-plan.md`; implementation must not claim completion until render crate tests and visual smoke are green.
+Renderer test failure is already listed in `docs/archive/usable-mvp-recovery-plan.md`; implementation must not claim completion until render crate tests and visual smoke are green.
 
 ## 7. Proposed Command Contract Additions
 
@@ -789,7 +789,7 @@ Compatibility approach:
 - Update internals to operate on active document.
 - Add workspace-aware commands for new multi-document behaviors.
 - Update `get_contract_info` to include all active commands.
-- Update `docs/15-command-contract-spec.md` before or during implementation.
+- Update `docs/reference/command-contract-spec.md` before or during implementation.
 
 ## 8. Error Handling
 
@@ -912,7 +912,7 @@ Keep or add:
 - `Ctrl+Shift+Tab`: optional document switch backward.
 - `Ctrl+S`: existing decision says open export dialog.
 
-If adding `Ctrl+Tab` or `Ctrl+Shift+Tab`, update `docs/32-keyboard-shortcut-map.md`.
+If adding `Ctrl+Tab` or `Ctrl+Shift+Tab`, update `docs/reference/keyboard-shortcut-map.md`.
 
 ## 10. Backend Implementation Plan
 
@@ -1019,9 +1019,9 @@ Targets:
 - Update `FEATURES.md`.
 - Update `ARCHITECTURE.md`.
 - Update `AI_HISTORY.md`.
-- Update `docs/27-key-user-flows.md`.
-- Update `docs/34-save-and-document-lifecycle.md`.
-- Update `docs/15-command-contract-spec.md`.
+- Update `docs/archive/planning/27-key-user-flows.md`.
+- Update `docs/reference/save-and-document-lifecycle.md`.
+- Update `docs/reference/command-contract-spec.md`.
 - Add tests.
 - Run gates.
 
@@ -1176,14 +1176,14 @@ Expected frontend files:
 
 Expected docs:
 
-- `docs/15-command-contract-spec.md`
-- `docs/27-key-user-flows.md`
-- `docs/34-save-and-document-lifecycle.md`
+- `docs/reference/command-contract-spec.md`
+- `docs/archive/planning/27-key-user-flows.md`
+- `docs/reference/save-and-document-lifecycle.md`
 - `docs/FEATURES.md`
 - `docs/ARCHITECTURE.md`
 - `docs/AI_CURRENT_TASK.md`
 - `docs/AI_HISTORY.md`
-- `docs/32-keyboard-shortcut-map.md` if tab-switch shortcuts are added
+- `docs/reference/keyboard-shortcut-map.md` if tab-switch shortcuts are added
 
 ## 15. Risk Register
 
@@ -1276,22 +1276,22 @@ This design is implemented only when all criteria pass:
 
 Update these docs before marking the implementation complete:
 
-- `docs/15-command-contract-spec.md`
-- `docs/27-key-user-flows.md`
-- `docs/34-save-and-document-lifecycle.md`
+- `docs/reference/command-contract-spec.md`
+- `docs/archive/planning/27-key-user-flows.md`
+- `docs/reference/save-and-document-lifecycle.md`
 - `docs/FEATURES.md`
 - `docs/ARCHITECTURE.md`
 - `docs/AI_CURRENT_TASK.md`
 - `docs/AI_HISTORY.md`
-- `docs/38-usable-mvp-recovery-plan.md`
+- `docs/archive/usable-mvp-recovery-plan.md`
 
 If any command schema breaks compatibility, update:
 
-- `docs/05-adr/0002-command-contract-versioning.md`
+- `docs/decisions/adr/0002-command-contract-versioning.md`
 
 If tab-switch shortcuts are added, update:
 
-- `docs/32-keyboard-shortcut-map.md`
+- `docs/reference/keyboard-shortcut-map.md`
 
 ## 18. Implementation Gate
 

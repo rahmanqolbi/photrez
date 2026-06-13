@@ -1,10 +1,10 @@
 # Carbon Studio UI Mockup Redesign Implementation Plan
 
-> **WARNING (2026-05-27)**: The typography styling (like `font-mono` inputs and `11px`/`13px` base sizing) referenced in this legacy plan is DEPRECATED. Please refer to `docs/22-ui-style-guide.md` and `docs/10-b-desktop-behavior-spec.md` for the current **Modern Strict Desktop UI** standards (using `12px/13px` base and `tabular-nums` without monospace inputs).
+> **WARNING (2026-05-27)**: The typography styling (like `font-mono` inputs and `11px`/`13px` base sizing) referenced in this legacy plan is DEPRECATED. Please refer to `docs/archive/planning/22-ui-style-guide.md` and `docs/archive/planning/10-b-desktop-behavior-spec.md` for the current **Modern Strict Desktop UI** standards (using `12px/13px` base and `tabular-nums` without monospace inputs).
 
 > **For Antigravity:** REQUIRED WORKFLOW: Use `.agent/workflows/execute-plan.md` to execute this plan in single-flow mode.
 
-**Goal:** Redesign the Photrez classic mockup (`docs/30-ui-full-editor-mockup.html`) into a highly polished, modern, native-feeling dark desktop UI using TailwindCSS v4 and Lucide icons.
+**Goal:** Redesign the Photrez classic mockup (`docs/reference/ui-full-editor-mockup.html`) into a highly polished, modern, native-feeling dark desktop UI using TailwindCSS v4 and Lucide icons.
 
 **Architecture:** We will replace the custom raw CSS and inline emoji text elements in the existing standalone HTML mockup with TailwindCSS classes, high-fidelity Google Fonts (Archivo + JetBrains Mono), vector SVGs, custom dense interactive panels, and modern micro-interaction layers.
 
@@ -15,7 +15,7 @@
 ### Task 1: Redesign the Menubar & Application Header
 
 **Files:**
-- Modify: `docs/30-ui-full-editor-mockup.html:1-729` (Complete refactor of the header area)
+- Modify: `docs/reference/ui-full-editor-mockup.html:1-729` (Complete refactor of the header area)
 
 **Step 1: Write the HTML and CSS skeleton**
 ```html
@@ -36,7 +36,7 @@
 
 **Step 4: Commit**
 ```bash
-git add docs/30-ui-full-editor-mockup.html
+git add docs/reference/ui-full-editor-mockup.html
 git commit -m "style: implement modern menubar header"
 ```
 
@@ -45,7 +45,7 @@ git commit -m "style: implement modern menubar header"
 ### Task 2: Build the Vertical Tool Rail with Lapis Accent Indicators
 
 **Files:**
-- Modify: `docs/30-ui-full-editor-mockup.html`
+- Modify: `docs/reference/ui-full-editor-mockup.html`
 
 **Step 1: Replace raw emoji text button rails with Lucide SVG vectors**
 - Select the container: `aside.tool-rail`
@@ -64,7 +64,7 @@ git commit -m "style: implement modern menubar header"
 
 **Step 4: Commit**
 ```bash
-git add docs/30-ui-full-editor-mockup.html
+git add docs/reference/ui-full-editor-mockup.html
 git commit -m "style: build Left Tool Rail with Lucide icons"
 ```
 
@@ -73,7 +73,7 @@ git commit -m "style: build Left Tool Rail with Lucide icons"
 ### Task 3: Build the Right Inspector Panels with Segmented Slider Control
 
 **Files:**
-- Modify: `docs/30-ui-full-editor-mockup.html`
+- Modify: `docs/reference/ui-full-editor-mockup.html`
 
 **Step 1: Refactor the Segmented Tabs Header**
 - Replace the classic tabs bar with a segmented pill slider (`rounded-full bg-[#0e1013] p-[3px] border border-[#252830] mx-2 my-2 flex text-[12px]`)
@@ -89,7 +89,7 @@ git commit -m "style: build Left Tool Rail with Lucide icons"
 
 **Step 4: Commit**
 ```bash
-git add docs/30-ui-full-editor-mockup.html
+git add docs/reference/ui-full-editor-mockup.html
 git commit -m "style: build Right Inspector panel and tabs slider"
 ```
 
@@ -98,7 +98,7 @@ git commit -m "style: build Right Inspector panel and tabs slider"
 ### Task 4: Polish Canvas Viewport & Native Custom Scrollbar Integration
 
 **Files:**
-- Modify: `docs/30-ui-full-editor-mockup.html`
+- Modify: `docs/reference/ui-full-editor-mockup.html`
 
 **Step 1: Refactor Rulers & Center Canvas Grid**
 - Apply jet-black canvas backdrop (`bg-[#090a0c]`)
@@ -120,6 +120,6 @@ git commit -m "style: build Right Inspector panel and tabs slider"
 
 **Step 3: Commit and deliver final polished mockup**
 ```bash
-git add docs/30-ui-full-editor-mockup.html
+git add docs/reference/ui-full-editor-mockup.html
 git commit -m "style: final mockup polish with custom scrollbars and layout density"
 ```

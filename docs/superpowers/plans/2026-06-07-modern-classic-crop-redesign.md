@@ -341,7 +341,7 @@ Modify:
 - `docs/AI_CURRENT_TASK.md`
 - `docs/AI_HISTORY.md`
 - `docs/FEATURES.md`
-- `docs/01-id-decision-log.md`
+- `docs/decisions/id-decision-log.md`
 
 ## Task 1: Lock Modern Geometry Helpers
 
@@ -955,7 +955,7 @@ Expected: zero results, unless temporary migration notes remain in docs only.
   - `docs/AI_CURRENT_TASK.md`
   - `docs/AI_HISTORY.md`
   - `docs/FEATURES.md`
-  - `docs/01-id-decision-log.md`
+  - `docs/decisions/id-decision-log.md`
 
 - [ ] Update `AI_CURRENT_TASK.md` before implementation starts.
 - [ ] Add a decision-log entry:
@@ -971,7 +971,7 @@ Consequences: Modern requires separate frame and image transform state plus dedi
 - [ ] Update `FEATURES.md` crop row to:
 
 ```md
-| ✅ DONE | Crop interaction modes — Modern uses a viewport-centered fixed frame with image movement underneath; Classic uses document-space crop box movement/resize/rotation. |
+| âœ… DONE | Crop interaction modes â€” Modern uses a viewport-centered fixed frame with image movement underneath; Classic uses document-space crop box movement/resize/rotation. |
 ```
 
 - [ ] Run:

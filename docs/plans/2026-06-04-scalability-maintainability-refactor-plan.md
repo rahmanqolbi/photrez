@@ -11,7 +11,7 @@ depends_on:
 files_modified:
   - docs/AI_CURRENT_TASK.md
   - docs/AI_HISTORY.md
-  - docs/01-id-decision-log.md
+  - docs/decisions/id-decision-log.md
   - apps/desktop/src/engine/document.ts
   - apps/desktop/src/components/editor/CanvasViewport.tsx
   - apps/desktop/src/components/editor/CropOverlay.tsx
@@ -688,7 +688,7 @@ Do not rewrite render crate until a render migration or stabilization task exist
 If refactoring is approved later, split into `renderer.rs`, `pipeline.rs`, `texture.rs`, and `viewport.rs`.
 </action>
 <verify>
-Document the decision in `docs/01-id-decision-log.md`.
+Document the decision in `docs/decisions/id-decision-log.md`.
 </verify>
 <done>
 Render crate is not destabilized during frontend/TS maintainability work.
@@ -708,7 +708,7 @@ Avoid CSS sprawl and accidental design drift after component splits.
 <files>
 apps/desktop/src/index.css
 apps/desktop/src/styles.css
-docs/23-design-tokens.md
+docs/reference/design-tokens.md
 docs/UI_GUIDE.md
 </files>
 <action>
@@ -778,7 +778,7 @@ All required checks pass or any pre-existing blocker is clearly documented with 
 docs/AI_CURRENT_TASK.md
 docs/AI_HISTORY.md
 docs/FEATURES.md
-docs/01-id-decision-log.md
+docs/decisions/id-decision-log.md
 </files>
 <action>
 Append final results, changed file list, verification evidence, and any residual risk.
@@ -786,7 +786,7 @@ Update `FEATURES.md` only if the refactor changes a documented capability or inf
 Do not truncate old history.
 </action>
 <verify>
-`rg -n "Scalability and Maintainability Refactor" docs/AI_CURRENT_TASK.md docs/AI_HISTORY.md docs/01-id-decision-log.md`
+`rg -n "Scalability and Maintainability Refactor" docs/AI_CURRENT_TASK.md docs/AI_HISTORY.md docs/decisions/id-decision-log.md`
 </verify>
 <done>
 Project documentation reflects the completed refactor accurately.

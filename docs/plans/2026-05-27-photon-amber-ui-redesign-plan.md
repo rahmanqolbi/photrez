@@ -14,7 +14,7 @@
 
 **Files:**
 - Modify: [apps/desktop/src/index.css](file:///d:/Project/image-studio/apps/desktop/src/index.css)
-- Modify: [docs/23-design-tokens.md](file:///d:/Project/image-studio/docs/23-design-tokens.md)
+- Modify: [docs/reference/design-tokens.md](file:///d:/Project/image-studio/docs/reference/design-tokens.md)
 
 **Step 1: Update index.css variables**
 Replace the old `--color-accent` variables with the new Photon Amber values:
@@ -27,11 +27,11 @@ Replace the old `--color-accent` variables with the new Photon Amber values:
 Configure `--font-size-md: 13px;` and `--font-size-lg: 14px;` in the token configuration of Segoe UI.
 
 **Step 2: Update design tokens documentation**
-Sync [docs/23-design-tokens.md](file:///d:/Project/image-studio/docs/23-design-tokens.md) with these exact same variables for full document integrity.
+Sync [docs/reference/design-tokens.md](file:///d:/Project/image-studio/docs/reference/design-tokens.md) with these exact same variables for full document integrity.
 
 **Step 3: Commit**
 ```bash
-git add apps/desktop/src/index.css docs/23-design-tokens.md
+git add apps/desktop/src/index.css docs/reference/design-tokens.md
 git commit -m "style: configure Photon Amber color variables and typographic tokens"
 ```
 

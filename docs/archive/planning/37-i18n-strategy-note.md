@@ -17,7 +17,7 @@ To avoid blocking future localization, follow these rules during MVP development
 
 - Keep all user-facing strings in one dedicated file or module per component (not scattered inline).
 - Use semantic keys for error messages in Core (e.g., `E_VALIDATION` + `message` field), not hardcoded prose in business logic.
-- Follow `docs/28-ui-copy-guidelines.md` for consistent wording patterns.
+- Follow `docs/archive/planning/28-ui-copy-guidelines.md` for consistent wording patterns.
 - Keep date, number, and currency formatting locale-aware where possible (use `Intl` API in frontend).
 
 ### Do Not
@@ -37,7 +37,7 @@ When i18n is implemented:
 4. **Priority languages** (tentative):
    - Bahasa Indonesia (primary market)
    - English (default)
-5. **Translation workflow**: key extraction → translation → review → integration.
+5. **Translation workflow**: key extraction â†’ translation â†’ review â†’ integration.
 
 ## 4) Error Message Strategy
 

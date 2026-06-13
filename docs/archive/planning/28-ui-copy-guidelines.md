@@ -80,5 +80,5 @@ Contoh:
 
 Gunakan bersama:
 
-1. `docs/22-ui-style-guide.md`
-2. `docs/27-key-user-flows.md`
+1. `docs/archive/planning/22-ui-style-guide.md`
+2. `docs/archive/planning/27-key-user-flows.md`

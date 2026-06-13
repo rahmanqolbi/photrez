@@ -58,10 +58,9 @@ Aplikasi menerapkan aturan **Soft & Snappy** di mana radius didasarkan pada prop
 
 ```css
 :root {
-  --radius: 0.375rem;                       /* Base radius: 6px */
-  --radius-sm: calc(var(--radius) - 4px);  /* 2px - Small items, color swatches */
-  --radius-md: calc(var(--radius) - 2px);  /* 4px - Inputs, buttons, tabs, dropdowns */
-  --radius-lg: var(--radius);              /* 6px - Outer panels, main container elements */
+  --radius-sm: 2px;                        /* Small items, color swatches */
+  --radius-md: 4px;                        /* Inputs, buttons, tabs, dropdowns */
+  --radius-lg: 6px;                        /* Outer panels, main container elements */
 }
 ```
 

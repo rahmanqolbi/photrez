@@ -154,7 +154,7 @@ Notes:
 
 Conditional/Fail cannot be closed without update in:
 
-1. `docs/13-risk-register.md`
+1. `docs/decisions/risk-register.md`
 2. milestone exit notes
 
 ## 10) Ownership

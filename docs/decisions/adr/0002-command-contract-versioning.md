@@ -40,6 +40,6 @@ Baseline response model:
 
 ## Follow-up
 
-- Reflect command contract rules in `docs/03-trd.md`.
+- Reflect command contract rules in `docs/spec/trd.md`.
 - Add contract tests in Milestone 1 baseline.
 - Require ADR updates for breaking command schema changes.

@@ -2,8 +2,8 @@
 
 Template ini khusus untuk milestone `M1 Foundation` sesuai:
 
-- `docs/17-test-matrix-by-milestone.md`
-- `docs/18-ci-verification-plan.md`
+- `docs/archive/planning/17-test-matrix-by-milestone.md`
+- `docs/archive/planning/18-ci-verification-plan.md`
 
 ## 1) Tujuan
 

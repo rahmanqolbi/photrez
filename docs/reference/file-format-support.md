@@ -15,11 +15,11 @@ This document defines which image formats Photrez can open (import) and export i
 ### Import Validation Rules
 
 - Maximum import dimensions: `16384 x 16384` pixels.
-- Maximum decoded size: `256 MB` (RGBA buffer), per `docs/04-erd-or-data-model.md`.
+- Maximum decoded size: `256 MB` (RGBA buffer), per `docs/spec/data-model.md`.
 - If file exceeds limits: return `E_RESOURCE_LIMIT` with user-readable message.
 - If file is malformed or unsupported: return `E_VALIDATION`.
 - File extension must match actual format (basic magic byte check).
-- All imported files are treated as untrusted input (per `docs/02-architecture.md` section 9).
+- All imported files are treated as untrusted input (per `docs/ARCHITECTURE.md` section 9).
 
 ### Import Behavior
 
@@ -95,5 +95,5 @@ All Files (*.*)
 
 ## 6) Change Control
 
-- Adding a new import format requires updating this file and `docs/31-dependency-inventory.md`.
-- Adding a new export format requires updating this file, `docs/01-prd.md` (acceptance criteria), and `docs/15-command-contract-spec.md` (export command).
+- Adding a new import format requires updating this file and `docs/reference/dependency-inventory.md`.
+- Adding a new export format requires updating this file, `docs/spec/prd.md` (acceptance criteria), and `docs/reference/command-contract-spec.md` (export command).

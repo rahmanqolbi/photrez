@@ -93,7 +93,7 @@ new dab count * brush tip pixels
 - `apps/desktop/src/components/editor/brushToolState.ts`
   - Tune soft presets only after the incremental engine is working.
 
-- `docs/AI_CURRENT_TASK.md`, `docs/AI_HISTORY.md`, `docs/FEATURES.md`, `docs/01-id-decision-log.md`
+- `docs/AI_CURRENT_TASK.md`, `docs/AI_HISTORY.md`, `docs/FEATURES.md`, `docs/decisions/id-decision-log.md`
   - Keep task status and decisions in sync.
 
 ## Shared Types and Helpers
@@ -621,7 +621,7 @@ Expected:
 - Modify: `docs/AI_CURRENT_TASK.md`
 - Modify: `docs/AI_HISTORY.md`
 - Modify: `docs/FEATURES.md`
-- Modify: `docs/01-id-decision-log.md`
+- Modify: `docs/decisions/id-decision-log.md`
 
 - [ ] **Step 1: Update `FEATURES.md` after implementation**
 
@@ -673,7 +673,7 @@ Set brush engine performance decision to locked only after implementation and ma
 - [ ] **Step 4: Verify docs diff**
 
 ```powershell
-git diff -- docs/AI_CURRENT_TASK.md docs/AI_HISTORY.md docs/FEATURES.md docs/01-id-decision-log.md docs/superpowers/plans/2026-06-11-brush-tip-mask-engine.md
+git diff -- docs/AI_CURRENT_TASK.md docs/AI_HISTORY.md docs/FEATURES.md docs/decisions/id-decision-log.md docs/superpowers/plans/2026-06-11-brush-tip-mask-engine.md
 ```
 
 Expected: textual diff only.
@@ -760,7 +760,7 @@ Manual acceptance:
 - Eraser softness matches brush softness.
 - Transformed-layer preview still aligns with committed stroke.
 
-After implementation, update docs/AI_CURRENT_TASK.md, docs/AI_HISTORY.md, docs/FEATURES.md, and docs/01-id-decision-log.md. Do not overwrite or truncate history. Append or minimally edit the current rows.
+After implementation, update docs/AI_CURRENT_TASK.md, docs/AI_HISTORY.md, docs/FEATURES.md, and docs/decisions/id-decision-log.md. Do not overwrite or truncate history. Append or minimally edit the current rows.
 ```
 
 ## Self-Review

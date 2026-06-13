@@ -46,9 +46,9 @@ After final name is locked:
 `AGENTS.md`, `docs/10-ai-execution-playbook.md`.
 - Testing baseline policy exists (`docs/testing-policy.md`).
 - Performance protocol exists and evidence is complete:
-`docs/16-performance-measurement-protocol.md`.
+`docs/reference/performance-measurement-protocol.md`.
 - Usable MVP recovery gate is green:
-`docs/38-usable-mvp-recovery-plan.md`.
+`docs/archive/usable-mvp-recovery-plan.md`.
 - Crash-free open-edit-export smoke test passes on a packaged desktop build.
 - `cargo test --workspace`, `pnpm.cmd run build`, and `pnpm.cmd --filter photrez-desktop test` all pass.
 

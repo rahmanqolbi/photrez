@@ -84,7 +84,7 @@ Estimated effort: `0.5-1 day`
 
 - Build command outputs.
 - Test command outputs.
-- Startup time baseline measurement method used (refer to `docs/16-performance-measurement-protocol.md`).
+- Startup time baseline measurement method used (refer to `docs/reference/performance-measurement-protocol.md`).
 - Any known blockers with explicit owner and next action.
 
 ## Suggested Day-by-Day Plan

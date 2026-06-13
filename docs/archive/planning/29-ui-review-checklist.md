@@ -16,12 +16,12 @@ Berlaku untuk seluruh perubahan UI pada MVP, terutama area:
 
 Review wajib mengacu dokumen berikut:
 
-1. `docs/22-ui-style-guide.md`
-2. `docs/23-design-tokens.md`
-3. `docs/24-ui-component-rules.md`
-4. `docs/26-wireframe-layout-spec.md`
-5. `docs/27-key-user-flows.md`
-6. `docs/28-ui-copy-guidelines.md`
+1. `docs/archive/planning/22-ui-style-guide.md`
+2. `docs/reference/design-tokens.md`
+3. `docs/archive/planning/24-ui-component-rules.md`
+4. `docs/archive/planning/26-wireframe-layout-spec.md`
+5. `docs/archive/planning/27-key-user-flows.md`
+6. `docs/archive/planning/28-ui-copy-guidelines.md`
 
 ## 3) Visual Consistency Checks
 

@@ -5,7 +5,7 @@ This document provides ready-to-adapt CI templates for Photrez.
 ## 1) Why This Exists
 
 - Help contributors who are not familiar with CI setup.
-- Translate `docs/18-ci-verification-plan.md` into practical job blocks.
+- Translate `docs/archive/planning/18-ci-verification-plan.md` into practical job blocks.
 - Keep milestone gates consistent across platforms.
 
 ## 2) What You Need Before Using It
@@ -18,7 +18,7 @@ This document provides ready-to-adapt CI templates for Photrez.
 
 ## 3) How To Use (Step-by-Step)
 
-1. Open `docs/18-ci-verification-plan.md`.
+1. Open `docs/archive/planning/18-ci-verification-plan.md`.
 2. Pick required stages for your milestone.
 3. Copy the template from section 5 (pseudo template).
 4. Replace placeholder commands with real project commands.
@@ -168,7 +168,7 @@ test_contract:
 ## 9) Quick Starter Prompt for AI Agent
 
 ```md
-Set up CI using docs/18-ci-verification-plan.md and docs/19-ci-job-template.md.
+Set up CI using docs/archive/planning/18-ci-verification-plan.md and docs/archive/planning/19-ci-job-template.md.
 Target milestone: <M1..M6>.
 Use only required stages for that milestone.
 Replace placeholders with real commands from current repo.

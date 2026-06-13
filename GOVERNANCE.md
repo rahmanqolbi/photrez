@@ -14,8 +14,8 @@ propose changes through pull requests and discussion.
 ## Decision Flow
 
 1. Proposal is opened with scope and rationale.
-2. Proposal is reviewed against `docs/00-product-scope.md`, `docs/02-architecture.md`, and `docs/03-trd.md`.
-3. If cross-module or breaking, add/update ADR in `docs/05-adr/`.
+2. Proposal is reviewed against `docs/spec/product-scope.md`, `docs/ARCHITECTURE.md`, and `docs/spec/trd.md`.
+3. If cross-module or breaking, add/update ADR in `docs/decisions/adr/`.
 4. Maintainer approval is required before merge.
 
 ## Technical Authority

@@ -11,10 +11,10 @@ This document defines CI verification stages for Photrez during MVP execution.
 ## 2) Source References
 
 - `docs/testing-policy.md`
-- `docs/17-test-matrix-by-milestone.md`
-- `docs/15-command-contract-spec.md`
-- `docs/16-performance-measurement-protocol.md`
-- `docs/14-definition-of-ready.md`
+- `docs/archive/planning/17-test-matrix-by-milestone.md`
+- `docs/reference/command-contract-spec.md`
+- `docs/reference/performance-measurement-protocol.md`
+- `docs/archive/planning/14-definition-of-ready.md`
 
 ## 3) Pipeline Topology
 
@@ -101,7 +101,7 @@ Purpose:
 
 Rules:
 
-- Must follow `docs/16-performance-measurement-protocol.md`.
+- Must follow `docs/reference/performance-measurement-protocol.md`.
 - Required for Milestone 6 and release candidates.
 - Report PASS/CONDITIONAL/FAIL in CI summary artifact.
 
@@ -158,7 +158,7 @@ Exception records must be linked in:
 
 - PR description (or equivalent review note).
 - Milestone exit notes.
-- `docs/13-risk-register.md` when risk is material.
+- `docs/decisions/risk-register.md` when risk is material.
 
 ## 9) Future CI Enhancements (Post-MVP)
 

@@ -42,7 +42,7 @@ stateDiagram-v2
 | HD | 1920 | 1080 | General purpose |
 | Social Square | 1080 | 1080 | Instagram / social media |
 | A4 at 300 DPI | 2480 | 3508 | Print |
-| Custom | User input | User input | — |
+| Custom | User input | User input | â€” |
 
 ### Behavior
 
@@ -59,11 +59,11 @@ stateDiagram-v2
 
 ## 3) Open File Flow
 
-Defined in `docs/27-key-user-flows.md` (Flow A).
+Defined in `docs/archive/planning/27-key-user-flows.md` (Flow A).
 
 Additional specifications:
 
-- Supported formats: see `docs/33-file-format-support.md`.
+- Supported formats: see `docs/reference/file-format-support.md`.
 - Multi-document workspace recovery spec: see `docs/superpowers/specs/2026-05-29-multi-document-workspace-design.md`.
 - Opening one image creates one document tab.
 - Opening multiple images creates one document tab per valid image.
@@ -81,8 +81,8 @@ In MVP, there is **no native project format save**. The workflow is:
 - **Export**: user-facing output to JPG/PNG/WebP.
 
 This decision is consistent with:
-- `docs/00-product-scope.md` — native project format is a non-goal.
-- `docs/04-erd-or-data-model.md` section 7 — future project format is post-MVP.
+- `docs/spec/product-scope.md` â€” native project format is a non-goal.
+- `docs/spec/data-model.md` section 7 â€” future project format is post-MVP.
 
 ### What "Save" (Ctrl+S) Does in MVP
 
@@ -91,7 +91,7 @@ This prevents accidental file overwriting since the MVP works in an export-only 
 
 ### Autosave Behavior
 
-Per `docs/04-erd-or-data-model.md` section 7:
+Per `docs/spec/data-model.md` section 7:
 
 - Autosave runs max once per 60 seconds during active editing.
 - Writes metadata (JSON) + pixel data (binary) to temp directory.
@@ -143,6 +143,6 @@ Per `docs/04-erd-or-data-model.md` section 7:
 
 - Save strategy changes require update to:
   1. This document.
-  2. `docs/01-id-decision-log.md`.
-  3. `docs/27-key-user-flows.md` (if flow changes).
-  4. `docs/15-command-contract-spec.md` (if new commands needed).
+  2. `docs/decisions/id-decision-log.md`.
+  3. `docs/archive/planning/27-key-user-flows.md` (if flow changes).
+  4. `docs/reference/command-contract-spec.md` (if new commands needed).

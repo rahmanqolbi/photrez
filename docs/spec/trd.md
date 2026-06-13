@@ -59,7 +59,7 @@
 success `{ ok: true, contract_version, data }`,
 error `{ ok: false, contract_version, error: { code, message, details? } }`.
 - Detailed command contract specification is defined in:
-`docs/15-command-contract-spec.md`.
+`docs/reference/command-contract-spec.md`.
 
 ## 5. Error Handling
 
@@ -97,7 +97,7 @@ error `{ ok: false, contract_version, error: { code, message, details? } }`.
 ## 10. Maintainability Requirements
 
 - **MVP runtime:** TypeScript `DocumentEngine` adalah mutable source of truth untuk document state. Rust `photrez-core` mempertahankan model domain sebagai reference + test coverage.
-- **Future target:** Migrasi ke Rust Core sebagai single source of truth saat task eksplisit runtime migration. Kedua source tidak boleh divergen — TS engine harus passing test yang sama dengan Rust core untuk operasi identik.
+- **Future target:** Migrasi ke Rust Core sebagai single source of truth saat task eksplisit runtime migration. Kedua source tidak boleh divergen â€” TS engine harus passing test yang sama dengan Rust core untuk operasi identik.
 - Frontend state is limited to UI/view state and must not own pixel/document truth.
 - Every command must define:
 name, payload schema, validation rules, and deterministic error output.

@@ -1,6 +1,6 @@
-# ARCHITECTURE.md — Photrez (Runtime Reference)
+# ARCHITECTURE.md â€” Photrez (Runtime Reference)
 
-> ⚠️ **PENTING UNTUK AI:** Referensi mengenai aturan mutlak, tech stack rules, dan pedoman mencegah bug/regresi wajib dibaca di berkas terpusat **`AI_CONTEXT.md`**.
+> âš ï¸ **PENTING UNTUK AI:** Referensi mengenai aturan mutlak, tech stack rules, dan pedoman mencegah bug/regresi wajib dibaca di berkas terpusat **`AI_CONTEXT.md`**.
 > Baca juga: `AI_CURRENT_TASK.md` (status), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur)
 
 ---
@@ -10,18 +10,18 @@
 Photrez adalah lightweight desktop image editor yang dibangun untuk workflow digital dan print praktis.
 
 **MVP Runtime:** Tauri 2 (shell) + SolidJS/TypeScript (frontend) + **TypeScript DocumentEngine** (core) + **WebGL2** (renderer).
-**Future target:** Rust (photrez-core) + wgpu (photrez-render) — lihat `docs/AI_CURRENT_TASK.md:1054` Architecture Migration v2.
+**Future target:** Rust (photrez-core) + wgpu (photrez-render) â€” lihat `docs/AI_CURRENT_TASK.md:1054` Architecture Migration v2.
 
 ---
 
 ## Status Proyek
 
-- **Phase**: Usable MVP recovery gate (2026-05-29). Multi-document workspace implemented.
-- **Core Crate**: Document model, layer management, bitmap buffers, selection, transform, brush/eraser, import decode, export encode, and workspace management exist. Core tests pass (`cargo test -p photrez-core`: 85 tests).
+- **Phase**: Post-MVP polish & bug-fix (2026-06-13). GPU viewport migration, brush calibration, crop UX improvements, and multi-cycle bug-fix passes completed. Multi-document workspace implemented.
+- **Core Crate**: Document model, layer management, bitmap buffers, selection, transform, brush/eraser, import decode, export encode, and workspace management exist. Core tests pass (`cargo test -p photrez-core`: 85 tests). Workspace total: 92 tests (`cargo test --workspace`).
 - **Render Crate**: wgpu renderer code exists (future target), but render crate tests currently fail with `STATUS_ENTRYPOINT_NOT_FOUND`; workspace test gate is not green. MVP rendering via **WebGL2** (`apps/desktop/src/renderer/webgl2.ts`).
-- **Frontend**: Full UI shell with multi-document workspace, document tabs, empty state, drag/drop, and all core editing interactions. Artboard renders via IPC base64 pipeline.
-- **Testing**: Frontend build and tests pass (`pnpm.cmd run build`; `pnpm.cmd --filter photrez-desktop test`: 267 tests). Core tests pass (85 tests).
-- **Recovery Reference**: `docs/38-usable-mvp-recovery-plan.md`.
+- **Frontend**: Full UI shell with multi-document workspace, document tabs, empty state, drag/drop, and all core editing interactions. Artboard renders via WebGL2 projection-matrix-driven camera viewport.
+- **Testing**: Frontend build and tests pass (`pnpm.cmd run build`; `pnpm.cmd --filter photrez-desktop test`: 837 tests, 59 files). Rust workspace tests pass (92 tests). Playwright E2E tests pass (14 browser tests).
+- **Recovery Reference** (historical): `docs/archive/usable-mvp-recovery-plan.md`.
 
 ---
 
@@ -34,9 +34,9 @@ Photrez adalah lightweight desktop image editor yang dibangun untuk workflow dig
 | Build Tool       | Vite 8                                                 |
 | Styling          | Tailwind CSS v4 (`@theme` based tokens)                |
 | Core Engine (MVP) | TypeScript `DocumentEngine` (`apps/desktop/src/engine/document.ts`) |
-| Core Engine (future) | Rust `photrez-core` (crates/core/) — reference/tests |
+| Core Engine (future) | Rust `photrez-core` (crates/core/) â€” reference/tests |
 | GPU Renderer (MVP) | WebGL2 (`apps/desktop/src/renderer/webgl2.ts`)          |
-| GPU Renderer (future) | wgpu `photrez-render` (crates/render/) — deferred   |
+| GPU Renderer (future) | wgpu `photrez-render` (crates/render/) â€” deferred   |
 | State (Backend)  | `tauri::State<'_, T>` + `Mutex` (Rust managed state)  |
 | State (Frontend) | SolidJS `createSignal` / `createStore`                 |
 | Package Manager  | pnpm (monorepo workspace)                              |
@@ -49,83 +49,83 @@ Photrez adalah lightweight desktop image editor yang dibangun untuk workflow dig
 Note 2026-05-29: the diagram below is historical and still useful for ownership boundaries, but some file labels/status markers are stale. Use the project status and registered command table above/below as the current runtime truth until the diagram is redrawn during the usable-MVP recovery pass.
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│                    FRONTEND PROCESS                           │
-│                    (SolidJS + Vite)                           │
-│                                                               │
-│  ┌──────────────────┐      ┌───────────────────────────────┐ │
-│  │   App Shell       │      │     Canvas Viewport           │ │
-│  │  (UI Chrome)      │      │  (IPC base64 preview)         │ │
-│  │                   │      │                               │ │
-│  │ - Menubar (44px)  │      │ - Ruler bars                  │ │
-│  │ - Toolbar (40px)  │      │ - Artboard preview            │ │
-│  │ - Tab Strip (30px)│      │ - Transform handles           │ │
-│  │ - Tool Rail       │      │ - Selection overlay           │ │
-│  │ - Inspector       │      │ - Empty state (no docs)       │ │
-│  │ - Status Bar      │      │                               │ │
-│  └────────┬──────────┘      └──────────┬────────────────────┘ │
-│           │                            │                      │
-│  ┌────────┴────────────────────────────┴──────────────────┐  │
-│  │              SolidJS Reactive State                     │  │
-│  │  createSignal: activeTool, zoom, mousePos, layers       │  │
-│  │  createSignal: documents, activeDocumentId, limits      │  │
-│  └───────────────────────────┬────────────────────────────┘  │
-│                              │ invoke() from                  │
-│                              │ @tauri-apps/api/core           │
-└──────────────────────────────┼────────────────────────────────┘
-                               │ Tauri IPC Bridge
-                               │ (automatic serialization/deserialization)
-┌──────────────────────────────┼────────────────────────────────┐
-│                    TAURI SHELL (Rust)                          │
-│                              │                                │
-│  ┌───────────────────────────┴────────────────────────────┐  │
-│  │              main.rs — Command Handlers                 │  │
-│  │           #[tauri::command] functions                    │  │
-│  └──────┬─────────────┬──────────────┬────────────────────┘  │
-│         │             │              │                        │
-│  ┌──────┴─────┐  ┌────┴─────┐  ┌─────┴──────┐                │
-│  │ Workspace  │  │ Layer    │  │ History    │                │
-│  │ Commands   │  │ Commands │  │ Commands   │                │
-│  │ get_ws_st  │  │ add_layer│  │ undo       │                │
-│  │ open_images│  │ delete   │  │ redo       │                │
-│  │ switch_doc │  │ reorder  │  │            │                │
-│  │ close_doc  │  │ update   │  │            │                │
-│  └──────┬─────┘  └────┬─────┘  └─────┬──────┘                │
-│         │             │              │                        │
-│  ┌──────┴─────────────┴──────────────┴────────────────────┐  │
-│  │              AppRuntime (tauri::manage)                  │  │
-│  │  ┌─────────────────────┐  ┌─────────────────────────┐  │  │
-│  │  │ Mutex<WorkspaceState>│  │ Mutex<ViewportState>     │  │  │
-│  │  │ (photrez-core)       │  │ (presentation state)     │  │  │
-│  │  │ - documents[]        │  │ - artboard pos/size      │  │  │
-│  │  │ - active_document_id │  │ - pan/zoom               │  │  │
-│  │  │ - per-doc state      │  │                          │  │  │
-│  │  └─────────────────────┘  └─────────────────────────┘  │  │
-│  └─────────────────────────────────────────────────────────┘  │
-└───────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                    FRONTEND PROCESS                           â”‚
+â”‚                    (SolidJS + Vite)                           â”‚
+â”‚                                                               â”‚
+â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”      â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â” â”‚
+â”‚  â”‚   App Shell       â”‚      â”‚     Canvas Viewport           â”‚ â”‚
+â”‚  â”‚  (UI Chrome)      â”‚      â”‚  (IPC base64 preview)         â”‚ â”‚
+â”‚  â”‚                   â”‚      â”‚                               â”‚ â”‚
+â”‚  â”‚ - Menubar (44px)  â”‚      â”‚ - Ruler bars                  â”‚ â”‚
+â”‚  â”‚ - Toolbar (40px)  â”‚      â”‚ - Artboard preview            â”‚ â”‚
+â”‚  â”‚ - Tab Strip (30px)â”‚      â”‚ - Transform handles           â”‚ â”‚
+â”‚  â”‚ - Tool Rail       â”‚      â”‚ - Selection overlay           â”‚ â”‚
+â”‚  â”‚ - Inspector       â”‚      â”‚ - Empty state (no docs)       â”‚ â”‚
+â”‚  â”‚ - Status Bar      â”‚      â”‚                               â”‚ â”‚
+â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜      â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜ â”‚
+â”‚           â”‚                            â”‚                      â”‚
+â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚
+â”‚  â”‚              SolidJS Reactive State                     â”‚  â”‚
+â”‚  â”‚  createSignal: activeTool, zoom, mousePos, layers       â”‚  â”‚
+â”‚  â”‚  createSignal: documents, activeDocumentId, limits      â”‚  â”‚
+â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â”‚
+â”‚                              â”‚ invoke() from                  â”‚
+â”‚                              â”‚ @tauri-apps/api/core           â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                               â”‚ Tauri IPC Bridge
+                               â”‚ (automatic serialization/deserialization)
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                    TAURI SHELL (Rust)                          â”‚
+â”‚                              â”‚                                â”‚
+â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚
+â”‚  â”‚              main.rs â€” Command Handlers                 â”‚  â”‚
+â”‚  â”‚           #[tauri::command] functions                    â”‚  â”‚
+â”‚  â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â”‚
+â”‚         â”‚             â”‚              â”‚                        â”‚
+â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”                â”‚
+â”‚  â”‚ Workspace  â”‚  â”‚ Layer    â”‚  â”‚ History    â”‚                â”‚
+â”‚  â”‚ Commands   â”‚  â”‚ Commands â”‚  â”‚ Commands   â”‚                â”‚
+â”‚  â”‚ get_ws_st  â”‚  â”‚ add_layerâ”‚  â”‚ undo       â”‚                â”‚
+â”‚  â”‚ open_imagesâ”‚  â”‚ delete   â”‚  â”‚ redo       â”‚                â”‚
+â”‚  â”‚ switch_doc â”‚  â”‚ reorder  â”‚  â”‚            â”‚                â”‚
+â”‚  â”‚ close_doc  â”‚  â”‚ update   â”‚  â”‚            â”‚                â”‚
+â”‚  â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜                â”‚
+â”‚         â”‚             â”‚              â”‚                        â”‚
+â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚
+â”‚  â”‚              AppRuntime (tauri::manage)                  â”‚  â”‚
+â”‚  â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚  â”‚
+â”‚  â”‚  â”‚ Mutex<WorkspaceState>â”‚  â”‚ Mutex<ViewportState>     â”‚  â”‚  â”‚
+â”‚  â”‚  â”‚ (photrez-core)       â”‚  â”‚ (presentation state)     â”‚  â”‚  â”‚
+â”‚  â”‚  â”‚ - documents[]        â”‚  â”‚ - artboard pos/size      â”‚  â”‚  â”‚
+â”‚  â”‚  â”‚ - active_document_id â”‚  â”‚ - pan/zoom               â”‚  â”‚  â”‚
+â”‚  â”‚  â”‚ - per-doc state      â”‚  â”‚                          â”‚  â”‚  â”‚
+â”‚  â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â”‚  â”‚
+â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 
-┌───────────────────────────────────────────────────────────────┐
-│                    RUST CRATES                                 │
-│                                                               │
-│  ┌─────────────────────────────┐  ┌─────────────────────────┐│
-│  │ photrez-core                 │  │ photrez-render          ││
-│  │ (crates/core/)               │  │ (crates/render/)        ││
-│  │                              │  │                         ││
-│  │ ├── document.rs              │  │ ├── lib.rs              ││
-│  │ │   Document, layers,        │  │ │   init_render()       ││
-│  │ │   selection, transform     │  │ │   WgpuRenderer        ││
-│  │ ├── layers.rs                │  │ │                       ││
-│  │ │   Layer, BitmapData        │  │ └───────────────────────┘│
-│  │ ├── history.rs               │  │                         │
-│  │ │   HistoryStore, undo/redo  │  │                         │
-│  │ ├── workspace.rs ★ NEW       │  │                         │
-│  │ │   WorkspaceState           │  │                         │
-│  │ │   DocumentSession          │  │                         │
-│  │ ├── brush.rs                 │  │                         │
-│  │ ├── export.rs                │  │                         │
-│  │ └── lib.rs                   │  │                         │
-│  └──────────────────────────────┘                             │
-└───────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                    RUST CRATES                                 â”‚
+â”‚                                                               â”‚
+â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”â”‚
+â”‚  â”‚ photrez-core                 â”‚  â”‚ photrez-render          â”‚â”‚
+â”‚  â”‚ (crates/core/)               â”‚  â”‚ (crates/render/)        â”‚â”‚
+â”‚  â”‚                              â”‚  â”‚                         â”‚â”‚
+â”‚  â”‚ â”œâ”€â”€ document.rs              â”‚  â”‚ â”œâ”€â”€ lib.rs              â”‚â”‚
+â”‚  â”‚ â”‚   Document, layers,        â”‚  â”‚ â”‚   init_render()       â”‚â”‚
+â”‚  â”‚ â”‚   selection, transform     â”‚  â”‚ â”‚   WgpuRenderer        â”‚â”‚
+â”‚  â”‚ â”œâ”€â”€ layers.rs                â”‚  â”‚ â”‚                       â”‚â”‚
+â”‚  â”‚ â”‚   Layer, BitmapData        â”‚  â”‚ â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜â”‚
+â”‚  â”‚ â”œâ”€â”€ history.rs               â”‚  â”‚                         â”‚
+â”‚  â”‚ â”‚   HistoryStore, undo/redo  â”‚  â”‚                         â”‚
+â”‚  â”‚ â”œâ”€â”€ workspace.rs â˜… NEW       â”‚  â”‚                         â”‚
+â”‚  â”‚ â”‚   WorkspaceState           â”‚  â”‚                         â”‚
+â”‚  â”‚ â”‚   DocumentSession          â”‚  â”‚                         â”‚
+â”‚  â”‚ â”œâ”€â”€ brush.rs                 â”‚  â”‚                         â”‚
+â”‚  â”‚ â”œâ”€â”€ export.rs                â”‚  â”‚                         â”‚
+â”‚  â”‚ â””â”€â”€ lib.rs                   â”‚  â”‚                         â”‚
+â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                             â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ---
@@ -134,21 +134,21 @@ Note 2026-05-29: the diagram below is historical and still useful for ownership 
 
 ```text
 1. User action (click/drag/shortcut) di SolidJS frontend
-        ↓
+        â†“
 2. Frontend memanggil invoke("command_name", { params })
-        ↓
+        â†“
 3. Tauri IPC bridge meneruskan ke #[tauri::command] handler
-        ↓
+        â†“
 4. Handler mengakses EditorState (Mutex lock)
-        ↓
-5. history.commit(current_state)  ← snapshot SEBELUM mutasi
-        ↓
+        â†“
+5. history.commit(current_state)  â† snapshot SEBELUM mutasi
+        â†“
 6. Document/Layer/Core dimutasi
-        ↓
+        â†“
 7. Handler return ok_response(updated_doc) atau err_response(code, msg)
-        ↓
+        â†“
 8. Frontend menerima response, update SolidJS signals
-        ↓
+        â†“
 9. SolidJS reactivity otomatis re-render affected UI
 ```
 
@@ -164,7 +164,7 @@ Note 2026-05-29: the diagram below is historical and still useful for ownership 
 { "ok": false, "contract_version": "1.0.0", "error": { "code": "...", "message": "...", "details": null } }
 ```
 
-Detail lengkap: `docs/15-command-contract-spec.md`
+Detail lengkap: `docs/reference/command-contract-spec.md`
 
 ---
 
@@ -207,50 +207,70 @@ Detail lengkap: `docs/15-command-contract-spec.md`
 
 ```
 image-studio/
-├── apps/
-│   └── desktop/
-│       ├── src/                    # SolidJS Frontend
-│       │   ├── App.tsx             # Main app component (632 lines)
-│       │   ├── index.css           # Tailwind v4 + design tokens
-│       │   └── index.tsx           # Entry point
-│       └── src-tauri/
-│           ├── src/
-│           │   └── main.rs         # Tauri commands + EditorState (221 lines)
-│           ├── Cargo.toml          # Tauri dependencies
-│           └── tauri.conf.json     # Tauri configuration
-├── crates/
-│   ├── core/                       # photrez-core (document model + logic)
-│   │   └── src/
-│   │       ├── lib.rs              # Crate root
-│   │       ├── document.rs         # Document struct & operations
-│   │       ├── layers.rs           # Layer struct & serialize
-│   │       ├── history.rs          # HistoryStore (undo/redo)
-│   │       ├── selection.rs        # Selection (stub)
-│   │       ├── transform.rs        # Transform (stub)
-│   │       ├── brush.rs            # Brush (stub)
-│   │       └── export.rs           # Export (stub)
-│   └── render/                     # photrez-render (wgpu renderer)
-│       └── src/
-│           └── lib.rs              # Render init (stub)
-├── docs/                           # Project documentation (see INDEX.md)
-│   ├── INDEX.md                    # ★ Documentation routing guide
-│   ├── AI_CONTEXT.md               # ★ AI strict rules (START HERE)
-│   ├── AI_CURRENT_TASK.md          # ★ Active task status
-│   ├── AI_HISTORY.md               # ★ Change history
-│   ├── FEATURES.md                 # ★ Feature status tracker
-│   ├── ARCHITECTURE.md             # ★ This file
-│   ├── CONVENTIONS.md              # ★ Code patterns & domain knowledge
-│   ├── UI_GUIDE.md                 # ★ Consolidated UI design reference
-│   ├── 00-product-scope.md         # MVP scope lock
-│   ├── 01-prd.md                   # Product requirements
-│   ├── 23-design-tokens.md         # Design token values
-│   ├── 15-command-contract-spec.md # IPC contract spec
-│   ├── ...                         # Reference docs (see INDEX.md)
-│   └── archive/                    # Archived planning & history docs
-├── AGENTS.md                       # Agent orchestration rules
-├── GEMINI.md                       # Visual aesthetic rules
-├── CLAUDE.md                       # Claude-specific rules
-└── Cargo.toml                      # Rust workspace root
+â”œâ”€â”€ apps/
+â”‚   â””â”€â”€ desktop/
+â”‚       â”œâ”€â”€ src/                    # SolidJS Frontend
+â”‚       â”‚   â”œâ”€â”€ App.tsx             # Main app component (51 lines, delegates to EditorShell)
+â”‚       â”‚   â”œâ”€â”€ index.css           # Tailwind v4 + design tokens
+â”‚       â”‚   â”œâ”€â”€ styles.css          # Additional component styles
+â”‚       â”‚   â”œâ”€â”€ index.tsx           # Entry point
+â”‚       â”‚   â”œâ”€â”€ engine/             # TypeScript DocumentEngine
+â”‚       â”‚   â”‚   â”œâ”€â”€ document.ts     # Core document model + operations
+â”‚       â”‚   â”‚   â”œâ”€â”€ history.ts      # Command history (undo/redo)
+â”‚       â”‚   â”‚   â”œâ”€â”€ workspace.ts    # Multi-document workspace
+â”‚       â”‚   â”‚   â””â”€â”€ ...             # cropApply, layerComposite, etc.
+â”‚       â”‚   â”œâ”€â”€ renderer/           # WebGL2 rendering pipeline
+â”‚       â”‚   â”‚   â”œâ”€â”€ webgl2.ts       # WebGL2Backend renderer
+â”‚       â”‚   â”‚   â”œâ”€â”€ shaders.ts      # GLSL ES 3.0 shaders
+â”‚       â”‚   â”‚   â””â”€â”€ scheduler.ts    # Render scheduling + continuous mode
+â”‚       â”‚   â”œâ”€â”€ viewport/           # Viewport camera + geometry modules
+â”‚       â”‚   â”‚   â”œâ”€â”€ viewportCamera.ts      # ViewportCamera class + easing
+â”‚       â”‚   â”‚   â”œâ”€â”€ modernCropGeometry.ts  # Modern crop frame geometry
+â”‚       â”‚   â”‚   â”œâ”€â”€ cropGeometry.ts        # Classic crop geometry
+â”‚       â”‚   â”‚   â”œâ”€â”€ cropSnap.ts            # Crop snap targets
+â”‚       â”‚   â”‚   â”œâ”€â”€ smartGuides.ts         # Smart guide line system
+â”‚       â”‚   â”‚   â”œâ”€â”€ transformGeometry.ts   # Transform handle geometry
+â”‚       â”‚   â”‚   â””â”€â”€ ...                    # coords, easing, hitTest, etc.
+â”‚       â”‚   â””â”€â”€ components/editor/  # 67 editor components + 31 test files
+â”‚       â””â”€â”€ src-tauri/
+â”‚           â”œâ”€â”€ src/
+â”‚           â”‚   â””â”€â”€ main.rs         # Tauri commands + EditorState (198 lines)
+â”‚           â”œâ”€â”€ Cargo.toml          # Tauri dependencies
+â”‚           â””â”€â”€ tauri.conf.json     # Tauri configuration
+â”œâ”€â”€ crates/
+â”‚   â”œâ”€â”€ core/                       # photrez-core (document model + logic, 85 tests)
+â”‚   â”‚   â””â”€â”€ src/
+â”‚   â”‚       â”œâ”€â”€ lib.rs              # Crate root
+â”‚   â”‚       â”œâ”€â”€ document.rs         # Document struct & operations
+â”‚   â”‚       â”œâ”€â”€ layers.rs           # Layer struct & serialize
+â”‚   â”‚       â”œâ”€â”€ history.rs          # HistoryStore (undo/redo)
+â”‚   â”‚       â”œâ”€â”€ workspace.rs        # WorkspaceState + DocumentSession
+â”‚   â”‚       â”œâ”€â”€ selection.rs        # Selection operations
+â”‚   â”‚       â”œâ”€â”€ transform.rs        # Transform operations
+â”‚   â”‚       â”œâ”€â”€ brush.rs            # Brush stroke operations
+â”‚   â”‚       â””â”€â”€ export.rs           # Export encode (JPG/PNG/WebP)
+â”‚   â””â”€â”€ render/                     # photrez-render (wgpu renderer, future target)
+â”‚       â””â”€â”€ src/
+â”‚           â””â”€â”€ lib.rs              # Render init (deferred)
+â”œâ”€â”€ docs/                           # Project documentation (see INDEX.md)
+â”‚   â”œâ”€â”€ INDEX.md                    # â˜… Documentation routing guide
+â”‚   â”œâ”€â”€ AI_CONTEXT.md               # â˜… AI strict rules (START HERE)
+â”‚   â”œâ”€â”€ AI_CURRENT_TASK.md          # â˜… Active task status
+â”‚   â”œâ”€â”€ AI_HISTORY.md               # â˜… Change history
+â”‚   â”œâ”€â”€ FEATURES.md                 # â˜… Feature status tracker
+â”‚   â”œâ”€â”€ ARCHITECTURE.md             # â˜… This file
+â”‚   â”œâ”€â”€ CONVENTIONS.md              # â˜… Code patterns & domain knowledge
+â”‚   â”œâ”€â”€ UI_GUIDE.md                 # â˜… Consolidated UI design reference
+â”‚   â”œâ”€â”€ 00-product-scope.md         # MVP scope lock
+â”‚   â”œâ”€â”€ 01-prd.md                   # Product requirements
+â”‚   â”œâ”€â”€ 23-design-tokens.md         # Design token values
+â”‚   â”œâ”€â”€ 15-command-contract-spec.md # IPC contract spec
+â”‚   â”œâ”€â”€ ...                         # Reference docs (see INDEX.md)
+â”‚   â””â”€â”€ archive/                    # Archived planning & history docs
+â”œâ”€â”€ AGENTS.md                       # Agent orchestration rules
+â”œâ”€â”€ GEMINI.md                       # Visual aesthetic rules
+â”œâ”€â”€ CLAUDE.md                       # Claude-specific rules
+â””â”€â”€ Cargo.toml                      # Rust workspace root
 ```
 
 ---
@@ -284,4 +304,4 @@ image-studio/
 | Idle RAM       | `< 250 MB`  |
 | Startup time   | `< 2s`      |
 
-Protocol ukur: `docs/16-performance-measurement-protocol.md`
+Protocol ukur: `docs/reference/performance-measurement-protocol.md`

@@ -26,7 +26,7 @@ This matrix maps milestone scope to required test layers, owner, and exit gate.
 | M3 Selection/Transform/Crop/Resize | selection move, scale/rotate/flip, crop/resize | Unit (`selection`, `transform`), Contract (command payload/validation), Failure-Path bounds/invalid values | Core + Shell | Image-manipulation workflows pass unit/contract checks |
 | M4 Brush/Eraser | stroke pipeline baseline | Unit (`brush`), Renderer Smoke (stroke draw sanity), Failure-Path (invalid stroke params) | Core + Renderer | Brush/Eraser stable on target baseline scenarios |
 | M5 Export + Hardening | JPG/PNG/WebP export | Unit (`export`), Failure-Path (I/O/invalid params), Contract (export response shape) | Core + Shell | Export reliability and output checks pass |
-| M6 Perf Gate + Packaging | startup/RAM/installer | Perf (per `docs/16-performance-measurement-protocol.md`) | Core + Shell + Build | All budgets pass or explicit conditional gate approved |
+| M6 Perf Gate + Packaging | startup/RAM/installer | Perf (per `docs/reference/performance-measurement-protocol.md`) | Core + Shell + Build | All budgets pass or explicit conditional gate approved |
 
 ## 4) Minimum Command/Test Mapping
 
@@ -76,8 +76,8 @@ Notes:
 
 ## 7) References
 
-- `docs/07-build-plan.md`
-- `docs/08-milestone-1-execution.md`
+- `docs/spec/build-plan.md`
+- `docs/archive/planning/08-milestone-1-execution.md`
 - `docs/testing-policy.md`
-- `docs/15-command-contract-spec.md`
-- `docs/16-performance-measurement-protocol.md`
+- `docs/reference/command-contract-spec.md`
+- `docs/reference/performance-measurement-protocol.md`

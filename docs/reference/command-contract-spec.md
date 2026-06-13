@@ -122,33 +122,40 @@ Success `data`:
 }
 ```
 
-## 7) Planned MVP Commands (Reserved Names)
+## 7) Implemented & Registered IPC Commands
 
-These names are reserved to prevent drift during implementation:
+The following commands are registered and implemented in the Tauri application layer:
 
-- `create_document`
-- `open_document`
-- `close_document`
-- `import_image`
-- `add_layer`
-- `delete_layer`
-- `reorder_layer`
-- `set_layer_opacity`
-- `move_selection`
-- `transform_layer`
-- `crop_canvas`
-- `resize_canvas`
-- `brush_stroke_begin`
-- `brush_stroke_move`
-- `brush_stroke_end`
-- `eraser_stroke_begin`
-- `eraser_stroke_move`
-- `eraser_stroke_end`
-- `export_document`
-- `undo`
-- `redo`
+- `ping` (Bridge health check)
+- `get_contract_info` (Version and command metadata)
+- `get_workspace_state` (Retrieves full multi-document workspace state)
+- `get_document_state` (Returns active document state)
+- `open_images` (Opens a list of image file paths into workspace tabs)
+- `switch_document` (Switches active workspace document)
+- `close_document` (Closes active/specified workspace document)
+- `set_selected_layer` (Updates active selection UI layer ID)
+- `add_layer` (Creates a new bitmap layer)
+- `delete_layer` (Removes the specified layer)
+- `reorder_layer` (Reorders layers within the stack)
+- `update_layer` (Updates opacity, visibility, lock, blend_mode, name)
+- `undo` (Undo last command snapshot)
+- `redo` (Redo last undone command snapshot)
+- `create_selection` (Creates selection marquee rect bounds)
+- `clear_selection` (Deselects active selection marquee)
+- `select_all` (Selects the entire canvas area)
+- `move_layer` (Repositions layer offset coordinates)
+- `transform_layer` (Applies scale, rotate, flip transformations)
+- `crop_canvas` (Destructively crops canvas dimensions)
+- `resize_canvas` (Resizes canvas bounding dimensions)
+- `draw_brush_stroke` (Applies painting stroke or erasing stroke dabs)
+- `export_document` (Composites layer stack and exports to PNG/JPG/WebP)
+- `sample_pixel` (Samples RGBA color at coordinates)
+- `open_image` (Legacy single image opener; delegates to `open_images`)
+- `trigger_render` (Forces WebGL renderer redraw)
+- `update_viewport_state` (Synchronizes viewport scale, pan, bounds)
+- `preview_frame` (Pre-renders canvas frame preview)
 
-If a new command name is needed, update this file first.
+Any addition or modification of IPC contract interfaces must update this registry.
 
 ## 8) Example Error Cases
 
@@ -200,6 +207,6 @@ At minimum, contract tests must verify:
 
 - Primary owner: Core + Shell maintainers.
 - Any change to envelope, versioning semantics, or error code set must update:
-1. `docs/03-trd.md`
-2. `docs/05-adr/0002-command-contract-versioning.md` (if breaking/major behavior)
+1. `docs/spec/trd.md`
+2. `docs/decisions/adr/0002-command-contract-versioning.md` (if breaking/major behavior)
 3. Contract tests and evidence in milestone report.

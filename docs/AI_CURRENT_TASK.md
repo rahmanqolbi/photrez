@@ -4,17 +4,35 @@
 
 ## Current Tasks
 
-### [2026-06-13] Bug Hunt — Move Tool Resize Cursor Drops To Default [IN PROGRESS]
+### [2026-06-13] Restructure & Update Other Documentation Files [COMPLETE]
+
+**Goal:**
+Clean up the `docs/` directory by removing leading numbers from filenames and grouping them into subfolders (`spec/`, `reference/`, `decisions/`). Correct outdated/incorrect contents inside the moved files (including keyboard shortcut maps, dependency inventories, Tauri command contracts, risk register entries, and design token CSS syntax). Update all cross-references throughout the codebase.
+
+**Done:**
+1. Moved all numbered documents into subfolders (`docs/spec/`, `docs/reference/`, `docs/decisions/`) and removed prefixes for cleaner file naming.
+2. Updated `keyboard-shortcut-map.md` with missing brush modifiers (Shift+Click line, Shift+Drag lock axis, Alt-Hold eyedropper, size/hardness brackets) and corrected Escape crop behavior to stay in Crop.
+3. Updated `dependency-inventory.md` with correct Vite, Vitest, Playwright, and styling helper dependencies.
+4. Updated `command-contract-spec.md` planned commands to match actual active Tauri commands.
+5. Moved mitigated/closed risks to the Closed Risks section in `risk-register.md`.
+6. Adjusted radius design tokens CSS syntax in `design-tokens.md` to match the exact pixel rules in `index.css`.
+7. Programmatically updated relative cross-references across all `.md` and `.html` files in the repository.
+8. Updated `INDEX.md` and `README.md` to map to the new structured layout.
+
+**Verification:**
+- Verified link integrity.
+- Verified test suite and build output compile clean.
+
+---
+
+### [2026-06-13] Bug Hunt â€” Move Tool Resize Cursor Drops To Default [DEFERRED]
 
 **Goal:**
 Fix the Move Tool regression where the cursor falls back to the normal pointer while resizing instead of preserving the active resize/rotate indicator during pointer-captured transform drags.
 
-**Debugging Rules:**
-- Preserve the prior pasteboard fix: the full-viewport root SVG must not leak stale rotate cursors when idle.
-- Keep move/resize/rotate cursors scoped to real hit zones while idle, but keep the active drag cursor stable during pointer capture.
-- Add focused regression coverage before production code changes where feasible.
+**Status:** Investigation planned but not yet started. Deferred pending user prioritization.
 
-**Planned:**
+**Planned (when resumed):**
 1. Inspect `SelectionTransformOverlay` and `useSelectionTransformDrag` cursor flow for hover vs active drag state.
 2. Add a regression test proving the root overlay uses the active resize cursor during drag while staying default when idle.
 3. Patch the cursor resolver with the smallest state-aware change.
@@ -22,7 +40,7 @@ Fix the Move Tool regression where the cursor falls back to the normal pointer w
 
 ---
 
-### [2026-06-13] Bug Hunt — Brush/Eraser Stroke Not Appearing [COMPLETE]
+### [2026-06-13] Bug Hunt â€” Brush/Eraser Stroke Not Appearing [COMPLETE]
 
 **Goal:**
 Investigate and fix the reported Brush/Eraser regression where drawing or erasing appears to do nothing on the active layer.
@@ -51,7 +69,7 @@ Investigate and fix the reported Brush/Eraser regression where drawing or erasin
 
 ---
 
-### [2026-06-13] Bug Hunt — Transform Tooltip Scale + Layer Canvas Clipping [COMPLETE]
+### [2026-06-13] Bug Hunt â€” Transform Tooltip Scale + Layer Canvas Clipping [COMPLETE]
 
 **Goal:**
 Investigate and fix two viewport regressions: transform W/H tooltip/HUD appears oversized during resize, and layer pixels are visible outside the document canvas/artboard.
@@ -74,7 +92,7 @@ Investigate and fix two viewport regressions: transform W/H tooltip/HUD appears 
 
 ---
 
-### [2026-06-13] Bug Hunt — Viewport/Move Tool UX Regressions [COMPLETE]
+### [2026-06-13] Bug Hunt â€” Viewport/Move Tool UX Regressions [COMPLETE]
 
 **Goal:**
 Investigate and fix the reported viewport/Move Tool regressions as one camera interaction cluster: stale rotate cursor on pasteboard, unreliable Ctrl+0 fit, uncomfortable zoom increments/animation, and delayed canvas/transform overlay alignment during zoom.
@@ -98,18 +116,18 @@ Investigate and fix the reported viewport/Move Tool regressions as one camera in
 
 ---
 
-### [2026-06-13] Extended Viewport Edge Cases Audit — 8 Fixes [COMPLETE]
+### [2026-06-13] Extended Viewport Edge Cases Audit â€” 8 Fixes [COMPLETE]
 
 **Goal:**
 Fix all P0/P1 bugs found during the deep audit of viewport event flow, coordinate conversion, selection state sync, transform session lifecycle, and keyboard shortcut collisions.
 
 **Done:**
-1. **P0-1:** Fixed `selectedLayerId` desync from `activeLayerId` after undo/redo — added `setSelectedLayerId` to `workspaceSync.ts` sync.
-2. **P0-2:** Fixed `moveAutoSelect` deselect overridden by EditorContext effect — track `prevActiveLayerId` so effect only fires on actual `activeLayerId` change.
-3. **P0-3:** Fixed selection change mid-drag corrupting transform — store `layerId` in drag state and cancel drag if layer changes.
-4. **P0-4:** Fixed momentum continuing during non-pan tool interactions — `stopMomentum()` in container `onPointerDown`.
-5. **P0-5:** Fixed animation cancel without `onAnimationEnd` callback — `setState`, `pan`, `zoomToPoint` now call `onAnimationEnd` when clearing animation.
-6. **P0-6:** Fixed crop-undo double-fire — added `e.defaultPrevented` guard in `AppTitleBar.tsx` keydown handler.
+1. **P0-1:** Fixed `selectedLayerId` desync from `activeLayerId` after undo/redo â€” added `setSelectedLayerId` to `workspaceSync.ts` sync.
+2. **P0-2:** Fixed `moveAutoSelect` deselect overridden by EditorContext effect â€” track `prevActiveLayerId` so effect only fires on actual `activeLayerId` change.
+3. **P0-3:** Fixed selection change mid-drag corrupting transform â€” store `layerId` in drag state and cancel drag if layer changes.
+4. **P0-4:** Fixed momentum continuing during non-pan tool interactions â€” `stopMomentum()` in container `onPointerDown`.
+5. **P0-5:** Fixed animation cancel without `onAnimationEnd` callback â€” `setState`, `pan`, `zoomToPoint` now call `onAnimationEnd` when clearing animation.
+6. **P0-6:** Fixed crop-undo double-fire â€” added `e.defaultPrevented` guard in `AppTitleBar.tsx` keydown handler.
 7. **P1-7/P1-8:** Fixed `handleLostPointerCapture` pointerId check and `setPointerCapture` try/catch in `useSelectionTransformDrag.ts`.
 
 **Verification:**
@@ -119,19 +137,19 @@ Fix all P0/P1 bugs found during the deep audit of viewport event flow, coordinat
 
 ---
 
-### [2026-06-13] Regression Audit — Tool Interaction Contracts vs Current Runtime [COMPLETE]
+### [2026-06-13] Regression Audit â€” Tool Interaction Contracts vs Current Runtime [COMPLETE]
 
 **Goal:**
 Compare documented tool UX contracts from `AI_HISTORY.md` / `FEATURES.md` against current automated behavior, starting from the reported Move Tool deselect failure.
 
 **Done:**
-1. Fixed pasteboard click deselect bug — SVG overlay (`z-index: 40`, `pointer-events: auto`) captured all viewport clicks, preventing container's pasteboard handler from firing.
+1. Fixed pasteboard click deselect bug â€” SVG overlay (`z-index: 40`, `pointer-events: auto`) captured all viewport clicks, preventing container's pasteboard handler from firing.
 2. Fixed `isPasteboardPointerDown` in `CanvasViewport.tsx` to recognize `[data-overlay-svg]` clicks as pasteboard clicks when outside document bounds.
-3. Fixed fallback `onScreenToDoc` formula in `useSelectionTransformDrag.ts` (lines 136, 247) — was missing `pan()` offset before dividing by zoom.
-4. Fixed fallback `onScreenToDoc` formula in `CanvasViewport.tsx` (line 758) — same missing pan offset.
-5. Fixed Playwright test assertion — "No selection" is the no-document fallback; corrected to check for "No active layer" (the actual no-layer indicator).
+3. Fixed fallback `onScreenToDoc` formula in `useSelectionTransformDrag.ts` (lines 136, 247) â€” was missing `pan()` offset before dividing by zoom.
+4. Fixed fallback `onScreenToDoc` formula in `CanvasViewport.tsx` (line 758) â€” same missing pan offset.
+5. Fixed Playwright test assertion â€” "No selection" is the no-document fallback; corrected to check for "No active layer" (the actual no-layer indicator).
 6. Added dual coordinate system equivalency test (`coords.screenToDocument` vs `camera.screenToDocument`).
-7. Added pasteboard click detection test at zoom ≠ 1.
+7. Added pasteboard click detection test at zoom â‰  1.
 8. Added a failing-first regression for the GPU/WebGL canvas path: a full-viewport canvas click outside the artboard must be classified as pasteboard and clear the active layer.
 9. Confirmed the Move Tool contract matrix against docs: pasteboard deselect, fit/zoom/pan overlay alignment, Space+drag pan priority, auto-select, snap/Alt, and keyboard nudge all have focused automated coverage.
 
@@ -140,7 +158,7 @@ Compare documented tool UX contracts from `AI_HISTORY.md` / `FEATURES.md` agains
 - PASS: 13 Playwright E2E tests
 - PASS: `pnpm.cmd run build`
 
-### [2026-06-13] Test Hardening — Viewport Tool Alignment QA [COMPLETE]
+### [2026-06-13] Test Hardening â€” Viewport Tool Alignment QA [COMPLETE]
 
 **Goal:**
 Reduce manual QA burden for viewport/canvas/tool regressions by adding automated browser-level checks for alignment-sensitive workflows.
@@ -155,7 +173,7 @@ Reduce manual QA burden for viewport/canvas/tool regressions by adding automated
 - PASS: `pnpm.cmd --filter photrez-desktop test --run` (827 tests)
 - PASS: `pnpm.cmd run build`
 
-### [2026-06-13] Bug Fix — Viewport Camera Regression Recovery [COMPLETE]
+### [2026-06-13] Bug Fix â€” Viewport Camera Regression Recovery [COMPLETE]
 
 **Goal:**
 Restore canvas/tool coordinate consistency after the GPU smooth zoom migration before adding or polishing zoom transitions.
@@ -168,7 +186,7 @@ Current viewport state is split between `ViewportCamera`, SolidJS `pan/zoom`, an
 2. Routed Navigator pan/zoom controls, crop viewport centering, and crop nudge viewport compensation through the adapter.
 3. Fixed stale overlay positioning by replacing non-reactive `camera.documentToScreen()` render/memo paths with reactive `pan()` + `zoom()` screen-space calculations.
 4. Added regression coverage for Move Tool transform box alignment at 60% zoom and viewport pan.
-5. Updated the original GPU smooth zoom plan status to superseded and recorded the recovery decision in `docs/01-id-decision-log.md`.
+5. Updated the original GPU smooth zoom plan status to superseded and recorded the recovery decision in `docs/decisions/id-decision-log.md`.
 
 **Verification:**
 - PASS: focused viewport/overlay tests (150 tests)
@@ -177,7 +195,7 @@ Current viewport state is split between `ViewportCamera`, SolidJS `pan/zoom`, an
 - PASS: `cargo test -p photrez-core`
 - PASS: `cargo test --workspace`
 
-### [2026-06-13] Planning — Viewport Camera Regression Recovery [COMPLETE]
+### [2026-06-13] Planning â€” Viewport Camera Regression Recovery [COMPLETE]
 
 **Goal:**
 Create a staged todo/recovery plan for the GPU smooth zoom migration regressions, focused on restoring canvas/tool coordinate consistency before any further smooth zoom work.
@@ -186,7 +204,7 @@ Create a staged todo/recovery plan for the GPU smooth zoom migration regressions
 - Created `docs/plans/2026-06-13-viewport-camera-regression-recovery-todo.md`.
 - No code implementation in this step.
 
-### [2026-06-13] Bug Fix — WebGL Viewport Alignment & Layout Restoration [COMPLETE]
+### [2026-06-13] Bug Fix â€” WebGL Viewport Alignment & Layout Restoration [COMPLETE]
 
 **Goal:**
 Fix image and checkerboard shifting and scaling mismatches relative to overlays on high-DPI screens, and restore the original docked layout in the editor shell.
@@ -202,7 +220,7 @@ Fix image and checkerboard shifting and scaling mismatches relative to overlays 
 - PASS: `pnpm --filter photrez-desktop test --run` (all 824 tests passed)
 - PASS: `pnpm run build` (successful compilation)
 
-### [2026-06-13] Feature — GPU-Accelerated Smooth Zoom [COMPLETE]
+### [2026-06-13] Feature â€” GPU-Accelerated Smooth Zoom [COMPLETE]
 
 **Goal:**
 Migrate viewport rendering pipeline from CSS transform-based zoom to viewport-fixed WebGL Camera. Implement smooth 150ms easeOutCubic transitions for keyboard/fit-to-screen zoom, and instant scroll wheel zoom.
@@ -222,7 +240,7 @@ Migrate viewport rendering pipeline from CSS transform-based zoom to viewport-fi
 - PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
 - PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
 
-### [2026-06-13] Bug Fix — Modern Crop: Reset Button in Ratio/Size Modes [COMPLETE]
+### [2026-06-13] Bug Fix â€” Modern Crop: Reset Button in Ratio/Size Modes [COMPLETE]
 
 **Root Cause:**
 In `CropOptionBar.tsx`, the Reset button's click handler reset the Modern crop frame using `getDefaultModernCropFrame` but passed `aspect` as `cropMode() === "ratio" ? cropAspect() : null`. If `cropMode()` was `"size"`, it passed `null`, causing the reset cropbox to ignore the target size aspect ratio and fall back to the viewport aspect ratio.
@@ -235,7 +253,7 @@ In `CropOptionBar.tsx`, the Reset button's click handler reset the Modern crop f
 - PASS: 54 test files, 813 frontend tests
 - PASS: TypeScript + Vite build
 
-### [2026-06-13] Bug Fix — Modern Crop: 1:1 Cursor Tracking & Lag in Center-Resizing [COMPLETE]
+### [2026-06-13] Bug Fix â€” Modern Crop: 1:1 Cursor Tracking & Lag in Center-Resizing [COMPLETE]
 
 **Root Cause:**
 Because the Modern Crop frame is always centered in the viewport, resizing by dragging a handle moves the frame boundaries symmetrically from both sides. With `effDx = deltaX` in one-sided mode, the handle only moves at half-speed on screen relative to the pointer (`deltaX / 2`), causing the mouse to drift ahead and feel "left behind" (laggy). To achieve pixel-perfect 1:1 cursor tracking on screen, the delta multipliers must always be doubled (`effDx = deltaX * 2`) for both Alt and non-Alt resizing, which matches the visual center-resizing nature of the viewport-fixed Modern frame.
@@ -250,7 +268,7 @@ Because the Modern Crop frame is always centered in the viewport, resizing by dr
 - PASS: TypeScript + Vite build
 - PASS: 92 Rust workspace tests
 
-### [2026-06-13] Bug Fix — Modern Crop: Frame Visual Shift on Resize & Alt Modifier Key [COMPLETE]
+### [2026-06-13] Bug Fix â€” Modern Crop: Frame Visual Shift on Resize & Alt Modifier Key [COMPLETE]
 
 **Root Cause:**
 1. In `resizeModernFrameOneSided`, a recent change forced the frame coordinates `x, y` to shift in screen space (one-sidedly) during resize. In Modern crop, the crop frame is viewport-fixed and must always stay centered on the screen, with the image content panning/scaling underneath. Centering coordinates `(fw - newW)/2` must be used for the frame, and the one-sided anchoring must be achieved via the `compensation` offset instead.
@@ -269,10 +287,10 @@ Because the Modern Crop frame is always centered in the viewport, resizing by dr
 - PASS: TypeScript + Vite build
 - PASS: 92 Rust workspace tests
 
-### [2026-06-13] Bug Fix — Modern Crop: Compensation Over-Correction for W/N Handles [COMPLETE]
+### [2026-06-13] Bug Fix â€” Modern Crop: Compensation Over-Correction for W/N Handles [COMPLETE]
 
 **Root Cause:**
-In `resizeModernFrameOneSided`, frame position adjusts for "w"/"n" handles to anchor the opposite edge. But `compensation` was still applied on the same axis, creating a double shift — the crop rect anchor point drifted in document space.
+In `resizeModernFrameOneSided`, frame position adjusts for "w"/"n" handles to anchor the opposite edge. But `compensation` was still applied on the same axis, creating a double shift â€” the crop rect anchor point drifted in document space.
 
 Specifically, `compensation.x = actualDw / 2` for "w" handles and `compensation.y = actualDh / 2` for "n" handles, but the frame position already handled anchoring, making compensation unnecessary (and harmful).
 
@@ -366,7 +384,7 @@ Polishing the soft round brush after manual QA showed the latest hardness 0 stro
 4. Repaired malformed `AI_HISTORY.md` brush entry heading.
 5. Focused brush tests pass; full verification recorded in `AI_HISTORY.md`.
 
-### [2026-06-12] Bug Fix — Brush Cursor Shown on Pan [COMPLETE]
+### [2026-06-12] Bug Fix â€” Brush Cursor Shown on Pan [COMPLETE]
 
 Fixing the brush/eraser cursor overlay ring being shown when the user is panning (holding Space or dragging to navigate) by passing viewport panning state to the overlay and hiding it.
 
@@ -375,7 +393,7 @@ Fixing the brush/eraser cursor overlay ring being shown when the user is panning
 2. Passed `isPanning={isSpacePressed() || isPanning()}` to `<BrushCursorOverlay>` in `CanvasViewport.tsx`.
 3. Verified that the cursor hides correctly during panning and that all unit tests pass successfully.
 
-### [2026-06-12] Bug Fix — Brush Cursor Stuck on Zoom [COMPLETE]
+### [2026-06-12] Bug Fix â€” Brush Cursor Stuck on Zoom [COMPLETE]
 
 Fixing the brush/eraser cursor overlay ring feeling stuck during zoom operations unless the mouse is moved, by tracking last screen coordinates and updating the position reactively on zoom/pan changes.
 
@@ -385,17 +403,17 @@ Fixing the brush/eraser cursor overlay ring feeling stuck during zoom operations
 3. Cached `lastClientX` and `lastClientY` coordinates on `pointermove` inside `BrushCursorOverlay.tsx`.
 4. Verified that all unit tests pass successfully.
 
-### [2026-06-12] Bug Fix — Viewport WebGL Backing Resolution Clamping [COMPLETE]
+### [2026-06-12] Bug Fix â€” Viewport WebGL Backing Resolution Clamping [COMPLETE]
 
 Fixing the viewport crash/disappearance at high zoom levels (e.g. 500% or above) by clamping the WebGL canvas and texture backing size to a safe maximum of 4096 to prevent browser canvas limits (16384 max width/height) and VRAM exhaustion from triggering `CONTEXT_LOST_WEBGL`.
 
 **Done:**
-1. Identified root cause: lack of upper bound clamping on WebGL canvas size, causing WebGL texture allocation/framebuffer completeness failure and `CONTEXT_LOST_WEBGL` when zoom × dpr × document size exceeds GPU/browser MAX_TEXTURE_SIZE (Chrome caps canvas at 16384px height/width).
+1. Identified root cause: lack of upper bound clamping on WebGL canvas size, causing WebGL texture allocation/framebuffer completeness failure and `CONTEXT_LOST_WEBGL` when zoom Ã— dpr Ã— document size exceeds GPU/browser MAX_TEXTURE_SIZE (Chrome caps canvas at 16384px height/width).
 2. Applied proportional clamping down to `Math.min(4096, gl.MAX_TEXTURE_SIZE)` in the `resize` function of `WebGL2Backend` (`webgl2.ts`).
 3. Verified using Vitest suite (810 tests pass), cargo tests (92 tests pass), and production Vite builds.
 
 
-### [2026-06-12] Bug Fix — Viewport Transition Jiggle [COMPLETE]
+### [2026-06-12] Bug Fix â€” Viewport Transition Jiggle [COMPLETE]
 
 Fixing the shaking/jiggling transition effects in the viewport during zoom (via shortcuts/mouse wheel) and tool switching.
 
@@ -421,7 +439,7 @@ Tuning effective brush flow based on hardness to achieve an airbrush-like soft s
 Tuned the soft round brush alpha falloff curve and peak multiplier to achieve a broad, smooth gradual feather.
 
 **Done:**
-1. Set the `"soft"` curve exponent to `1.3` (inside the `1.25–1.4` range).
+1. Set the `"soft"` curve exponent to `1.3` (inside the `1.25â€“1.4` range).
 2. Implemented a `softPeak` multiplier of `0.9 + 0.1 * h` to limit maximum opacity of soft dabs.
 3. Verified the resulting radial pixel-profile matches exactly: center 0.8-0.95, 25% radius 0.6-0.75, 50% radius 0.3-0.5, 75% radius 0.08-0.2, edge 0.
 4. Updated unit tests in `brushTipMask.test.ts` and `paintStrokeRenderer.test.ts` to enforce these boundaries.
@@ -450,8 +468,8 @@ Introduced `selectedLayerId` as UI selection signal independent from engine `act
 ### [2026-06-09] Bug Fix: Crop Fill Background Disappears After Deselect [COMPLETE]
 
 Fixed two root causes in `webgl2.ts render()`:
-1. **Stale TEXTURE1 feedback loop** — unbind both TEXTURE0/1 to null at start of each render to prevent cross-frame feedback loop detection that silently drops draw calls.
-2. **GL_BLEND double-compositing** — disable BLEND during FBO compositing (shader handles it); re-enable for final screen render.
+1. **Stale TEXTURE1 feedback loop** â€” unbind both TEXTURE0/1 to null at start of each render to prevent cross-frame feedback loop detection that silently drops draw calls.
+2. **GL_BLEND double-compositing** â€” disable BLEND during FBO compositing (shader handles it); re-enable for final screen render.
 
 ### Verification
 - PASS: `pnpm.cmd --filter photrez-desktop test --run` (738 tests, 52 files)
@@ -471,7 +489,7 @@ Updated 17+ tests to use `clickPill(container, label)` replacing `fireModeChange
 
 ## Current Task
 
-### [2026-06-10] Smart Guides (Crop) — Classic + Modern [COMPLETE]
+### [2026-06-10] Smart Guides (Crop) â€” Classic + Modern [COMPLETE]
 
 Implemented snap to document edges, center, and rule-of-thirds during crop drag-create + cyan dashed snap lines.
 
@@ -481,12 +499,12 @@ Implemented snap to document edges, center, and rule-of-thirds during crop drag-
 3. Crop snap lines render cyan (#00ffff) with dashed style vs move-tool magenta (#ff00ff)
 4. Added optional `color` field to `SnapLine` in `smartGuides.ts`
 5. Updated `SmartGuides.tsx` to use `line.color` and dash array for cyan lines
-6. Added 3 new tests (rule-of-thirds, "new" handle snap, rule-of-thirds snap + cyan color) — all 8 pass
+6. Added 3 new tests (rule-of-thirds, "new" handle snap, rule-of-thirds snap + cyan color) â€” all 8 pass
 7. Full test suite: 765 pass (52 files)
 
 **Added Modern mode:**
 - Added `cropSnapTargets` and `moveSnapEnabled` params to `useCanvasPointerTools`
-- During drag-create, converts screen rect → doc-space → `snapCropRect("new")` → screen-space
+- During drag-create, converts screen rect â†’ doc-space â†’ `snapCropRect("new")` â†’ screen-space
 - Draws cyan snap lines during Modern drag-create
 - Clears snap lines on pointer up / cancel
 - Added `pan` access via editor context
@@ -505,7 +523,7 @@ Implemented snap to document edges, center, and rule-of-thirds during crop drag-
 
 **Center-Out Drag Investigation:**
 - Classic mode: `applyCropResizeHandle` already correct.
-- Modern mode: `effDx = params.deltaX * 2` is correct for both modes (edge position = center + w/2, so 2× delta = 1:1 cursor tracking). Alt only changes compensation: `params.alt ? 0 : ...`.
+- Modern mode: `effDx = params.deltaX * 2` is correct for both modes (edge position = center + w/2, so 2Ã— delta = 1:1 cursor tracking). Alt only changes compensation: `params.alt ? 0 : ...`.
 - Added 9 new alt=center-out tests proving Modern behavior is correct.
 
 **Modern Snap Bug Fix:**
@@ -513,8 +531,8 @@ Implemented snap to document edges, center, and rule-of-thirds during crop drag-
 - Fix: store snapped preview in `modernDragSnappedPreview` variable, use it on drag-end
 
 **Files Changed:**
-- `useCanvasPointerTools.ts` — snap-to-commit consistency
-- `modern-crop-geometry.test.ts` — 9 new center-out tests
+- `useCanvasPointerTools.ts` â€” snap-to-commit consistency
+- `modern-crop-geometry.test.ts` â€” 9 new center-out tests
 
 ### Verification
 - PASS: `npx vitest run` (774 tests, 52 files)
@@ -525,16 +543,16 @@ Implemented snap to document edges, center, and rule-of-thirds during crop drag-
 ### [2026-06-10] Modern Mode Pasteboard Drag & Frame Bounds [COMPLETE]
 
 **Problems Fixed:**
-1. Pasteboard clicks in Modern mode never reached drag-create handler — SVG overlay captured events, `isPasteboardPointerDown` didn't recognize them
+1. Pasteboard clicks in Modern mode never reached drag-create handler â€” SVG overlay captured events, `isPasteboardPointerDown` didn't recognize them
 2. Snap conversion used stale `pan.x/pan.y` (Classic origin) instead of Modern mode CSS transform origin
 3. `clampFrameToProjectedBounds` capped frame dimensions at projected canvas, preventing frame > canvas
 4. No crosshair cursor on pasteboard when no frame existed
 5. Existing frame wasn't cleared during drag-create, causing visual confusion
 
 **Changes:**
-- `CanvasViewport.tsx` — `isPasteboardPointerDown` detects SVG overlay clicks, routes Modern mode to `onCanvasPointerDown`, crosshair cursor on viewport container
-- `useCanvasPointerTools.ts` — snap conversion uses `canvasRect - containerRect` offset, `commitDragCreateFrame` uses raw viewport selection, clears frame on drag threshold
-- `modernCropGeometry.ts` — removed upper cap from `clampFrameToProjectedBounds`
+- `CanvasViewport.tsx` â€” `isPasteboardPointerDown` detects SVG overlay clicks, routes Modern mode to `onCanvasPointerDown`, crosshair cursor on viewport container
+- `useCanvasPointerTools.ts` â€” snap conversion uses `canvasRect - containerRect` offset, `commitDragCreateFrame` uses raw viewport selection, clears frame on drag threshold
+- `modernCropGeometry.ts` â€” removed upper cap from `clampFrameToProjectedBounds`
 - Test: updated `clampFrameToProjectedBounds` test name and expectations
 
 ### Verification
@@ -544,14 +562,14 @@ Implemented snap to document edges, center, and rule-of-thirds during crop drag-
 
 ---
 
-### [2026-06-10] Canvas Expansion — Visual Indicator + Tests [COMPLETE]
+### [2026-06-10] Canvas Expansion â€” Visual Indicator + Tests [COMPLETE]
 
 **Implementation:**
 1. **Visual indicator** (`ModernCropOverlay.tsx`): When crop frame exceeds projected canvas, renders dashed white canvas boundary + subtle fill in expansion areas. Gated on rotation=0.
 2. **`canvasScreenRect` prop**: Passed from `CanvasViewport.tsx` as `{ x: panX + offsetX, y: panY + offsetY, w: projectedW, h: projectedH }`. Null when rotated.
 3. **Engine test** (`postCropAlignment.test.ts`): Verifies non-fill directional expansion.
 
-**Key insight:** The engine pipeline (`performApplyCrop`) already handled canvas expansion implicitly — it never references `model.width/height`, only the passed `x, y, width, height`. Negative x/y naturally produces directionally larger document. The only missing pieces were the visual indicator during preview and explicit test coverage.
+**Key insight:** The engine pipeline (`performApplyCrop`) already handled canvas expansion implicitly â€” it never references `model.width/height`, only the passed `x, y, width, height`. Negative x/y naturally produces directionally larger document. The only missing pieces were the visual indicator during preview and explicit test coverage.
 
 ### Verification
 - PASS: `pnpm run build`
@@ -563,11 +581,11 @@ Implemented snap to document edges, center, and rule-of-thirds during crop drag-
 ### [2026-06-10] Viewport-Aware Crop Frame Position [COMPLETE]
 
 **Implementation:**
-1. `ModernCropFrame` interface: `{x,y,w,h}` instead of `{w,h}` — frame position stored explicitly.
-2. `getModernCropFrameScreenRect` returns `{x: frame.x, y: frame.y, ...}` — no fallback centering.
-3. `shiftModernCropFrame(dx, dy)` in `usePanNavigation.ts` — moves frame along with viewport in all 4 pan paths.
-4. `centerModernCropFrame()` helper — recomputes centered x,y from viewport size.
-5. `fitToScreenAndRender` in `useViewportRenderer.ts` — recenters frame after Ctrl+0.
+1. `ModernCropFrame` interface: `{x,y,w,h}` instead of `{w,h}` â€” frame position stored explicitly.
+2. `getModernCropFrameScreenRect` returns `{x: frame.x, y: frame.y, ...}` â€” no fallback centering.
+3. `shiftModernCropFrame(dx, dy)` in `usePanNavigation.ts` â€” moves frame along with viewport in all 4 pan paths.
+4. `centerModernCropFrame()` helper â€” recomputes centered x,y from viewport size.
+5. `fitToScreenAndRender` in `useViewportRenderer.ts` â€” recenters frame after Ctrl+0.
 6. All resize/move/clamp helpers preserve `x,y` from input frame.
 7. Frame literals across 4 source files + 3 test files updated.
 
@@ -578,16 +596,16 @@ Implemented snap to document edges, center, and rule-of-thirds during crop drag-
 
 ---
 
-### [2026-06-10] Bug Fix — Fill Box Stuck + Pan Reset on Crop Entry [COMPLETE]
+### [2026-06-10] Bug Fix â€” Fill Box Stuck + Pan Reset on Crop Entry [COMPLETE]
 
-**Fix 1 — Fill box not following pan:**
+**Fix 1 â€” Fill box not following pan:**
 Moved `canvasScreenRect` into a top-level `createMemo` at `CanvasViewport` level (outside `<Show>` render prop). Memo tracks `pan()`, `offsetX/Y`, `rotation`, `docWidth`, `zoom`, `scale`. Guarantees reactive update on pan.
 
-**Fix 2 — Pan reset to center on crop entry:**
+**Fix 2 â€” Pan reset to center on crop entry:**
 Replaced `setPan({x:0, y:0})` with centering calc:
 ```
-panX = (viewportWidth − docWidth × zoom × scale) / 2
-panY = (viewportHeight − docHeight × zoom × scale) / 2
+panX = (viewportWidth âˆ’ docWidth Ã— zoom Ã— scale) / 2
+panY = (viewportHeight âˆ’ docHeight Ã— zoom Ã— scale) / 2
 ```
 Applied via `setPan()` + `engine.setViewport()`. Zoom preserved.
 
@@ -595,7 +613,7 @@ Applied via `setPan()` + `engine.setViewport()`. Zoom preserved.
 - PASS: `pnpm.cmd run build`
 - PASS: `npx vitest run` (775 tests, 52 files)
 
-### [2026-06-10] Bug Fix — Modern Crop Fill BG Panning Lag [COMPLETE]
+### [2026-06-10] Bug Fix â€” Modern Crop Fill BG Panning Lag [COMPLETE]
 
 **Problem:** Modern crop fill background preview (`modernCropFillPreviewStyle`) used viewport-centered coordinates `(viewportWidth - w)/2` instead of actual screen coordinates `frame.x` and `frame.y`, causing the fill preview to be left behind when the viewport was panned/scrolled.
 
@@ -606,7 +624,7 @@ Applied via `setPan()` + `engine.setViewport()`. Zoom preserved.
 - PASS: `pnpm --filter photrez-desktop test` (776 tests, 52 files)
 - PASS: `cargo test -p photrez-core` (85 tests)
 
-### [2026-06-10] Feature — Reset Canvas Center on Crop Click Entry [COMPLETE]
+### [2026-06-10] Feature â€” Reset Canvas Center on Crop Click Entry [COMPLETE]
 
 **Problem:**
 1. Clicking the canvas when no cropbox exists creates a default cropbox, but did not reset the canvas position/pan to the center, which could leave the newly created cropbox off-center if the viewport was panned before.
@@ -621,7 +639,7 @@ Applied via `setPan()` + `engine.setViewport()`. Zoom preserved.
 - PASS: `pnpm --filter photrez-desktop test` (776 tests, 52 files)
 - PASS: `cargo test -p photrez-core` (85 tests)
 
-### [2026-06-11] Bug Fix — Classic Rotated Crop Side Resize Axis [COMPLETE]
+### [2026-06-11] Bug Fix â€” Classic Rotated Crop Side Resize Axis [COMPLETE]
 
 Fixing the resize behavior of edge/side handles for a rotated cropbox in Classic Crop mode. The current logic uses screen-space coordinates instead of rotated local coordinates when resizing via non-corner handles.
 

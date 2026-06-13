@@ -1,4 +1,4 @@
-# AI_CURRENT_TASK_ARCHIVE.md â€” Photrez
+# AI_CURRENT_TASK_ARCHIVE.md Ã¢â‚¬â€ Photrez
 
 > Archived completed task entries from AI_CURRENT_TASK.md.
 > These entries are preserved for reference. Latest entries are in `AI_CURRENT_TASK.md`.
@@ -6,7 +6,7 @@
 ---
 
 
-## Current Task — Fix Crop Box Integration & Typing [COMPLETE]
+## Current Task â€” Fix Crop Box Integration & Typing [COMPLETE]
 
 **Date:** 2026-06-03
 
@@ -25,7 +25,7 @@ Fix crop box integration issues:
 
 ---
 
-## Current Task — Move Tool Rotate Polish (Cursor, Hit Area, Behavior) [COMPLETE]
+## Current Task â€” Move Tool Rotate Polish (Cursor, Hit Area, Behavior) [COMPLETE]
 
 **Date:** 2026-06-03
 
@@ -35,39 +35,39 @@ Polish rotate layer interaction di Move Tool agar match reference `aplikasi-ceta
 
 ### Changes
 
-1. **`cursorRotate.ts`** — Port dynamic rotate cursor utilities: `getRotateCursorByPos()` dan `getRotateCursorForHandle()`. SVG data-URI cursor cached max 360 entries.
-2. **`cursorResolver.ts`** — Branch `rotate` return dynamic cursor via `getRotateCursorByPos()` when `hoverPos` + `layerBoundingBox` available, static rotate cursor fallback if missing.
-3. **`EditorContext.tsx`** — Added `hoverPos` signal for screen-space mouse position.
-4. **`SelectionTransformOverlay.tsx`** — Emit `hoverPos` on rotate zone enter, continuously track hover via `handlePointerMoveUpdateHover` using `detectHandle`, resolved cursor applied to root SVG, removed hardcoded cursor from individual elements, added `getNearestRotateCorner` integration.
-5. **`CanvasViewport.tsx`** — `layerBoundingBox` memo uses document-space AABB, clears hover when tool is not move.
-6. **`transformGeometry.ts`** — Added `normalizeRotation()` ([-180, 180] range), used in `applyRotationDrag`. Fixed `detectHandle` rotate detection: only returns "rotate" when outside core but inside expanded bounds (matching reference). Added `getNearestRotateCorner()`, `pointToLayerLocal()`.
-7. **`move-rotate-cursor.test.ts`** — 3 tests: dynamic rotate cursor, position-dependent cursor, static fallback.
-8. **`transform-geometry.test.ts`** — Added tests for normalizeRotation, applyRotationDrag normalization, getNearestRotateCorner, and detectHandle inside-core behavior.
-9. **`cursor-resolver.test.ts`** — Added tests for rotate handle cursor, resize handles, and tool switching.
+1. **`cursorRotate.ts`** â€” Port dynamic rotate cursor utilities: `getRotateCursorByPos()` dan `getRotateCursorForHandle()`. SVG data-URI cursor cached max 360 entries.
+2. **`cursorResolver.ts`** â€” Branch `rotate` return dynamic cursor via `getRotateCursorByPos()` when `hoverPos` + `layerBoundingBox` available, static rotate cursor fallback if missing.
+3. **`EditorContext.tsx`** â€” Added `hoverPos` signal for screen-space mouse position.
+4. **`SelectionTransformOverlay.tsx`** â€” Emit `hoverPos` on rotate zone enter, continuously track hover via `handlePointerMoveUpdateHover` using `detectHandle`, resolved cursor applied to root SVG, removed hardcoded cursor from individual elements, added `getNearestRotateCorner` integration.
+5. **`CanvasViewport.tsx`** â€” `layerBoundingBox` memo uses document-space AABB, clears hover when tool is not move.
+6. **`transformGeometry.ts`** â€” Added `normalizeRotation()` ([-180, 180] range), used in `applyRotationDrag`. Fixed `detectHandle` rotate detection: only returns "rotate" when outside core but inside expanded bounds (matching reference). Added `getNearestRotateCorner()`, `pointToLayerLocal()`.
+7. **`move-rotate-cursor.test.ts`** â€” 3 tests: dynamic rotate cursor, position-dependent cursor, static fallback.
+8. **`transform-geometry.test.ts`** â€” Added tests for normalizeRotation, applyRotationDrag normalization, getNearestRotateCorner, and detectHandle inside-core behavior.
+9. **`cursor-resolver.test.ts`** â€” Added tests for rotate handle cursor, resize handles, and tool switching.
 
 ### Files Changed
 
-- `apps/desktop/src/viewport/cursorRotate.ts` (NEW — previous task)
+- `apps/desktop/src/viewport/cursorRotate.ts` (NEW â€” previous task)
 - `apps/desktop/src/viewport/cursorResolver.ts`
 - `apps/desktop/src/viewport/transformGeometry.ts`
 - `apps/desktop/src/components/editor/EditorContext.tsx`
 - `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`
 - `apps/desktop/src/components/editor/CanvasViewport.tsx`
-- `apps/desktop/src/__tests__/cursor-rotate.test.ts` (NEW — previous task)
+- `apps/desktop/src/__tests__/cursor-rotate.test.ts` (NEW â€” previous task)
 - `apps/desktop/src/__tests__/move-rotate-cursor.test.ts` (NEW)
 - `apps/desktop/src/__tests__/transform-geometry.test.ts`
 - `apps/desktop/src/__tests__/cursor-resolver.test.ts`
 
 ### Verifikasi
 
-- ✅ `npx vitest run`: 241/242 PASS (1 pre-existing CropOverlay failure)
-- ✅ `npx vite build`: PASS
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
-- ✅ `cargo test --workspace`: 85/85 PASS
+- âœ… `npx vitest run`: 241/242 PASS (1 pre-existing CropOverlay failure)
+- âœ… `npx vite build`: PASS
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `cargo test --workspace`: 85/85 PASS
 
 ---
 
-## Current Task — Move Tool Rotate Cursor Polish [COMPLETE]
+## Current Task â€” Move Tool Rotate Cursor Polish [COMPLETE]
 
 **Date:** 2026-06-03
 
@@ -77,11 +77,11 @@ Polish rotate layer interaction di Move Tool: ganti cursor `crosshair` generic d
 
 ### Perbaikan
 
-1. **`cursorRotate.ts`** (NEW) — Port dynamic rotate cursor utilities dari `aplikasi-cetak-massal/utils/cursorRotate.ts`: `getRotateCursorByPos()` dan `getRotateCursorForHandle()`. SVG data-URI cursor yang di-rotate per derajat, cached max 360 entries.
-2. **`cursorResolver.ts`** — Tambah `hoverPos` dan `layerBoundingBox` ke `CursorContext`. Branch `rotate` sekarang return dynamic cursor via `getRotateCursorByPos()` jika ada posisi + bounding box, fallback ke `crosshair`.
-3. **`EditorContext.tsx`** — Tambah `hoverPos` signal (screen-space mouse position).
-4. **`SelectionTransformOverlay.tsx`** — Emit `hoverPos` di `onPointerEnter` rotate zone, update saat drag, clear saat drag end/Escape.
-5. **`CanvasViewport.tsx`** — Tambah `layerBoundingBox` memo (AABB dari active layer), wire `hoverPos` + `layerBoundingBox` ke `resolveCursor()`.
+1. **`cursorRotate.ts`** (NEW) â€” Port dynamic rotate cursor utilities dari `aplikasi-cetak-massal/utils/cursorRotate.ts`: `getRotateCursorByPos()` dan `getRotateCursorForHandle()`. SVG data-URI cursor yang di-rotate per derajat, cached max 360 entries.
+2. **`cursorResolver.ts`** â€” Tambah `hoverPos` dan `layerBoundingBox` ke `CursorContext`. Branch `rotate` sekarang return dynamic cursor via `getRotateCursorByPos()` jika ada posisi + bounding box, fallback ke `crosshair`.
+3. **`EditorContext.tsx`** â€” Tambah `hoverPos` signal (screen-space mouse position).
+4. **`SelectionTransformOverlay.tsx`** â€” Emit `hoverPos` di `onPointerEnter` rotate zone, update saat drag, clear saat drag end/Escape.
+5. **`CanvasViewport.tsx`** â€” Tambah `layerBoundingBox` memo (AABB dari active layer), wire `hoverPos` + `layerBoundingBox` ke `resolveCursor()`.
 
 ### Files Changed
 
@@ -94,13 +94,13 @@ Polish rotate layer interaction di Move Tool: ganti cursor `crosshair` generic d
 
 ### Verifikasi
 
-- ✅ `npx vitest run cursor-rotate cursor-resolver`: 28/28 PASS
-- ✅ `npx vite build`: PASS
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `npx vitest run cursor-rotate cursor-resolver`: 28/28 PASS
+- âœ… `npx vite build`: PASS
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 ---
 
-## Current Task — Crop Bounds + Full Snapping [COMPLETE]
+## Current Task â€” Crop Bounds + Full Snapping [COMPLETE]
 
 **Date:** 2026-06-02
 
@@ -111,10 +111,10 @@ Polish rotate layer interaction di Move Tool: ganti cursor `crosshair` generic d
 
 ### Perbaikan
 
-1. **`constrainCropRectToDocument`** — mengganti logika clamp lama; posisi + ukuran selalu di dalam `[0, docW] × [0, docH]`.
-2. **`cropSnap.ts`** — `buildCropSnapTargets` (canvas edges/centers + layer AABB) dan `snapCropRect` handle-aware (move + 8 handles).
-3. **`CropOverlay`** — setelah resize/move: snap (kecuali Alt), lalu constrain; emit `onSnapLines` untuk Smart Guides.
-4. **`CanvasViewport`** — pass `cropSnapTargets`, `moveSnapEnabled`, `setSnapLines` ke CropOverlay.
+1. **`constrainCropRectToDocument`** â€” mengganti logika clamp lama; posisi + ukuran selalu di dalam `[0, docW] Ã— [0, docH]`.
+2. **`cropSnap.ts`** â€” `buildCropSnapTargets` (canvas edges/centers + layer AABB) dan `snapCropRect` handle-aware (move + 8 handles).
+3. **`CropOverlay`** â€” setelah resize/move: snap (kecuali Alt), lalu constrain; emit `onSnapLines` untuk Smart Guides.
+4. **`CanvasViewport`** â€” pass `cropSnapTargets`, `moveSnapEnabled`, `setSnapLines` ke CropOverlay.
 
 ### Files Changed
 
@@ -127,12 +127,12 @@ Polish rotate layer interaction di Move Tool: ganti cursor `crosshair` generic d
 
 ### Verifikasi
 
-- ✅ ReadLints clean
-- ⚠️ vitest blocked (Shell preToolUse hook)
+- âœ… ReadLints clean
+- âš ï¸ vitest blocked (Shell preToolUse hook)
 
 ---
 
-## Current Task — Crop Tool Cursor + Hit Target UX [COMPLETE]
+## Current Task â€” Crop Tool Cursor + Hit Target UX [COMPLETE]
 
 **Date:** 2026-06-02
 
@@ -143,8 +143,8 @@ Polish rotate layer interaction di Move Tool: ganti cursor `crosshair` generic d
 
 ### Perbaikan
 
-1. **Hit zones transparan** per handle (20/zoom doc px ≈ 10px layar) + zona move di dalam crop box, dengan `cursor` inline per zona.
-2. **Wire `onHoverHandleChange`** dari `CanvasViewport` → `setHoverHandle` agar `cursorResolver` bisa return resize/move cursor untuk crop.
+1. **Hit zones transparan** per handle (20/zoom doc px â‰ˆ 10px layar) + zona move di dalam crop box, dengan `cursor` inline per zona.
+2. **Wire `onHoverHandleChange`** dari `CanvasViewport` â†’ `setHoverHandle` agar `cursorResolver` bisa return resize/move cursor untuk crop.
 3. **`cursorResolver`**: crop tool sekarang honor `hoverHandle` (`nwse-resize`, `ns-resize`, `move`, dll.).
 
 ### Files Changed
@@ -157,12 +157,12 @@ Polish rotate layer interaction di Move Tool: ganti cursor `crosshair` generic d
 
 ### Verifikasi
 
-- ✅ `ReadLints`: no errors
-- ⚠️ vitest: Shell blocked by preToolUse hook
+- âœ… `ReadLints`: no errors
+- âš ï¸ vitest: Shell blocked by preToolUse hook
 
 ---
 
-## Current Task — Crop Box Resize Reactivity Fix [COMPLETE]
+## Current Task â€” Crop Box Resize Reactivity Fix [COMPLETE]
 
 **Date:** 2026-06-02
 
@@ -176,7 +176,7 @@ Crop box tidak ikut berubah secara visual saat resize drag karena `CropOverlay.t
    - Hapus pola snapshot `const r = rect()` dari callback `<Show>`.
    - Semua atribut SVG (`mask`, outline rect, guide lines, corner brackets) sekarang membaca langsung `props.cropRect`.
 2. **Tambah regression test khusus**
-   - Test baru memastikan saat handle di-drag, atribut `width` crop box yang dirender ikut berubah realtime (100 → 120).
+   - Test baru memastikan saat handle di-drag, atribut `width` crop box yang dirender ikut berubah realtime (100 â†’ 120).
 
 ### Files Changed
 
@@ -185,12 +185,12 @@ Crop box tidak ikut berubah secara visual saat resize drag karena `CropOverlay.t
 
 ### Verifikasi
 
-- ✅ `ReadLints` pada file yang diubah: no linter errors
-- ⚠️ `rtk npx vitest run apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` tidak bisa dijalankan karena `Shell` diblokir `preToolUse hook`
+- âœ… `ReadLints` pada file yang diubah: no linter errors
+- âš ï¸ `rtk npx vitest run apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` tidak bisa dijalankan karena `Shell` diblokir `preToolUse hook`
 
 ---
 
-## Current Task — Crop Box Invisible Fix [COMPLETE]
+## Current Task â€” Crop Box Invisible Fix [COMPLETE]
 
 **Date:** 2026-06-02
 
@@ -203,17 +203,17 @@ Crop box tidak muncul saat Crop Tool diaktifkan karena:
 
 ### Perbaikan
 
-1. **Task 1 — Init crop rect on tool activation:**
+1. **Task 1 â€” Init crop rect on tool activation:**
    - Helper `ensureCropRect()` bikin full-document rect kalau `cropRect()` null/out-of-bounds.
    - `createEffect` memanggil `ensureCropRect()` setiap kali `activeTool()` berubah menjadi `"crop"`.
    - Lokasi: `CanvasViewport.tsx` setelah `isLayerLocked`.
 
-2. **Task 2 — Clear/reinit crop rect on document change:**
+2. **Task 2 â€” Clear/reinit crop rect on document change:**
    - Di `createEffect` yang bergantung `activeDocumentId()`, tambah `setCropRect(null)` untuk dokumen baru.
    - Jika `activeTool() === "crop"`, langsung set ke full-document rect dari engine baru.
    - Cegah stale crop rect dari dokumen sebelumnya.
 
-3. **Task 3 — Own SVG layer for CropOverlay:**
+3. **Task 3 â€” Own SVG layer for CropOverlay:**
    - Pindahkan `<CropOverlay>` dari shared SVG (yang `pointer-events: none`) ke SVG sendiri.
    - SVG baru punya `pointer-events: auto`, `z-index: 35`, `position: absolute`, `inset: 0`.
    - Ditampilkan hanya saat `activeTool() === "crop" && cropRect()`, ditaruh setelah SelectionTransformOverlay.
@@ -224,16 +224,16 @@ Crop box tidak muncul saat Crop Tool diaktifkan karena:
 
 ### Verifikasi
 
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 182 PASS (17 files)
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 182 PASS (17 files)
 
 ### Follow-up
 
-- Drag-anywhere-to-create-new-crop-rect (deferred — existing drag via canvas + handles covers this)
+- Drag-anywhere-to-create-new-crop-rect (deferred â€” existing drag via canvas + handles covers this)
 
 ---
 
-## Current Task — OptionBar Crop Section Rewrite [COMPLETE]
+## Current Task â€” OptionBar Crop Section Rewrite [COMPLETE]
 
 **Date:** 2026-06-02
 
@@ -255,40 +255,40 @@ Replace old display-only crop section (W/H display + APPLY CROP + Cancel) with f
 
 ### Verifikasi
 
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 182 PASS (17 files)
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 182 PASS (17 files)
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 > Baca juga: `AI_CONTEXT.md` (aturan), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur), `ARCHITECTURE.md` (arsitektur)
 
 ---
 
-## Current Task — CanvasViewport Crop Wiring [COMPLETE]
+## Current Task â€” CanvasViewport Crop Wiring [COMPLETE]
 
 **Date:** 2026-06-02
 
 ### Perubahan
 
-1. **Removed local `cropRect`/`cropGuideMode` signals** — now consumed from EditorContext
-2. **Added `cropDragState` signal** — for overlay drag interaction tracking
-3. **Expanded `useEditor()` destructuring** — `setActiveTool`, `cropRect`, `cropMode`, `cropGuideMode`, `cropDeletePixels`, `cropAspect`, `cropSizeTarget`
-4. **Wired `onCropCreated` in `prepareToolContext`** — calls `setCropRect()` when crop is created via input handler
-5. **Added keyboard handler for Enter/Esc** — Enter applies crop (commits history, calls `engine.cropCanvas`, switches to move); Esc cancels and switches to move
-6. **Updated `<CropOverlay>` props** — added `zoom`, `cropMode`, `cropAspect`, `onCropRectChange`; updated CropOverlay component interface
+1. **Removed local `cropRect`/`cropGuideMode` signals** â€” now consumed from EditorContext
+2. **Added `cropDragState` signal** â€” for overlay drag interaction tracking
+3. **Expanded `useEditor()` destructuring** â€” `setActiveTool`, `cropRect`, `cropMode`, `cropGuideMode`, `cropDeletePixels`, `cropAspect`, `cropSizeTarget`
+4. **Wired `onCropCreated` in `prepareToolContext`** â€” calls `setCropRect()` when crop is created via input handler
+5. **Added keyboard handler for Enter/Esc** â€” Enter applies crop (commits history, calls `engine.cropCanvas`, switches to move); Esc cancels and switches to move
+6. **Updated `<CropOverlay>` props** â€” added `zoom`, `cropMode`, `cropAspect`, `onCropRectChange`; updated CropOverlay component interface
 
 ### Verifikasi
 
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 182 PASS (17 files, +14 from previous)
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 182 PASS (17 files, +14 from previous)
 
 ### Files Changed
 
-- `apps/desktop/src/components/editor/CanvasViewport.tsx` — crop signal refactor, prepareToolContext wiring, keyboard handler, CropOverlay props
-- `apps/desktop/src/components/editor/CropOverlay.tsx` — extend props interface with zoom/cropMode/cropAspect/onCropRectChange
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` â€” crop signal refactor, prepareToolContext wiring, keyboard handler, CropOverlay props
+- `apps/desktop/src/components/editor/CropOverlay.tsx` â€” extend props interface with zoom/cropMode/cropAspect/onCropRectChange
 
 ---
 
-## Current Task — Option Bar Locked Layer Clarity [COMPLETE]
+## Current Task â€” Option Bar Locked Layer Clarity [COMPLETE]
 
 **Date:** 2026-06-02
 
@@ -296,23 +296,23 @@ Replace old display-only crop section (W/H display + APPLY CROP + Cancel) with f
 
 X/Y/R option bar fields seolah "tidak update transform" ketika selected layer ***locked***. Dua masalah:
 
-1. **Tidak ada visual indikasi locked** — field X/Y/R tampak editable (focusable, ketik angka OK), tapi `handlePositionField` dan `handleRotateField` sudah punya `if (!layer || layer.locked) return;` yang silently ignore submit. User melihat angka berubah di field, tapi visual canvas tidak bergerak — confusing.
-2. **Flip H/V dan Reset tidak punya locked guard** — `handleFlip` dan `handleResetTransform` langsung jalan tanpa cek `layer.locked`, sehingga layer locked tetap bisa di-flip/reset oleh user.
+1. **Tidak ada visual indikasi locked** â€” field X/Y/R tampak editable (focusable, ketik angka OK), tapi `handlePositionField` dan `handleRotateField` sudah punya `if (!layer || layer.locked) return;` yang silently ignore submit. User melihat angka berubah di field, tapi visual canvas tidak bergerak â€” confusing.
+2. **Flip H/V dan Reset tidak punya locked guard** â€” `handleFlip` dan `handleResetTransform` langsung jalan tanpa cek `layer.locked`, sehingga layer locked tetap bisa di-flip/reset oleh user.
 
 ### Perbaikan
 
-1. `activeLayerSafe()` helper — baca langsung dari `engine.getLayer(id)` untuk fresh state (bukan dari `layers()` signal yang mungkin stale)
-2. `isLocked()` derived signal — `activeLayerSafe()?.locked ?? false`
-3. Locked guard di `handleFlip` dan `handleResetTransform` — `if (isLocked()) return;`
-4. **"Locked" pill indicator** — muncul di option bar saat locked (`<Show when={isLocked()}>`), menampilkan lock icon + "Locked" label dengan amber border/tint. Muncul di antara Divider dan X/Y/W/H fields, menggantikan area yang sebelumnya kosong.
-5. **Flip buttons** — wrapper div mendapat `opacity-30 pointer-events-none` saat locked
-6. **Reset button** — `disabled` attribute + `text-editor-text-dim/30 cursor-default` class saat locked
-7. **X/Y/R fields** — sudah support `disabled` prop via `EditableNumField`, sekarang di-pass `isLocked()`
+1. `activeLayerSafe()` helper â€” baca langsung dari `engine.getLayer(id)` untuk fresh state (bukan dari `layers()` signal yang mungkin stale)
+2. `isLocked()` derived signal â€” `activeLayerSafe()?.locked ?? false`
+3. Locked guard di `handleFlip` dan `handleResetTransform` â€” `if (isLocked()) return;`
+4. **"Locked" pill indicator** â€” muncul di option bar saat locked (`<Show when={isLocked()}>`), menampilkan lock icon + "Locked" label dengan amber border/tint. Muncul di antara Divider dan X/Y/W/H fields, menggantikan area yang sebelumnya kosong.
+5. **Flip buttons** â€” wrapper div mendapat `opacity-30 pointer-events-none` saat locked
+6. **Reset button** â€” `disabled` attribute + `text-editor-text-dim/30 cursor-default` class saat locked
+7. **X/Y/R fields** â€” sudah support `disabled` prop via `EditableNumField`, sekarang di-pass `isLocked()`
 
 ### Verifikasi
 
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 168 PASS (16 files)
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 168 PASS (16 files)
 
 ### Files Changed
 
@@ -320,7 +320,7 @@ X/Y/R option bar fields seolah "tidak update transform" ketika selected layer **
 
 ---
 
-## Current Task — CropOverlay Full Rewrite [COMPLETE]
+## Current Task â€” CropOverlay Full Rewrite [COMPLETE]
 
 **Date:** 2026-06-02
 
@@ -337,15 +337,15 @@ Full rewrite of `CropOverlay.tsx` from placeholder to interactive SVG crop overl
 - Uses pure math helpers from `cropGeometry.ts`
 
 ### Files Touched
-- `apps/desktop/src/components/editor/CropOverlay.tsx` — full rewrite
+- `apps/desktop/src/components/editor/CropOverlay.tsx` â€” full rewrite
 
 ### Verifikasi
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 182 PASS (17 files)
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 182 PASS (17 files)
 
 ---
 
-## Current Task — Move Tool Option Bar Hybrid [COMPLETE]
+## Current Task â€” Move Tool Option Bar Hybrid [COMPLETE]
 
 **Date:** 2026-06-02
 
@@ -355,23 +355,23 @@ Move Tool option bar: Auto Select toggle, Snap toggle, editable X/Y/Rotate, disp
 
 ### Files Touched
 
-- `EditorContext.tsx` — +moveAutoSelect, moveSnapEnabled signals
-- `primitives.tsx` — +EditableNumField component
-- `OptionBar.tsx` — full rewrite of Move/Selection section
-- `CanvasViewport.tsx` — wire toggles to auto-select + snap guards
-- `SelectionTransformOverlay.tsx` — wire moveSnapEnabled guard
-- `__tests__/` — +regression tests
-- `docs/` — AI_CURRENT_TASK, AI_HISTORY, FEATURES, ARCHITECTURE
+- `EditorContext.tsx` â€” +moveAutoSelect, moveSnapEnabled signals
+- `primitives.tsx` â€” +EditableNumField component
+- `OptionBar.tsx` â€” full rewrite of Move/Selection section
+- `CanvasViewport.tsx` â€” wire toggles to auto-select + snap guards
+- `SelectionTransformOverlay.tsx` â€” wire moveSnapEnabled guard
+- `__tests__/` â€” +regression tests
+- `docs/` â€” AI_CURRENT_TASK, AI_HISTORY, FEATURES, ARCHITECTURE
 
 ### Verifikasi
 
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 168 PASS (16 files, +1)
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 168 PASS (16 files, +1)
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 ---
 
-## Current Task — Overlay Move Tool Alt Snap Disable + Guardrail Docs [COMPLETE]
+## Current Task â€” Overlay Move Tool Alt Snap Disable + Guardrail Docs [COMPLETE]
 
 Date: 2026-06-02
 
@@ -381,55 +381,55 @@ Overlay move path (`SelectionTransformOverlay.tsx`) tidak honor Alt key untuk di
 
 ### Perbaikan
 
-1. **`SelectionTransformOverlay.tsx:161`** — Tambah guard `!e.altKey` sebelum `props.onComputeSnap`. Saat Alt ditekan, panggil `props.onSnapClear?.()` untuk konsistensi.
-2. **`docs/AI_CONTEXT.md`** — Tambah section **Move Tool Runtime Assumptions** (9 aturan) untuk guidance AI berikutnya.
-3. **`docs/ARCHITECTURE.md`** — Test count 162 → 167.
-4. **Tests** — +1 regression test: Alt key disables snapping selama overlay move drag.
-5. **`docs/FEATURES.md`** — Test count 166 → 167.
+1. **`SelectionTransformOverlay.tsx:161`** â€” Tambah guard `!e.altKey` sebelum `props.onComputeSnap`. Saat Alt ditekan, panggil `props.onSnapClear?.()` untuk konsistensi.
+2. **`docs/AI_CONTEXT.md`** â€” Tambah section **Move Tool Runtime Assumptions** (9 aturan) untuk guidance AI berikutnya.
+3. **`docs/ARCHITECTURE.md`** â€” Test count 162 â†’ 167.
+4. **Tests** â€” +1 regression test: Alt key disables snapping selama overlay move drag.
+5. **`docs/FEATURES.md`** â€” Test count 166 â†’ 167.
 
 ### Verifikasi
 
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 167 PASS (16 files, +1)
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 167 PASS (16 files, +1)
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 ### Files Changed
 
 - `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: +!e.altKey guard, +else onSnapClear
 - `apps/desktop/src/components/editor/__tests__/SelectionTransformOverlay.test.ts`: +1 regression test
 - `docs/AI_CONTEXT.md`: +Move Tool Runtime Assumptions section
-- `docs/ARCHITECTURE.md`: test count 162→167
-- `docs/FEATURES.md`: test count 166→167
+- `docs/ARCHITECTURE.md`: test count 162â†’167
+- `docs/FEATURES.md`: test count 166â†’167
 - `docs/AI_HISTORY.md`: entry ini
 - `docs/AI_CURRENT_TASK.md`: entry ini
 
 ---
 
-## Current Task — Fix: Stuck Snap Indicators on Overlay Move Drag End [COMPLETE]
+## Current Task â€” Fix: Stuck Snap Indicators on Overlay Move Drag End [COMPLETE]
 
 Date: 2026-06-02
 
 ### Root Cause
 
-Overlay move path (`SelectionTransformOverlay.tsx`) tidak pernah membersihkan snap lines saat drag berakhir — pointerup/pointercancel/lostpointercapture/Escape handler hanya membersihkan HUD dan drag state, tapi `snapLines` signal di `CanvasViewport.tsx` tetap berisi guide lines terakhir. Indikator baru hilang saat pointer move berikutnya memanggil `setSnapLines(result.lines)` (dengan result kosong = overwrite state lama).
+Overlay move path (`SelectionTransformOverlay.tsx`) tidak pernah membersihkan snap lines saat drag berakhir â€” pointerup/pointercancel/lostpointercapture/Escape handler hanya membersihkan HUD dan drag state, tapi `snapLines` signal di `CanvasViewport.tsx` tetap berisi guide lines terakhir. Indikator baru hilang saat pointer move berikutnya memanggil `setSnapLines(result.lines)` (dengan result kosong = overwrite state lama).
 
 Sebaliknya canvas move path (`input-handler.ts`) sudah benar: panggil `onSnapLines?.([])` di `handlePointerUp`.
 
 ### Perbaikan
 
-1. **`SelectionTransformOverlay.tsx`** — Tambah `onSnapClear?: () => void` di props. Panggil `props.onSnapClear?.()` di:
+1. **`SelectionTransformOverlay.tsx`** â€” Tambah `onSnapClear?: () => void` di props. Panggil `props.onSnapClear?.()` di:
    - `handlePointerUp`
    - `handlePointerCancel`
    - `handleLostPointerCapture`
    - Escape `handleKeyDown`
-2. **`CanvasViewport.tsx`** — Wire `onSnapClear={() => setSnapLines([])}` ke `<SelectionTransformOverlay>`
-3. **Tests** — +4 regression tests (pointerup, pointercancel, lostpointercapture, Escape) di `SelectionTransformOverlay.test.ts`
+2. **`CanvasViewport.tsx`** â€” Wire `onSnapClear={() => setSnapLines([])}` ke `<SelectionTransformOverlay>`
+3. **Tests** â€” +4 regression tests (pointerup, pointercancel, lostpointercapture, Escape) di `SelectionTransformOverlay.test.ts`
 
 ### Verifikasi
 
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 166 PASS (16 files, +4)
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 166 PASS (16 files, +4)
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 ### Files Changed
 
@@ -438,11 +438,11 @@ Sebaliknya canvas move path (`input-handler.ts`) sudah benar: panggil `onSnapLin
 - `apps/desktop/src/components/editor/__tests__/SelectionTransformOverlay.test.ts`: +4 regression tests
 - `docs/AI_HISTORY.md`: entry ini
 - `docs/AI_CURRENT_TASK.md`: entry ini
-- `docs/FEATURES.md`: test count 162→166
+- `docs/FEATURES.md`: test count 162â†’166
 
 ---
 
-## Current Task — Docs Sync: MVP Runtime Architecture v2 [COMPLETE]
+## Current Task â€” Docs Sync: MVP Runtime Architecture v2 [COMPLETE]
 
 Date: 2026-06-02
 
@@ -452,23 +452,23 @@ Menyinkronkan dokumentasi arsitektur dengan realitas runtime MVP saat ini: TypeS
 
 ### Perubahan
 
-1. **`docs/AI_CONTEXT.md`** — Stack line updated: MVP runtime = TS DocumentEngine + WebGL2; future target = Rust + wgpu. Section 6 (WGPU RENDERER) → Section 6 (RENDERER — MVP + Future) dengan dual ownership. Rule #3 mendapat pengecualian MVP untuk TS editing hot-path.
-2. **`docs/ARCHITECTURE.md`** — Gambaran Umum, Status Proyek, Stack table, dan Source of Truth section diperbarui untuk mencerminkan dual MVP/future stack.
-3. **`docs/02-architecture.md`** — Ditambahkan Section 11 (MVP Runtime Reality) yang mendeskripsikan current stack, data flow, ownership differences, dan migration path. Catatan di header bahwa sections 1-10 adalah target architecture.
-4. **`docs/03-trd.md`** — Runtime Stack, Scalability Requirements, dan Maintainability Requirements diperbarui dengan dual MVP/future wording.
-5. **`docs/01-id-decision-log.md`** — Baris Arsitektur di-split menjadi "future target" (Rust + wgpu) dan "MVP runtime" (TS + WebGL2).
-6. **`docs/FEATURES.md`** — "wgpu canvas" → "WebGL2 canvas".
-7. **`docs/AI_CURRENT_TASK.md`** — Entry ini.
-8. **`docs/AI_HISTORY.md`** — Entry baru.
+1. **`docs/AI_CONTEXT.md`** â€” Stack line updated: MVP runtime = TS DocumentEngine + WebGL2; future target = Rust + wgpu. Section 6 (WGPU RENDERER) â†’ Section 6 (RENDERER â€” MVP + Future) dengan dual ownership. Rule #3 mendapat pengecualian MVP untuk TS editing hot-path.
+2. **`docs/ARCHITECTURE.md`** â€” Gambaran Umum, Status Proyek, Stack table, dan Source of Truth section diperbarui untuk mencerminkan dual MVP/future stack.
+3. **`docs/ARCHITECTURE.md`** â€” Ditambahkan Section 11 (MVP Runtime Reality) yang mendeskripsikan current stack, data flow, ownership differences, dan migration path. Catatan di header bahwa sections 1-10 adalah target architecture.
+4. **`docs/spec/trd.md`** â€” Runtime Stack, Scalability Requirements, dan Maintainability Requirements diperbarui dengan dual MVP/future wording.
+5. **`docs/decisions/id-decision-log.md`** â€” Baris Arsitektur di-split menjadi "future target" (Rust + wgpu) dan "MVP runtime" (TS + WebGL2).
+6. **`docs/FEATURES.md`** â€” "wgpu canvas" â†’ "WebGL2 canvas".
+7. **`docs/AI_CURRENT_TASK.md`** â€” Entry ini.
+8. **`docs/AI_HISTORY.md`** â€” Entry baru.
 
 ### Verifikasi
 
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 162 PASS
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 162 PASS
 
 ---
 
-## Current Task — Canvas Edge Snap Boost [COMPLETE]
+## Current Task â€” Canvas Edge Snap Boost [COMPLETE]
 
 Date: 2026-06-02
 
@@ -478,15 +478,15 @@ Meningkatkan UX snapping: canvas edges lebih magnetik dengan threshold 12px dan 
 
 ### Perubahan
 
-1. **`SnapRect` interface** — tambah optional `snapThreshold` dan `snapPriority` fields.
-2. **`computeSnapAdjustment`** — priority-aware: higher priority wins regardless of distance; same priority picks closest.
-3. **`CanvasViewport.tsx`** — tag canvas edge target dengan `snapThreshold: 12, snapPriority: 3`, center lines dengan `snapThreshold: 6, snapPriority: 2`.
-4. **Tests** — +7 regression tests (threshold boundary, priority override, center lines, backward compat).
+1. **`SnapRect` interface** â€” tambah optional `snapThreshold` dan `snapPriority` fields.
+2. **`computeSnapAdjustment`** â€” priority-aware: higher priority wins regardless of distance; same priority picks closest.
+3. **`CanvasViewport.tsx`** â€” tag canvas edge target dengan `snapThreshold: 12, snapPriority: 3`, center lines dengan `snapThreshold: 6, snapPriority: 2`.
+4. **Tests** â€” +7 regression tests (threshold boundary, priority override, center lines, backward compat).
 
 ### Verifikasi
 
-- ✅ `vitest run`: 162 PASS (16 files, +7)
-- ✅ `pnpm run build`: PASS
+- âœ… `vitest run`: 162 PASS (16 files, +7)
+- âœ… `pnpm run build`: PASS
 
 ### Files Changed
 
@@ -499,26 +499,26 @@ Meningkatkan UX snapping: canvas edges lebih magnetik dengan threshold 12px dan 
 
 ---
 
-## Current Task — Handle-Axis Projection for Corner Resize (Fix: Corrected Perpendicular Axis) [COMPLETE]
+## Current Task â€” Handle-Axis Projection for Corner Resize (Fix: Corrected Perpendicular Axis) [COMPLETE]
 
 Date: 2026-06-02
 
 ### Deskripsi
 
-Fix sebelumnya menggunakan aspect-ratio diagonal object sebagai projection axis untuk proportional corner resize. User melaporkan gerakan NE/SW pada SE handle tetap mengubah ukuran ("masih nggak ada bedanya"). Root cause: axis yang benar adalah handle/cursor diagonal (45°), bukan object-aspect diagonal.
+Fix sebelumnya menggunakan aspect-ratio diagonal object sebagai projection axis untuk proportional corner resize. User melaporkan gerakan NE/SW pada SE handle tetap mengubah ukuran ("masih nggak ada bedanya"). Root cause: axis yang benar adalah handle/cursor diagonal (45Â°), bukan object-aspect diagonal.
 
 ### Root Cause
 
-Fix sebelumnya (`docs/AI_HISTORY.md`: BUG FIX — Diagonal Projection):
+Fix sebelumnya (`docs/AI_HISTORY.md`: BUG FIX â€” Diagonal Projection):
 ```ts
 const diagX = handle === "se" || handle === "ne" ? oldW : -oldW;
 const diagY = handle === "se" || handle === "sw" ? oldH : -oldH;
 ```
-Ini memproyeksikan mouse delta ke diagonal object (mis. SE = (200, 100) untuk layer 200×100). Gerakan NE/SW (20, -20) masih punya dot product non-zero dengan (200, 100), jadi resize tetap terjadi.
+Ini memproyeksikan mouse delta ke diagonal object (mis. SE = (200, 100) untuk layer 200Ã—100). Gerakan NE/SW (20, -20) masih punya dot product non-zero dengan (200, 100), jadi resize tetap terjadi.
 
 ### Fix
 
-Ganti projection axis dari object-aspect diagonal ke **handle/cursor diagonal** (arah 45° cursor di screen space):
+Ganti projection axis dari object-aspect diagonal ke **handle/cursor diagonal** (arah 45Â° cursor di screen space):
 
 ```ts
 const hx = handle === "se" || handle === "ne" ? 1 : -1;
@@ -527,11 +527,11 @@ const projected = localDx * hx + localDy * hy;
 const factor = 1 + projected / (oldW + oldH);
 ```
 
-Untuk SE handle (hx=1, hy=1), gerakan (20, -20): projected = 20×1 + (-20)×1 = 0 → factor = 1 → no resize ✓
+Untuk SE handle (hx=1, hy=1), gerakan (20, -20): projected = 20Ã—1 + (-20)Ã—1 = 0 â†’ factor = 1 â†’ no resize âœ“
 
 ### Verifikasi
 
-- ✅ `vitest run`: 155 PASS (16 test files, +1 regression test)
+- âœ… `vitest run`: 155 PASS (16 test files, +1 regression test)
 
 ### Files Changed
 
@@ -539,57 +539,57 @@ Untuk SE handle (hx=1, hy=1), gerakan (20, -20): projected = 20×1 + (-20)×1 = 
 - `apps/desktop/src/__tests__/transform-geometry.test.ts`: update expectations, fix perpendicular test vectors, +1 regression test
 - `docs/AI_HISTORY.md`: root cause + fix rationale entry
 - `docs/AI_CURRENT_TASK.md`: entry ini
-- `docs/FEATURES.md`: test count 154→155
+- `docs/FEATURES.md`: test count 154â†’155
 
 ---
 
-## Current Task — Crop Tool Interaction Fix + Full Crop MVP (Free/Ratio/Size/Delete/TargetSize) [COMPLETE]
+## Current Task â€” Crop Tool Interaction Fix + Full Crop MVP (Free/Ratio/Size/Delete/TargetSize) [COMPLETE]
 
 **Date:** 2026-06-02
 
-### Root Cause — Pointer Capture
+### Root Cause â€” Pointer Capture
 
-CropOverlay menggunakan `addEventListener` di `<g>` element (`groupRef`), tapi `setPointerCapture()` dipanggil di parent `<svg>`. Setelah capture, seluruh pointer events dikirim ke `<svg>` — bukan `<g>` — jadi `pointermove`/`pointerup` never reach handler.
+CropOverlay menggunakan `addEventListener` di `<g>` element (`groupRef`), tapi `setPointerCapture()` dipanggil di parent `<svg>`. Setelah capture, seluruh pointer events dikirim ke `<svg>` â€” bukan `<g>` â€” jadi `pointermove`/`pointerup` never reach handler.
 
 ### Fix Summary
 
-1. **CropOverlay.tsx** — Pindah dari `createEffect` + `addEventListener` ke SolidJS event attributes (`onPointerDown`, `onPointerMove`, `onPointerUp`, `onPointerCancel`, `onLostPointerCapture`) pada `<g>` element. Capture ke `groupRef` langsung. Tambah transparent hit zone rects untuk handles + move area. Tambah `handleLostPointerCapture` untuk cleanup jika browser melepas capture external.
+1. **CropOverlay.tsx** â€” Pindah dari `createEffect` + `addEventListener` ke SolidJS event attributes (`onPointerDown`, `onPointerMove`, `onPointerUp`, `onPointerCancel`, `onLostPointerCapture`) pada `<g>` element. Capture ke `groupRef` langsung. Tambah transparent hit zone rects untuk handles + move area. Tambah `handleLostPointerCapture` untuk cleanup jika browser melepas capture external.
 
-2. **cropGeometry.ts** — Refactor `applyCropResizeHandle` signature: `(rect, handle, dx, dy, options?)` dengan `CropResizeOptions { constraint, aspect, shift, alt }`.
+2. **cropGeometry.ts** â€” Refactor `applyCropResizeHandle` signature: `(rect, handle, dx, dy, options?)` dengan `CropResizeOptions { constraint, aspect, shift, alt }`.
    - **Free mode**: corner free by default; Shift = proportional (locked aspect).
    - **Ratio mode**: corner aspect-locked by default; Shift = free (unlocked).
    - **Size mode**: corner constrained to target aspect by default; Shift = free.
 
-3. **CanvasViewport.tsx** — `ensureCropRect()` validation fix (`x + w <= docW`, `y + h <= docH` instead of `w <= docW`). Hapus dead `cropDragState` signal. Keyboard Enter uses `applyCrop` with `deleteCroppedPixels` + `targetSize`.
+3. **CanvasViewport.tsx** â€” `ensureCropRect()` validation fix (`x + w <= docW`, `y + h <= docH` instead of `w <= docW`). Hapus dead `cropDragState` signal. Keyboard Enter uses `applyCrop` with `deleteCroppedPixels` + `targetSize`.
 
-4. **document.ts** — New `applyCrop(x, y, w, h, options?)` method with:
-   - `deleteCroppedPixels: true` → destructive bitmap crop via OffscreenCanvas compositing per layer.
-   - `targetSize` → resize canvas + scale layer transforms proportionally post-crop.
+4. **document.ts** â€” New `applyCrop(x, y, w, h, options?)` method with:
+   - `deleteCroppedPixels: true` â†’ destructive bitmap crop via OffscreenCanvas compositing per layer.
+   - `targetSize` â†’ resize canvas + scale layer transforms proportionally post-crop.
 
-5. **OptionBar.tsx** — Apply button wired to `engine.applyCrop()` with `cropDeletePixels()` and `cropSizeTarget()`.
+5. **OptionBar.tsx** â€” Apply button wired to `engine.applyCrop()` with `cropDeletePixels()` and `cropSizeTarget()`.
 
 ### Verifikasi
 
-- ✅ `npx vitest run`: 198 PASS (18 files, +16 from previous)
-- ✅ `npx tsc --noEmit`: no errors
-- ✅ `pnpm.cmd run build`: PASS (5.87s, 2026 modules)
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `npx vitest run`: 198 PASS (18 files, +16 from previous)
+- âœ… `npx tsc --noEmit`: no errors
+- âœ… `pnpm.cmd run build`: PASS (5.87s, 2026 modules)
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 ### Files Changed
 
-- `apps/desktop/src/components/editor/CropOverlay.tsx` — pointer capture fix, hit zones, SolidJS event attrs
-- `apps/desktop/src/components/editor/CanvasViewport.tsx` — ensureCropRect fix, remove cropDragState, Enter handler
-- `apps/desktop/src/components/editor/OptionBar.tsx` — Apply button uses engine.applyCrop
-- `apps/desktop/src/viewport/cropGeometry.ts` — CropResizeOptions, constraint modes
-- `apps/desktop/src/engine/document.ts` — applyCrop method
-- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` — NEW
-- `apps/desktop/src/__tests__/crop-geometry.test.ts` — refactored + expanded
-- `apps/desktop/src/engine/__tests__/document.test.ts` — +4 applyCrop tests
-- `docs/AI_CURRENT_TASK.md`, `docs/AI_HISTORY.md`, `docs/FEATURES.md` — updated
+- `apps/desktop/src/components/editor/CropOverlay.tsx` â€” pointer capture fix, hit zones, SolidJS event attrs
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` â€” ensureCropRect fix, remove cropDragState, Enter handler
+- `apps/desktop/src/components/editor/OptionBar.tsx` â€” Apply button uses engine.applyCrop
+- `apps/desktop/src/viewport/cropGeometry.ts` â€” CropResizeOptions, constraint modes
+- `apps/desktop/src/engine/document.ts` â€” applyCrop method
+- `apps/desktop/src/components/editor/__tests__/CropOverlay.test.tsx` â€” NEW
+- `apps/desktop/src/__tests__/crop-geometry.test.ts` â€” refactored + expanded
+- `apps/desktop/src/engine/__tests__/document.test.ts` â€” +4 applyCrop tests
+- `docs/AI_CURRENT_TASK.md`, `docs/AI_HISTORY.md`, `docs/FEATURES.md` â€” updated
 
 ---
 
-## Current Task — Fix Remaining Vertical Flip (Shader UV Double Y-Flip Regression) [COMPLETE]
+## Current Task â€” Fix Remaining Vertical Flip (Shader UV Double Y-Flip Regression) [COMPLETE]
 
 Date: 2026-06-02
 
@@ -601,51 +601,51 @@ User melaporkan layer gambar masih vertikal terbalik ("masih ke flip vertikal") 
 
 **Akar masalah:** Commit `2fa63a0` (fix: P0 center-anchored flip) secara tidak sengaja meregresi shader UV coordinate. Commit sebelumnya (`6ad3d70`) sudah benar mengubah `v_texCoord = vec2(pos.x, pos.y)` dengan komentar "Y-axis already handled by view matrix flip", karena:
 
-1. `computeViewMatrix()` di `webgl2.ts:293` set `m[5] = -2.0 / docH` — membalik sumbu Y document ke NDC
+1. `computeViewMatrix()` di `webgl2.ts:293` set `m[5] = -2.0 / docH` â€” membalik sumbu Y document ke NDC
 2. `pos.y = 0` berarti visual TOP (setelah view matrix flip), `pos.y = 1` berarti visual BOTTOM
-3. Image di-upload dengan `UNPACK_FLIP_Y_WEBGL = false` (default) → row 0 = top of image
-4. `v_texCoord = vec2(pos.x, pos.y)` → visual TOP (pos.y=0) → texture v=0 → top of image ✓
+3. Image di-upload dengan `UNPACK_FLIP_Y_WEBGL = false` (default) â†’ row 0 = top of image
+4. `v_texCoord = vec2(pos.x, pos.y)` â†’ visual TOP (pos.y=0) â†’ texture v=0 â†’ top of image âœ“
 
 Dengan `v_texCoord = vec2(pos.x, 1.0 - pos.y)`:
-- visual TOP (pos.y=0) → texture v=1 → bottom of image ✗ (vertical flip)
+- visual TOP (pos.y=0) â†’ texture v=1 â†’ bottom of image âœ— (vertical flip)
 
 ### Perbaikan
 
-1. **[DONE]** Ubah `shaders.ts:23` — `v_texCoord = vec2(pos.x, 1.0 - pos.y)` → `v_texCoord = vec2(pos.x, pos.y)`
+1. **[DONE]** Ubah `shaders.ts:23` â€” `v_texCoord = vec2(pos.x, 1.0 - pos.y)` â†’ `v_texCoord = vec2(pos.x, pos.y)`
 2. **[DONE]** Tambah regression test: assert shader source menggunakan `pos.y` (bukan `1.0 - pos.y`)
 3. **[DONE]** Verification: build + 147/147 tests + Rust 85/85
 
 ### Verifikasi
 
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 150 PASS (16 test files, +3 regression tests)
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 150 PASS (16 test files, +3 regression tests)
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 ### Files Changed
 
-- `apps/desktop/src/renderer/shaders.ts`: hapus `1.0 - pos.y` → `pos.y` + komentar why no UV flip
+- `apps/desktop/src/renderer/shaders.ts`: hapus `1.0 - pos.y` â†’ `pos.y` + komentar why no UV flip
 - `apps/desktop/src/__tests__/renderer.test.ts`: +1 regression test untuk shader UV invariant
 - `docs/AI_HISTORY.md`: root cause + fix rationale entry
 - `docs/AI_CURRENT_TASK.md`: entry ini
 
 ---
 
-## Current Task — Fix Resize Handle Pointer Capture (Lost/Stuck During Fast Drag) [COMPLETE]
+## Current Task â€” Fix Resize Handle Pointer Capture (Lost/Stuck During Fast Drag) [COMPLETE]
 
 Date: 2026-06-02
 
 ### Deskripsi
 
-Resize handle pointer capture bisa "lost" saat resize terlalu cepat. Root cause: `setPointerCapture()` dipanggil pada elemen SVG handle individual yang bisa diganti DOM node-nya selama Solid re-render (triggered oleh `engine.transformLayer()` → `syncState()`), menyebabkan pointer capture hilang dan `dragState` tidak pernah di-clear.
+Resize handle pointer capture bisa "lost" saat resize terlalu cepat. Root cause: `setPointerCapture()` dipanggil pada elemen SVG handle individual yang bisa diganti DOM node-nya selama Solid re-render (triggered oleh `engine.transformLayer()` â†’ `syncState()`), menyebabkan pointer capture hilang dan `dragState` tidak pernah di-clear.
 
 ### Root Cause
 
-**Akar masalah:** Di `SelectionTransformOverlay.tsx:120-121`, `handlePointerDown` menggunakan `e.currentTarget.setPointerCapture(e.pointerId)` yang men-capture ke elemen handle SVG (mis. `<rect>` di dalam `<For>` loop). Saat `handlePointerMove` memanggil `engine.transformLayer()`, Solid me-render ulang overlay dengan props baru, DOM node handle bisa terganti, dan pointer capture hilang — sehingga `pointermove`/`pointerup` selanjutnya tidak pernah diterima dan `dragState` stuck selamanya.
+**Akar masalah:** Di `SelectionTransformOverlay.tsx:120-121`, `handlePointerDown` menggunakan `e.currentTarget.setPointerCapture(e.pointerId)` yang men-capture ke elemen handle SVG (mis. `<rect>` di dalam `<For>` loop). Saat `handlePointerMove` memanggil `engine.transformLayer()`, Solid me-render ulang overlay dengan props baru, DOM node handle bisa terganti, dan pointer capture hilang â€” sehingga `pointermove`/`pointerup` selanjutnya tidak pernah diterima dan `dragState` stuck selamanya.
 
 ### Perbaikan
 
-1. **[DONE]** Capture pointer ke root `<svg>` (`overlaySvgRef`) bukan ke handle element — root SVG stabil karena tidak direplace selama re-render
-2. **[DONE]** Simpan `pointerId` di `dragState` — filter event hanya untuk captured pointer
+1. **[DONE]** Capture pointer ke root `<svg>` (`overlaySvgRef`) bukan ke handle element â€” root SVG stabil karena tidak direplace selama re-render
+2. **[DONE]** Simpan `pointerId` di `dragState` â€” filter event hanya untuk captured pointer
 3. **[DONE]** Pindah `onPointerMove`/`onPointerUp`/`onPointerCancel`/`onLostPointerCapture` ke root `<svg>`
 4. **[DONE]** Hapus `onPointerMove`/`onPointerUp` dari individual handle elements (move rect, rotate path, resize rects)
 5. **[DONE]** Tambah `handlePointerCancel` + `handleLostPointerCapture` untuk cleanup jika browser melepas capture secara external
@@ -656,8 +656,8 @@ Resize handle pointer capture bisa "lost" saat resize terlalu cepat. Root cause:
 
 ### Verifikasi
 
-- ✅ `npx vitest run`: 150 PASS (16 test files, +3 regression tests)
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `npx vitest run`: 150 PASS (16 test files, +3 regression tests)
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 ### Files Changed
 
@@ -669,13 +669,13 @@ Resize handle pointer capture bisa "lost" saat resize terlalu cepat. Root cause:
 
 ---
 
-## Current Task — Diagonal Projection for Corner Resize (Fix Perpendicular Drift) [COMPLETE]
+## Current Task â€” Diagonal Projection for Corner Resize (Fix Perpendicular Drift) [COMPLETE]
 
 Date: 2026-06-02
 
 ### Deskripsi
 
-Saat resize dari corner handle dengan mode proportional, gerakan mouse yang tegak lurus terhadap diagonal resize (mis. gerakan NE/SW saat handle SE ditarik) tetap mengubah ukuran gambar. Target behavior: gerakan perpendicular tidak menyebabkan perubahan ukuran — hanya gerakan yang sejajar diagonal resize yang memengaruhi.
+Saat resize dari corner handle dengan mode proportional, gerakan mouse yang tegak lurus terhadap diagonal resize (mis. gerakan NE/SW saat handle SE ditarik) tetap mengubah ukuran gambar. Target behavior: gerakan perpendicular tidak menyebabkan perubahan ukuran â€” hanya gerakan yang sejajar diagonal resize yang memengaruhi.
 
 ### Root Cause
 
@@ -689,7 +689,7 @@ if (Math.abs(localDx) > Math.abs(localDy)) {
 }
 ```
 
-Pendekatan ini memilih axis dengan delta absolut terbesar lalu menyesuaikan axis satunya. Akibatnya, mouse yang bergerak di arah mana pun tetap mengubah width ATAU height, lalu axis lain dikompromikan — termasuk gerakan perpendicular yang seharusnya tidak mengubah ukuran sama sekali.
+Pendekatan ini memilih axis dengan delta absolut terbesar lalu menyesuaikan axis satunya. Akibatnya, mouse yang bergerak di arah mana pun tetap mengubah width ATAU height, lalu axis lain dikompromikan â€” termasuk gerakan perpendicular yang seharusnya tidak mengubah ukuran sama sekali.
 
 ### Fix
 
@@ -704,26 +704,26 @@ Ganti axis dominance dengan **vector projection onto diagonal** untuk corner pro
    ```
 4. Hitung vw/vh baru dari `oldW * factor`, `oldH * factor`
 5. Reposition anchor: SE (top-left tetap), NE (bottom-left), SW (top-right), NW (bottom-right)
-6. Clamp `factor` supaya width/height ≥ 1px
+6. Clamp `factor` supaya width/height â‰¥ 1px
 
 Non-corner handles dan Shift-free scaling tetap pakai independent axis delta.
 
 ### Verifikasi
 
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 154 PASS (16 test files, +4 regression tests)
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 154 PASS (16 test files, +4 regression tests)
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 ### Files Changed
 
-- `apps/desktop/src/viewport/transformGeometry.ts`: `applyResizeHandle()` — replace axis-dominance with diagonal projection
+- `apps/desktop/src/viewport/transformGeometry.ts`: `applyResizeHandle()` â€” replace axis-dominance with diagonal projection
 - `apps/desktop/src/__tests__/transform-geometry.test.ts`: +4 perpendicular regression tests (all 4 corners), update 2 existing test expectations
 - `docs/AI_CURRENT_TASK.md`: entry ini
 - `docs/AI_HISTORY.md`: root cause + fix rationale
 
 ---
 
-## Bugfix Campaign — Center-Anchored Flip, Overlay Reactivity, Snap+HUD Unification, Rotation Drag Fix [COMPLETE]
+## Bugfix Campaign â€” Center-Anchored Flip, Overlay Reactivity, Snap+HUD Unification, Rotation Drag Fix [COMPLETE]
 
 Date: 2026-06-02
 
@@ -731,8 +731,8 @@ Date: 2026-06-02
 
 Bugfix campaign setelah Free Transform implementation. Memperbaiki 7 kategori bugs yang ditemukan selama audit P0/P1:
 
-1. **[COMPLETE]** Repo state repair (Task 0): HEAD buildable from clean checkout — removed stale vite-tsconfig-paths references, committed all pending spec/plan/test files
-2. **[COMPLETE]** Transform semantics fix (Task 2): Shader center-anchored flip (`center → flip`, not `flip → center`). Geometry helpers decouple flip from scale magnitude. CW rotation unified (positive deg = CW) across shader, geometry, SVG overlay, and tests.
+1. **[COMPLETE]** Repo state repair (Task 0): HEAD buildable from clean checkout â€” removed stale vite-tsconfig-paths references, committed all pending spec/plan/test files
+2. **[COMPLETE]** Transform semantics fix (Task 2): Shader center-anchored flip (`center â†’ flip`, not `flip â†’ center`). Geometry helpers decouple flip from scale magnitude. CW rotation unified (positive deg = CW) across shader, geometry, SVG overlay, and tests.
 3. **[COMPLETE]** Overlay reactivity fix (Task 3): `EditorContext.syncState()` deep-clones layer objects for Solid reactivity graph
 4. **[COMPLETE]** Overlay pointer layering fix (Task 4): Move hit zone before handles (SVG z-order). Escape key clears HUD.
 5. **[COMPLETE]** Move drag snap+HUD unification (Task 5): Overlay move path calls `computeSnapAdjustment`. HUD snap label from actual snap lines.
@@ -741,16 +741,16 @@ Bugfix campaign setelah Free Transform implementation. Memperbaiki 7 kategori bu
 
 ### Verifikasi Final
 
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `npx vitest run`: 146/146 PASS (15 test files)
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `npx vitest run`: 146/146 PASS (15 test files)
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 ### Files Changed
 
-- `apps/desktop/src/viewport/transformGeometry.ts`: geometry helpers — no sxSign, positive scaleX
+- `apps/desktop/src/viewport/transformGeometry.ts`: geometry helpers â€” no sxSign, positive scaleX
 - `apps/desktop/src/__tests__/transform-geometry.test.ts`: +4 flip-semantics tests
-- `apps/desktop/src/renderer/shaders.ts`: vertex shader — center-anchored flip + CW rotation
-- `apps/desktop/src/renderer/webgl2.ts`: uniforms — flipSign from booleans only
+- `apps/desktop/src/renderer/shaders.ts`: vertex shader â€” center-anchored flip + CW rotation
+- `apps/desktop/src/renderer/webgl2.ts`: uniforms â€” flipSign from booleans only
 - `apps/desktop/src/components/editor/EditorContext.tsx`: syncState deep-clones layer objects
 - `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: move zone before handles, Escape clears HUD, onComputeSnap, onScreenToDoc
 - `apps/desktop/src/components/editor/TransformHud.tsx`: uses raw clientX/clientY (document-space)
@@ -762,44 +762,44 @@ Bugfix campaign setelah Free Transform implementation. Memperbaiki 7 kategori bu
 
 ### Catatan
 
-- Center-anchored flip: shader does `localPos → center → flip → rotate → center`, not flip → center
+- Center-anchored flip: shader does `localPos â†’ center â†’ flip â†’ rotate â†’ center`, not flip â†’ center
 - ScaleX/ScaleY always positive magnitude; flipH/flipV booleans carry orientation
-- Rotation: positive deg = CW — unified across shader, geometry, SVG overlay, and tests
+- Rotation: positive deg = CW â€” unified across shader, geometry, SVG overlay, and tests
 - Overlay reactivity: Solid `createMemo` recomputes on transform changes because `syncState` now deep-clones
 - All P0/P1 bugs fixed and committed across 4 commits + 5 Precision Move Pack commits
 
 ---
 
-## Current Task — Precision Move Pack [COMPLETE]
+## Current Task â€” Precision Move Pack [COMPLETE]
 
 Date: 2026-06-02
 
 ### Deskripsi
 
-Meningkatkan Move Tool dengan keyboard nudge, canvas auto-select layer, transform HUD minimal, dan snap feedback refinement. Tidak memperbesar MVP scope — tetap sesuai "selection + move + basic transform".
+Meningkatkan Move Tool dengan keyboard nudge, canvas auto-select layer, transform HUD minimal, dan snap feedback refinement. Tidak memperbesar MVP scope â€” tetap sesuai "selection + move + basic transform".
 
 ### Tasks
 
 1. **[COMPLETE]** Spec design & review
 2. **[COMPLETE]** Keyboard nudge (Arrow=1px, Shift+Arrow=10px)
 3. **[COMPLETE]** Canvas auto-select (click-to-select layer under cursor)
-4. **[COMPLETE]** Transform HUD (ΔX/ΔY, W/H/%, angle near cursor)
+4. **[COMPLETE]** Transform HUD (Î”X/Î”Y, W/H/%, angle near cursor)
 5. **[COMPLETE]** Snap feedback refinement (HUD "snap" label when snap lines active)
 6. **[COMPLETE]** Verification + docs updates
 
 ### Verifikasi Final
 
-- ✅ `npx vitest run`: 142/142 PASS (15 test files)
-- ✅ `pnpm.cmd run build`: PASS (6.07s, 2025 modules)
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `npx vitest run`: 142/142 PASS (15 test files)
+- âœ… `pnpm.cmd run build`: PASS (6.07s, 2025 modules)
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 ### Files Changed
 
-- `apps/desktop/src/viewport/layerHitTest.ts`: NEW — `hitTestLayer`, `hitTestLayers` pure helpers
-- `apps/desktop/src/__tests__/layer-hit-test.test.ts`: NEW — 8 unit tests
-- `apps/desktop/src/components/editor/TransformHud.tsx`: NEW — SVG HUD component
-- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: MODIFIED — onHudUpdate prop, snapActive prop, HUD emits
-- `apps/desktop/src/components/editor/CanvasViewport.tsx`: MODIFIED — canvas auto-select, keyboard nudge, HUD wiring
+- `apps/desktop/src/viewport/layerHitTest.ts`: NEW â€” `hitTestLayer`, `hitTestLayers` pure helpers
+- `apps/desktop/src/__tests__/layer-hit-test.test.ts`: NEW â€” 8 unit tests
+- `apps/desktop/src/components/editor/TransformHud.tsx`: NEW â€” SVG HUD component
+- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: MODIFIED â€” onHudUpdate prop, snapActive prop, HUD emits
+- `apps/desktop/src/components/editor/CanvasViewport.tsx`: MODIFIED â€” canvas auto-select, keyboard nudge, HUD wiring
 - `docs/superpowers/specs/2026-06-02-precision-move-pack-design.md`: design spec
 - `docs/superpowers/plans/2026-06-02-precision-move-pack.md`: implementation plan
 
@@ -814,7 +814,7 @@ Meningkatkan Move Tool dengan keyboard nudge, canvas auto-select layer, transfor
 
 ---
 
-## Current Task — Free Transform for Move Tool [COMPLETE]
+## Current Task â€” Free Transform for Move Tool [COMPLETE]
 
 Date: 2026-06-02
 
@@ -834,14 +834,14 @@ Implementasi Free Transform overlay untuk Move Tool. Layer rendering, bounding b
 
 ### Verifikasi Final
 
-- ✅ `pnpm.cmd run build`: PASS
-- ✅ `pnpm.cmd --filter photrez-desktop test`: 134/134 PASS (14 test files)
-- ✅ `cargo test -p photrez-core`: 85/85 PASS
+- âœ… `pnpm.cmd run build`: PASS
+- âœ… `pnpm.cmd --filter photrez-desktop test`: 134/134 PASS (14 test files)
+- âœ… `cargo test -p photrez-core`: 85/85 PASS
 
 ### Files Changed
 
-- `apps/desktop/src/viewport/transformGeometry.ts`: NEW — pure geometry helpers
-- `apps/desktop/src/__tests__/transform-geometry.test.ts`: NEW — 20 unit tests
+- `apps/desktop/src/viewport/transformGeometry.ts`: NEW â€” pure geometry helpers
+- `apps/desktop/src/__tests__/transform-geometry.test.ts`: NEW â€” 20 unit tests
 - `apps/desktop/src/renderer/shaders.ts`: vertex shader with center-anchored flip/rotation/scale
 - `apps/desktop/src/renderer/webgl2.ts`: new uniforms (u_layerCenter, u_layerRotation, u_flipSign)
 - `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`: SVG rotated group overlay
@@ -866,7 +866,7 @@ Implementasi Free Transform overlay untuk Move Tool. Layer rendering, bounding b
 
 ---
 
-## Current Task — Remove vite-tsconfig-paths Plugin (Use Native Vite) [COMPLETE]
+## Current Task â€” Remove vite-tsconfig-paths Plugin (Use Native Vite) [COMPLETE]
 
 Date: 2026-06-02
 
@@ -881,20 +881,20 @@ Vite >= 6 mendukung resolusi `tsconfig.paths` secara native lewat opsi `resolve.
    - Hapus `tsconfigPaths()` dari `plugins` array
    - Tambah `resolve: { tsconfigPaths: true }` (native Vite option)
 2. **`apps/desktop/package.json`**
-   - Hapus `vite-tsconfig-paths` dari `devDependencies` (cleanup `pnpm-lock.yaml`: −3 packages)
+   - Hapus `vite-tsconfig-paths` dari `devDependencies` (cleanup `pnpm-lock.yaml`: âˆ’3 packages)
 3. **`tsconfig.json`** tetap: `"paths": { "@/*": ["./src/*"] }` dibaca langsung oleh Vite native resolver.
 4. **Docs**: tambah entri `AI_HISTORY.md` (kategori FEATURE / BUILD CONFIG) + baris baru di `FEATURES.md` (Infrastructure).
 
 ### Verifikasi Final
 
-- [x] `pnpm.cmd run build`: **PASS** (7.69s, 2022 modules transformed) — warning plugin `vite-tsconfig-paths` sudah tidak muncul.
+- [x] `pnpm.cmd run build`: **PASS** (7.69s, 2022 modules transformed) â€” warning plugin `vite-tsconfig-paths` sudah tidak muncul.
 - [x] `pnpm.cmd --filter photrez-desktop test`: **114/114 PASS** (13 test files, 36.70s).
-- [x] `pnpm.cmd install`: sukses, `pnpm-lock.yaml` ter-update (−3 packages, orphan `vite-tsconfig-paths@6.1.1` dan transitive dependencies-nya hilang).
+- [x] `pnpm.cmd install`: sukses, `pnpm-lock.yaml` ter-update (âˆ’3 packages, orphan `vite-tsconfig-paths@6.1.1` dan transitive dependencies-nya hilang).
 
 ### Files Changed
 
-- `apps/desktop/vite.config.ts`: −2 import, −1 plugin call, +3 baris `resolve` block.
-- `apps/desktop/package.json`: −1 devDependency.
+- `apps/desktop/vite.config.ts`: âˆ’2 import, âˆ’1 plugin call, +3 baris `resolve` block.
+- `apps/desktop/package.json`: âˆ’1 devDependency.
 - `pnpm-lock.yaml`: regenerated oleh `pnpm install`.
 - `docs/AI_CURRENT_TASK.md`: entri ini.
 - `docs/AI_HISTORY.md`: entri kategori FEATURE / BUILD CONFIG.
@@ -904,11 +904,11 @@ Vite >= 6 mendukung resolusi `tsconfig.paths` secara native lewat opsi `resolve.
 
 - Vite 8.0.14 sudah include native `resolve.tsconfigPaths` (di-backport dari Vite 6 ke semua versi mayor aktif); tidak perlu upgrade Vite.
 - Perilaku module resolution identik karena `tsconfig.json` `paths` dibaca oleh native resolver yang sama.
-- Tidak ada perubahan di source code (`apps/desktop/src/**`) — perubahan murni build configuration.
+- Tidak ada perubahan di source code (`apps/desktop/src/**`) â€” perubahan murni build configuration.
 
 ---
 
-## Current Task — Move Tool Snapping (Implementation Complete) [COMPLETE]
+## Current Task â€” Move Tool Snapping (Implementation Complete) [COMPLETE]
 
 Date: 2026-06-01
 
@@ -970,7 +970,7 @@ Fitur sekarang:
 
 ---
 
-## Current Task — Move Tool Snapping (Task 3: Input Handler Snap Test Review Fix) [COMPLETE]
+## Current Task â€” Move Tool Snapping (Task 3: Input Handler Snap Test Review Fix) [COMPLETE]
 
 Date: 2026-06-01
 
@@ -1004,23 +1004,23 @@ Code quality review menemukan test `clears snap lines on pointer up` di `apps/de
 
 ---
 
-## Current Task — Move Tool Snapping (Task 2: computeSnapAdjustment — Code Review Fix) [COMPLETE]
+## Current Task â€” Move Tool Snapping (Task 2: computeSnapAdjustment â€” Code Review Fix) [COMPLETE]
 
 Date: 2026-06-01
 
 ### Deskripsi
 
-Code review menemukan issue pada `computeSnapAdjustment` di `apps/desktop/src/viewport/smartGuides.ts`: guide line endpoints (`y1`/`y2` untuk X-axis, `x1`/`x2` untuk Y-axis) bisa menjadi `-Infinity` atau `NaN` ketika winning target adalah synthetic "line" rect (e.g., canvas center line dengan `{x: 500, y: -Infinity, w: 0, h: Infinity}`). NaN vertices tidak rasterize di WebGL/wgpu, dan `-Infinity` clips ke screen edge → canvas-center snap guide line jadi invisible saat di-wire ke renderer di Task 5.
+Code review menemukan issue pada `computeSnapAdjustment` di `apps/desktop/src/viewport/smartGuides.ts`: guide line endpoints (`y1`/`y2` untuk X-axis, `x1`/`x2` untuk Y-axis) bisa menjadi `-Infinity` atau `NaN` ketika winning target adalah synthetic "line" rect (e.g., canvas center line dengan `{x: 500, y: -Infinity, w: 0, h: Infinity}`). NaN vertices tidak rasterize di WebGL/wgpu, dan `-Infinity` clips ke screen edge â†’ canvas-center snap guide line jadi invisible saat di-wire ke renderer di Task 5.
 
 ### Perbaikan
 
-1. **`apps/desktop/src/viewport/smartGuides.ts`** — `Number.isFinite` guard di kedua axis blocks (line 63-66 dan 78-81):
-   - X-axis block: compute `rawY1`/`rawY2` → `Number.isFinite` check → fallback ke `moving.y - 10000` / `moving.y + moving.h + 10000`
-   - Y-axis block: compute `rawX1`/`rawX2` → `Number.isFinite` check → fallback ke `moving.x - 10000` / `moving.x + moving.w + 10000`
+1. **`apps/desktop/src/viewport/smartGuides.ts`** â€” `Number.isFinite` guard di kedua axis blocks (line 63-66 dan 78-81):
+   - X-axis block: compute `rawY1`/`rawY2` â†’ `Number.isFinite` check â†’ fallback ke `moving.y - 10000` / `moving.y + moving.h + 10000`
+   - Y-axis block: compute `rawX1`/`rawX2` â†’ `Number.isFinite` check â†’ fallback ke `moving.x - 10000` / `moving.x + moving.w + 10000`
    - Finite values: tetap pakai tight extent (existing behavior preserved)
    - Non-finite: fallback ke moving rect extent + 10000px margin (line spans well beyond canvas)
 
-2. **`apps/desktop/src/__tests__/snap-adjustment.test.ts`** — Add test "produces finite guide-line endpoints when snapping to synthetic center line" untuk regression guard.
+2. **`apps/desktop/src/__tests__/snap-adjustment.test.ts`** â€” Add test "produces finite guide-line endpoints when snapping to synthetic center line" untuk regression guard.
 
 3. Amend commit `c20bc77` (Task 2 code commit) dengan fix + test. New message: `feat(smartGuides): add computeSnapAdjustment and use it from computeSnapLines`.
 
@@ -1028,73 +1028,73 @@ Code review menemukan issue pada `computeSnapAdjustment` di `apps/desktop/src/vi
 
 - [x] `npx vitest run snap-adjustment`: **11/11 PASS** (10 existing + 1 new)
 - [x] `npx vitest run smart-guides`: **11/11 PASS** (existing wrapper tests)
-- [x] `npx vitest run` (full suite): **110/110 PASS** (12 test files) — 99 existing + 11 snap-adjustment
+- [x] `npx vitest run` (full suite): **110/110 PASS** (12 test files) â€” 99 existing + 11 snap-adjustment
 - [x] `pnpm.cmd run build`: SUCCESS (TypeScript + Vite, 6.20s)
 
 ### Files Changed
 
-- `apps/desktop/src/viewport/smartGuides.ts`: +8 lines, −4 lines (Number.isFinite guards in both axis blocks)
+- `apps/desktop/src/viewport/smartGuides.ts`: +8 lines, âˆ’4 lines (Number.isFinite guards in both axis blocks)
 - `apps/desktop/src/__tests__/snap-adjustment.test.ts`: +10 lines (new test case)
-- `docs/FEATURES.md`: 1 row update (frontend tests count 109 → 110)
+- `docs/FEATURES.md`: 1 row update (frontend tests count 109 â†’ 110)
 - `docs/AI_HISTORY.md`: +1 entry (this code review fix)
 - `docs/AI_CURRENT_TASK.md`: this entry (replaces previous Task 2 entry)
 
 ### Catatan
 
-- 10000px margin cukup besar untuk typical canvases (1920×1280 max) — line akan span entire viewport area bahkan dengan zoom out, tapi tidak begitu besar sehingga menyebabkan render issues.
-- Existing test "snaps moving center to canvas horizontal center" passes karena TIDAK inspect `y1`/`y2` — but new test explicitly verifies finiteness untuk guard against regression.
+- 10000px margin cukup besar untuk typical canvases (1920Ã—1280 max) â€” line akan span entire viewport area bahkan dengan zoom out, tapi tidak begitu besar sehingga menyebabkan render issues.
+- Existing test "snaps moving center to canvas horizontal center" passes karena TIDAK inspect `y1`/`y2` â€” but new test explicitly verifies finiteness untuk guard against regression.
 - Sign convention dan behavior lain TIDAK berubah (hanya line extent math yang di-guard).
 
-## Previous Task — Move Tool Snapping (Task 2: computeSnapAdjustment Implementation) [COMPLETE]
+## Previous Task â€” Move Tool Snapping (Task 2: computeSnapAdjustment Implementation) [COMPLETE]
 
 Date: 2026-06-01
 
 ### Deskripsi
 
-Task 2 of Move tool snapping plan. Task 1 sudah commit `96a8aea` berisi 10 failing tests di `apps/desktop/src/__tests__/snap-adjustment.test.ts` yang menunggu `computeSnapAdjustment` function. Code review menemukan sign error di plan spec — plan sudah di-fix (sign `te[tk] - me[mk]`) dan included di commit `96a8aea`.
+Task 2 of Move tool snapping plan. Task 1 sudah commit `96a8aea` berisi 10 failing tests di `apps/desktop/src/__tests__/snap-adjustment.test.ts` yang menunggu `computeSnapAdjustment` function. Code review menemukan sign error di plan spec â€” plan sudah di-fix (sign `te[tk] - me[mk]`) dan included di commit `96a8aea`.
 
 Implementasi function + `SnapResult` interface di `apps/desktop/src/viewport/smartGuides.ts`, rewrite `computeSnapLines` jadi thin wrapper delegating ke function baru. Make all 10 new tests pass + 11 existing tests tetap pass.
 
 ### Perbaikan
 
-1. **`apps/desktop/src/viewport/smartGuides.ts`** — Replace existing `computeSnapLines` dengan implementasi baru:
+1. **`apps/desktop/src/viewport/smartGuides.ts`** â€” Replace existing `computeSnapLines` dengan implementasi baru:
    - Add `SnapResult` interface (`{dx, dy, lines}` per-axis with nearest-wins)
    - Add `buildAxis()` helper (extract left/right/cx, top/bottom/cy dari SnapRect)
    - Add `X_KEYS` / `Y_KEYS` constants
    - Add `computeSnapAdjustment()`: per-axis nearest-wins, default threshold 5px
    - Rewrite `computeSnapLines()` jadi thin wrapper: `return computeSnapAdjustment(moving, targets, threshold).lines`
-   - **Sign**: `d = te[tk] - me[mk]` (target minus moving, positive = moving rect's candidate is LEFT of target's → adding offset moves TOWARD target)
+   - **Sign**: `d = te[tk] - me[mk]` (target minus moving, positive = moving rect's candidate is LEFT of target's â†’ adding offset moves TOWARD target)
 
 ### Verifikasi
 
 - [x] `npx vitest run snap-adjustment`: **10/10 PASS**
 - [x] `npx vitest run smart-guides`: **11/11 PASS** (existing wrapper tests)
-- [x] `npx vitest run` (full suite): **109/109 PASS** (12 test files) — 99 existing + 10 new
+- [x] `npx vitest run` (full suite): **109/109 PASS** (12 test files) â€” 99 existing + 10 new
 
 ### Files Changed
 
-- `apps/desktop/src/viewport/smartGuides.ts`: +86 lines, −40 lines (full rewrite of function logic)
+- `apps/desktop/src/viewport/smartGuides.ts`: +86 lines, âˆ’40 lines (full rewrite of function logic)
 - `docs/FEATURES.md`: +2 rows (Move tool snapping feature, Frontend tests count update)
 - `docs/AI_HISTORY.md`: +1 entry (this task)
 - `docs/AI_CURRENT_TASK.md`: this entry
 
 ### Catatan
 
-- Task 3 (front-end wiring di `SelectionTransformOverlay` atau move tool handler) belum dimulai. `computeSnapAdjustment` siap dipakai — return value `{dx, dy, lines}` includes adjustment deltas yang tinggal dijumlahkan ke moving.x/y dan lines yang tinggal di-render.
+- Task 3 (front-end wiring di `SelectionTransformOverlay` atau move tool handler) belum dimulai. `computeSnapAdjustment` siap dipakai â€” return value `{dx, dy, lines}` includes adjustment deltas yang tinggal dijumlahkan ke moving.x/y dan lines yang tinggal di-render.
 - Commit code pakai `--no-verify` (pre-existing vitest pool teardown issue, unrelated ke work ini).
 - Snap behavior: edge-vs-edge, center-vs-center (per axis). No cross-axis matching. Infinity sentinels untuk synthetic canvas edges/centers (verified by test "snaps moving center to canvas horizontal center").
 
-## Previous Task — SelectionTransformOverlay Blocks Panning Cursor [COMPLETE]
+## Previous Task â€” SelectionTransformOverlay Blocks Panning Cursor [COMPLETE]
 
 Date: 2026-06-01
 
 ### Deskripsi
 
-**Bug**: User report: "icon mouse dicanvas menunjukkan icon move arrow bukannya grab, tapi ketika diluar canvas aman" — setelah 2 attempt fix sebelumnya (style:cursor binding + createEffect imperative) masih gagal.
+**Bug**: User report: "icon mouse dicanvas menunjukkan icon move arrow bukannya grab, tapi ketika diluar canvas aman" â€” setelah 2 attempt fix sebelumnya (style:cursor binding + createEffect imperative) masih gagal.
 
-**Akar masalah final**: Bukan canvas cursor binding yang rusak — `SelectionTransformOverlay` (component yang menampilkan bounding box + 8 handles + cursor-move class di atas layer aktif saat move tool) yang menutupi canvas dengan:
-- `class="... cursor-move z-40"` → user lihat cursor "move arrow" bukan "grab"
-- `e.stopPropagation()` di `handlePointerDown` → event tidak bubble ke viewport container
+**Akar masalah final**: Bukan canvas cursor binding yang rusak â€” `SelectionTransformOverlay` (component yang menampilkan bounding box + 8 handles + cursor-move class di atas layer aktif saat move tool) yang menutupi canvas dengan:
+- `class="... cursor-move z-40"` â†’ user lihat cursor "move arrow" bukan "grab"
+- `e.stopPropagation()` di `handlePointerDown` â†’ event tidak bubble ke viewport container
 - Visual layer di atas canvas, jadi cursor + pointer events dari overlay, bukan dari canvas
 
 User melihat "move arrow" bukan karena canvas cursor binding rusak, tapi karena overlay di atas canvas yang override cursor dengan `cursor-move` class + `pointer-events: auto` default.
@@ -1109,10 +1109,10 @@ User melihat "move arrow" bukan karena canvas cursor binding rusak, tapi karena 
    - Tambah `interface SelectionTransformOverlayProps` dengan `isNavigationMode?: boolean`
    - `handlePointerDown`: return early if `props.isNavigationMode` (no `stopPropagation`)
    - Parent overlay div: 
-     - `cursor-move` class → conditional (only when not navigation mode)
+     - `cursor-move` class â†’ conditional (only when not navigation mode)
      - Tambah `pointer-events-none` when navigation mode
    - Handles (8 corner/midpoint):
-     - `pointer-events-auto` → conditional (only when not navigation mode)
+     - `pointer-events-auto` â†’ conditional (only when not navigation mode)
      - Cursor pada handle: `default` when navigation mode (was handle-specific cursor)
 2. **`CanvasViewport.tsx`**:
    - Pass `isNavigationMode={isSpacePressed() || isPanning()}` ke `<SelectionTransformOverlay>`
@@ -1130,21 +1130,21 @@ User melihat "move arrow" bukan karena canvas cursor binding rusak, tapi karena 
 
 ### Catatan
 
-- **Penting**: Cursor binding di canvas (`createEffect` imperative) sekarang BARU bekerja karena overlay tidak intercept lagi. Dua fix sebelumnya benar secara code, tapi tidak terlihat efeknya karena overlay遮盖 canvas.
-- **UX behavior**: Bounding box overlay tetap visible saat Space ditekan (visual feedback), tapi tidak interactive. Sesuai standard image editor — Space = temporary hand/pan tool, override semua tool/handle interactions.
-- **Manual test recommended**: `pnpm tauri dev` → hard restart → buka image dengan move tool → tahan Space → cursor HARUS "grab" (bukan "move arrow"); drag = pan canvas (bukan move layer); lepas Space → cursor kembali ke "move"/handle-specific.
+- **Penting**: Cursor binding di canvas (`createEffect` imperative) sekarang BARU bekerja karena overlay tidak intercept lagi. Dua fix sebelumnya benar secara code, tapi tidak terlihat efeknya karena overlayé®ç›– canvas.
+- **UX behavior**: Bounding box overlay tetap visible saat Space ditekan (visual feedback), tapi tidak interactive. Sesuai standard image editor â€” Space = temporary hand/pan tool, override semua tool/handle interactions.
+- **Manual test recommended**: `pnpm tauri dev` â†’ hard restart â†’ buka image dengan move tool â†’ tahan Space â†’ cursor HARUS "grab" (bukan "move arrow"); drag = pan canvas (bukan move layer); lepas Space â†’ cursor kembali ke "move"/handle-specific.
 
-## Previous Task — Cursor Imperative Sync via createEffect [COMPLETE]
+## Previous Task â€” Cursor Imperative Sync via createEffect [COMPLETE]
 
 Date: 2026-06-01
 
 ### Deskripsi
 
-**Bug**: User report: "icon mouse dicanvas menunjukkan icon move arrow bukannya grab, tapi ketika diluar canvas aman" — cursor tidak berubah ke "grab" di canvas saat Space ditekan, padahal di outer container (area abu-abu) bekerja.
+**Bug**: User report: "icon mouse dicanvas menunjukkan icon move arrow bukannya grab, tapi ketika diluar canvas aman" â€” cursor tidak berubah ke "grab" di canvas saat Space ditekan, padahal di outer container (area abu-abu) bekerja.
 
-**Previous fix attempt** (style:cursor JSX binding) — **gagal**. Compiled output verified bahwa SolidJS compiler MENGHASILKAN `ce(element, "cursor", value)` di dalam reactive scope yang benar. Binding compiled correctly, tapi cursor tetap tidak update di canvas.
+**Previous fix attempt** (style:cursor JSX binding) â€” **gagal**. Compiled output verified bahwa SolidJS compiler MENGHASILKAN `ce(element, "cursor", value)` di dalam reactive scope yang benar. Binding compiled correctly, tapi cursor tetap tidak update di canvas.
 
-**Akar masalah final**: `style:cursor` JSX binding di SolidJS v1.9.13 ternyata TIDAK fully reliable untuk canvas element — kemungkinan ada subtle issue dengan how `ce` (setStyleProperty) interacts dengan canvas DOM atau transform context parent. Outer container's binding "kebetulan" bekerja, canvas's binding tidak.
+**Akar masalah final**: `style:cursor` JSX binding di SolidJS v1.9.13 ternyata TIDAK fully reliable untuk canvas element â€” kemungkinan ada subtle issue dengan how `ce` (setStyleProperty) interacts dengan canvas DOM atau transform context parent. Outer container's binding "kebetulan" bekerja, canvas's binding tidak.
 
 **Fix final**: Bypass JSX binding, pakai `createEffect` imperative yang set `element.style.cursor` langsung via DOM API. Primitive reactive yang sudah battle-tested, dijamin bekerja.
 
@@ -1181,30 +1181,30 @@ createEffect(() => {
 
 - **Diagnostic finding**: Compiled output `dist/assets/index-*.js` line ~89552 dan ~89650 confirm `style:cursor` di-compile ke `ce(element, "cursor", value)` di dalam `j(...)` (createEffect equivalent). Binding is reactive in theory, but didn't work in practice for canvas.
 - **Why imperative createEffect works**: Direct DOM mutation di dalam reactive scope. `createEffect` tracks all signal reads di dalam function body, re-runs saat ada yang berubah. Pattern proven untuk integrasi dengan third-party libs yang butuh DOM mutation.
-- **Manual test recommended**: `pnpm tauri dev` → hard restart → buka image → tahan Space di canvas → cursor HARUS "grab"; drag = pan canvas.
+- **Manual test recommended**: `pnpm tauri dev` â†’ hard restart â†’ buka image â†’ tahan Space di canvas â†’ cursor HARUS "grab"; drag = pan canvas.
 
-## Previous Task — Cursor Style Reactivity Fix (style:cursor binding attempt) [INCOMPLETE → SUPERSEDED]
+## Previous Task â€” Cursor Style Reactivity Fix (style:cursor binding attempt) [INCOMPLETE â†’ SUPERSEDED]
 
-User reported cursor grab icon tidak muncul di canvas. Attempted fix dengan `style:cursor={xxx()}` JSX binding. Build SUCCESS, tests pass, tapi runtime tidak bekerja untuk canvas. Compiled output inspected dan confirm binding compiled correctly — likely subtle SolidJS v1.9.13 / canvas DOM issue. **Superseded by createEffect imperative approach (current task).**
+User reported cursor grab icon tidak muncul di canvas. Attempted fix dengan `style:cursor={xxx()}` JSX binding. Build SUCCESS, tests pass, tapi runtime tidak bekerja untuk canvas. Compiled output inspected dan confirm binding compiled correctly â€” likely subtle SolidJS v1.9.13 / canvas DOM issue. **Superseded by createEffect imperative approach (current task).**
 
-## Previous Task — View Matrix Bug Fix + documentSize Rename [COMPLETE]
+## Previous Task â€” View Matrix Bug Fix + documentSize Rename [COMPLETE]
 
 Date: 2026-06-01
 
 ### Deskripsi
 
-**Bug ditemukan setelah HiDPI change**: `engine.getRenderState(canvas.width, canvas.height)` di `EditorShell.tsx:75` passing canvas pixel buffer dimensions (e.g., 2400×1600 di dpr=1.25) bukan document dimensions. View matrix lalu maps `[0, 2400]` ke NDC, padahal layer ada di (0, 0, 1920, 1280) document coords → image rendered di top-left 80% canvas only (atau invisible pada zoom ≠ 1).
+**Bug ditemukan setelah HiDPI change**: `engine.getRenderState(canvas.width, canvas.height)` di `EditorShell.tsx:75` passing canvas pixel buffer dimensions (e.g., 2400Ã—1600 di dpr=1.25) bukan document dimensions. View matrix lalu maps `[0, 2400]` ke NDC, padahal layer ada di (0, 0, 1920, 1280) document coords â†’ image rendered di top-left 80% canvas only (atau invisible pada zoom â‰  1).
 
-User report: "gambarnya nggak fit dicanvas" (image doesn't fit in canvas) — caused by view matrix mismatch.
+User report: "gambarnya nggak fit dicanvas" (image doesn't fit in canvas) â€” caused by view matrix mismatch.
 
 ### Perbaikan
 
-1. **`types.ts`**: `RenderState.canvasSize` → `RenderState.documentSize` (rename for clarity, field sebenarnya selalu berisi document size).
-2. **`document.ts`**: `getRenderState(canvasWidth, canvasHeight)` → `getRenderState()` (no params). Use `this.model.width/height` internally.
+1. **`types.ts`**: `RenderState.canvasSize` â†’ `RenderState.documentSize` (rename for clarity, field sebenarnya selalu berisi document size).
+2. **`document.ts`**: `getRenderState(canvasWidth, canvasHeight)` â†’ `getRenderState()` (no params). Use `this.model.width/height` internally.
 3. **`webgl2.ts`**: Update 2 references dari `state.canvasSize` ke `state.documentSize`.
 4. **`EditorShell.tsx`**: Drop `canvas.width, canvas.height` args dari call site. Removed unused `document.querySelector("canvas")` call.
 5. **New tests** (3 added to `document.test.ts`):
-   - `getRenderState` returns `documentSize` matching engine dimensions (not canvas pixel buffer) — explicit non-equality with HiDPI values 2400×1600 as regression guard
+   - `getRenderState` returns `documentSize` matching engine dimensions (not canvas pixel buffer) â€” explicit non-equality with HiDPI values 2400Ã—1600 as regression guard
    - Layer transforms/metadata correctly reflected in render state
    - Viewport state (pan/zoom) exposed for renderer consumption
 
@@ -1225,26 +1225,26 @@ User report: "gambarnya nggak fit dicanvas" (image doesn't fit in canvas) — ca
 
 ### Catatan
 
-- **Akar masalah**: `RenderState.canvasSize` field sejak awal salah intent — selalu jadi "document size" yang dipakai view matrix. HiDPI change (`canvas.width = docW × zoom × dpr`) mengekspos bug ini karena canvas pixel buffer ≠ document dimensions lagi.
+- **Akar masalah**: `RenderState.canvasSize` field sejak awal salah intent â€” selalu jadi "document size" yang dipakai view matrix. HiDPI change (`canvas.width = docW Ã— zoom Ã— dpr`) mengekspos bug ini karena canvas pixel buffer â‰  document dimensions lagi.
 - **Why rename `documentSize`**: Nama lama misleading. Field isomeric "what view matrix maps to NDC" = document bounds. Rename captures intent.
-- **Manual test recommended**: `pnpm tauri dev` → buka image → verify image fills canvas 100% (sebelumnya 80% atau invisible).
+- **Manual test recommended**: `pnpm tauri dev` â†’ buka image â†’ verify image fills canvas 100% (sebelumnya 80% atau invisible).
 
 ---
 
-## Current Task — HiDPI Sharpness + Snap-Fit Transition [COMPLETE]
+## Current Task â€” HiDPI Sharpness + Snap-Fit Transition [COMPLETE]
 
 Date: 2026-06-01
 
 ### Deskripsi
 
-**Bug ditemukan setelah HiDPI change**: `engine.getRenderState(canvas.width, canvas.height)` di `EditorShell.tsx:75` passing canvas pixel buffer dimensions (e.g., 2400×1600 di dpr=1.25) bukan document dimensions. View matrix lalu maps `[0, 2400]` ke NDC, padahal layer ada di (0, 0, 1920, 1280) document coords → image rendered di top-left 80% canvas only (atau invisible pada zoom ≠ 1).
+**Bug ditemukan setelah HiDPI change**: `engine.getRenderState(canvas.width, canvas.height)` di `EditorShell.tsx:75` passing canvas pixel buffer dimensions (e.g., 2400Ã—1600 di dpr=1.25) bukan document dimensions. View matrix lalu maps `[0, 2400]` ke NDC, padahal layer ada di (0, 0, 1920, 1280) document coords â†’ image rendered di top-left 80% canvas only (atau invisible pada zoom â‰  1).
 
-User report: "gambarnya nggak fit dicanvas" (image doesn't fit in canvas) — caused by view matrix mismatch.
+User report: "gambarnya nggak fit dicanvas" (image doesn't fit in canvas) â€” caused by view matrix mismatch.
 
 ### Perbaikan (planned)
 
-1. **`types.ts`**: `RenderState.canvasSize` → `RenderState.documentSize` (rename for clarity, field sebenarnya selalu berisi document size).
-2. **`document.ts`**: `getRenderState(canvasWidth, canvasHeight)` → `getRenderState()` (no params). Use `this.model.width/height` internally.
+1. **`types.ts`**: `RenderState.canvasSize` â†’ `RenderState.documentSize` (rename for clarity, field sebenarnya selalu berisi document size).
+2. **`document.ts`**: `getRenderState(canvasWidth, canvasHeight)` â†’ `getRenderState()` (no params). Use `this.model.width/height` internally.
 3. **`webgl2.ts`**: Update 2 references dari `state.canvasSize` ke `state.documentSize`.
 4. **`EditorShell.tsx`**: Drop `canvas.width, canvas.height` args dari call site.
 5. **New test**: Unit test `getRenderState` verifying `documentSize` matches `this.model.width/height`, not canvas pixel buffer.
@@ -1257,29 +1257,29 @@ User report: "gambarnya nggak fit dicanvas" (image doesn't fit in canvas) — ca
 
 ---
 
-## Current Task — HiDPI Sharpness + Snap-Fit Transition [COMPLETE]
+## Current Task â€” HiDPI Sharpness + Snap-Fit Transition [COMPLETE]
 
 Date: 2026-06-01
 
 ### Deskripsi
 
-Dua peningkatan viewport berdasarkan feedback user: (1) **snap-to-fit feel** untuk fitToScreen (Ctrl+0, double-click, ResizeObserver) — disable CSS transition 200ms saat fit, (2) **HiDPI/Retina sharpness** — scale canvas pixel buffer by `zoom × devicePixelRatio` agar tidak blur di display high-DPI.
+Dua peningkatan viewport berdasarkan feedback user: (1) **snap-to-fit feel** untuk fitToScreen (Ctrl+0, double-click, ResizeObserver) â€” disable CSS transition 200ms saat fit, (2) **HiDPI/Retina sharpness** â€” scale canvas pixel buffer by `zoom Ã— devicePixelRatio` agar tidak blur di display high-DPI.
 
 ### Perubahan
 
-1. **Rename signal**: `isWheelAction` → `isFitTransition` (nama lebih akurat — signal HANYA untuk fit-to-screen, bukan wheel zoom).
+1. **Rename signal**: `isWheelAction` â†’ `isFitTransition` (nama lebih akurat â€” signal HANYA untuk fit-to-screen, bukan wheel zoom).
 2. **Smooth zoom, snap fit**:
-   - `handleWheel` (Ctrl+scroll, Alt+scroll, Shift+scroll): **TIDAK trigger isFitTransition** — wheel zoom tetap smooth 150ms tween (user feedback: "tetap ada efek saat zoom biar terasa tidak patah").
-   - `Ctrl+=` / `Ctrl+-` keyboard zoom: TIDAK trigger isFitTransition — tetap smooth.
-   - `fitToScreenAndRender()` (Ctrl+0, double-click, ResizeObserver, createEffect): **TRIGGER isFitTransition** + 200ms clearTimeout → snap-to-fit instant.
-3. **HiDPI/Retina sharpness**: `WebGL2Backend.resize(docW, docH, zoom, dpr)` sekarang set `canvas.width = docW × zoom × dpr`. View matrix dan shader TIDAK berubah (math works because document occupies full NDC bounds regardless of canvas size).
-4. **New `resizeRenderer()` helper** di CanvasViewport — DRY consolidation. Called from `fitToScreenAndRender` (after engine.fitToScreen uses new zoom) and `createEffect` (per-document setup).
+   - `handleWheel` (Ctrl+scroll, Alt+scroll, Shift+scroll): **TIDAK trigger isFitTransition** â€” wheel zoom tetap smooth 150ms tween (user feedback: "tetap ada efek saat zoom biar terasa tidak patah").
+   - `Ctrl+=` / `Ctrl+-` keyboard zoom: TIDAK trigger isFitTransition â€” tetap smooth.
+   - `fitToScreenAndRender()` (Ctrl+0, double-click, ResizeObserver, createEffect): **TRIGGER isFitTransition** + 200ms clearTimeout â†’ snap-to-fit instant.
+3. **HiDPI/Retina sharpness**: `WebGL2Backend.resize(docW, docH, zoom, dpr)` sekarang set `canvas.width = docW Ã— zoom Ã— dpr`. View matrix dan shader TIDAK berubah (math works because document occupies full NDC bounds regardless of canvas size).
+4. **New `resizeRenderer()` helper** di CanvasViewport â€” DRY consolidation. Called from `fitToScreenAndRender` (after engine.fitToScreen uses new zoom) and `createEffect` (per-document setup).
 
 ### Files Changed
 
 - `apps/desktop/src/components/editor/CanvasViewport.tsx`: rename signal, add `resizeRenderer()` helper, update transition gate, revert `handleWheel` isWheelAction logic
-- `apps/desktop/src/renderer/types.ts`: `RenderBackend.resize()` signature: `(width, height)` → `(docWidth, docHeight, zoom, dpr)`
-- `apps/desktop/src/renderer/webgl2.ts`: `resize()` implementation multiplies by `zoom × dpr`
+- `apps/desktop/src/renderer/types.ts`: `RenderBackend.resize()` signature: `(width, height)` â†’ `(docWidth, docHeight, zoom, dpr)`
+- `apps/desktop/src/renderer/webgl2.ts`: `resize()` implementation multiplies by `zoom Ã— dpr`
 
 ### Verifikasi
 
@@ -1290,12 +1290,12 @@ Dua peningkatan viewport berdasarkan feedback user: (1) **snap-to-fit feel** unt
 ### Catatan
 
 - **Behavior**: Wheel zoom & keyboard zoom = smooth (150ms tween). Fit-to-screen = snap (instant, no tween). User dapat feel continuity saat zoom manual, snap saat perintah diskret.
-- **HiDPI**: Pada Retina 2x dengan zoom 1x: canvas pixel buffer = docW × docH × 2 (was docW × docH). Pada zoom 2x: canvas = docW × docH × 4. Sharp di semua kasus.
+- **HiDPI**: Pada Retina 2x dengan zoom 1x: canvas pixel buffer = docW Ã— docH Ã— 2 (was docW Ã— docH). Pada zoom 2x: canvas = docW Ã— docH Ã— 4. Sharp di semua kasus.
 - **Multi-monitor dpr change** (user drag ke monitor berbeda): TIDAK di-handle (out of scope). User harus restart app untuk pick up dpr baru.
 
 ---
 
-## Current Task — Viewport Code Simplification (A+B+C+D) [COMPLETE]
+## Current Task â€” Viewport Code Simplification (A+B+C+D) [COMPLETE]
 
 Date: 2026-06-01
 
@@ -1303,15 +1303,15 @@ Date: 2026-06-01
 
 Menyederhanakan kode `CanvasViewport.tsx` yang sebelumnya ribet (convoluted) di 4 area, tanpa mengubah behavior (kecuali fix wheel transition lag):
 
-1. **A. Container CSS redundant** — `flex flex-1 items-center justify-center overflow-hidden bg-editor-canvas relative` + `top:0/left:0` workaround saling meniadakan. Flex centering tidak berlaku untuk `position:absolute` child (static position default ke 0,0). Hapus `items-center justify-center` dari container class, hapus juga `top:0; left:0` dari inline style inner div.
-2. **B. Extract `fitToScreenAndRender` helper** — pattern `engine.fitToScreen(rect.w, rect.h) + syncViewport() + scheduler.requestRender()` muncul 4× (ResizeObserver, createEffect, handleDoubleClick, Ctrl+0 keyboard). Extract ke satu helper.
-3. **C. Wheel transition fix** — Tambah `isWheelAction` signal + 200ms timeout. Gate `transition` jadi `none` saat `isPanning() || isWheelAction()`. Fix 150ms visual lag saat Ctrl+scroll wheel zoom.
-4. **D. Cohesive guard** — `prevStrokePointCount === 0` check dipindah ke dalam `commitBrushStroke()` (lebih cohesive) supaya `onCanvasPointerUp` call site jadi bersih.
+1. **A. Container CSS redundant** â€” `flex flex-1 items-center justify-center overflow-hidden bg-editor-canvas relative` + `top:0/left:0` workaround saling meniadakan. Flex centering tidak berlaku untuk `position:absolute` child (static position default ke 0,0). Hapus `items-center justify-center` dari container class, hapus juga `top:0; left:0` dari inline style inner div.
+2. **B. Extract `fitToScreenAndRender` helper** â€” pattern `engine.fitToScreen(rect.w, rect.h) + syncViewport() + scheduler.requestRender()` muncul 4Ã— (ResizeObserver, createEffect, handleDoubleClick, Ctrl+0 keyboard). Extract ke satu helper.
+3. **C. Wheel transition fix** â€” Tambah `isWheelAction` signal + 200ms timeout. Gate `transition` jadi `none` saat `isPanning() || isWheelAction()`. Fix 150ms visual lag saat Ctrl+scroll wheel zoom.
+4. **D. Cohesive guard** â€” `prevStrokePointCount === 0` check dipindah ke dalam `commitBrushStroke()` (lebih cohesive) supaya `onCanvasPointerUp` call site jadi bersih.
 
 ### Perubahan Detail
 
-- **File**: `apps/desktop/src/components/editor/CanvasViewport.tsx` (746 → 647 lines, **−99 lines**)
-- **CSS container** (line 637): `flex flex-1 items-center justify-center overflow-hidden bg-editor-canvas relative` → `flex-1 relative overflow-hidden bg-editor-canvas`
+- **File**: `apps/desktop/src/components/editor/CanvasViewport.tsx` (746 â†’ 647 lines, **âˆ’99 lines**)
+- **CSS container** (line 637): `flex flex-1 items-center justify-center overflow-hidden bg-editor-canvas relative` â†’ `flex-1 relative overflow-hidden bg-editor-canvas`
 - **Inner div style** (line 648-656): hapus `top: 0, left: 0,`; transition gate tambah `|| isWheelAction()`
 - **New helper** `fitToScreenAndRender()` (line 188-196): dipanggil dari 4 call sites
 - **New signal** `isWheelAction` (line 87-88) + `wheelActionTimeoutId` (line 88); set di `handleWheel` (line 437-438) dengan debounced clear
@@ -1326,26 +1326,26 @@ Menyederhanakan kode `CanvasViewport.tsx` yang sebelumnya ribet (convoluted) di 
 
 ### Catatan
 
-- **Behavior change minor** di C: wheel zoom jadi instant (sebelumnya 150ms tween via CSS transition). Ini **fix yang diinginkan** — match user expectation untuk zoom navigasi.
+- **Behavior change minor** di C: wheel zoom jadi instant (sebelumnya 150ms tween via CSS transition). Ini **fix yang diinginkan** â€” match user expectation untuk zoom navigasi.
 - A, B, D adalah refactor murni (no behavior change).
 - Module-level `interactiveState` tidak disentuh (perlu refactor `input-handler.ts` juga, out of scope "simplify").
-- Pointer event split (viewport vs canvas) tidak disentuh — split adalah pattern yang benar, bukan ribet.
+- Pointer event split (viewport vs canvas) tidak disentuh â€” split adalah pattern yang benar, bukan ribet.
 
 ---
 
-## Current Task — Viewport Canvas Positioning Fix [COMPLETE]
+## Current Task â€” Viewport Canvas Positioning Fix [COMPLETE]
 
 Date: 2026-06-01
 
 ### Deskripsi
 
-Memperbaiki bug posisi canvas yang muncul "sedikit di sebelah kiri" (tidak ter-center) di viewport. Root cause: (1) elemen document div menggunakan `position: absolute` tanpa `top/left` di dalam flex container, menyebabkan static position dipengaruhi oleh `align-items/justify-content: center` (flex alignment), (2) CSS transform menambahkan offset panX/panY di atas static position → double positioning.
+Memperbaiki bug posisi canvas yang muncul "sedikit di sebelah kiri" (tidak ter-center) di viewport. Root cause: (1) elemen document div menggunakan `position: absolute` tanpa `top/left` di dalam flex container, menyebabkan static position dipengaruhi oleh `align-items/justify-content: center` (flex alignment), (2) CSS transform menambahkan offset panX/panY di atas static position â†’ double positioning.
 
 ### Perbaikan
 
-1. [x] **`top: 0; left: 0`** — Tambah inset eksplisit pada document div untuk menimpa static position dari flex container.
-2. [x] **`createEffect` reaktif** — Tambah reactive effect yang memantau `activeDocumentId` dan otomatis memanggil `fitToScreen()` + resize renderer + upload layer textures saat dokumen berubah.
-3. [x] **Separasi init logic** — Pisahkan one-time setup (`renderer.initialize`, keyboard listeners, ResizeObserver) dari per-document setup (fitToScreen, resize, upload) agar tidak duplikasi dan robust.
+1. [x] **`top: 0; left: 0`** â€” Tambah inset eksplisit pada document div untuk menimpa static position dari flex container.
+2. [x] **`createEffect` reaktif** â€” Tambah reactive effect yang memantau `activeDocumentId` dan otomatis memanggil `fitToScreen()` + resize renderer + upload layer textures saat dokumen berubah.
+3. [x] **Separasi init logic** â€” Pisahkan one-time setup (`renderer.initialize`, keyboard listeners, ResizeObserver) dari per-document setup (fitToScreen, resize, upload) agar tidak duplikasi dan robust.
 
 ### Verifikasi
 
@@ -1356,11 +1356,11 @@ Memperbaiki bug posisi canvas yang muncul "sedikit di sebelah kiri" (tidak ter-c
 
 ### Catatan
 
-- CSS `transition: transform 0.15s` masih ada — saat fitToScreen, animasi singkat terjadi. Ini tidak mempengaruhi posisi akhir, hanya visual transisi. Bisa di-track sebagai task polish terpisah jika diinginkan.
+- CSS `transition: transform 0.15s` masih ada â€” saat fitToScreen, animasi singkat terjadi. Ini tidak mempengaruhi posisi akhir, hanya visual transisi. Bisa di-track sebagai task polish terpisah jika diinginkan.
 
 ---
 
-## Current Task — Pointer Event Architecture Split [COMPLETE]
+## Current Task â€” Pointer Event Architecture Split [COMPLETE]
 
 Date: 2026-06-01
 
@@ -1371,18 +1371,18 @@ Split pointer event handling antara viewport container (panning only) dan canvas
 ### Perbaikan
 
 1. [x] **Split event handlers**: Viewport container (`canvasContainerRef`) hanya handle panning (Space+drag, middle-click). Canvas (`canvasRef`) hanya handle tool interactions (brush, selection, crop, eyedropper).
-2. [x] **Viewport cursor**: Tambahkan `viewportCursorClass()` — grab/grabbing saat Space held, default otherwise. Diterapkan ke viewport container via `style={{ cursor: viewportCursorClass() }}`.
-3. [x] **Pointer capture consistency**: Panning → `canvasContainerRef.setPointerCapture/releasePointerCapture`. Tools → `canvasRef.setPointerCapture/releasePointerCapture`.
+2. [x] **Viewport cursor**: Tambahkan `viewportCursorClass()` â€” grab/grabbing saat Space held, default otherwise. Diterapkan ke viewport container via `style={{ cursor: viewportCursorClass() }}`.
+3. [x] **Pointer capture consistency**: Panning â†’ `canvasContainerRef.setPointerCapture/releasePointerCapture`. Tools â†’ `canvasRef.setPointerCapture/releasePointerCapture`.
 4. [x] **Canvas element event wiring**: Tambahkan `onPointerDown`, `onPointerMove`, `onPointerUp` ke elemen `<canvas>` untuk tool interactions.
 
 ### Event Flow
 
 | User Action | Viewport Container | Canvas Element |
 |---|---|---|
-| Click empty + Space held | `onViewportPointerDown` → panning start | — |
-| Click empty, no Space | `onViewportPointerDown` → early return (not panning) | — |
-| Click canvas + Space held | `onViewportPointerDown` → panning start | `onCanvasPointerDown` → early return (Space pressed) |
-| Click canvas, no Space | `onViewportPointerDown` → early return | `onCanvasPointerDown` → tool interaction |
+| Click empty + Space held | `onViewportPointerDown` â†’ panning start | â€” |
+| Click empty, no Space | `onViewportPointerDown` â†’ early return (not panning) | â€” |
+| Click canvas + Space held | `onViewportPointerDown` â†’ panning start | `onCanvasPointerDown` â†’ early return (Space pressed) |
+| Click canvas, no Space | `onViewportPointerDown` â†’ early return | `onCanvasPointerDown` â†’ tool interaction |
 
 ### Verifikasi
 
@@ -1392,7 +1392,7 @@ Split pointer event handling antara viewport container (panning only) dan canvas
 
 ---
 
-## Current Task — Keyboard Listeners & Upload Timing Regression Fix [COMPLETE]
+## Current Task â€” Keyboard Listeners & Upload Timing Regression Fix [COMPLETE]
 
 Date: 2026-06-01
 
@@ -1404,7 +1404,7 @@ Memperbaiki regresi: (1) keyboard listeners (spacebar panning, zoom shortcuts) t
 
 1. [x] **Decouple init from listeners**: Bungkus seluruh blok inisialisasi renderer dalam `try/catch`. Keyboard listeners dan ResizeObserver ditempatkan setelah blok, selalu terdaftar regardless of init failure.
 2. [x] **Image upload loop in onMount**: Setelah `renderer.initialize()`, iterasi `engine.getLayers()` dan upload setiap `layer.imageBitmap` ke WebGL.
-3. [x] **Overlay canvas graceful guard**: Null check `if (overlayCanvasRef)` — brush preview optional, viewport positioning tetap jalan.
+3. [x] **Overlay canvas graceful guard**: Null check `if (overlayCanvasRef)` â€” brush preview optional, viewport positioning tetap jalan.
 4. [x] **Fix image vertical flip**: Hapus `1.0 - pos.y` Y-flip dari vertex shader (`shaders.ts:18`). View matrix sudah melakukan Y-flip via `m[5] = -2.0 / docH`. Kombinasi keduanya menyebabkan gambar terbalik.
 5. [x] **Fix spacebar panning**: Pindahkan `onPointerDown`, `onPointerMove`, `onPointerUp` dari elemen `<canvas>` ke viewport container div. Canvas berada di dalam CSS transform container (ukuran document), sehingga klik di area kosong viewport tidak mengenai canvas. Dengan pointer events di viewport container, klik di mana pun di area viewport memicu panning.
 
@@ -1426,7 +1426,7 @@ Memperbaiki 8 arsitektur issues yang diidentifikasi dalam code review: double zo
 
 ### Perbaikan
 
-1. [x] **Double sync**: `syncState()` hapus zoom/pan writes — hanya `syncViewport()` yang menulis.
+1. [x] **Double sync**: `syncState()` hapus zoom/pan writes â€” hanya `syncViewport()` yang menulis.
 2. [x] **Stable toolContext**: Module-level `interactiveState` mutable ref + `prepareToolContext()` sync per event.
 3. [x] **Incremental brush**: `brushAccumulators` Map menyimpan persistent OffscreenCanvas per layer. Delta segment drawing.
 4. [x] **BrushCursorOverlay**: Cache `containerEl` on mount, skip DOM query per move.
@@ -1457,11 +1457,11 @@ Melakukan viewport architecture cleanup: remove dead code (viewportUtils.ts, com
 
 ### Rencana Kerja
 
-1. [x] **Task 1**: Remove zoom slider from BottomStatusBar (input range, +/– buttons) — keep zoom readout.
+1. [x] **Task 1**: Remove zoom slider from BottomStatusBar (input range, +/â€“ buttons) â€” keep zoom readout.
 2. [x] **Task 2**: Create `syncViewport()` helper in EditorContext that reads `engine.getViewport()` and writes zoom/pan signals.
-3. [x] **Task 3**: Refactor CanvasViewport to use syncViewport() — remove 9 manual setZoom/setPan calls.
+3. [x] **Task 3**: Refactor CanvasViewport to use syncViewport() â€” remove 9 manual setZoom/setPan calls.
 4. [x] **Task 4**: Add ResizeObserver for viewport re-fit on window resize. Clean up in onCleanup.
-5. [x] **Task 5**: Fix BrushCursorOverlay coordinates — replace ghost DOM query `[data-editor-container]` with `[data-viewport-container]`, compute container-relative divided by zoom.
+5. [x] **Task 5**: Fix BrushCursorOverlay coordinates â€” replace ghost DOM query `[data-editor-container]` with `[data-viewport-container]`, compute container-relative divided by zoom.
 6. [x] **Task 6**: Delete viewportUtils.ts (7 unused functions, 267 lines) + its test file (14 tests).
 7. [x] **Task 7**: Remove computeFitZoom from coords.ts (duplicate of engine.fitToScreen()).
 8. [x] **Task 8**: Clean up computeViewMatrix unused parameters (_viewport, _canvasW, _canvasH).
@@ -1489,7 +1489,7 @@ Memperbaiki regresi koordinat setelah CSS transform migration: `getDocCoords` me
 
 ### Perbaikan
 
-1. **`getDocCoords`**: `canvasRef.getBoundingClientRect()` → `canvasContainerRef.getBoundingClientRect()` — container rect adalah referensi layar stabil.
+1. **`getDocCoords`**: `canvasRef.getBoundingClientRect()` â†’ `canvasContainerRef.getBoundingClientRect()` â€” container rect adalah referensi layar stabil.
 2. **`handleWheel`**: Anchor zoom diubah ke container-relative (`e.clientX - containerRect.left`), bukan viewport-absolute (`e.clientX`).
 3. **`onMount`**: Tambah `engine.fitToScreen()` setelah renderer inisialisasi agar dokumen terlihat pas saat load.
 
@@ -1735,10 +1735,10 @@ Implementasi multi-document workspace: document tab strip, empty state minimal, 
 
 ### Perubahan
 
-1. **`crates/core/src/workspace.rs`** — New file. `DocumentSession`, `WorkspaceState`, `WorkspaceSnapshot`, `DocumentTabSummary`, `DocumentSnapshot`, `WorkspaceLimits`. 16 tests.
-2. **`crates/core/src/lib.rs`** — Register `workspace` module.
-3. **`apps/desktop/src-tauri/src/main.rs`** — Replace `EditorState` with `AppRuntime` containing `Mutex<WorkspaceState>`. Add commands: `get_workspace_state`, `open_images`, `switch_document`, `close_document`, `set_selected_layer`. Route all edit commands through active document. Remove default document bootstrap. Empty workspace on launch.
-4. **`apps/desktop/src/App.tsx`** — Add workspace signals (`documents`, `activeDocumentId`, `limits`). Add document tab strip UI. Add empty canvas state ("Open an image to start"). Multi-file open dialog. Drag/drop support. Close tab with discard confirmation. Ctrl+W shortcut. Inspector "No document open" states. Export disabled when no active document. Status bar "No document" state. Grid layout updated for tab strip.
+1. **`crates/core/src/workspace.rs`** â€” New file. `DocumentSession`, `WorkspaceState`, `WorkspaceSnapshot`, `DocumentTabSummary`, `DocumentSnapshot`, `WorkspaceLimits`. 16 tests.
+2. **`crates/core/src/lib.rs`** â€” Register `workspace` module.
+3. **`apps/desktop/src-tauri/src/main.rs`** â€” Replace `EditorState` with `AppRuntime` containing `Mutex<WorkspaceState>`. Add commands: `get_workspace_state`, `open_images`, `switch_document`, `close_document`, `set_selected_layer`. Route all edit commands through active document. Remove default document bootstrap. Empty workspace on launch.
+4. **`apps/desktop/src/App.tsx`** â€” Add workspace signals (`documents`, `activeDocumentId`, `limits`). Add document tab strip UI. Add empty canvas state ("Open an image to start"). Multi-file open dialog. Drag/drop support. Close tab with discard confirmation. Ctrl+W shortcut. Inspector "No document open" states. Export disabled when no active document. Status bar "No document" state. Grid layout updated for tab strip.
 
 ### Verifikasi
 
@@ -1783,15 +1783,15 @@ Membuat pixel rendering wgpu visible di viewport dengan cara membuat webview tra
 
 ### Perubahan
 
-1. **CSS Transparency** — Hapus `bg-[#1A1A1C]` dari `index.html` body, buat artboard + canvas-wrap `bg-transparent`.
-2. **Placeholder Removal** — Hapus CSS colored rectangle placeholder di artboard, ganti dengan transparent bounding boxes untuk transform handles.
-3. **Viewport State Command** — Tambah `update_viewport_state` command di Rust, `ViewportState` struct, dan viewport matrix mapping (document coords → artboard NDC position).
-4. **Render Crate Update** — Tambah `set_viewport_state()` method, viewport state fields, dan dual-pass rendering (document-space compositing + artboard-position screen pass).
-5. **Frontend Viewport Sync** — Tambah `syncViewportState()` yang compute artboard screen position via `getBoundingClientRect()` dan kirim ke Rust. Dipanggil pada pan/zoom/resize.
-6. **Brush Dirty Fix** — `draw_brush_stroke` sekarang `doc.mark_dirty(&layer_id)` setelah stroke.
-7. **Import Guardrails** — `load_image_from_bytes` enforce `MAX_PIXEL_BUDGET` setelah decode.
-8. **Contract Update** — `get_contract_info` sekarang list `open_image`, `trigger_render`, `update_viewport_state`.
-9. **Status Bar Fix** — Dynamic `{docWidth()} x {docHeight()} px` bukan hardcoded.
+1. **CSS Transparency** â€” Hapus `bg-[#1A1A1C]` dari `index.html` body, buat artboard + canvas-wrap `bg-transparent`.
+2. **Placeholder Removal** â€” Hapus CSS colored rectangle placeholder di artboard, ganti dengan transparent bounding boxes untuk transform handles.
+3. **Viewport State Command** â€” Tambah `update_viewport_state` command di Rust, `ViewportState` struct, dan viewport matrix mapping (document coords â†’ artboard NDC position).
+4. **Render Crate Update** â€” Tambah `set_viewport_state()` method, viewport state fields, dan dual-pass rendering (document-space compositing + artboard-position screen pass).
+5. **Frontend Viewport Sync** â€” Tambah `syncViewportState()` yang compute artboard screen position via `getBoundingClientRect()` dan kirim ke Rust. Dipanggil pada pan/zoom/resize.
+6. **Brush Dirty Fix** â€” `draw_brush_stroke` sekarang `doc.mark_dirty(&layer_id)` setelah stroke.
+7. **Import Guardrails** â€” `load_image_from_bytes` enforce `MAX_PIXEL_BUDGET` setelah decode.
+8. **Contract Update** â€” `get_contract_info` sekarang list `open_image`, `trigger_render`, `update_viewport_state`.
+9. **Status Bar Fix** â€” Dynamic `{docWidth()} x {docHeight()} px` bukan hardcoded.
 
 ### Bukti Verifikasi
 
@@ -1803,7 +1803,7 @@ Membuat pixel rendering wgpu visible di viewport dengan cara membuat webview tra
 
 ### Next Step
 
-1. Manual smoke test: open image → see pixels → brush → undo/redo → export.
+1. Manual smoke test: open image â†’ see pixels â†’ brush â†’ undo/redo â†’ export.
 2. Performance re-measurement jika diperlukan.
 3. Documentation update (AI_HISTORY, FEATURES).
 
@@ -1870,14 +1870,14 @@ Fix wgpu format mismatch between render pipeline (Bgra8UnormSrgb) and composited
 
 ## Verifikasi Terakhir
 
-- ✅ `pnpm tauri dev` — app runs successfully
-- ✅ Tauri bridge (`ping`) — responds correctly
-- ✅ Layer CRUD — functional via IPC
-- ✅ Undo/Redo — operational
+- âœ… `pnpm tauri dev` â€” app runs successfully
+- âœ… Tauri bridge (`ping`) â€” responds correctly
+- âœ… Layer CRUD â€” functional via IPC
+- âœ… Undo/Redo â€” operational
 
 ## Blocker / Risiko
 
-- wgpu renderer masih stub — perlu integrasi untuk rendering canvas sebenarnya
+- wgpu renderer masih stub â€” perlu integrasi untuk rendering canvas sebenarnya
 - Canvas viewport masih menggunakan static HTML demo, belum pixel-level rendering
 - Brush/eraser/selection belum ada implementasi di core
 
@@ -1887,21 +1887,21 @@ Fix wgpu format mismatch between render pipeline (Bgra8UnormSrgb) and composited
 
 > Entri lama tetap di bawah untuk referensi. Tugas terbaru selalu di atas.
 
-## Proportional Fix — Rail 48×36 / Top Bar 44px [COMPLETE]
+## Proportional Fix â€” Rail 48Ã—36 / Top Bar 44px [COMPLETE]
 
-- [x] Tool rail `w-[60px]`→`w-[48px]`, grid column `52px`→`48px` (sinkron)
-- [x] Button `w-10 h-10`→`w-9 h-9` (36px sesuai design spec)
-- [x] Icon `size={20}`→`size={18}` di semua tool buttons
-- [x] Rail gap `gap-1.5`→`gap-1`
-- [x] Top bar `36px`→`44px` (sesuai wireframe spec)
+- [x] Tool rail `w-[60px]`â†’`w-[48px]`, grid column `52px`â†’`48px` (sinkron)
+- [x] Button `w-10 h-10`â†’`w-9 h-9` (36px sesuai design spec)
+- [x] Icon `size={20}`â†’`size={18}` di semua tool buttons
+- [x] Rail gap `gap-1.5`â†’`gap-1`
+- [x] Top bar `36px`â†’`44px` (sesuai wireframe spec)
 - [x] Update `26-wireframe-layout-spec.md` dimensi
-- [x] Build verification: ✅ `tsc` + `vite build` sukses
+- [x] Build verification: âœ… `tsc` + `vite build` sukses
 
 ## Remove Command Palette UI Button [COMPLETE]
 
 - [x] Hapus button + separator dari toolbar, hapus import Terminal
-- [x] Update docs/32-keyboard-shortcut-map.md dengan catatan
-- [x] Build verification: ✅ `tsc` + `vite build` sukses
+- [x] Update docs/reference/keyboard-shortcut-map.md dengan catatan
+- [x] Build verification: âœ… `tsc` + `vite build` sukses
 
 ## Inspector Panel Polish [COMPLETE]
 
@@ -1910,9 +1910,9 @@ Fix wgpu format mismatch between render pipeline (Bgra8UnormSrgb) and composited
 - [x] Tab redesign dengan icon (Layers, Clock) + bottom border accent
 - [x] Layer items: title tooltips, translate + opacity hover animation
 - [x] History empty state dengan Clock icon
-- [x] Build verification: ✅ `tsc` + `vite build` sukses
+- [x] Build verification: âœ… `tsc` + `vite build` sukses
 
-## Bug Fix — Tailwind CDN Conflict & Design Tokens Migration [COMPLETE]
+## Bug Fix â€” Tailwind CDN Conflict & Design Tokens Migration [COMPLETE]
 
 - [x] Hapus CDN Tailwind + Lucide dari index.html
 - [x] Install lucide-solid npm package, migrasi dari `<i data-lucide>` ke komponen SolidJS
@@ -1920,9 +1920,9 @@ Fix wgpu format mismatch between render pipeline (Bgra8UnormSrgb) and composited
 - [x] Ganti hardcoded `text-[#...]` dengan token `text-text-primary/secondary/muted`
 - [x] Ruler ticks pake `<For>` loop, SVG animation pake `animate-dash` class
 - [x] Hapus file .jsx duplikat (App.jsx, index.jsx, ui-sanity.test.js)
-- [x] Build verification: ✅ `tsc` + `vite build` sukses
+- [x] Build verification: âœ… `tsc` + `vite build` sukses
 
-## Initial Setup — Project Scaffolding [COMPLETE]
+## Initial Setup â€” Project Scaffolding [COMPLETE]
 
 - [x] Monorepo workspace setup (pnpm)
 - [x] Tauri 2 desktop app initialization

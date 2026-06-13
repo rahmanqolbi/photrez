@@ -74,40 +74,44 @@ Status labels:
 
 | Package | Purpose | Version Target | License | Status | Size Impact | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| `solid-js` | UI framework | `1.x` | MIT | Approved | Low | Core framework, non-negotiable |
-| `typescript` | Type safety | `5.x` | Apache-2.0 | Approved | Dev-only | |
-| `vite` | Build tooling | `5.x` | MIT | Approved | Dev-only | |
-| `@tauri-apps/api` | Tauri IPC bridge | `2.x` | MIT/Apache-2.0 | Approved | Low | Shell-core communication |
-| `@tauri-apps/cli` | Tauri CLI tooling | `2.x` | MIT/Apache-2.0 | Approved | Dev-only | Build and dev server |
+| `solid-js` | UI framework | `^1.8.15` | MIT | Approved | Low | Core framework, non-negotiable |
+| `typescript` | Type safety | `^5.2.2` | Apache-2.0 | Approved | Dev-only | |
+| `vite` | Build tooling | `^8.0.14` | MIT | Approved | Dev-only | Active Vite 8 build runner |
+| `@tailwindcss/vite` | Tailwind build plugin | `^4.0.0` | MIT | Approved | Dev-only | Tailwind CSS v4 compiler integration |
+| `tailwindcss` | Styling framework | `^4.0.0` | MIT | Approved | Low | CSS framework |
+| `@tauri-apps/api` | Tauri IPC bridge | `^2.0.0` | MIT/Apache-2.0 | Approved | Low | Shell-core communication |
+| `@tauri-apps/plugin-dialog` | Dialog plugin | `^2.0.0` | MIT/Apache-2.0 | Approved | Low | Dialog wrappers |
+| `@tauri-apps/plugin-shell` | Shell execution | `^2.0.0` | MIT/Apache-2.0 | Approved | Low | Shell execution bridge |
+| `clsx` | Classname composition | `^2.1.1` | MIT | Approved | Negligible | Conditional Tailwind styling helper |
+| `lucide-solid` | UI Icons pack | `^1.16.0` | ISC | Approved | Low | Action icons |
 
-### Testing (Frontend)
-
-| Package | Purpose | Version Target | License | Status | Size Impact | Notes |
-| --- | --- | --- | --- | --- | --- | --- |
-| `vitest` | Unit testing | Latest stable | MIT | Provisional | Dev-only | Frontend unit tests |
-| `@testing-library/jest-dom` | DOM assertions | Latest stable | MIT | Research | Dev-only | If DOM testing is needed |
-
-### Dev Tooling
+### Testing & Dev Tooling
 
 | Package | Purpose | Version Target | License | Status | Size Impact | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
+| `vitest` | Unit testing | `^4.1.7` | MIT | Approved | Dev-only | Unit testing runner |
+| `@testing-library/jest-dom` | DOM assertions | `^6.9.1` | MIT | Approved | Dev-only | Unit testing DOM checks |
+| `@playwright/test` | Browser E2E tests | `^1.60.0` | Apache-2.0 | Approved | Dev-only | E2E automation runner |
+| `canvas` | Node canvas simulation | `^3.2.3` | MIT | Approved | Dev-only | Test rendering emulation |
+| `jsdom` | Test DOM emulation | `^29.1.1` | MIT | Approved | Dev-only | Emulated browser env for Vitest |
+| `@vitest/ui` | Vitest graphical UI | `^4.1.7` | MIT | Approved | Dev-only | Visual test reporter |
+| `esbuild` | JS bundling/compiling | `^0.28.0` | MIT | Approved | Dev-only | Used by Vite internally |
 | `eslint` | Linting | `9.x` | MIT | Approved | Dev-only | |
 | `prettier` | Formatting | `3.x` | MIT | Approved | Dev-only | |
-| `eslint-plugin-solid` | SolidJS lint rules | Latest stable | MIT | Provisional | Dev-only | |
 
 ## 5) License Compatibility Matrix
 
 | Dependency License | Compatible with AGPL-3.0? | Notes |
 | --- | --- | --- |
-| MIT | ✅ Yes | Permissive, no conflict |
-| Apache-2.0 | ✅ Yes | Compatible with GPL family |
-| MIT/Apache-2.0 dual | ✅ Yes | Standard Rust ecosystem dual license |
-| BSD-2/3 | ✅ Yes | Permissive |
-| GPL-3.0 | ✅ Yes | Same family |
-| LGPL-2.1/3.0 | ⚠️ Conditional | OK for dynamic linking; static linking requires review |
-| MPL-2.0 | ⚠️ Conditional | File-level copyleft; generally compatible but review |
-| Proprietary | ❌ No | Not allowed |
-| SSPL | ❌ No | Not OSI-approved, incompatible |
+| MIT | âœ… Yes | Permissive, no conflict |
+| Apache-2.0 | âœ… Yes | Compatible with GPL family |
+| MIT/Apache-2.0 dual | âœ… Yes | Standard Rust ecosystem dual license |
+| BSD-2/3 | âœ… Yes | Permissive |
+| GPL-3.0 | âœ… Yes | Same family |
+| LGPL-2.1/3.0 | âš ï¸ Conditional | OK for dynamic linking; static linking requires review |
+| MPL-2.0 | âš ï¸ Conditional | File-level copyleft; generally compatible but review |
+| Proprietary | âŒ No | Not allowed |
+| SSPL | âŒ No | Not OSI-approved, incompatible |
 
 ## 6) Security Scanning Policy
 
@@ -143,7 +147,7 @@ Status labels:
 ## 8) Size Impact Monitoring
 
 - Track `cargo bloat` output for top contributors to binary size.
-- Track installer size trend across milestones per `docs/16-performance-measurement-protocol.md`.
+- Track installer size trend across milestones per `docs/reference/performance-measurement-protocol.md`.
 - If a new dependency adds `> 2 MB` to installer size, document justification.
 
 ## 9) Rejection Log
@@ -152,11 +156,11 @@ Track rejected dependencies with rationale to avoid re-evaluation cycles.
 
 | Crate/Package | Reason for Rejection | Date | Alternative |
 | --- | --- | --- | --- |
-| — | — | — | — |
+| â€” | â€” | â€” | â€” |
 
 ## 10) Change Control
 
 - Adding a new dependency requires updating this file first.
 - Removing an approved dependency requires noting the reason.
 - Status changes must include date and brief rationale.
-- Major dependency decisions should be recorded in `docs/01-id-decision-log.md`.
+- Major dependency decisions should be recorded in `docs/decisions/id-decision-log.md`.
