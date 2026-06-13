@@ -4,6 +4,23 @@
 
 ## Current Tasks
 
+### [2026-06-13] Bug Hunt — Layer Selection on Canvas Requires Multiple Clicks [COMPLETE]
+
+**Goal:**
+Fix the issue where selecting a layer directly on the canvas under the Move tool requires multiple clicks (or fails to select) when no layer is currently selected.
+
+**Done:**
+1. Identified that when no layer is selected (`selectedLayerId` is `null`), the SVG overlay (`[data-overlay-svg]`) is not rendered on screen.
+2. In `CanvasViewport.tsx`, `handleMoveAutoSelect` returned early if the click target did not have a `[data-overlay-svg]` ancestor.
+3. Updated `handleMoveAutoSelect` to proceed with the hit-test if the click targets `canvasRef` or `canvasContainerRef` directly when the overlay is absent.
+4. Verified that all frontend tests pass cleanly and type-checks compile successfully.
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test` (837 tests passed)
+- PASS: `pnpm.cmd run build`
+
+---
+
 ### [2026-06-13] Restructure & Update Other Documentation Files [COMPLETE]
 
 **Goal:**

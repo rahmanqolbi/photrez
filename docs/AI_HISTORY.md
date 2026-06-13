@@ -1,5 +1,24 @@
 # AI History — Photrez
 
+## [2026-06-13] BUG FIX — Canvas Layer Auto-Selection When No Layer is Selected [COMPLETE]
+
+### Kategori: BUG FIX / UI / FRONTEND / MOVE TOOL / AUTO-SELECT
+
+**Root Cause:**
+When `selectedLayerId` is `null` (no layer selected), the `SelectionTransformOverlay` SVG element (`[data-overlay-svg]`) is not rendered on screen. Under the Move tool, `handleMoveAutoSelect` checked for a `[data-overlay-svg]` ancestor on the click event target and returned early if it was missing. Consequently, clicks on the `<canvas>` (`canvasRef`) or `#canvas-container` (`canvasContainerRef`) when no layer was active were ignored, making auto-selection on the canvas non-responsive.
+
+**Fix Rationale:**
+Updated `handleMoveAutoSelect` in `CanvasViewport.tsx` to handle the case when the SVG overlay is absent. If no overlay exists, clicks on the `canvasRef` or `canvasContainerRef` targets are allowed to trigger the layer hit-test, enabling instant auto-selection on the first canvas click.
+
+**Files Changed:**
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` — updated `handleMoveAutoSelect` to permit clicks on canvas/container elements when the overlay is unrendered.
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test` (837 tests passed)
+- PASS: `pnpm.cmd run build`
+
+---
+
 ## [2026-06-13] RESTRUCTURE — Organize Documentation Folders and Update Contents [COMPLETE]
 
 ### Kategori: RESTRUCTURE / DOCUMENTATION / RELINKING / CONTENT FIXES
