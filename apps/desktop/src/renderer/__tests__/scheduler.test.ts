@@ -42,4 +42,30 @@ describe('RenderScheduler', () => {
     expect(callback).not.toHaveBeenCalled();
     scheduler.dispose();
   });
+
+  it('runs continuous render loop when started and stops when requested', async () => {
+    const callback = vi.fn();
+    const scheduler = new RenderScheduler(callback);
+
+    expect(scheduler.isContinuous()).toBe(false);
+    scheduler.startContinuousRender();
+    expect(scheduler.isContinuous()).toBe(true);
+
+    // Let it run for a couple of frame ticks
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    expect(callback).toHaveBeenCalled();
+    const callCountAfterFrame1 = callback.mock.calls.length;
+
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    expect(callback.mock.calls.length).toBeGreaterThan(callCountAfterFrame1);
+
+    scheduler.stopContinuousRender();
+    expect(scheduler.isContinuous()).toBe(false);
+    const finalCallCount = callback.mock.calls.length;
+
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    expect(callback.mock.calls.length).toBe(finalCallCount);
+
+    scheduler.dispose();
+  });
 });

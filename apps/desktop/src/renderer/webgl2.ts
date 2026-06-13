@@ -157,7 +157,7 @@ export class WebGL2Backend implements RenderBackend {
     }
   }
 
-  render(state: RenderState): void {
+  render(state: RenderState, viewProjectionMatrix?: Float32Array): void {
     const gl = this.gl;
     const canvas = this.canvas;
     if (!gl || !canvas) return;
@@ -165,7 +165,7 @@ export class WebGL2Backend implements RenderBackend {
     // Ensure ping-pong FBOs exist and are sized properly
     const docW = state.documentSize.width;
     const docH = state.documentSize.height;
-    const viewProj = this.computeViewMatrix(docW, docH);
+    const viewProj = viewProjectionMatrix || this.computeViewMatrix(docW, docH);
 
     // Filter visible layers with textures
     const visibleLayers = [];
@@ -410,6 +410,73 @@ export class WebGL2Backend implements RenderBackend {
 
     if (this.canvas) {
       // Scale pixel buffer by zoom × dpr so visual area = device pixel area (sharp on HiDPI)
+      this.canvas.width = w;
+      this.canvas.height = h;
+    }
+
+    const gl = this.gl;
+    if (!gl) return;
+
+    if (w !== this.currentWidth || h !== this.currentHeight) {
+      this.currentWidth = w;
+      this.currentHeight = h;
+
+      // Delete existing ping-pong buffers
+      for (let i = 0; i < 2; i++) {
+        if (this.pingPongFbos[i]) {
+          gl.deleteFramebuffer(this.pingPongFbos[i]);
+          this.pingPongFbos[i] = null;
+        }
+        if (this.pingPongTextures[i]) {
+          gl.deleteTexture(this.pingPongTextures[i]);
+          this.pingPongTextures[i] = null;
+        }
+      }
+
+      // Recreate them
+      for (let i = 0; i < 2; i++) {
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA,
+          w,
+          h,
+          0,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          null
+        );
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        const fbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferTexture2D(
+          gl.FRAMEBUFFER,
+          gl.COLOR_ATTACHMENT0,
+          gl.TEXTURE_2D,
+          texture,
+          0
+        );
+
+        this.pingPongTextures[i] = texture;
+        this.pingPongFbos[i] = fbo;
+      }
+
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+  }
+
+  resizeToViewport(width: number, height: number, dpr: number): void {
+    const w = Math.round(width * dpr);
+    const h = Math.round(height * dpr);
+
+    if (this.canvas) {
       this.canvas.width = w;
       this.canvas.height = h;
     }

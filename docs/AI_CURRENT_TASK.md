@@ -4,6 +4,21 @@
 
 ## Current Tasks
 
+### [2026-06-13] Feature — GPU-Accelerated Smooth Zoom [IN PROGRESS]
+
+**Goal:**
+Migrate viewport rendering pipeline from CSS transform-based zoom to viewport-fixed WebGL Camera. Implement smooth 150ms easeOutCubic transitions for keyboard/fit-to-screen zoom, and instant scroll wheel zoom.
+
+**Planned:**
+1. ViewportCamera class + Easing functions (standalone) & unit tests (Phase 1)
+2. WebGL2 Renderer Migration (resizeToViewport & VP Matrix) (Phase 2)
+3. Scheduler Continuous Render Mode (Phase 3)
+4. CanvasViewport + EditorContext Integration (Phase 4)
+5. Pan/Zoom Handler Migration (Phase 5)
+6. Overlay Coordinate Migration (Phase 6)
+7. Backward Compatibility (Phase 7)
+8. Testing & Verification (Phase 8)
+
 ### [2026-06-13] Bug Fix — Modern Crop: Reset Button in Ratio/Size Modes [COMPLETE]
 
 **Root Cause:**

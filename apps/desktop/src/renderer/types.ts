@@ -21,8 +21,9 @@ export interface RenderBackend {
   initialize(canvas: HTMLCanvasElement): void;
   uploadImage(layerId: string, source: ImageBitmap): TextureRef;
   destroyTexture(layerId: string): void;
-  render(state: RenderState): void;
+  render(state: RenderState, viewProjectionMatrix?: Float32Array): void;
   resize(docWidth: number, docHeight: number, zoom: number, dpr: number): void;
+  resizeToViewport(width: number, height: number, dpr: number): void;
   dispose(): void;
 
   readPixel(x: number, y: number): [number, number, number, number] | null;
