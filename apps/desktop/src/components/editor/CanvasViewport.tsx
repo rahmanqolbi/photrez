@@ -446,10 +446,16 @@ export function CanvasViewport() {
     if (!moveAutoSelect()) return;
     if (isSpacePressed() || isPanning()) return;
     const target = e.target as Element | null;
-    if (!target?.closest?.("[data-overlay-svg]")) return;
-    // Only intercept clicks on the SVG root (not on child elements like
-    // move rect/handles which have their own onPointerDown).
-    if (target !== target?.closest?.("[data-overlay-svg]")) return;
+
+    const isSvgOverlayClick = target?.closest?.("[data-overlay-svg]");
+    if (isSvgOverlayClick) {
+      // Only intercept clicks on the SVG root (not on child elements like
+      // move rect/handles which have their own onPointerDown).
+      if (target !== target?.closest?.("[data-overlay-svg]")) return;
+    } else {
+      // If there is no SVG overlay, allow clicks directly on the canvas or container
+      if (target !== canvasRef && target !== canvasContainerRef) return;
+    }
 
     const engine = workspace.getActiveEngine();
     if (!engine) return;
