@@ -16,7 +16,7 @@ interface CanvasKeyboardOptions {
   isPanning: () => boolean;
   setIsPanning: (panning: boolean) => void;
   stopMomentum: () => void;
-  fitToScreenAndRender: () => void;
+  fitToScreenAndRender: (animated?: boolean) => void;
   syncViewport: () => void;
   getCanvasContainerRef: () => HTMLDivElement | undefined;
 }
@@ -61,6 +61,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     viewportWidth,
     viewportHeight,
     pan,
+    setViewportState,
     selectedLayerId,
     setSelectedLayerId,
     layerTransformSession,
@@ -79,6 +80,8 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     eraserOpacity,
     eraserFlow,
     eraserSmoothing,
+    camera,
+    syncFromCamera,
   } = useEditor();
 
   const resolvedCropFillColor = () => (
@@ -271,12 +274,12 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
 
             setCropRect(newRect);
 
-            const vp = engine.getViewport();
-            engine.setViewport({
-              panX: vp.panX - actualDx * zoom(),
-              panY: vp.panY - actualDy * zoom(),
+            const currentPan = pan();
+            setViewportState({
+              x: currentPan.x - actualDx * zoom(),
+              y: currentPan.y - actualDy * zoom(),
+              zoom: zoom(),
             });
-            options.syncViewport();
           }
           scheduler.requestRender();
           return;
@@ -437,8 +440,10 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         const canvasContainerRef = options.getCanvasContainerRef();
         if (canvasContainerRef) {
           const rect = canvasContainerRef.getBoundingClientRect();
-          engine.zoom(1.2, rect.width / 2, rect.height / 2);
-          options.syncViewport();
+          const centerX = rect.width / 2;
+          const centerY = rect.height / 2;
+          camera.zoomToPoint(1.25, centerX, centerY);
+          syncFromCamera();
           scheduler.requestRender();
         }
         return;
@@ -456,8 +461,10 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         const canvasContainerRef = options.getCanvasContainerRef();
         if (canvasContainerRef) {
           const rect = canvasContainerRef.getBoundingClientRect();
-          engine.zoom(0.8, rect.width / 2, rect.height / 2);
-          options.syncViewport();
+          const centerX = rect.width / 2;
+          const centerY = rect.height / 2;
+          camera.zoomToPoint(0.8, centerX, centerY);
+          syncFromCamera();
           scheduler.requestRender();
         }
         return;
@@ -471,7 +478,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         e.preventDefault();
         e.stopPropagation();
         options.stopMomentum();
-        options.fitToScreenAndRender();
+        options.fitToScreenAndRender(false);
         return;
       }
     };

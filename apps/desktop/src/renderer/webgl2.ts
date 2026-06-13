@@ -6,6 +6,43 @@ import {
   CHECKERBOARD_FRAGMENT_SOURCE
 } from "./shaders";
 
+export function projectDocumentScissor(
+  viewProj: Float32Array,
+  docW: number,
+  docH: number,
+  canvasW: number,
+  canvasH: number,
+): { x: number; y: number; width: number; height: number } {
+  const project = (x: number, y: number) => {
+    const ndcX = viewProj[0] * x + viewProj[4] * y + viewProj[12];
+    const ndcY = viewProj[1] * x + viewProj[5] * y + viewProj[13];
+    return {
+      x: ((ndcX + 1) / 2) * canvasW,
+      y: ((1 - ndcY) / 2) * canvasH,
+    };
+  };
+
+  const corners = [
+    project(0, 0),
+    project(docW, 0),
+    project(0, docH),
+    project(docW, docH),
+  ];
+  const minX = Math.max(0, Math.floor(Math.min(...corners.map((p) => p.x))));
+  const maxX = Math.min(canvasW, Math.ceil(Math.max(...corners.map((p) => p.x))));
+  const minYTop = Math.max(0, Math.floor(Math.min(...corners.map((p) => p.y))));
+  const maxYTop = Math.min(canvasH, Math.ceil(Math.max(...corners.map((p) => p.y))));
+  const width = Math.max(0, maxX - minX);
+  const height = Math.max(0, maxYTop - minYTop);
+
+  return {
+    x: minX,
+    y: Math.max(0, canvasH - maxYTop),
+    width,
+    height,
+  };
+}
+
 export class WebGL2Backend implements RenderBackend {
   readonly name = "webgl2";
   readonly capabilities: RenderCapabilities;
@@ -51,6 +88,8 @@ export class WebGL2Backend implements RenderBackend {
   private pingPongTextures: [WebGLTexture | null, WebGLTexture | null] = [null, null];
   private currentWidth = 0;
   private currentHeight = 0;
+  private logicalWidth = 800;
+  private logicalHeight = 600;
 
   constructor() {
     this.capabilities = {
@@ -359,19 +398,24 @@ export class WebGL2Backend implements RenderBackend {
       gl.bindTexture(gl.TEXTURE_2D, this.pingPongTextures[activeFboIndex]);
       gl.uniform1i(this.layerUniforms.texture, 0);
 
-      gl.uniformMatrix4fv(this.layerUniforms.viewProj, false, viewProj);
+      const identityProj = this.computeViewMatrix(this.logicalWidth, this.logicalHeight);
+      gl.uniformMatrix4fv(this.layerUniforms.viewProj, false, identityProj);
       gl.uniform1f(this.layerUniforms.opacity, 1.0);
       gl.uniform1i(this.layerUniforms.blendMode, 0); // Normal
       gl.uniform1i(this.layerUniforms.useBackdrop, 0); // No backdrop
       gl.uniform1i(this.layerUniforms.flipTexY, 1); // FBO texture, flip Y
 
-      // Fullscreen quad in document coords
-      gl.uniform4f(this.layerUniforms.layerRect, 0, 0, docW, docH);
-      gl.uniform2f(this.layerUniforms.layerCenter, docW / 2, docH / 2);
+      // Fullscreen quad in viewport coords
+      gl.uniform4f(this.layerUniforms.layerRect, 0, 0, this.logicalWidth, this.logicalHeight);
+      gl.uniform2f(this.layerUniforms.layerCenter, this.logicalWidth / 2, this.logicalHeight / 2);
       gl.uniform1f(this.layerUniforms.layerRotation, 0);
       gl.uniform2f(this.layerUniforms.flipSign, 1.0, 1.0);
 
+      const scissor = projectDocumentScissor(viewProj, docW, docH, canvas.width, canvas.height);
+      gl.enable(gl.SCISSOR_TEST);
+      gl.scissor(scissor.x, scissor.y, scissor.width, scissor.height);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
+      gl.disable(gl.SCISSOR_TEST);
     }
 
     gl.bindVertexArray(null);
@@ -396,6 +440,8 @@ export class WebGL2Backend implements RenderBackend {
   }
 
   resize(docWidth: number, docHeight: number, zoom: number, dpr: number): void {
+    this.logicalWidth = docWidth * zoom;
+    this.logicalHeight = docHeight * zoom;
     let w = Math.round(docWidth * zoom * dpr);
     let h = Math.round(docHeight * zoom * dpr);
 
@@ -473,6 +519,8 @@ export class WebGL2Backend implements RenderBackend {
   }
 
   resizeToViewport(width: number, height: number, dpr: number): void {
+    this.logicalWidth = width;
+    this.logicalHeight = height;
     const w = Math.round(width * dpr);
     const h = Math.round(height * dpr);
 
@@ -546,6 +594,18 @@ export class WebGL2Backend implements RenderBackend {
     const pixels = new Uint8Array(4);
     gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
     return [pixels[0], pixels[1], pixels[2], pixels[3]];
+  }
+
+  getCanvas(): HTMLCanvasElement | null {
+    return this.canvas;
+  }
+
+  getLogicalWidth(): number {
+    return this.logicalWidth;
+  }
+
+  getLogicalHeight(): number {
+    return this.logicalHeight;
   }
 
   dispose(): void {

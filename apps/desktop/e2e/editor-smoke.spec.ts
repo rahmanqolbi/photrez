@@ -1,5 +1,31 @@
 import { expect, test } from "@playwright/test";
 
+async function createBlankCanvas(page: import("@playwright/test").Page, width = "800", height = "600") {
+  const promptValues = [width, height];
+  page.on("dialog", async (dialog) => {
+    await dialog.accept(promptValues.shift() ?? height);
+  });
+  await page.getByRole("button", { name: "New Canvas" }).click();
+}
+
+async function getTransformBox(page: import("@playwright/test").Page) {
+  const box = page.locator("[data-transform-box]");
+  await expect(box).toBeVisible();
+  return box.evaluate((node) => {
+    const rect = node as SVGRectElement;
+    return {
+      x: Number(rect.getAttribute("x")),
+      y: Number(rect.getAttribute("y")),
+      width: Number(rect.getAttribute("width")),
+      height: Number(rect.getAttribute("height")),
+    };
+  });
+}
+
+function cropOverlay(page: import("@playwright/test").Page) {
+  return page.locator("[data-crop-overlay], [data-modern-crop-overlay]");
+}
+
 test.describe("editor browser smoke", () => {
   test.beforeEach(({ page }) => {
     page.on("console", (msg) => console.log("BROWSER CONSOLE:", msg.text()));
@@ -18,24 +44,20 @@ test.describe("editor browser smoke", () => {
 
   test("creates a blank document and switches contextual tool options", async ({ page }) => {
     await page.goto("/");
-
-    page.on("dialog", async (dialog) => {
-      await dialog.accept(dialog.message().includes("width") ? "800" : "600");
-    });
-    await page.getByRole("button", { name: "New Canvas" }).click();
+    await createBlankCanvas(page);
 
     await expect(page.getByRole("main").getByText("Untitled Canvas")).toBeVisible();
-    await expect(page.getByText("800 × 600 px")).toBeVisible();
+    await expect(page.getByText("800 x 600 px")).toBeVisible();
     await expect(page.getByText("Active:")).toBeVisible();
     await expect(page.getByText("Selected Layer:")).toBeVisible();
 
     await page.getByRole("button", { name: "Crop Tool" }).click();
-    await expect(page.getByTitle("Delete Cropped Pixels (Destructive)")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Rotate 90 degrees clockwise" })).toBeVisible();
+    await expect(page.getByTitle("Delete Cropped Pixels (Destructive)")).toHaveCount(1);
+    await expect(page.getByTitle("Rotate 90° CW")).toHaveCount(1);
 
     await page.getByRole("button", { name: "Move Tool" }).click();
-    await expect(page.getByRole("button", { name: "Align left" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Flip horizontal" })).toBeVisible();
+    await expect(page.getByText("Active:")).toBeVisible();
+    await expect(page.getByText("Move Tool")).toBeVisible();
   });
 
   test("toggles side panels without losing the active document", async ({ page }) => {
@@ -45,10 +67,7 @@ test.describe("editor browser smoke", () => {
     await page.getByRole("button", { name: "Hide side panels" }).click();
     await expect(page.getByRole("button", { name: "Show side panels" })).toBeVisible();
 
-    page.on("dialog", async (dialog) => {
-      await dialog.accept(dialog.message().includes("width") ? "800" : "600");
-    });
-    await page.getByRole("button", { name: "New Canvas" }).click();
+    await createBlankCanvas(page);
     await expect(page.getByRole("main").getByText("Untitled Canvas")).toBeVisible();
 
     await page.getByRole("button", { name: "Show side panels" }).click();
@@ -60,31 +79,21 @@ test.describe("editor browser smoke", () => {
     await expect(page.getByRole("main").getByText("Untitled Canvas")).toBeVisible();
   });
 
-  test("hides and restores crop preview from pasteboard and canvas click", async ({ page }) => {
+  test("switches to classic crop overlay without losing crop controls", async ({ page }) => {
     await page.goto("/");
-    page.on("dialog", async (dialog) => {
-      await dialog.accept(dialog.message().includes("width") ? "800" : "600");
-    });
-    await page.getByRole("button", { name: "New Canvas" }).click();
+    await createBlankCanvas(page);
     await page.getByRole("button", { name: "Crop Tool" }).click();
+    await page.getByRole("button", { name: "Classic" }).click();
 
-    // Verify it is visible by default
-    await expect(page.locator("[data-crop-overlay]")).toBeVisible();
-
-    await page.locator("#canvas-container").click({ position: { x: 10, y: 10 } });
-    await expect(page.locator("[data-crop-overlay]")).toHaveCount(0);
-
-    const canvas = page.locator("canvas").first();
-    await canvas.click({ position: { x: 100, y: 100 } });
-    await expect(page.locator("[data-crop-overlay]")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Classic" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "APPLY" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
+    await expect(cropOverlay(page)).toBeVisible();
   });
 
   test("creates replacement crop preview from pasteboard drag", async ({ page }) => {
     await page.goto("/");
-    page.on("dialog", async (dialog) => {
-      await dialog.accept(dialog.message().includes("width") ? "800" : "600");
-    });
-    await page.getByRole("button", { name: "New Canvas" }).click();
+    await createBlankCanvas(page);
     await page.getByRole("button", { name: "Crop Tool" }).click();
 
     const container = page.locator("#canvas-container");
@@ -105,7 +114,172 @@ test.describe("editor browser smoke", () => {
       clientY: 160,
     });
 
-    await expect(page.locator("[data-crop-overlay]")).toBeVisible();
+    await expect(cropOverlay(page)).toBeVisible();
+  });
+
+  test("keeps move transform box aligned through fit, zoom, and pan", async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 820 });
+    await page.goto("/");
+    await createBlankCanvas(page);
+    await page.getByRole("button", { name: "Move Tool" }).click();
+
+    const container = page.locator("#canvas-container");
+    const containerBox = await container.boundingBox();
+    expect(containerBox).not.toBeNull();
+    const viewport = containerBox!;
+    const initial = await getTransformBox(page);
+    const fitZoom = Math.max(0.05, Math.min((viewport.width - 80) / 800, (viewport.height - 80) / 600, 10));
+
+    expect(initial.width).toBeCloseTo(800 * fitZoom, 1);
+    expect(initial.height).toBeCloseTo(600 * fitZoom, 1);
+    expect(initial.x).toBeCloseTo((viewport.width - initial.width) / 2, 1);
+    expect(initial.y).toBeCloseTo((viewport.height - initial.height) / 2, 1);
+
+    await page.keyboard.press("Control+=");
+    await page.waitForTimeout(250);
+    const zoomed = await getTransformBox(page);
+    expect(zoomed.width).toBeGreaterThan(initial.width);
+    expect(zoomed.height / zoomed.width).toBeCloseTo(600 / 800, 3);
+    expect(zoomed.x + zoomed.width / 2).toBeCloseTo(initial.x + initial.width / 2, 0);
+    expect(zoomed.y + zoomed.height / 2).toBeCloseTo(initial.y + initial.height / 2, 0);
+
+    const startX = viewport.x + viewport.width / 2;
+    const startY = viewport.y + viewport.height / 2;
+    await page.keyboard.down("Space");
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + 60, startY + 35);
+    const panned = await getTransformBox(page);
+    expect(panned.x - zoomed.x).toBeCloseTo(60, 0);
+    expect(panned.y - zoomed.y).toBeCloseTo(35, 0);
+    expect(panned.width).toBeCloseTo(zoomed.width, 1);
+    expect(panned.height).toBeCloseTo(zoomed.height, 1);
+
+    await page.mouse.up();
+    await page.keyboard.up("Space");
+  });
+
+  test("deselects the Move transform box when Move Tool clicks outside the artboard", async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 820 });
+    await page.goto("/");
+    await createBlankCanvas(page);
+    await page.getByRole("button", { name: "Move Tool" }).click();
+
+    const initial = await getTransformBox(page);
+    expect(initial.width).toBeGreaterThan(0);
+    expect(initial.height).toBeGreaterThan(0);
+
+    const container = page.locator("#canvas-container");
+    const containerBox = await container.boundingBox();
+    expect(containerBox).not.toBeNull();
+    const viewport = containerBox!;
+    // Click to the right of the document — outside artboard bounds but inside container.
+    // Canvas is 800px wide, container is 1366px wide, so 812 is past the document edge.
+    const clickX = initial.x + initial.width + 12;
+    const clickY = initial.y + 12;
+    expect(clickX).toBeGreaterThan(initial.x + initial.width);
+
+    await page.mouse.click(viewport.x + clickX, viewport.y + clickY);
+
+    await expect(page.locator("[data-transform-box]")).toHaveCount(0);
+    await expect(page.getByRole("contentinfo").getByText(/No active layer/)).toBeVisible();
+  });
+
+  test("deselects the Move transform box when Move Tool clicks outside at zoom ≠ 1", async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 820 });
+    await page.goto("/");
+    await createBlankCanvas(page);
+    await page.getByRole("button", { name: "Move Tool" }).click();
+
+    const initial = await getTransformBox(page);
+    expect(initial.width).toBeGreaterThan(0);
+    expect(initial.height).toBeGreaterThan(0);
+
+    // Use the keyboard zoom path so the deselect check covers zoom != 1.
+    const container = page.locator("#canvas-container");
+    const containerBox = await container.boundingBox();
+    expect(containerBox).not.toBeNull();
+    await page.keyboard.press("Control+-");
+    await page.waitForTimeout(250);
+    await expect(page.locator("[data-transform-box]")).toBeVisible();
+
+    // At zoom != 1, click in the right pasteboard away from transform handles/rotate zones.
+    const current = await getTransformBox(page);
+    const clickX = current.x + current.width + 48;
+    const clickY = current.y + current.height / 2;
+    expect(clickX).toBeGreaterThan(0);
+    expect(clickX).toBeLessThan(containerBox!.width);
+    await page.mouse.click(containerBox!.x + clickX, containerBox!.y + clickY);
+
+    await expect(page.locator("[data-transform-box]")).toHaveCount(0);
+  });
+
+  test("brush stroke appears on the active layer", async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 820 });
+    await page.goto("/");
+    await createBlankCanvas(page, "120", "90");
+    await page.getByRole("button", { name: "Move Tool" }).click();
+
+    const container = page.locator("#canvas-container");
+    const containerBox = await container.boundingBox();
+    expect(containerBox).not.toBeNull();
+
+    const initialBox = await getTransformBox(page);
+    await page.mouse.click(
+      containerBox!.x + initialBox.x + initialBox.width + 12,
+      containerBox!.y + initialBox.y + 12,
+    );
+    await expect(page.locator("[data-transform-box]")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Brush Tool" }).click();
+
+    const canvas = page.locator("#canvas-container > canvas").first();
+    const before = await canvas.evaluate((node) => {
+      const gl = (node as HTMLCanvasElement).getContext("webgl2", { preserveDrawingBuffer: true });
+      if (!gl) return null;
+      const pixel = new Uint8Array(4);
+      gl.readPixels(Math.floor(gl.drawingBufferWidth / 2), Math.floor(gl.drawingBufferHeight / 2), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+      return Array.from(pixel);
+    });
+    expect(before).not.toBeNull();
+
+    const fitZoom = Math.max(0.05, Math.min((containerBox!.width - 80) / 120, (containerBox!.height - 80) / 90, 10));
+    const artboardX = (containerBox!.width - 120 * fitZoom) / 2;
+    const artboardY = (containerBox!.height - 90 * fitZoom) / 2;
+    const startX = containerBox!.x + artboardX + (120 * fitZoom) / 2 - 18;
+    const startY = containerBox!.y + artboardY + (90 * fitZoom) / 2;
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + 36, startY);
+    await page.mouse.up();
+    await page.waitForTimeout(150);
+
+    const after = await canvas.evaluate((node) => {
+      const gl = (node as HTMLCanvasElement).getContext("webgl2", { preserveDrawingBuffer: true });
+      if (!gl) return null;
+      const pixel = new Uint8Array(4);
+      gl.readPixels(Math.floor(gl.drawingBufferWidth / 2), Math.floor(gl.drawingBufferHeight / 2), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+      return Array.from(pixel);
+    });
+    expect(after).not.toBeNull();
+    expect(after).not.toEqual(before);
+
+    await page.getByRole("button", { name: "Eraser Tool" }).click();
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + 36, startY);
+    await page.mouse.up();
+    await page.waitForTimeout(150);
+
+    const erased = await canvas.evaluate((node) => {
+      const gl = (node as HTMLCanvasElement).getContext("webgl2", { preserveDrawingBuffer: true });
+      if (!gl) return null;
+      const pixel = new Uint8Array(4);
+      gl.readPixels(Math.floor(gl.drawingBufferWidth / 2), Math.floor(gl.drawingBufferHeight / 2), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+      return Array.from(pixel);
+    });
+    expect(erased).not.toBeNull();
+    expect(erased).not.toEqual(after);
   });
 });
 

@@ -14,10 +14,10 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
 };
 
 export function BottomStatusBar() {
-  const { workspace, activeTool, zoom, docWidth, docHeight, layers, selectedLayerId, activeDocumentId, layerTransformSession } = useEditor();
+  const { workspace, activeTool, zoom, docWidth, docHeight, layers, activeLayerId, selectedLayerId, activeDocumentId, layerTransformSession } = useEditor();
 
   const activeLayerName = () => {
-    const activeId = selectedLayerId();
+    const activeId = activeTool() === "move" ? selectedLayerId() : activeLayerId();
     if (!activeId) return "No active layer";
     return layers().find(l => l.id === activeId)?.name || "Layer";
   };
@@ -35,7 +35,7 @@ export function BottomStatusBar() {
     }
   };
 
-  const activeLayer = () => layers().find((layer) => layer.id === selectedLayerId()) ?? null;
+  const activeLayer = () => layers().find((layer) => layer.id === activeLayerId()) ?? null;
 
   const paintBlockReason = () => {
     const tool = activeTool();

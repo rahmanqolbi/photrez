@@ -84,7 +84,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     setBgColor,
     zoom,
     pan,
-    setPan,
+    setViewportState,
     cropRect,
     cropMode,
     cropAspect,
@@ -576,7 +576,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     );
 
     const canvas = params.getCanvasRef();
-    if (canvas) canvas.releasePointerCapture(e.pointerId);
+    try { if (canvas) canvas.releasePointerCapture(e.pointerId); } catch {}
 
     if (hasPoints) {
       const layerId = engine.getActiveLayerId();
@@ -616,12 +616,8 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
         const scale = 1;
         const centerPanX = (viewportWidth() - docWidth() * zoom() * scale) / 2;
         const centerPanY = (viewportHeight() - docHeight() * zoom() * scale) / 2;
-        setPan({ x: centerPanX, y: centerPanY });
+        setViewportState({ x: centerPanX, y: centerPanY, zoom: zoom() });
         setModernCropImageTransform({ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 });
-        const engine = workspace.getActiveEngine();
-        if (engine) {
-          engine.setViewport({ panX: centerPanX, panY: centerPanY, zoom: zoom() });
-        }
 
         setModernCropFrame(getDefaultModernCropFrame({
           viewportWidth: viewportWidth(),
@@ -644,8 +640,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
         // Reset canvas position to center
         const centerPanX = (viewportWidth() - docWidth() * zoom()) / 2;
         const centerPanY = (viewportHeight() - docHeight() * zoom()) / 2;
-        setPan({ x: centerPanX, y: centerPanY });
-        engine.setViewport({ panX: centerPanX, panY: centerPanY, zoom: zoom() });
+        setViewportState({ x: centerPanX, y: centerPanY, zoom: zoom() });
 
         const restored = restoreHiddenCropPreview({
           cropRect,

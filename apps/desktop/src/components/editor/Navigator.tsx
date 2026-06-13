@@ -27,16 +27,14 @@ export function Navigator() {
   const {
     workspace,
     zoom,
-    setZoom,
     pan,
-    setPan,
+    setViewportState,
     docWidth,
     docHeight,
     viewportWidth,
     viewportHeight,
     activeDocumentId,
     layers,
-    syncViewport,
     scheduler,
   } = useEditor();
 
@@ -198,8 +196,7 @@ export function Navigator() {
     const engine = workspace.getActiveEngine();
     if (!engine) return null;
 
-    engine.setViewport({ panX, panY });
-    setPan({ x: panX, y: panY });
+    setViewportState({ x: panX, y: panY, zoom: zoom() });
     scheduler.requestRender();
     return { x: panX, y: panY };
   };

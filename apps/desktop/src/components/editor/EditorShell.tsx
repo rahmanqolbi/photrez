@@ -16,6 +16,7 @@ import { WorkspaceManager } from "@/engine/workspace";
 import { WebGL2Backend } from "@/renderer/webgl2";
 import { RenderScheduler } from "@/renderer/scheduler";
 import { EditorProvider, useEditor } from "./EditorContext";
+import { ViewportCamera } from "../../viewport/viewportCamera";
 
 function EditorLayout(props: {
   rightDockOpen: boolean;
@@ -70,11 +71,17 @@ export function EditorShell() {
 
   // ─── Singletons Initialization ───
   const workspace = new WorkspaceManager();
+  const camera = new ViewportCamera();
   const renderer = new WebGL2Backend();
   const scheduler = new RenderScheduler(() => {
     const engine = workspace.getActiveEngine();
     if (!engine) return;
-    renderer.render(engine.getRenderState());
+    if (camera.isModernCropActive) {
+      renderer.render(engine.getRenderState());
+    } else {
+      const matrix = camera.getViewProjectionMatrix();
+      renderer.render(engine.getRenderState(), matrix);
+    }
   });
 
   onCleanup(() => {
@@ -82,7 +89,7 @@ export function EditorShell() {
   });
 
   return (
-    <EditorProvider workspace={workspace} renderer={renderer} scheduler={scheduler}>
+    <EditorProvider workspace={workspace} renderer={renderer} scheduler={scheduler} camera={camera}>
       <EditorLayout
         rightDockOpen={rightDockOpen()}
         toggleRightDock={toggleRightDock}

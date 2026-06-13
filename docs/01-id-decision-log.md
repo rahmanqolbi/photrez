@@ -73,3 +73,9 @@ Jika nama final berubah nanti, seluruh dokumen `docs/` harus disinkronkan.
 | Brush hardness rendering | Soft brush/eraser hardness menggunakan deterministic per-stroke distance-field alpha mask di TypeScript MVP hot path. Browser `shadowBlur` tidak dipakai sebagai model utama softness karena perceived diameter dan feather behavior menjadi bergantung pada implementasi blur browser. | Locked 2026-06-11 |
 | Brush engine performance | Soft brush interactive rendering should move to cached brush-tip alpha masks plus incremental per-stroke max-alpha masks. The distance-field path is superseded for interactive use because its cost grows with stroke length and can feel laggy. The handoff plan explicitly requires replacing the `useBrushOverlay.ts` pointer-move preview path, not only the one-shot renderer. | Locked 2026-06-11 |
 | Brush visual calibration | Calibrated the brush-tip alpha profile, tightened soft spacing, and implemented subpixel stamping with bilinear tip sampling to eliminate visible banding and periodic rounding artifacts in soft brush strokes. | Locked 2026-06-11 |
+
+## Tambahan Keputusan 2026-06-13
+
+| Area | Keputusan | Status |
+| ---- | --------- | ------ |
+| Viewport smooth zoom recovery | Do not ship the GPU camera viewport migration as originally planned until every editing tool shares one reactive viewport state and tool overlays have regression coverage. The initial migration split viewport ownership between WebGL camera state, SolidJS signals, and `DocumentEngine.viewport`, causing rendered pixels and overlays to diverge. Smooth zoom must be reintroduced behind a feature flag or as presentation-only interpolation after Move, Brush, Crop, and Navigator checks pass. | Locked 2026-06-13 |

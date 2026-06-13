@@ -134,6 +134,7 @@ describe("Navigator preview rendering", () => {
     expect(setViewportSpy).toHaveBeenCalledWith({
       panX: expect.closeTo(-68.1818, 3),
       panY: expect.closeTo(0, 3),
+      zoom: 1,
     });
 
     dispose();

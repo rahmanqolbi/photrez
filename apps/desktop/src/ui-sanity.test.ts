@@ -141,4 +141,16 @@ describe('Photrez high-fidelity component structure', () => {
     expect(appTsx).not.toContain('background-image: url("./norway_fjord_preview.png")');
     expect(appTsx).not.toContain('bottom thumbnail');
   });
+
+  it('should maintain the docked layout structure in EditorShell without margins, padding or gaps', () => {
+    const editorShellPath = path.resolve(__dirname, 'components', 'editor', 'EditorShell.tsx');
+    const editorShell = fs.readFileSync(editorShellPath, 'utf8');
+
+    // Assert docked layout main class exists
+    expect(editorShell).toContain('class="relative flex min-h-0 flex-1 overflow-hidden"');
+
+    // Assert no floating padding or gap containers around the panels
+    expect(editorShell).not.toContain('gap-1.5');
+    expect(editorShell).not.toContain('p-1.5');
+  });
 });

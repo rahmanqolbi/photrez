@@ -241,7 +241,7 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     expect(preview!.style.height).toBe("150px");
   });
 
-  it("clears the active layer when pasteboard is clicked in Move tool mode", async () => {
+  it("clears Move tool selection without clearing the active paint layer when pasteboard is clicked", async () => {
     const { session } = renderViewport();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -253,7 +253,7 @@ describe("CanvasViewport Pasteboard Clicks", () => {
 
     dispatchPasteboardClick();
 
-    expect(session.engine.getActiveLayerId()).toBeNull();
+    expect(session.engine.getActiveLayerId()).toBe(layers[0].id);
     expect(scheduler.requestRender).toHaveBeenCalled();
   });
 
@@ -1334,8 +1334,27 @@ describe("Space+pan global override across all tools", () => {
     session.engine.setActiveLayer(layers[0].id);
     firePointerDown(getContainer());
 
-    // Active layer should be cleared (pasteboard click behavior)
-    expect(session.engine.getActiveLayerId()).toBeNull();
+    // Pasteboard click clears transform selection only; the active paint target remains.
+    expect(session.engine.getActiveLayerId()).toBe(layers[0].id);
+  });
+
+  it("Move tool clears selection only when viewport canvas receives a click outside the artboard", async () => {
+    const { session } = renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("move");
+    mockSpacePressed = false;
+
+    const layers = session.engine.getLayers();
+    session.engine.setActiveLayer(layers[0].id);
+    session.engine.setViewport({ panX: 100, panY: 100, zoom: 1 });
+
+    // After the GPU viewport migration the WebGL canvas covers the viewport.
+    // A pasteboard click can therefore target the canvas even when it is outside
+    // the visible document/artboard.
+    firePointerDown(getCanvas(), 31, 20, 20);
+
+    expect(session.engine.getActiveLayerId()).toBe(layers[0].id);
+    expect(scheduler.requestRender).toHaveBeenCalled();
   });
 
   it("Middle mouse button starts panning regardless of tool and Space state", async () => {

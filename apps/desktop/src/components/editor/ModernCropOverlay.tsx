@@ -1,5 +1,15 @@
-import { createMemo, createSignal, For, Show, onMount, onCleanup } from "solid-js";
-import { getCursorForHandle, normalizeRotation } from "@/viewport/transformGeometry";
+import {
+  createMemo,
+  createSignal,
+  For,
+  Show,
+  onMount,
+  onCleanup,
+} from "solid-js";
+import {
+  getCursorForHandle,
+  normalizeRotation,
+} from "@/viewport/transformGeometry";
 import { getRotateCursorByPos } from "@/viewport/cursorRotate";
 import {
   getModernCropFrameScreenRect,
@@ -66,15 +76,26 @@ type DragState =
 export function ModernCropOverlay(props: ModernCropOverlayProps) {
   let svgRef!: SVGSVGElement;
   const [hoverHandle, setHoverHandle] = createSignal<string | null>(null);
-  const [hoverPos, setHoverPos] = createSignal<{ x: number; y: number } | null>(null);
+  const [hoverPos, setHoverPos] = createSignal<{ x: number; y: number } | null>(
+    null,
+  );
   const [dragState, setDragState] = createSignal<DragState | null>(null);
-  const [tooltip, setTooltip] = createSignal<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [tooltip, setTooltip] = createSignal<{
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  } | null>(null);
   let lastPointerDownTime = 0;
   let pendingApply: ReturnType<typeof setTimeout> | null = null;
 
   const navMode = () => props.isNavigationMode ?? false;
   const screenRect = createMemo(() =>
-    getModernCropFrameScreenRect(props.frame, props.viewportWidth, props.viewportHeight)
+    getModernCropFrameScreenRect(
+      props.frame,
+      props.viewportWidth,
+      props.viewportHeight,
+    ),
   );
   const center = createMemo(() => {
     const rect = screenRect();
@@ -89,8 +110,16 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
   const handles = createMemo(() => {
     const rect = screenRect();
     return HANDLE_TYPES.map((type) => {
-      const cx = type.includes("w") ? rect.x : type.includes("e") ? rect.x + rect.w : rect.x + rect.w / 2;
-      const cy = type.includes("n") ? rect.y : type.includes("s") ? rect.y + rect.h : rect.y + rect.h / 2;
+      const cx = type.includes("w")
+        ? rect.x
+        : type.includes("e")
+          ? rect.x + rect.w
+          : rect.x + rect.w / 2;
+      const cy = type.includes("n")
+        ? rect.y
+        : type.includes("s")
+          ? rect.y + rect.h
+          : rect.y + rect.h / 2;
       return { type, cx, cy };
     });
   });
@@ -167,7 +196,8 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
   };
 
   const pointerAngle = (e: PointerEvent) =>
-    Math.atan2(e.clientY - center().y, e.clientX - center().x) * (180 / Math.PI);
+    Math.atan2(e.clientY - center().y, e.clientX - center().x) *
+    (180 / Math.PI);
 
   const startRotate = (e: PointerEvent) => {
     if (navMode()) return;
@@ -202,11 +232,12 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
     }
 
     if (drag.kind === "resize") {
-      const aspect = props.cropMode === "ratio"
-        ? props.cropAspect
-        : props.cropMode === "size"
+      const aspect =
+        props.cropMode === "ratio"
           ? props.cropAspect
-          : null;
+          : props.cropMode === "size"
+            ? props.cropAspect
+            : null;
       const { frame, compensation } = resizeModernFrameOneSided({
         frame: drag.startFrame,
         handle: drag.handle,
@@ -237,7 +268,9 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
       return;
     }
 
-    const rotation = normalizeRotation(drag.startRotation + pointerAngle(e) - drag.startAngle);
+    const rotation = normalizeRotation(
+      drag.startRotation + pointerAngle(e) - drag.startAngle,
+    );
     setHoverPos({ x: e.clientX, y: e.clientY });
     props.onImageTransformChange({
       ...props.imageTransform,
@@ -284,16 +317,20 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
       onPointerUp={clearDrag}
       onPointerCancel={clearDrag}
       onLostPointerCapture={() => clearDrag()}
-      onPointerLeave={() => { if (!dragState()) { setHover(null); setHoverPos(null); } }}
+      onPointerLeave={() => {
+        if (!dragState()) {
+          setHover(null);
+          setHoverPos(null);
+        }
+      }}
       onDblClick={(e) => {
         if (navMode() || dragState()) return;
         const el = document.elementFromPoint(e.clientX, e.clientY);
-        if (!el || !el.closest('[data-modern-crop-move]')) return;
+        if (!el || !el.closest("[data-modern-crop-move]")) return;
         props.onApplyCrop?.();
       }}
     >
-      <defs>
-      </defs>
+      <defs></defs>
       {/* Canvas expansion fill — non-overlapping strips for areas where frame exceeds canvas */}
       {(() => {
         const cr = props.canvasScreenRect;
@@ -302,33 +339,57 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
         const rects: Array<{ x: number; y: number; w: number; h: number }> = [];
         const lW = cr.x - sr.x;
         if (lW > 0) rects.push({ x: sr.x, y: sr.y, w: lW, h: sr.h });
-        const rW = (sr.x + sr.w) - (cr.x + cr.w);
+        const rW = sr.x + sr.w - (cr.x + cr.w);
         if (rW > 0) rects.push({ x: cr.x + cr.w, y: sr.y, w: rW, h: sr.h });
         const tW = Math.min(sr.x + sr.w, cr.x + cr.w) - Math.max(sr.x, cr.x);
         const tH = cr.y - sr.y;
-        if (tW > 0 && tH > 0) rects.push({ x: Math.max(sr.x, cr.x), y: sr.y, w: tW, h: tH });
-        const bH = (sr.y + sr.h) - (cr.y + cr.h);
-        if (tW > 0 && bH > 0) rects.push({ x: Math.max(sr.x, cr.x), y: cr.y + cr.h, w: tW, h: bH });
-        return rects.map(r => (
-          <rect x={r.x} y={r.y} width={r.w} height={r.h} fill="rgba(255,255,255,0.08)" style={{ "pointer-events": "none" }} />
+        if (tW > 0 && tH > 0)
+          rects.push({ x: Math.max(sr.x, cr.x), y: sr.y, w: tW, h: tH });
+        const bH = sr.y + sr.h - (cr.y + cr.h);
+        if (tW > 0 && bH > 0)
+          rects.push({ x: Math.max(sr.x, cr.x), y: cr.y + cr.h, w: tW, h: bH });
+        return rects.map((r) => (
+          <rect
+            x={r.x}
+            y={r.y}
+            width={r.w}
+            height={r.h}
+            fill="rgba(255,255,255,0.08)"
+            style={{ "pointer-events": "none" }}
+          />
         ));
       })()}
       {(() => {
         const sr = screenRect();
         const vw = props.viewportWidth;
         const vh = props.viewportHeight;
-        const darkRects: Array<{ x: number; y: number; w: number; h: number }> = [];
+        const darkRects: Array<{ x: number; y: number; w: number; h: number }> =
+          [];
         const lW = sr.x;
         if (lW > 0) darkRects.push({ x: 0, y: 0, w: lW, h: vh });
         const rW = vw - (sr.x + sr.w);
         if (rW > 0) darkRects.push({ x: sr.x + sr.w, y: 0, w: rW, h: vh });
         const tW = Math.min(vw, sr.w);
         const tH = sr.y;
-        if (tW > 0 && tH > 0) darkRects.push({ x: Math.max(0, sr.x), y: 0, w: tW, h: tH });
+        if (tW > 0 && tH > 0)
+          darkRects.push({ x: Math.max(0, sr.x), y: 0, w: tW, h: tH });
         const bH = vh - (sr.y + sr.h);
-        if (tW > 0 && bH > 0) darkRects.push({ x: Math.max(0, sr.x), y: sr.y + sr.h, w: tW, h: bH });
-        return darkRects.map(r => (
-          <rect x={r.x} y={r.y} width={r.w} height={r.h} fill="rgba(0,0,0,0.55)" style={{ "pointer-events": "none" }} />
+        if (tW > 0 && bH > 0)
+          darkRects.push({
+            x: Math.max(0, sr.x),
+            y: sr.y + sr.h,
+            w: tW,
+            h: bH,
+          });
+        return darkRects.map((r) => (
+          <rect
+            x={r.x}
+            y={r.y}
+            width={r.w}
+            height={r.h}
+            fill="rgba(0,0,0,0.55)"
+            style={{ "pointer-events": "none" }}
+          />
         ));
       })()}
       <rect
@@ -352,12 +413,19 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
         style={{ "pointer-events": "none" }}
       />
       {/* Canvas expansion indicator — dashed outline of original canvas when frame exceeds it */}
-      <Show when={(() => {
-        const sr = screenRect();
-        const cr = props.canvasScreenRect;
-        if (!cr) return false;
-        return sr.x < cr.x || sr.y < cr.y || (sr.x + sr.w) > (cr.x + cr.w) || (sr.y + sr.h) > (cr.y + cr.h);
-      })()}>
+      <Show
+        when={(() => {
+          const sr = screenRect();
+          const cr = props.canvasScreenRect;
+          if (!cr) return false;
+          return (
+            sr.x < cr.x ||
+            sr.y < cr.y ||
+            sr.x + sr.w > cr.x + cr.w ||
+            sr.y + sr.h > cr.y + cr.h
+          );
+        })()}
+      >
         <rect
           x={props.canvasScreenRect!.x}
           y={props.canvasScreenRect!.y}
@@ -387,9 +455,20 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
         data-modern-crop-rotate="ring"
         style={{ "pointer-events": navMode() ? "none" : "all" }}
         onPointerDown={startRotate}
-        onPointerEnter={(e) => { setHover("rotate"); setHoverPos({ x: e.clientX, y: e.clientY }); }}
-        onPointerMove={(e) => { if (hoverHandle() === "rotate" || dragState()?.kind === "rotate") setHoverPos({ x: e.clientX, y: e.clientY }); }}
-        onPointerLeave={() => { if (!dragState()) { setHover(null); setHoverPos(null); } }}
+        onPointerEnter={(e) => {
+          setHover("rotate");
+          setHoverPos({ x: e.clientX, y: e.clientY });
+        }}
+        onPointerMove={(e) => {
+          if (hoverHandle() === "rotate" || dragState()?.kind === "rotate")
+            setHoverPos({ x: e.clientX, y: e.clientY });
+        }}
+        onPointerLeave={() => {
+          if (!dragState()) {
+            setHover(null);
+            setHoverPos(null);
+          }
+        }}
       />
       <rect
         x={screenRect().x}
@@ -401,7 +480,9 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
         style={{ cursor: "move", "pointer-events": navMode() ? "none" : "all" }}
         onPointerDown={startMove}
         onPointerEnter={() => setHover("move")}
-        onPointerLeave={() => { if (!dragState()) setHover(null); }}
+        onPointerLeave={() => {
+          if (!dragState()) setHover(null);
+        }}
       />
       <For each={handles()}>
         {(h) => (
@@ -413,10 +494,15 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
               height={HANDLE_HIT}
               fill="transparent"
               data-modern-crop-handle={h.type}
-              style={{ cursor: getCursorForHandle(h.type, 0, 1, 1), "pointer-events": navMode() ? "none" : "all" }}
+              style={{
+                cursor: getCursorForHandle(h.type, 0, 1, 1),
+                "pointer-events": navMode() ? "none" : "all",
+              }}
               onPointerDown={(e) => startResize(e, h.type)}
               onPointerEnter={() => setHover(h.type)}
-              onPointerLeave={() => { if (!dragState()) setHover(null); }}
+              onPointerLeave={() => {
+                if (!dragState()) setHover(null);
+              }}
             />
             <rect
               x={h.cx - HANDLE_SIZE / 2}
@@ -425,7 +511,11 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
               height={HANDLE_SIZE}
               rx={1}
               ry={1}
-              fill={hoverHandle() === h.type ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.78)"}
+              fill={
+                hoverHandle() === h.type
+                  ? "rgba(255,255,255,0.95)"
+                  : "rgba(255,255,255,0.78)"
+              }
               stroke="rgba(0,0,0,0.35)"
               stroke-width={1}
               style={{ "pointer-events": "none" }}

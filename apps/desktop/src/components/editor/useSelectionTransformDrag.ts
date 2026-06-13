@@ -34,6 +34,7 @@ interface UseSelectionTransformDragParams {
   snapActive?: boolean;
   moveSnapEnabled?: boolean;
   getSvgRef: () => SVGSVGElement | undefined;
+  onStopMomentum?: () => void;
 }
 
 export function useSelectionTransformDrag(props: UseSelectionTransformDragParams) {
@@ -51,6 +52,7 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
     startY: number;
     startTransform: Transform2D;
     pointerId: number;
+    layerId: string;
   } | null>(null);
 
   const getLayer = () => {
@@ -129,11 +131,20 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
     return getCursorForHandle(handle, rotation(), scaleX(), scaleY());
   });
 
+  const activeDragCursor = createMemo(() => {
+    const drag = dragState();
+    const layer = getLayer();
+    if (!drag || !layer) return null;
+    if (drag.type === "move") return "move";
+    if (drag.type === "rotate") return rotateCursor();
+    return getCursorForHandle(drag.type, rotation(), scaleX(), scaleY());
+  });
+
   const handlePointerMoveUpdateHover = (e: PointerEvent) => {
     if (dragState()) return;
     const layer = getLayer();
     if (!layer) return;
-    const toDoc = props.onScreenToDoc ?? ((cx: number, cy: number) => ({ x: cx / zoom(), y: cy / zoom() }));
+    const toDoc = props.onScreenToDoc ?? ((cx: number, cy: number) => ({ x: (cx - pan().x) / zoom(), y: (cy - pan().y) / zoom() }));
     const docPos = toDoc(e.clientX, e.clientY);
     const hit = detectHandle(docPos, layer.transform, layer.width, layer.height, zoom());
     if (hit) {
@@ -149,11 +160,12 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
     }
   };
 
-  const isLayerTransformSessionType = (type: string) => type === "rotate" || type !== "move";
+  const isLayerTransformSessionType = (type: string) => type !== "move";
 
   const handlePointerDown = (e: PointerEvent, type: string) => {
     if (props.isNavigationMode) return;
     e.stopPropagation();
+    props.onStopMomentum?.();
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     const layer = getLayer();
@@ -161,7 +173,7 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
 
     const svg = props.getSvgRef();
     if (svg) {
-      svg.setPointerCapture(e.pointerId);
+      try { svg.setPointerCapture(e.pointerId); } catch {}
     }
 
     const existing = layerTransformSession();
@@ -192,6 +204,7 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
       startY: e.clientY,
       startTransform: { ...layer.transform },
       pointerId: e.pointerId,
+      layerId: layer.id,
     });
   };
 
@@ -206,6 +219,11 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
     const engine = workspace.getActiveEngine();
     const layer = getLayer();
     if (!engine || !layer) return;
+
+    if (layer.id !== drag.layerId) {
+      setDragState(null);
+      return;
+    }
 
     const z = zoom();
     const dx = (e.clientX - drag.startX) / z;
@@ -244,7 +262,7 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
         width: 0, height: 0, scalePercent: 0, angle: 0, snapActive,
       });
     } else if (drag.type === "rotate") {
-      const toDoc = props.onScreenToDoc ?? ((cx, cy) => ({ x: cx / z, y: cy / z }));
+      const toDoc = props.onScreenToDoc ?? ((cx, cy) => ({ x: (cx - pan().x) / z, y: (cy - pan().y) / z }));
       const startDoc = toDoc(drag.startX, drag.startY);
       const currDoc = toDoc(e.clientX, e.clientY);
       const newRot = applyRotationDrag(
@@ -373,7 +391,9 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
     layerY,
     effW,
     effH,
+    rotateCursor,
     resolvedCursor,
+    activeDragCursor,
     handlePointerMove,
     handlePointerUp,
     handlePointerCancel,

@@ -101,15 +101,21 @@ export function PropertiesPanel() {
                     </button>
                   </PropRow>
                   <PropRow label="Opacity">
-                    <div class="flex-grow flex items-center gap-2">
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={Math.round(layer().opacity * 100)}
-                        onInput={(e) => handleOpacityChange(parseInt(e.currentTarget.value))}
-                        class="flex-grow accent-editor-accent"
-                      />
+                    <div class="flex-grow flex items-center gap-2.5">
+                      <div class="relative flex-grow flex items-center h-[14px]">
+                        <Slider
+                          percent={Math.round(layer().opacity * 100)}
+                          accent={true}
+                        />
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={Math.round(layer().opacity * 100)}
+                          onInput={(e) => handleOpacityChange(parseInt(e.currentTarget.value))}
+                          class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer"
+                        />
+                      </div>
                       <span class="w-[44px] shrink-0 text-right text-[12px] text-editor-text">
                         {Math.round(layer().opacity * 100)} %
                       </span>

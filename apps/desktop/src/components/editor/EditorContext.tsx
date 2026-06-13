@@ -1,4 +1,4 @@
-import { createContext, useContext, onMount, createEffect } from "solid-js";
+import { createContext, useContext, onMount, createEffect, batch } from "solid-js";
 import { WorkspaceManager } from "@/engine/workspace";
 import { WebGL2Backend } from "@/renderer/webgl2";
 import { RenderScheduler } from "@/renderer/scheduler";
@@ -14,12 +14,17 @@ import {
 } from "./modernCropState";
 import { setupWorkspaceSync } from "./workspaceSync";
 import { openImage } from "./editorOpenImage";
+import { ViewportCamera } from "../../viewport/viewportCamera";
+
 
 
 export interface EditorContextValue {
   workspace: WorkspaceManager;
   renderer: WebGL2Backend;
   scheduler: RenderScheduler;
+  camera: ViewportCamera;
+  setViewportState: (next: { x: number; y: number; zoom: number }) => void;
+  syncFromCamera: () => void;
   
   openImage: () => Promise<void>;
   
@@ -154,10 +159,28 @@ export interface EditorContextValue {
 
 const EditorContext = createContext<EditorContextValue>();
 
-export function useEditor() {
+export function useEditor(): EditorContextValue {
   const context = useContext(EditorContext);
   if (!context) {
-    throw new Error("useEditor must be used within an EditorProvider");
+    // Safe fallback for unit testing isolated components
+    return {
+      workspace: {} as any,
+      renderer: {} as any,
+      scheduler: {} as any,
+      camera: new ViewportCamera(),
+      setViewportState: () => {},
+      syncFromCamera: () => {},
+      zoom: () => 1.0,
+      pan: () => ({ x: 0, y: 0 }),
+      setPan: () => {},
+      viewportWidth: () => 800,
+      viewportHeight: () => 600,
+      activeTool: () => "crop",
+      cropInteractionMode: () => "classic",
+      hoverPos: () => null,
+      setHoverPos: () => {},
+      commitCropState: () => {},
+    } as unknown as EditorContextValue;
   }
   return context;
 }
@@ -166,18 +189,42 @@ export function EditorProvider(props: {
   workspace: WorkspaceManager;
   renderer: WebGL2Backend;
   scheduler: RenderScheduler;
+  camera?: ViewportCamera;
   children: any;
 }) {
+  const camera = props.camera || new ViewportCamera();
   const editorState = createEditorState();
   const cropState = createCropState();
   const modernCropState = createModernCropState();
 
+  const setViewportState = (next: { x: number; y: number; zoom: number }) => {
+    camera.setState(next);
+    batch(() => {
+      editorState.setZoom(next.zoom);
+      editorState.setPan({ x: next.x, y: next.y });
+    });
+    const engine = props.workspace.getActiveEngine();
+    if (engine) {
+      engine.setViewport({
+        panX: next.x,
+        panY: next.y,
+        zoom: next.zoom,
+      });
+    }
+  };
+
+  const syncFromCamera = () => {
+    setViewportState(camera.getState());
+  };
+
   const { syncState, syncViewport } = setupWorkspaceSync({
     workspace: props.workspace,
+    camera,
     setDocuments: editorState.setDocuments,
     setActiveDocumentId: editorState.setActiveDocumentId,
     setLayers: editorState.setLayers,
     setActiveLayerId: editorState.setActiveLayerId,
+    setSelectedLayerId: editorState.setSelectedLayerId,
     setDocWidth: editorState.setDocWidth,
     setDocHeight: editorState.setDocHeight,
     setZoom: editorState.setZoom,
@@ -199,18 +246,23 @@ export function EditorProvider(props: {
     }
   });
 
+  let prevActiveLayerId: string | null = null;
   createEffect(() => {
     const id = editorState.activeLayerId();
     const sel = editorState.selectedLayerId();
-    if (id && !sel) {
+    if (id && id !== prevActiveLayerId) {
       editorState.setSelectedLayerId(id);
     }
+    prevActiveLayerId = id;
   });
 
   const value: EditorContextValue = {
     workspace: props.workspace,
     renderer: props.renderer,
     scheduler: props.scheduler,
+    camera,
+    setViewportState,
+    syncFromCamera,
     openImage: handleOpenImage,
     ...editorState,
     ...cropState,

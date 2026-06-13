@@ -44,22 +44,22 @@ export function TransformHud(props: TransformHudProps) {
 
   return (
     <Show when={label().length > 0}>
-      <g transform={`translate(${props.clientX + padX / props.zoom}, ${props.clientY + padY / props.zoom})`}>
+      <g transform={`translate(${props.clientX + padX}, ${props.clientY + padY})`}>
         <rect
           x={0}
           y={0}
           width={label().length * 7 + 16}
-          height={20 / props.zoom}
-          rx={4 / props.zoom}
+          height={20}
+          rx={4}
           fill="rgba(20,20,20,0.85)"
           stroke="rgba(255,255,255,0.08)"
-          stroke-width={1 / props.zoom}
+          stroke-width={1}
         />
         <text
-          x={8 / props.zoom}
-          y={14 / props.zoom}
+          x={8}
+          y={14}
           fill="#E15A17"
-          font-size={`${12 / props.zoom}`}
+          font-size="12"
           font-weight="bold"
           text-anchor="start"
           style={{ "user-select": "none", "font-family": "monospace", "pointer-events": "none" }}

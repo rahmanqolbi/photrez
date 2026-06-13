@@ -144,6 +144,7 @@ export function AppTitleBar(props: AppTitleBarProps) {
 
   // Bind Ctrl+Z and Ctrl+Y shortcuts
   const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.defaultPrevented) return;
     const active = document.activeElement;
     if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;
 

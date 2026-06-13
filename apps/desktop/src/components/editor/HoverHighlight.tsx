@@ -3,7 +3,7 @@ import { useEditor } from "./EditorContext";
 import type { LayerNode } from "@/engine/types";
 
 export function HoverHighlight() {
-  const { hoveredLayerId, layers, activeLayerId, zoom } = useEditor();
+  const { hoveredLayerId, layers, activeLayerId, zoom, pan } = useEditor();
 
   const hoveredLayer = createMemo(() => {
     const id = hoveredLayerId();
@@ -19,15 +19,24 @@ export function HoverHighlight() {
         const y = l.transform.y;
         const w = Math.abs(l.width * l.transform.scaleX);
         const h = Math.abs(l.height * l.transform.scaleY);
+
+        const screenTL = createMemo(() => {
+          const z = zoom();
+          const p = pan();
+          return { x: x * z + p.x, y: y * z + p.y };
+        });
+        const screenW = createMemo(() => w * zoom());
+        const screenH = createMemo(() => h * zoom());
+
         return (
           <rect
-            x={x}
-            y={y}
-            width={w}
-            height={h}
+            x={screenTL().x}
+            y={screenTL().y}
+            width={screenW()}
+            height={screenH()}
             fill="none"
             stroke="#8b5cf6"
-            stroke-width={1 / zoom()}
+            stroke-width={1}
             style={{ opacity: 0.8 }}
           />
         );

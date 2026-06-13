@@ -20,9 +20,12 @@ export const MAX_ZOOM = 100.0;
 export class ViewportCamera {
   private current: CameraState = { x: 0, y: 0, zoom: 1.0 };
   private animation: AnimationState | null = null;
+  private viewportWidth = 800;
+  private viewportHeight = 600;
 
   public onAnimationStart?: () => void;
   public onAnimationEnd?: () => void;
+  public isModernCropActive = false;
 
   constructor(initial?: Partial<CameraState>) {
     if (initial) {
@@ -44,7 +47,19 @@ export class ViewportCamera {
       y: state.y,
       zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.zoom)),
     };
-    this.animation = null;
+    if (this.animation) {
+      this.animation = null;
+      this.onAnimationEnd?.();
+    }
+  }
+
+  public setViewportSize(w: number, h: number): void {
+    this.viewportWidth = w;
+    this.viewportHeight = h;
+  }
+
+  public getViewportSize(): { width: number; height: number } {
+    return { width: this.viewportWidth, height: this.viewportHeight };
   }
 
   public isAnimating(): boolean {
@@ -54,7 +69,10 @@ export class ViewportCamera {
   public pan(dx: number, dy: number): void {
     this.current.x += dx;
     this.current.y += dy;
-    this.animation = null;
+    if (this.animation) {
+      this.animation = null;
+      this.onAnimationEnd?.();
+    }
   }
 
   public zoomToPoint(factor: number, screenX: number, screenY: number): void {
@@ -67,7 +85,10 @@ export class ViewportCamera {
     this.current.x = screenX - ((screenX - this.current.x) / oldZoom) * newZoom;
     this.current.y = screenY - ((screenY - this.current.y) / oldZoom) * newZoom;
     this.current.zoom = newZoom;
-    this.animation = null;
+    if (this.animation) {
+      this.animation = null;
+      this.onAnimationEnd?.();
+    }
   }
 
   public animateZoomToPoint(
@@ -127,16 +148,21 @@ export class ViewportCamera {
     return true;
   }
 
-  public getViewProjectionMatrix(canvasW: number, canvasH: number): Float32Array {
+  public getViewProjectionMatrix(canvasW?: number, canvasH?: number): Float32Array {
+    if (canvasW !== undefined) this.viewportWidth = canvasW;
+    if (canvasH !== undefined) this.viewportHeight = canvasH;
+
     const { x, y, zoom } = this.current;
+    const w = this.viewportWidth;
+    const h = this.viewportHeight;
     const m = new Float32Array(16);
     
     // Orthographic Matrix components combined with camera transform
-    m[0]  = (2 * zoom) / canvasW;
-    m[5]  = (-2 * zoom) / canvasH;   // Y-flip (screen top = 0)
+    m[0]  = (2 * zoom) / w;
+    m[5]  = (-2 * zoom) / h;   // Y-flip (screen top = 0)
     m[10] = 1;
-    m[12] = -1 + (x * 2) / canvasW;  // Translation X
-    m[13] =  1 + (y * -2) / canvasH; // Translation Y
+    m[12] = -1 + (x * 2) / w;  // Translation X
+    m[13] =  1 + (y * -2) / h; // Translation Y
     m[15] = 1;
     
     return m;

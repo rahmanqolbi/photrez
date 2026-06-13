@@ -50,7 +50,7 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
       commitCropState: () => {},
     };
   }
-  const { pan, hoverPos, setHoverPos, commitCropState } = sdk;
+  const { pan, hoverPos, setHoverPos, commitCropState, camera } = sdk;
 
   const [activeHandle, setActiveHandle] = createSignal<string | null>(null);
   const [hoverHandle, setHoverHandle] = createSignal<string | null>(null);
@@ -78,7 +78,7 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
     const svg = params.getSvgRef();
     if (!svg) return null;
     const r = svg.getBoundingClientRect();
-    return { x: (clientX - r.left) / params.zoom, y: (clientY - r.top) / params.zoom };
+    return camera.screenToDocument(clientX - r.left, clientY - r.top);
   };
 
   const rotateCursor = createMemo(() => {
@@ -92,9 +92,13 @@ export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
     }
     const z = params.zoom;
     const p = pan();
-    const bb = {
+    const tl = {
       x: rect.x * z + p.x,
       y: rect.y * z + p.y,
+    };
+    const bb = {
+      x: tl.x,
+      y: tl.y,
       w: rect.w * z,
       h: rect.h * z,
     };

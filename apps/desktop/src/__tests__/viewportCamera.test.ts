@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ViewportCamera, MIN_ZOOM, MAX_ZOOM } from "../viewport/viewportCamera";
 import { easeOutCubic, linear } from "../viewport/easing";
+import { screenToDocument } from "../viewport/coords";
 
 describe("ViewportCamera", () => {
   let camera: ViewportCamera;
@@ -55,6 +56,16 @@ describe("ViewportCamera", () => {
     const screen = camera.documentToScreen(100, 200);
     expect(screen.x).toBeCloseTo(350);
     expect(screen.y).toBeCloseTo(700);
+  });
+
+  it("round-trips document and screen coordinates after pan and zoom", () => {
+    camera.setState({ x: 86, y: 124, zoom: 0.6 });
+
+    const screen = camera.documentToScreen(472, 709);
+    const doc = camera.screenToDocument(screen.x, screen.y);
+
+    expect(doc.x).toBeCloseTo(472, 4);
+    expect(doc.y).toBeCloseTo(709, 4);
   });
 
   it("zoomToPoint keeps anchor point stable", () => {
@@ -150,5 +161,48 @@ describe("ViewportCamera", () => {
     const docAfter = camera.screenToDocument(screenX, screenY);
     expect(docAfter.x).toBeCloseTo(docBefore.x);
     expect(docAfter.y).toBeCloseTo(docBefore.y);
+  });
+});
+
+describe("coords.screenToDocument vs camera.screenToDocument equivalency", () => {
+  it("produces identical results across zoom levels and pan offsets", () => {
+    const camera = new ViewportCamera();
+    const canvasRect = new DOMRect(50, 30, 1200, 800);
+
+    const scenarios = [
+      { x: 0, y: 0, zoom: 1.0 },
+      { x: 100, y: 200, zoom: 0.5 },
+      { x: -50, y: -100, zoom: 2.0 },
+      { x: 300, y: 150, zoom: 0.25 },
+    ];
+
+    for (const state of scenarios) {
+      camera.setState(state);
+
+      // Test points across the viewport
+      const testPoints = [
+        { clientX: 100, clientY: 100 },
+        { clientX: 400, clientY: 300 },
+        { clientX: 800, clientY: 500 },
+        { clientX: 600, clientY: 400 },
+      ];
+
+      for (const pt of testPoints) {
+        const coordsResult = screenToDocument(
+          pt.clientX,
+          pt.clientY,
+          canvasRect,
+          { panX: state.x, panY: state.y, zoom: state.zoom, rotation: 0 }
+        );
+
+        const cameraResult = camera.screenToDocument(
+          pt.clientX - canvasRect.left,
+          pt.clientY - canvasRect.top
+        );
+
+        expect(coordsResult.x).toBeCloseTo(cameraResult.x, 10);
+        expect(coordsResult.y).toBeCloseTo(cameraResult.y, 10);
+      }
+    }
   });
 });

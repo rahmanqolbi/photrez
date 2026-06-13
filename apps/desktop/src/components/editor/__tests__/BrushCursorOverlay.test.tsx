@@ -3,6 +3,7 @@ import { render } from "solid-js/web";
 import { createSignal } from "solid-js";
 import { BrushCursorOverlay } from "../BrushCursorOverlay";
 import * as EditorContextModule from "../EditorContext";
+import { ViewportCamera } from "../../../viewport/viewportCamera";
 
 describe("BrushCursorOverlay", () => {
   it("uses brush size and hardness for the cursor rings", () => {
@@ -15,6 +16,7 @@ describe("BrushCursorOverlay", () => {
       activeTool,
       setActiveTool,
       zoom,
+      camera: new ViewportCamera(),
       brushSize,
       brushHardness,
       brushOpacity: () => 1,
@@ -44,6 +46,7 @@ describe("BrushCursorOverlay", () => {
       activeTool,
       setActiveTool,
       zoom,
+      camera: new ViewportCamera(),
       brushSize: () => 24,
       brushHardness: () => 0.5,
       brushOpacity: () => 1,
@@ -71,6 +74,7 @@ describe("BrushCursorOverlay", () => {
     vi.spyOn(EditorContextModule, "useEditor").mockReturnValue({
       activeTool,
       zoom,
+      camera: new ViewportCamera(),
       brushSize,
       brushHardness: () => 0.5,
       brushOpacity: () => 1,
@@ -83,8 +87,8 @@ describe("BrushCursorOverlay", () => {
     document.body.appendChild(root);
     const dispose = render(() => <BrushCursorOverlay forceVisibleForTest cursorPosForTest={{ x: 10, y: 10 }} />, root);
 
-    // r should be document-space radius (12), NOT 12/2=6
-    expect(root.querySelector("[data-paint-cursor-outer]")?.getAttribute("r")).toBe("12");
+    // r should be screen-space radius (12 * zoom = 24)
+    expect(root.querySelector("[data-paint-cursor-outer]")?.getAttribute("r")).toBe("24");
 
     dispose();
     root.remove();

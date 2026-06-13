@@ -52,12 +52,14 @@
 | ✅ DONE      | Keyboard nudge (Arrow=1px, Shift+Arrow=10px) |
 | ✅ DONE      | Canvas auto-select (click-to-select visible layer under cursor) |
 | ✅ DONE      | Transform HUD (ΔX/ΔY, W/H/%, angle near cursor) |
+| ✅ DONE      | Transform HUD fixed screen-size metrics during zoom (resize W/H tooltip does not scale with viewport zoom) |
 | ✅ DONE      | HUD "snap" label when snap lines active       |
 | ✅ DONE      | Dynamic rotate cursor (SVG data-URI, angle-based, cached per degree) |
 | ✅ DONE      | Rotate broad hit area (outside-core + expanded bounds matching reference) |
 | ✅ DONE      | Continuous hover tracking via detectHandle (updates every pointer move) |
 | ✅ DONE      | Rotation normalization ([-180, 180] range matching reference) |
 | ✅ DONE      | Move tool option bar visual polish (high-contrast active state for toggles) |
+| ✅ DONE      | Pasteboard click deselect — clicking outside artboard deselects active layer (handles SVG overlay z-index 40 and full-viewport WebGL canvas targets, works at all zoom levels) |
 | ✅ DONE      | Auto-Select hovered target indicator readout badge |
 | ✅ DONE      | Quick Canvas Alignment actions in Option Bar (Align left/center/right/top/middle/bottom) |
 
@@ -129,6 +131,7 @@
 | ✅ DONE      | Alt-Hold Eyedropper modifier for sampling colors from active canvas |
 | ✅ DONE      | Shift-Click Straight Lines interpolation connecting last painted dab |
 | ✅ DONE      | Shift-Drag Axis Locking constraining stroke to horizontal/vertical |
+| ✅ DONE      | Regression guard: Brush/Eraser still paint/erase after Move Tool pasteboard deselect hides the transform box |
 
 ---
 
@@ -170,16 +173,17 @@
 
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
-| ✅ DONE      | Zoom in/out (scroll wheel + keyboard shortcuts, slider removed) |
+| ✅ DONE      | Zoom in/out (Ctrl+wheel + keyboard shortcuts, 1.25x in / 0.8x out, slider removed) |
 | ✅ DONE      | Zoom level display (status bar)            |
 | ✅ DONE      | Zoom via scroll wheel (Ctrl+scroll)        |
 | ✅ DONE      | Pan canvas (Space+drag)                    |
-| ✅ DONE      | Fit to screen (Ctrl+0)                     |
+| ✅ DONE      | Fit to screen (Ctrl+0, instant viewport reset) |
 | ✅ DONE      | Pixel-level canvas rendering (WebGL2 canvas) |
 | ✅ DONE      | On-demand rendering (dirty flag system)    |
-| ✅ DONE      | CSS transform viewport (GPU-accelerated)  |
-| ✅ DONE      | Hover highlight (purple outline)           |
-| ✅ DONE      | Smart guides (magenta snap lines)          |
+| ✅ DONE      | WebGL2 projection-matrix-driven camera viewport with recovered reactive overlay alignment |
+| ✅ DONE      | WebGL final-pass document clipping — transformed layer pixels are clipped to artboard/document bounds |
+| ⚠️ RECOVERY  | GPU-Accelerated smooth zoom transitions (implementation exists, but original full migration plan is superseded; manual UX validation still required before treating it as final polish) |
+| ✅ DONE      | Pointer-anchored instant scroll wheel zoom (no transition delay, pixel-accurate) |
 | ✅ DONE      | Brush cursor overlay (size preview)        |
 | ✅ DONE      | Handle-aware cursor resolver               |
 | ✅ DONE      | Crop overlay with composition guides       |
@@ -188,7 +192,7 @@
 | ✅ DONE      | Transformation HUD near cursor             |
 | ✅ DONE      | Status bar tool hints + zoom readout       |
 | ✅ DONE      | HiDPI/Retina sharpness (canvas pixel buffer = docW × zoom × dpr) |
-| ✅ DONE      | Snappy, instant zoom & tool switching (no CSS transition delay/jiggle) |
+| ✅ DONE      | Snappy, instant zoom & tool switching (keyboard zoom and Ctrl+0 are immediate; no CSS transition delay/jiggle) |
 | ✅ DONE      | View matrix bug fix (documentSize, not canvasSize) |
 | ✅ DONE      | Cursor style reactive binding (style:cursor for Space-grab visual feedback) |
 | ✅ DONE      | Cursor imperative sync (createEffect for guaranteed reactivity in canvas) |
@@ -199,6 +203,7 @@
 | ✅ DONE      | Pointer-based drag-to-pan in Navigator (drag red box/click thumbnail to pan) |
 | ✅ DONE      | Interactive Zoom Slider control in Navigator panel (with custom min/max bounds and quick +/- buttons) |
 | ✅ DONE      | Navigator header 'maximize' button connected to Fit Screen action |
+| ✅ DONE      | E2E regression coverage for Move Tool transform box alignment after fit-to-screen, keyboard zoom, and Space+drag pan |
 
 ---
 
@@ -288,6 +293,10 @@
 
 | Status | Item |
 | ------ | ---- |
+| DONE | Viewport tool alignment browser QA hardened: Playwright smoke now covers Move Tool transform geometry across fit, zoom, and pan |
+| DONE | Viewport camera regression recovery executed: one viewport adapter + reactive overlay alignment fixes |
+| DONE | Viewport camera regression recovery todo created: `docs/plans/2026-06-13-viewport-camera-regression-recovery-todo.md` |
+| SUPERSEDED | GPU-Accelerated smooth zoom viewport camera implementation plan: `docs/plans/2026-06-13-gpu-smooth-zoom-transitions-design.md` |
 | DONE | Brush visual calibration and pixel QA plan executed: `docs/superpowers/plans/2026-06-11-brush-visual-calibration-and-qa.md` |
 | DONE | Brush-tip mask engine implementation plan executed: `docs/superpowers/plans/2026-06-11-brush-tip-mask-engine.md` |
 | DONE | Brush hardness distance-field soft-edge implementation: `docs/superpowers/plans/2026-06-11-brush-hardness-distance-field-soft-edge.md` |

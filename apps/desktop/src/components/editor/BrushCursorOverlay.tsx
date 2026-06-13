@@ -1,7 +1,6 @@
-import { createSignal, onMount, onCleanup, Show, createEffect } from "solid-js";
+import { createSignal, onMount, onCleanup, Show, createEffect, createMemo } from "solid-js";
 import { useEditor } from "./EditorContext";
 import { getActivePaintToolSettings } from "./brushToolState";
-import { screenToDocument } from "@/viewport/coords";
 
 export function BrushCursorOverlay(props?: {
   forceVisibleForTest?: boolean;
@@ -14,6 +13,7 @@ export function BrushCursorOverlay(props?: {
     activeTool,
     zoom,
     pan,
+    camera,
     brushSize,
     brushHardness,
     brushOpacity,
@@ -39,7 +39,7 @@ export function BrushCursorOverlay(props?: {
     eraserSmoothing: 0,
   });
 
-  const radius = () => settings().size / 2;
+  const radius = () => (settings().size / 2) * zoom();
 
   let lastClientX = 0;
   let lastClientY = 0;
@@ -58,9 +58,7 @@ export function BrushCursorOverlay(props?: {
       if (!containerEl) return;
     }
     const rect = containerEl.getBoundingClientRect();
-    const engine = workspace.getActiveEngine();
-    if (!engine) return;
-    const doc = screenToDocument(lastClientX, lastClientY, rect, engine.getViewport());
+    const doc = camera.screenToDocument(lastClientX - rect.left, lastClientY - rect.top);
     setCursorPos({ x: doc.x, y: doc.y });
     setVisible(true);
   };
@@ -94,12 +92,18 @@ export function BrushCursorOverlay(props?: {
   });
 
   const show = () => props?.forceVisibleForTest || (isBrushTool() && visible() && !props?.isAltPressed && !props?.isPanning);
-  const pos = () => props?.cursorPosForTest || cursorPos();
+
+  const screenPos = createMemo(() => {
+    const docPos = props?.cursorPosForTest || cursorPos();
+    const z = zoom();
+    const p = typeof pan === "function" ? pan() : { x: 0, y: 0 };
+    return { x: docPos.x * z + p.x, y: docPos.y * z + p.y };
+  });
 
   return (
     <Show when={show()}>
       <g
-        transform={`translate(${pos().x}, ${pos().y})`}
+        transform={`translate(${screenPos().x}, ${screenPos().y})`}
         pointer-events="none"
       >
         <circle
@@ -108,7 +112,7 @@ export function BrushCursorOverlay(props?: {
           r={radius()}
           fill="none"
           stroke="rgba(0,0,0,0.4)"
-          stroke-width={2 / zoom()}
+          stroke-width={2}
         />
         <circle
           data-paint-cursor-outer
@@ -117,10 +121,10 @@ export function BrushCursorOverlay(props?: {
           r={radius()}
           fill="none"
           stroke="white"
-          stroke-width={1 / zoom()}
+          stroke-width={1}
         />
-        <line x1={-4 / zoom()} y1={0} x2={4 / zoom()} y2={0} stroke="white" stroke-width={1 / zoom()} />
-        <line x1={0} y1={-4 / zoom()} x2={0} y2={4 / zoom()} stroke="white" stroke-width={1 / zoom()} />
+        <line x1={-4} y1={0} x2={4} y2={0} stroke="white" stroke-width={1} />
+        <line x1={0} y1={-4} x2={0} y2={4} stroke="white" stroke-width={1} />
       </g>
     </Show>
   );

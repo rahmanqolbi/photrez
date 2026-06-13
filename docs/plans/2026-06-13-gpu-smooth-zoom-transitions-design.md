@@ -1,7 +1,7 @@
 # GPU-Accelerated Smooth Zoom Transitions — Design Document
 
 **Date**: 2026-06-13
-**Status**: Draft — Pending User Approval
+**Status**: Superseded — caused viewport/tool coordinate regressions when executed as a full runtime migration.
 **Scope**: Viewport rendering pipeline migration
 
 ---

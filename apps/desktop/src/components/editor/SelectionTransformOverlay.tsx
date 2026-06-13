@@ -24,6 +24,7 @@ interface SelectionTransformOverlayProps {
   onScreenToDoc?: (clientX: number, clientY: number) => { x: number; y: number };
   snapActive?: boolean;
   moveSnapEnabled?: boolean;
+  onStopMomentum?: () => void;
 }
 
 const HANDLE_SIZE = 8;
@@ -48,7 +49,7 @@ export function getRotatePath(type: string, cx: number, cy: number, ro: number, 
 }
 
 export function SelectionTransformOverlay(props: SelectionTransformOverlayProps = {}) {
-  const { zoom, activeTool, setHoverHandle, setHoverPos, layerTransformSession } = useEditor();
+  const { zoom, pan, activeTool, setHoverHandle, setHoverPos, layerTransformSession } = useEditor();
 
   let overlaySvgRef: SVGSVGElement | undefined;
 
@@ -62,7 +63,9 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
     layerY,
     effW,
     effH,
+    rotateCursor,
     resolvedCursor,
+    activeDragCursor,
     handlePointerMove,
     handlePointerUp,
     handlePointerCancel,
@@ -77,19 +80,28 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
     snapActive: props.snapActive,
     moveSnapEnabled: props.moveSnapEnabled,
     getSvgRef: () => overlaySvgRef,
+    onStopMomentum: props.onStopMomentum,
   });
 
-  const z = createMemo(() => zoom());
+  const hs = () => HANDLE_SIZE;
+  const ht = () => HANDLE_HIT;
+  const ro = () => ROTATE_OUTER;
 
-  const hs = () => HANDLE_SIZE / z();
-  const ht = () => HANDLE_HIT / z();
-  const ro = () => ROTATE_OUTER / z();
+  const screenCenter = createMemo(() => {
+    const c = center();
+    const z = zoom();
+    const p = pan();
+    return { x: c.x * z + p.x, y: c.y * z + p.y };
+  });
 
-  // Helper createMemo from solid-js since we need it locally
-  // Wait, let's import createMemo!
-  // Yes:
-  // import { Show, For, createMemo } from "solid-js";
-  // We can just add createMemo to imports.
+  const screenTL = createMemo(() => {
+    const z = zoom();
+    const p = pan();
+    return { x: layerX() * z + p.x, y: layerY() * z + p.y };
+  });
+
+  const screenW = createMemo(() => effW() * zoom());
+  const screenH = createMemo(() => effH() * zoom());
 
   return (
     <Show when={getLayer()}>
@@ -109,28 +121,29 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
             overflow: "visible",
             "pointer-events": props.isNavigationMode || activeTool() === "crop" ? "none" : "auto",
             "z-index": 40,
-            cursor: resolvedCursor(),
+            cursor: activeDragCursor() ?? "default",
           }}
         >
-          {/* Rotated group for handles and interactions */}
-          <g transform={`rotate(${rotation()} ${center().x} ${center().y})`}>
+          {/* Rotated group for handles and interactions in screen-space */}
+          <g transform={`rotate(${rotation()} ${screenCenter().x} ${screenCenter().y})`}>
             {/* Rotated bounding box outline */}
             <rect
-              x={layerX()}
-              y={layerY()}
-              width={effW()}
-              height={effH()}
+              data-transform-box
+              x={screenTL().x}
+              y={screenTL().y}
+              width={screenW()}
+              height={screenH()}
               fill="none"
               stroke={layerTransformSession()?.layerId === getLayer()?.id ? "#E15A17" : "rgba(255,255,255,0.72)"}
-              stroke-width={1 / z()}
+              stroke-width={1}
               vector-effect="non-scaling-stroke"
               style={{ "pointer-events": "none" }}
             />
             {/* Center pivot dot */}
             <circle
-              cx={center().x}
-              cy={center().y}
-              r={3 / z()}
+              cx={screenCenter().x}
+              cy={screenCenter().y}
+              r={3}
               fill="#E15A17"
               vector-effect="non-scaling-stroke"
               style={{ "pointer-events": "none" }}
@@ -138,27 +151,27 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
 
             {/* Move hit zone — rendered before handles so handles are on top */}
             <rect
-              x={layerX()}
-              y={layerY()}
-              width={effW()}
-              height={effH()}
+              x={screenTL().x}
+              y={screenTL().y}
+              width={screenW()}
+              height={screenH()}
               fill="transparent"
-              style={{ "pointer-events": props.isNavigationMode ? "none" : "all" }}
+              style={{ "pointer-events": props.isNavigationMode ? "none" : "all", cursor: "move" }}
               data-move
               onPointerDown={(e) => handlePointerDown(e, "move")}
               onPointerEnter={() => setHoverHandle("move")}
               onPointerLeave={() => setHoverHandle(null)}
             />
 
-            {/* 8 handles at unrotated edges, in layer-local coords */}
+            {/* 8 handles at unrotated edges, in screen coords */}
             <For each={HANDLE_TYPES}>
               {(type) => {
-                const hx = () => type === "nw" || type === "sw" || type === "w" ? layerX()
-                          : type === "ne" || type === "se" || type === "e" ? layerX() + effW()
-                          : layerX() + effW() / 2;
-                const hy = () => type === "nw" || type === "n" || type === "ne" ? layerY()
-                          : type === "sw" || type === "s" || type === "se" ? layerY() + effH()
-                          : layerY() + effH() / 2;
+                const hx = () => type === "nw" || type === "sw" || type === "w" ? screenTL().x
+                          : type === "ne" || type === "se" || type === "e" ? screenTL().x + screenW()
+                          : screenTL().x + screenW() / 2;
+                const hy = () => type === "nw" || type === "n" || type === "ne" ? screenTL().y
+                          : type === "sw" || type === "s" || type === "se" ? screenTL().y + screenH()
+                          : screenTL().y + screenH() / 2;
                 const cursor = () => getCursorForHandle(type, rotation(), scaleX(), scaleY());
                 return (
                   <g>
@@ -168,12 +181,17 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
                         d={getRotatePath(type, hx(), hy(), ro(), ht())}
                         fill="transparent"
                         fill-rule="evenodd"
-                        style={{ "pointer-events": props.isNavigationMode ? "none" : "all" }}
+                        style={{ "pointer-events": props.isNavigationMode ? "none" : "all", cursor: rotateCursor() }}
                         onPointerDown={(e) => handlePointerDown(e, "rotate")}
                         onPointerEnter={(e) => {
+                          setHoverHandle(`rotate-${type}`);
+                          setHoverPos({ x: e.clientX, y: e.clientY });
+                        }}
+                        onPointerMove={(e) => {
                           setHoverPos({ x: e.clientX, y: e.clientY });
                         }}
                         onPointerLeave={() => {
+                          setHoverHandle(null);
                           setHoverPos(null);
                         }}
                       />
@@ -186,7 +204,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
                       width={ht()}
                       height={ht()}
                       fill="transparent"
-                      style={{ "pointer-events": props.isNavigationMode ? "none" : "all" }}
+                      style={{ "pointer-events": props.isNavigationMode ? "none" : "all", cursor: cursor() }}
                       data-handle={type}
                       onPointerDown={(e) => handlePointerDown(e, type)}
                       onPointerEnter={() => setHoverHandle(type)}
@@ -201,7 +219,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
                       height={hs()}
                       fill="white"
                       stroke="#E15A17"
-                      stroke-width={1 / z()}
+                      stroke-width={1}
                       vector-effect="non-scaling-stroke"
                       style={{ "pointer-events": "none" }}
                     />

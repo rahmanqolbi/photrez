@@ -1,4 +1,5 @@
 import { createMemo, Show } from "solid-js";
+import { useEditor } from "./EditorContext";
 import type { CropRect } from "@/viewport/cropGeometry";
 import type { CropSnapTargets } from "@/viewport/cropSnap";
 import type { SnapLine } from "@/viewport/smartGuides";
@@ -41,6 +42,7 @@ const HANDLE_SIZE = 8;
 const HANDLE_HIT = 20;
 
 export function CropOverlay(props: CropOverlayProps) {
+  const { pan } = useEditor();
   let svgRef: SVGSVGElement | undefined;
 
   const navMode = () => props.isNavigationMode ?? false;
@@ -83,26 +85,42 @@ export function CropOverlay(props: CropOverlayProps) {
     isAltPressed: props.isAltPressed,
   });
 
-  const cropRectCenter = createMemo(() => {
+  const screenCenter = createMemo(() => {
     const rect = props.cropRect;
     if (!rect) return { x: 0, y: 0 };
+    const p = pan();
     return {
-      x: rect.x + rect.w / 2,
-      y: rect.y + rect.h / 2,
+      x: (rect.x + rect.w / 2) * props.zoom + p.x,
+      y: (rect.y + rect.h / 2) * props.zoom + p.y,
     };
   });
 
-  const hs = () => HANDLE_SIZE / props.zoom;
-  const ht = () => HANDLE_HIT / props.zoom;
+  const screenTL = createMemo(() => {
+    const rect = props.cropRect;
+    if (!rect) return { x: 0, y: 0 };
+    const p = pan();
+    return {
+      x: rect.x * props.zoom + p.x,
+      y: rect.y * props.zoom + p.y,
+    };
+  });
+
+  const screenW = createMemo(() => (props.cropRect?.w ?? 0) * props.zoom);
+  const screenH = createMemo(() => (props.cropRect?.h ?? 0) * props.zoom);
+
+  const hs = () => HANDLE_SIZE;
+  const ht = () => HANDLE_HIT;
 
   const handles = createMemo(() => {
     const rect = props.cropRect;
     if (!rect) return [];
-    const { x, y, w, h } = rect;
+    const tl = screenTL();
+    const sw = screenW();
+    const sh = screenH();
     const _hs = hs();
     return HANDLE_TYPES.map((type) => {
-      const cx = type.includes("w") ? x : type.includes("e") ? x + w : x + w / 2;
-      const cy = type.includes("n") ? y : type.includes("s") ? y + h : y + h / 2;
+      const cx = type.includes("w") ? tl.x : type.includes("e") ? tl.x + sw : tl.x + sw / 2;
+      const cy = type.includes("n") ? tl.y : type.includes("s") ? tl.y + sh : tl.y + sh / 2;
       return { type, cx, cy, size: _hs };
     });
   });
@@ -132,57 +150,57 @@ export function CropOverlay(props: CropOverlayProps) {
         <defs>
           <mask id="crop-shield">
             <rect
-              x={-props.canvasWidth}
-              y={-props.canvasHeight}
-              width={props.canvasWidth * 3}
-              height={props.canvasHeight * 3}
+              x={-5000}
+              y={-5000}
+              width={10000}
+              height={10000}
               fill="white"
             />
             <rect
-              x={props.cropRect!.x}
-              y={props.cropRect!.y}
-              width={props.cropRect!.w}
-              height={props.cropRect!.h}
+              x={screenTL().x}
+              y={screenTL().y}
+              width={screenW()}
+              height={screenH()}
               fill="black"
-              transform={cropRotationValue() !== 0 ? `rotate(${cropRotationValue()} ${cropRectCenter().x} ${cropRectCenter().y})` : undefined}
+              transform={cropRotationValue() !== 0 ? `rotate(${cropRotationValue()} ${screenCenter().x} ${screenCenter().y})` : undefined}
             />
           </mask>
         </defs>
         <rect
-          x={-props.canvasWidth}
-          y={-props.canvasHeight}
-          width={props.canvasWidth * 3}
-          height={props.canvasHeight * 3}
+          x={-5000}
+          y={-5000}
+          width={10000}
+          height={10000}
           fill={props.deleteCropped ? "#161618" : "rgba(0,0,0,0.5)"}
           fill-opacity={props.deleteCropped ? 0.98 : 1}
           mask="url(#crop-shield)"
           style={{ "pointer-events": "none" }}
         />
-        <g transform={cropRotationValue() !== 0 ? `rotate(${cropRotationValue()} ${cropRectCenter().x} ${cropRectCenter().y})` : undefined}>
+        <g transform={cropRotationValue() !== 0 ? `rotate(${cropRotationValue()} ${screenCenter().x} ${screenCenter().y})` : undefined}>
           <rect
-            x={props.cropRect!.x} y={props.cropRect!.y} width={props.cropRect!.w} height={props.cropRect!.h}
+            x={screenTL().x} y={screenTL().y} width={screenW()} height={screenH()}
             fill="none" stroke="white"
-            stroke-width={1 / props.zoom}
+            stroke-width={1}
             vector-effect="non-scaling-stroke"
             style={{ "pointer-events": "none" }}
           />
           <CropOverlayGuides
-            x={props.cropRect!.x}
-            y={props.cropRect!.y}
-            w={props.cropRect!.w}
-            h={props.cropRect!.h}
-            zoom={props.zoom}
+            x={screenTL().x}
+            y={screenTL().y}
+            w={screenW()}
+            h={screenH()}
+            zoom={1}
             guideMode={props.guideMode}
           />
           {/* 360° rotate band — behind move zone and handles */}
           <path
             d={getRotateBandPath(
-              props.cropRect!.x,
-              props.cropRect!.y,
-              props.cropRect!.w,
-              props.cropRect!.h,
-              ROTATE_BAND_PX / props.zoom,
-              ROTATE_CORNER_EXTRA / props.zoom,
+              screenTL().x,
+              screenTL().y,
+              screenW(),
+              screenH(),
+              ROTATE_BAND_PX,
+              ROTATE_CORNER_EXTRA,
             )}
             fill="transparent"
             fill-rule="evenodd"
@@ -207,10 +225,10 @@ export function CropOverlay(props: CropOverlayProps) {
           />
           {/* Move hit zone */}
           <rect
-            x={props.cropRect!.x}
-            y={props.cropRect!.y}
-            width={props.cropRect!.w}
-            height={props.cropRect!.h}
+            x={screenTL().x}
+            y={screenTL().y}
+            width={screenW()}
+            height={screenH()}
             fill="transparent"
             data-crop-move
             style={{ cursor: "move", "pointer-events": navMode() ? "none" : "all" }}
@@ -225,7 +243,7 @@ export function CropOverlay(props: CropOverlayProps) {
           <CropOverlayHandles
             isNavigationMode={navMode()}
             handles={handles()}
-            zoom={props.zoom}
+            zoom={1}
             hitSize={ht()}
             activeHandle={activeHandle()}
             hoverHandle={hoverHandle()}
@@ -238,17 +256,26 @@ export function CropOverlay(props: CropOverlayProps) {
         </g>
 
         <Show when={tooltip()}>
-          {(t) => (
-            <CropOverlayTooltip
-              x={t().x}
-              y={t().y}
-              w={t().w}
-              h={t().h}
-              zoom={props.zoom}
-              cropRotation={props.cropRotation ?? 0}
-              isRotate={!!dragState()?.handle.startsWith("rotate")}
-            />
-          )}
+          {(t) => {
+            const screenTooltipPos = createMemo(() => {
+              const p = pan();
+              return {
+                x: t().x * props.zoom + p.x,
+                y: t().y * props.zoom + p.y,
+              };
+            });
+            return (
+              <CropOverlayTooltip
+                x={screenTooltipPos().x}
+                y={screenTooltipPos().y}
+                w={t().w * props.zoom}
+                h={t().h * props.zoom}
+                zoom={1}
+                cropRotation={props.cropRotation ?? 0}
+                isRotate={!!dragState()?.handle.startsWith("rotate")}
+              />
+            );
+          }}
         </Show>
       </svg>
     </Show>

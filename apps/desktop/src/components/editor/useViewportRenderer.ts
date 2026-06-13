@@ -1,6 +1,7 @@
 import { createSignal, createEffect, onMount, onCleanup } from "solid-js";
 import { useEditor } from "./EditorContext";
 import { centerModernCropFrame } from "@/viewport/modernCropGeometry";
+import { easeOutCubic } from "@/viewport/easing";
 
 interface UseViewportRendererParams {
   getCanvasContainerRef: () => HTMLDivElement | undefined;
@@ -21,21 +22,30 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
     modernCropFrame,
     setModernCropFrame,
     cropInteractionMode,
+    activeTool,
+    viewportWidth,
+    viewportHeight,
+    camera,
+    syncFromCamera,
   } = useEditor();
 
   const [isFitTransition, setIsFitTransition] = createSignal(false);
   let fitTransitionTimeoutId = 0;
 
-  // Shared renderer resize — scales canvas pixel buffer by zoom × devicePixelRatio for HiDPI sharpness
+  // Shared renderer resize — scales canvas pixel buffer by viewport size or zoom × devicePixelRatio
   function resizeRenderer() {
     const engine = workspace.getActiveEngine();
     if (!engine) return;
     const dpr = window.devicePixelRatio || 1;
-    renderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr);
+    if (activeTool() === "crop" && cropInteractionMode() === "modern") {
+      renderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr);
+    } else {
+      renderer.resizeToViewport(viewportWidth(), viewportHeight(), dpr);
+    }
   }
 
   // Shared fit-to-screen workflow
-  function fitToScreenAndRender() {
+  function fitToScreenAndRender(animated = false) {
     const engine = workspace.getActiveEngine();
     if (!engine) return;
     const container = params.getCanvasContainerRef();
@@ -45,21 +55,35 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
     // Update global viewport dimensions in EditorContext
     setViewportWidth(rect.width);
     setViewportHeight(rect.height);
+    camera.setViewportSize(rect.width, rect.height);
 
-    // Disable CSS transition for snap-to-fit feel, then re-enable after 200ms
+    const padding = 80;
+    const fitZoom = Math.max(0.05, Math.min(
+      (rect.width - padding) / engine.getWidth(),
+      (rect.height - padding) / engine.getHeight(),
+      10.0
+    ));
+    const targetX = (rect.width - engine.getWidth() * fitZoom) / 2;
+    const targetY = (rect.height - engine.getHeight() * fitZoom) / 2;
+
     if (fitTransitionTimeoutId) clearTimeout(fitTransitionTimeoutId);
-    setIsFitTransition(true);
-    engine.fitToScreen(rect.width, rect.height);
-    syncViewport();
-    if (cropInteractionMode() === "modern") {
-      setModernCropFrame(prev => {
-        if (!prev) return null;
-        return centerModernCropFrame(prev, rect.width, rect.height);
-      });
+
+    if (animated) {
+      setIsFitTransition(true);
+      camera.animateTo({ x: targetX, y: targetY, zoom: fitZoom }, 150, easeOutCubic);
+      fitTransitionTimeoutId = window.setTimeout(() => setIsFitTransition(false), 200);
+    } else {
+      camera.setState({ x: targetX, y: targetY, zoom: fitZoom });
+      syncFromCamera();
+      if (cropInteractionMode() === "modern") {
+        setModernCropFrame((prev: any) => {
+          if (!prev) return null;
+          return centerModernCropFrame(prev, rect.width, rect.height);
+        });
+      }
+      resizeRenderer();
+      scheduler.requestRender();
     }
-    resizeRenderer();
-    scheduler.requestRender();
-    fitTransitionTimeoutId = window.setTimeout(() => setIsFitTransition(false), 200);
   }
 
   onMount(() => {
@@ -72,6 +96,26 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
       }
     }
 
+    let animFrameId = 0;
+    const tickLoop = () => {
+      if (camera.isAnimating()) {
+        camera.tick(performance.now());
+        syncFromCamera();
+        animFrameId = requestAnimationFrame(tickLoop);
+      }
+    };
+
+    camera.onAnimationStart = () => {
+      scheduler.startContinuousRender();
+      cancelAnimationFrame(animFrameId);
+      animFrameId = requestAnimationFrame(tickLoop);
+    };
+
+    camera.onAnimationEnd = () => {
+      scheduler.stopContinuousRender();
+      cancelAnimationFrame(animFrameId);
+    };
+
     const container = params.getCanvasContainerRef();
     if (container) {
       // ─── ResizeObserver — always active ───
@@ -79,6 +123,7 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
         for (const entry of entries) {
           setViewportWidth(entry.contentRect.width);
           setViewportHeight(entry.contentRect.height);
+          camera.setViewportSize(entry.contentRect.width, entry.contentRect.height);
         }
         fitToScreenAndRender();
       });
@@ -87,6 +132,9 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
       onCleanup(() => {
         resizeObserver.disconnect();
         renderer.dispose();
+        cancelAnimationFrame(animFrameId);
+        camera.onAnimationStart = undefined;
+        camera.onAnimationEnd = undefined;
       });
     }
   });

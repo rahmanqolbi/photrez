@@ -12,6 +12,133 @@ function h(tag: any, props: Record<string, unknown> | null, ...children: any[]):
 }
 
 describe("Resize pointer-capture fix", () => {
+  it("renders the move transform box in the same screen-space viewport as the layer", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("alignment", "Alignment", 472, 709);
+    session.engine.setViewport({ panX: 100, panY: 50, zoom: 0.6 });
+
+    const mockRenderer = {} as any;
+    const mockScheduler = { requestRender: vi.fn() } as any;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      h(
+        EditorProvider,
+        { workspace: ws, renderer: mockRenderer, scheduler: mockScheduler },
+        h(SelectionTransformOverlay, null),
+      ),
+      container,
+    );
+
+    ws.addDocument(session);
+    await Promise.resolve();
+
+    const moveRect = container.querySelector("rect[data-move]") as SVGElement;
+    expect(moveRect).not.toBeNull();
+    expect(Number(moveRect.getAttribute("x"))).toBeCloseTo(100);
+    expect(Number(moveRect.getAttribute("y"))).toBeCloseTo(50);
+    expect(Number(moveRect.getAttribute("width"))).toBeCloseTo(283.2);
+    expect(Number(moveRect.getAttribute("height"))).toBeCloseTo(425.4);
+
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("keeps the root overlay cursor default so pasteboard does not inherit rotate cursor", async () => {
+    let editor: any = null;
+    const TestComponent = () => {
+      editor = useEditor();
+      return h(SelectionTransformOverlay, null)();
+    };
+
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("cursor-root", "Cursor Root", 800, 600);
+    const mockRenderer = {} as any;
+    const mockScheduler = { requestRender: vi.fn() } as any;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      h(
+        EditorProvider,
+        { workspace: ws, renderer: mockRenderer, scheduler: mockScheduler },
+        h(TestComponent, null),
+      ),
+      container,
+    );
+
+    ws.addDocument(session);
+    await Promise.resolve();
+
+    editor.setHoverHandle("rotate-nw");
+    editor.setHoverPos({ x: 120, y: 120 });
+    await Promise.resolve();
+
+    const svg = container.querySelector("svg[data-overlay-svg]") as SVGSVGElement;
+    expect(svg).not.toBeNull();
+    expect(svg.style.cursor).toBe("default");
+
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("keeps the active resize cursor on the root SVG during pointer-captured resize drag", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("cursor-drag", "Cursor Drag", 800, 600);
+    const mockRenderer = {} as any;
+    const mockScheduler = { requestRender: vi.fn() } as any;
+    const origSet = SVGElement.prototype.setPointerCapture;
+    const setSpy = vi.fn();
+    SVGElement.prototype.setPointerCapture = setSpy;
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    const releaseSpy = vi.fn();
+    SVGElement.prototype.releasePointerCapture = releaseSpy;
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      h(
+        EditorProvider,
+        { workspace: ws, renderer: mockRenderer, scheduler: mockScheduler },
+        h(SelectionTransformOverlay, null),
+      ),
+      container,
+    );
+    ws.addDocument(session);
+    await Promise.resolve();
+
+    const svg = container.querySelector("svg[data-overlay-svg]") as SVGSVGElement;
+    const nwHandle = container.querySelector("[data-handle='nw']") as SVGElement;
+    expect(svg).not.toBeNull();
+    expect(nwHandle).not.toBeNull();
+    expect(svg.style.cursor).toBe("default");
+
+    nwHandle.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 77,
+      bubbles: true,
+      cancelable: true,
+      clientX: 0,
+      clientY: 0,
+    }));
+
+    expect(setSpy).toHaveBeenCalledWith(77);
+    expect(svg.style.cursor).toBe("nwse-resize");
+
+    svg.dispatchEvent(new PointerEvent("pointerup", {
+      pointerId: 77,
+      bubbles: true,
+    }));
+
+    expect(svg.style.cursor).toBe("default");
+    dispose();
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    container.parentNode?.removeChild(container);
+  });
+
   it("captures pointer on root SVG, not on per-handle element", () => {
     const ws = new WorkspaceManager();
     const session = WorkspaceManager.createBlankDocument("test", "Test", 800, 600);

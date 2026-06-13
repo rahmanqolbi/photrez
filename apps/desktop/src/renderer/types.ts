@@ -27,4 +27,7 @@ export interface RenderBackend {
   dispose(): void;
 
   readPixel(x: number, y: number): [number, number, number, number] | null;
+  getCanvas(): HTMLCanvasElement | null;
+  getLogicalWidth(): number;
+  getLogicalHeight(): number;
 }

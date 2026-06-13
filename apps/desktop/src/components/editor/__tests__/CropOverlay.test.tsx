@@ -4,6 +4,7 @@ import { createSignal } from "solid-js";
 import { CropOverlay } from "../CropOverlay";
 import { ModernCropOverlay } from "../ModernCropOverlay";
 import * as EditorContextModule from "../EditorContext";
+import { ViewportCamera } from "../../../viewport/viewportCamera";
 
 describe("CropOverlay pointer capture", () => {
   it("captures pointer on its own svg root", () => {
@@ -780,6 +781,7 @@ describe("CropOverlay viewport panning", () => {
       workspace: mockWorkspace,
       scheduler: mockScheduler,
       syncViewport: syncViewportSpy,
+      camera: new ViewportCamera(),
       pan: () => ({ x: 100, y: 100 }),
       hoverPos: () => null,
       setHoverPos: vi.fn(),

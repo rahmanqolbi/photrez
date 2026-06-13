@@ -20,6 +20,8 @@ export function LayersPanel() {
     selectedLayerId,
     scheduler,
     zoom,
+    pan,
+    setViewportState,
     activeDocumentId,
     syncViewport,
     layerTransformSession,
@@ -445,8 +447,11 @@ export function LayersPanel() {
             onClick={() => {
               const engine = workspace.getActiveEngine();
               if (engine) {
-                engine.setViewport({ zoom: Math.max(0.05, zoom() - 0.1) });
-                syncViewport();
+                setViewportState({
+                  x: pan().x,
+                  y: pan().y,
+                  zoom: Math.max(0.05, zoom() - 0.1),
+                });
                 scheduler.requestRender();
               }
             }}
@@ -462,8 +467,11 @@ export function LayersPanel() {
             onInput={(e) => {
               const engine = workspace.getActiveEngine();
               if (engine) {
-                engine.setViewport({ zoom: parseInt(e.target.value) / 100 });
-                syncViewport();
+                setViewportState({
+                  x: pan().x,
+                  y: pan().y,
+                  zoom: parseInt(e.target.value) / 100,
+                });
                 scheduler.requestRender();
               }
             }}
@@ -473,8 +481,11 @@ export function LayersPanel() {
             onClick={() => {
               const engine = workspace.getActiveEngine();
               if (engine) {
-                engine.setViewport({ zoom: Math.min(4.0, zoom() + 0.1) });
-                syncViewport();
+                setViewportState({
+                  x: pan().x,
+                  y: pan().y,
+                  zoom: Math.min(4.0, zoom() + 0.1),
+                });
                 scheduler.requestRender();
               }
             }}

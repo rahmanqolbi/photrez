@@ -4,20 +4,223 @@
 
 ## Current Tasks
 
-### [2026-06-13] Feature — GPU-Accelerated Smooth Zoom [IN PROGRESS]
+### [2026-06-13] Bug Hunt — Move Tool Resize Cursor Drops To Default [IN PROGRESS]
+
+**Goal:**
+Fix the Move Tool regression where the cursor falls back to the normal pointer while resizing instead of preserving the active resize/rotate indicator during pointer-captured transform drags.
+
+**Debugging Rules:**
+- Preserve the prior pasteboard fix: the full-viewport root SVG must not leak stale rotate cursors when idle.
+- Keep move/resize/rotate cursors scoped to real hit zones while idle, but keep the active drag cursor stable during pointer capture.
+- Add focused regression coverage before production code changes where feasible.
+
+**Planned:**
+1. Inspect `SelectionTransformOverlay` and `useSelectionTransformDrag` cursor flow for hover vs active drag state.
+2. Add a regression test proving the root overlay uses the active resize cursor during drag while staying default when idle.
+3. Patch the cursor resolver with the smallest state-aware change.
+4. Run focused Move Tool cursor tests plus frontend verification.
+
+---
+
+### [2026-06-13] Bug Hunt — Brush/Eraser Stroke Not Appearing [COMPLETE]
+
+**Goal:**
+Investigate and fix the reported Brush/Eraser regression where drawing or erasing appears to do nothing on the active layer.
+
+**Debugging Rules:**
+- Reproduce the full input-to-pixel path before patching: pointer events, document coordinates, active layer gating, overlay preview, commit, texture upload, and render request.
+- Preserve existing Brush/Eraser UX contracts from history: cursor behavior during pan/zoom, transformed-layer local painting, shift lines, shift-axis lock, Alt eyedropper, and incremental soft brush rendering.
+- Add failing regression coverage before production code changes.
+
+**Planned:**
+1. Inspect `useCanvasPointerTools` paint pointer flow and `useBrushOverlay` preview/commit flow.
+2. Add focused tests proving brush stroke preview/commit writes pixels and uploads the active layer texture.
+3. Patch the root cause with the smallest change.
+4. Run focused brush/eraser tests plus full frontend verification.
+
+**Done:**
+1. Reproduced the reported no-op Brush/Eraser path after Move Tool pasteboard deselect with a failing Playwright regression.
+2. Fixed Move Tool pasteboard deselect to clear only transform selection (`selectedLayerId`) while preserving the engine active paint layer.
+3. Updated paint status-bar block checks to use `activeLayerId`, so Brush/Eraser still target the active layer even when the Move transform box is deselected.
+4. Added browser-level pixel proof that Brush changes the WebGL canvas and Eraser changes it again after the Move transform box has been deselected.
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (836 tests, 59 files)
+- PASS: `pnpm.cmd --filter photrez-desktop exec playwright test` (14 browser tests)
+- PASS: `pnpm.cmd run build`
+
+---
+
+### [2026-06-13] Bug Hunt — Transform Tooltip Scale + Layer Canvas Clipping [COMPLETE]
+
+**Goal:**
+Investigate and fix two viewport regressions: transform W/H tooltip/HUD appears oversized during resize, and layer pixels are visible outside the document canvas/artboard.
+
+**Debugging Rules:**
+- Reproduce with focused automated tests before changing production code where feasible.
+- Preserve recent Move Tool viewport fixes: instant zoom, pasteboard deselect, cursor hit-zone behavior, and transform overlay alignment.
+- Check `AI_HISTORY.md` for prior UX decisions around transform HUD sizing and canvas/document clipping before patching behavior.
+
+**Done:**
+1. Fixed Transform HUD W/H tooltip size by keeping HUD geometry/text in fixed screen pixels instead of dividing by viewport zoom inside the screen-space SVG layer.
+2. Added document-bound scissor clipping to the final WebGL FBO pass so transformed layer pixels cannot render outside the artboard/document bounds.
+3. Added failing-first regression coverage for fixed-size Transform HUD text/panel metrics at zoom `0.5`.
+4. Added pure regression coverage for projecting document bounds to WebGL scissor coordinates.
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (836 tests, 59 files)
+- PASS: `pnpm.cmd --filter photrez-desktop exec playwright test` (13 browser tests)
+- PASS: `pnpm.cmd run build`
+
+---
+
+### [2026-06-13] Bug Hunt — Viewport/Move Tool UX Regressions [COMPLETE]
+
+**Goal:**
+Investigate and fix the reported viewport/Move Tool regressions as one camera interaction cluster: stale rotate cursor on pasteboard, unreliable Ctrl+0 fit, uncomfortable zoom increments/animation, and delayed canvas/transform overlay alignment during zoom.
+
+**Debugging Rules:**
+- Reproduce with focused automated tests before changing production code where possible.
+- Treat cursor, fit-to-screen, zoom feel, and overlay alignment as one viewport-camera contract cluster.
+- Preserve existing Move Tool behavior: pasteboard deselect, auto-select, Space+drag pan, snapping/Alt, keyboard nudge, and transform overlay alignment.
+
+**Done:**
+1. Fixed stale rotate cursor on pasteboard by keeping the full-viewport selection SVG cursor at `default` and applying move/resize/rotate cursors only to the relevant hit zones.
+2. Changed keyboard zoom (`Ctrl+=` / `Ctrl+-`) from 150ms animated zoom to immediate pointer-centered zoom so canvas and transform overlay update in the same frame.
+3. Changed `Ctrl+0` to call instant fit-to-screen instead of animated fit, removing the repeated-keypress feeling.
+4. Increased keyboard and Ctrl+wheel zoom step to a consistent `1.25` in / `0.8` out so zoom changes feel more decisive.
+5. Added failing-first regression coverage for root overlay cursor, keyboard zoom immediacy, instant Ctrl+0, and Ctrl+wheel zoom factor.
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (833 tests, 57 files)
+- PASS: `pnpm.cmd --filter photrez-desktop exec playwright test` (13 browser tests)
+- PASS: `pnpm.cmd run build`
+
+---
+
+### [2026-06-13] Extended Viewport Edge Cases Audit — 8 Fixes [COMPLETE]
+
+**Goal:**
+Fix all P0/P1 bugs found during the deep audit of viewport event flow, coordinate conversion, selection state sync, transform session lifecycle, and keyboard shortcut collisions.
+
+**Done:**
+1. **P0-1:** Fixed `selectedLayerId` desync from `activeLayerId` after undo/redo — added `setSelectedLayerId` to `workspaceSync.ts` sync.
+2. **P0-2:** Fixed `moveAutoSelect` deselect overridden by EditorContext effect — track `prevActiveLayerId` so effect only fires on actual `activeLayerId` change.
+3. **P0-3:** Fixed selection change mid-drag corrupting transform — store `layerId` in drag state and cancel drag if layer changes.
+4. **P0-4:** Fixed momentum continuing during non-pan tool interactions — `stopMomentum()` in container `onPointerDown`.
+5. **P0-5:** Fixed animation cancel without `onAnimationEnd` callback — `setState`, `pan`, `zoomToPoint` now call `onAnimationEnd` when clearing animation.
+6. **P0-6:** Fixed crop-undo double-fire — added `e.defaultPrevented` guard in `AppTitleBar.tsx` keydown handler.
+7. **P1-7/P1-8:** Fixed `handleLostPointerCapture` pointerId check and `setPointerCapture` try/catch in `useSelectionTransformDrag.ts`.
+
+**Verification:**
+- PASS: 829 frontend unit tests (56 files)
+- PASS: 13 Playwright E2E tests
+- PASS: `pnpm.cmd run build`
+
+---
+
+### [2026-06-13] Regression Audit — Tool Interaction Contracts vs Current Runtime [COMPLETE]
+
+**Goal:**
+Compare documented tool UX contracts from `AI_HISTORY.md` / `FEATURES.md` against current automated behavior, starting from the reported Move Tool deselect failure.
+
+**Done:**
+1. Fixed pasteboard click deselect bug — SVG overlay (`z-index: 40`, `pointer-events: auto`) captured all viewport clicks, preventing container's pasteboard handler from firing.
+2. Fixed `isPasteboardPointerDown` in `CanvasViewport.tsx` to recognize `[data-overlay-svg]` clicks as pasteboard clicks when outside document bounds.
+3. Fixed fallback `onScreenToDoc` formula in `useSelectionTransformDrag.ts` (lines 136, 247) — was missing `pan()` offset before dividing by zoom.
+4. Fixed fallback `onScreenToDoc` formula in `CanvasViewport.tsx` (line 758) — same missing pan offset.
+5. Fixed Playwright test assertion — "No selection" is the no-document fallback; corrected to check for "No active layer" (the actual no-layer indicator).
+6. Added dual coordinate system equivalency test (`coords.screenToDocument` vs `camera.screenToDocument`).
+7. Added pasteboard click detection test at zoom ≠ 1.
+8. Added a failing-first regression for the GPU/WebGL canvas path: a full-viewport canvas click outside the artboard must be classified as pasteboard and clear the active layer.
+9. Confirmed the Move Tool contract matrix against docs: pasteboard deselect, fit/zoom/pan overlay alignment, Space+drag pan priority, auto-select, snap/Alt, and keyboard nudge all have focused automated coverage.
+
+**Verification:**
+- PASS: 829 frontend unit tests (56 files)
+- PASS: 13 Playwright E2E tests
+- PASS: `pnpm.cmd run build`
+
+### [2026-06-13] Test Hardening — Viewport Tool Alignment QA [COMPLETE]
+
+**Goal:**
+Reduce manual QA burden for viewport/canvas/tool regressions by adding automated browser-level checks for alignment-sensitive workflows.
+
+**Done:**
+1. Added a stable `data-transform-box` selector to the Move Tool transform outline for browser-level geometry checks.
+2. Added Playwright coverage that creates an 800x600 canvas and verifies the Move Tool transform box remains mathematically aligned after fit-to-screen, keyboard zoom, and Space+drag pan.
+3. Hardened stale Playwright smoke assertions around canvas dimension text, crop mode controls, and layer-specific Move options so the suite matches current UI behavior.
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop exec playwright test` (11 browser tests)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (827 tests)
+- PASS: `pnpm.cmd run build`
+
+### [2026-06-13] Bug Fix — Viewport Camera Regression Recovery [COMPLETE]
+
+**Goal:**
+Restore canvas/tool coordinate consistency after the GPU smooth zoom migration before adding or polishing zoom transitions.
+
+**Initial Risk:**
+Current viewport state is split between `ViewportCamera`, SolidJS `pan/zoom`, and `DocumentEngine.viewport`.
+
+**Done:**
+1. Added a single `setViewportState()` adapter in `EditorContext.tsx` so viewport writes update camera, SolidJS signals, and `DocumentEngine.viewport` together.
+2. Routed Navigator pan/zoom controls, crop viewport centering, and crop nudge viewport compensation through the adapter.
+3. Fixed stale overlay positioning by replacing non-reactive `camera.documentToScreen()` render/memo paths with reactive `pan()` + `zoom()` screen-space calculations.
+4. Added regression coverage for Move Tool transform box alignment at 60% zoom and viewport pan.
+5. Updated the original GPU smooth zoom plan status to superseded and recorded the recovery decision in `docs/01-id-decision-log.md`.
+
+**Verification:**
+- PASS: focused viewport/overlay tests (150 tests)
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (827 tests)
+- PASS: `pnpm.cmd run build`
+- PASS: `cargo test -p photrez-core`
+- PASS: `cargo test --workspace`
+
+### [2026-06-13] Planning — Viewport Camera Regression Recovery [COMPLETE]
+
+**Goal:**
+Create a staged todo/recovery plan for the GPU smooth zoom migration regressions, focused on restoring canvas/tool coordinate consistency before any further smooth zoom work.
+
+**Planned Output:**
+- Created `docs/plans/2026-06-13-viewport-camera-regression-recovery-todo.md`.
+- No code implementation in this step.
+
+### [2026-06-13] Bug Fix — WebGL Viewport Alignment & Layout Restoration [COMPLETE]
+
+**Goal:**
+Fix image and checkerboard shifting and scaling mismatches relative to overlays on high-DPI screens, and restore the original docked layout in the editor shell.
+
+**Done:**
+1. Restored original docked container layout in `EditorShell.tsx` (reverting unintentional margins, padding, and gaps).
+2. Managed logical viewport dimensions directly inside the `ViewportCamera` instance (`viewportWidth` and `viewportHeight`) rather than retrieving from renderer logical state (which can be overwritten by other tool action resize calls).
+3. Synchronized viewport dimensions on resize and load to `camera` via `camera.setViewportSize()`.
+4. Fixed double camera matrix transformation in `webgl2.ts` by rendering the final FBO copy to the screen using a 1:1 identity orthographic projection instead of the camera `viewProj` matrix.
+5. Added an integration regression test to `ui-sanity.test.ts` to ensure docked layout integrity in `EditorShell.tsx` is preserved.
+
+**Verification:**
+- PASS: `pnpm --filter photrez-desktop test --run` (all 824 tests passed)
+- PASS: `pnpm run build` (successful compilation)
+
+### [2026-06-13] Feature — GPU-Accelerated Smooth Zoom [COMPLETE]
 
 **Goal:**
 Migrate viewport rendering pipeline from CSS transform-based zoom to viewport-fixed WebGL Camera. Implement smooth 150ms easeOutCubic transitions for keyboard/fit-to-screen zoom, and instant scroll wheel zoom.
 
-**Planned:**
-1. ViewportCamera class + Easing functions (standalone) & unit tests (Phase 1)
-2. WebGL2 Renderer Migration (resizeToViewport & VP Matrix) (Phase 2)
-3. Scheduler Continuous Render Mode (Phase 3)
-4. CanvasViewport + EditorContext Integration (Phase 4)
-5. Pan/Zoom Handler Migration (Phase 5)
-6. Overlay Coordinate Migration (Phase 6)
-7. Backward Compatibility (Phase 7)
-8. Testing & Verification (Phase 8)
+**Done:**
+1. Created `ViewportCamera` class + Easing functions (standalone) & unit tests (Phase 1)
+2. Implemented WebGL2 Renderer Migration (resizeToViewport & VP Matrix) (Phase 2)
+3. Integrated Scheduler Continuous Render Mode (Phase 3)
+4. Connected CanvasViewport + EditorContext (Phase 4)
+5. Migrated Pan/Zoom Handlers (Phase 5)
+6. Adapted Overlay Coordinates to screen-space (Phase 6)
+7. Added Backward Compatibility for Modern Crop mode CSS transforms (Phase 7)
+8. Verified all 823 frontend tests pass and Vite production build succeeds (Phase 8)
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (all 823 tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+- PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
 
 ### [2026-06-13] Bug Fix — Modern Crop: Reset Button in Ratio/Size Modes [COMPLETE]
 
@@ -521,5 +724,19 @@ Synchronize the last painted coordinate (`lastPaintCoords`) with the document un
 ### Verification
 - PASS: `pnpm --filter photrez-desktop test --run` (all 810 tests passed)
 - PASS: `cargo test --workspace` (all 92 Rust workspace tests passed)
+- PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
+
+### [2026-06-13] Opacity Slider Visual Standardization [COMPLETE]
+
+**Goal:**
+Standardize the visual design of the interactive Opacity slider in the Properties panel to match the mock sliders below it (like Temp and Tint) by combining the visual `<Slider>` component with an interactive overlay input.
+
+**Done:**
+1. Replaced the native slider input in `PropertiesPanel.tsx` with a visual `<Slider>` component overlayed by a transparent `<input type="range">`.
+2. Verified visual uniformity with the Temp and Tint sliders below it while maintaining full drag reactivity.
+3. Verified all 837 frontend tests pass and project builds successfully.
+
+### Verification
+- PASS: `pnpm --filter photrez-desktop test --run` (all 837 tests passed)
 - PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
 

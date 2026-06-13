@@ -7,12 +7,12 @@ interface PanNavigationOptions {
 }
 
 export function usePanNavigation(options: PanNavigationOptions) {
-  const { workspace, scheduler, syncViewport, modernCropFrame, setModernCropFrame, cropInteractionMode } = useEditor();
+  const { workspace, scheduler, camera, syncFromCamera, modernCropFrame, setModernCropFrame, cropInteractionMode } = useEditor();
 
   /** When panning in Modern crop mode, shift the frame along with the viewport. */
   function shiftModernCropFrame(dx: number, dy: number) {
     if (cropInteractionMode() !== "modern") return;
-    setModernCropFrame(prev => {
+    setModernCropFrame((prev: any) => {
       if (!prev) return null;
       return { ...prev, x: prev.x + dx, y: prev.y + dy };
     });
@@ -52,9 +52,9 @@ export function usePanNavigation(options: PanNavigationOptions) {
         return;
       }
 
-      engine.pan(momentumVelocity.x, momentumVelocity.y);
+      camera.pan(momentumVelocity.x, momentumVelocity.y);
       shiftModernCropFrame(momentumVelocity.x, momentumVelocity.y);
-      syncViewport();
+      syncFromCamera();
       scheduler.requestRender();
 
       momentumRafId = requestAnimationFrame(step);
@@ -74,24 +74,25 @@ export function usePanNavigation(options: PanNavigationOptions) {
 
     if (e.ctrlKey || e.altKey) {
       e.preventDefault();
-      const factor = e.deltaY < 0 ? 1.15 : 0.85;
+      const factor = e.deltaY < 0 ? 1.25 : 0.8;
 
       // Zoom centered at cursor position (container-relative coordinates)
       const containerRect = canvasContainerRef.getBoundingClientRect();
-      engine.zoom(factor, e.clientX - containerRect.left, e.clientY - containerRect.top);
-      syncViewport();
+      camera.zoomToPoint(factor, e.clientX - containerRect.left, e.clientY - containerRect.top);
+      syncFromCamera();
       scheduler.requestRender();
     } else {
       e.preventDefault();
       // Holding Shift scrolls horizontal, normal scrolls vertical
+      let dx = -e.deltaX;
+      let dy = -e.deltaY;
       if (e.shiftKey) {
-        engine.pan(-e.deltaY, 0);
-        shiftModernCropFrame(-e.deltaY, 0);
-      } else {
-        engine.pan(-e.deltaX, -e.deltaY);
-        shiftModernCropFrame(-e.deltaX, -e.deltaY);
+        dx = -e.deltaY;
+        dy = 0;
       }
-      syncViewport();
+      camera.pan(dx, dy);
+      shiftModernCropFrame(dx, dy);
+      syncFromCamera();
       scheduler.requestRender();
     }
   };
@@ -112,8 +113,8 @@ export function usePanNavigation(options: PanNavigationOptions) {
     panDragStart = {
       clientX: e.clientX,
       clientY: e.clientY,
-      panX: engine.getViewport().panX,
-      panY: engine.getViewport().panY,
+      panX: camera.getState().x,
+      panY: camera.getState().y,
     };
     lastPointerPositions = [{ time: Date.now(), x: e.clientX, y: e.clientY }];
   };
@@ -126,16 +127,17 @@ export function usePanNavigation(options: PanNavigationOptions) {
 
     const dx = e.clientX - panDragStart.clientX;
     const dy = e.clientY - panDragStart.clientY;
-    const prevPanX = engine.getViewport().panX;
-    const prevPanY = engine.getViewport().panY;
-    engine.setViewport({
-      panX: panDragStart.panX + dx,
-      panY: panDragStart.panY + dy,
+    const prevPanX = camera.getState().x;
+    const prevPanY = camera.getState().y;
+    camera.setState({
+      x: panDragStart.panX + dx,
+      y: panDragStart.panY + dy,
+      zoom: camera.getState().zoom,
     });
-    const actualDx = engine.getViewport().panX - prevPanX;
-    const actualDy = engine.getViewport().panY - prevPanY;
+    const actualDx = camera.getState().x - prevPanX;
+    const actualDy = camera.getState().y - prevPanY;
     shiftModernCropFrame(actualDx, actualDy);
-    syncViewport();
+    syncFromCamera();
     scheduler.requestRender();
 
     const now = Date.now();
