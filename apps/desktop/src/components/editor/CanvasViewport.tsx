@@ -468,7 +468,7 @@ export function CanvasViewport() {
 
     const allLayers = [...engine.getLayers()];
     const hit = hitTestLayers(coords, allLayers as LayerInfo[]);
-    if (hit && hit.id !== engine.getActiveLayerId()) {
+    if (hit && hit.id !== selectedLayerId()) {
       engine.setActiveLayer(hit.id);
       setSelectedLayerId(hit.id);
       scheduler.requestRender();
