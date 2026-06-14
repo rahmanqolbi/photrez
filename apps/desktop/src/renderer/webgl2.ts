@@ -3,8 +3,10 @@ import type { RenderState } from "../engine/types";
 import {
   VERTEX_SHADER_SOURCE,
   FRAGMENT_SHADER_SOURCE,
-  CHECKERBOARD_FRAGMENT_SOURCE
+  CHECKERBOARD_FRAGMENT_SOURCE,
+  CHECKERBOARD_VERTEX_SOURCE,
 } from "./shaders";
+import { getCheckerboardColors } from "./checkerboard";
 
 export function projectDocumentScissor(
   viewProj: Float32Array,
@@ -71,10 +73,10 @@ export class WebGL2Backend implements RenderBackend {
   } | null = null;
 
   private checkerboardUniforms: {
-    resolution: WebGLUniformLocation;
-    checkSize: WebGLUniformLocation;
-    color1: WebGLUniformLocation;
-    color2: WebGLUniformLocation;
+    resolution: WebGLUniformLocation | null;
+    checkSize: WebGLUniformLocation | null;
+    color1: WebGLUniformLocation | null;
+    color2: WebGLUniformLocation | null;
   } | null = null;
 
   // VAO (empty - we use gl_VertexID)
@@ -121,7 +123,8 @@ export class WebGL2Backend implements RenderBackend {
     this.layerProgram = this.createProgram(vs, fs);
 
     const checkFs = this.compileShader(gl.FRAGMENT_SHADER, CHECKERBOARD_FRAGMENT_SOURCE);
-    this.checkerboardProgram = this.createProgram(vs, checkFs);
+    const checkVs = this.compileShader(gl.VERTEX_SHADER, CHECKERBOARD_VERTEX_SOURCE);
+    this.checkerboardProgram = this.createProgram(checkVs, checkFs);
 
     // Get Uniforms
     this.layerUniforms = {
@@ -140,10 +143,10 @@ export class WebGL2Backend implements RenderBackend {
     };
 
     this.checkerboardUniforms = {
-      resolution: gl.getUniformLocation(this.checkerboardProgram, "u_resolution")!,
-      checkSize: gl.getUniformLocation(this.checkerboardProgram, "u_checkSize")!,
-      color1: gl.getUniformLocation(this.checkerboardProgram, "u_color1")!,
-      color2: gl.getUniformLocation(this.checkerboardProgram, "u_color2")!
+      resolution: gl.getUniformLocation(this.checkerboardProgram, "u_resolution"),
+      checkSize: gl.getUniformLocation(this.checkerboardProgram, "u_checkSize"),
+      color1: gl.getUniformLocation(this.checkerboardProgram, "u_color1"),
+      color2: gl.getUniformLocation(this.checkerboardProgram, "u_color2"),
     };
 
     // Setup empty VAO
@@ -376,19 +379,27 @@ export class WebGL2Backend implements RenderBackend {
     // 1. Render Checkerboard if requested
     if (state.checkerboard && this.checkerboardProgram) {
       gl.useProgram(this.checkerboardProgram);
-      gl.uniform2f(this.checkerboardUniforms!.resolution, canvas.width, canvas.height);
-      gl.uniform1f(this.checkerboardUniforms!.checkSize, 8.0); // 8px grids
-      gl.uniform4f(this.checkerboardUniforms!.color1, 0.1, 0.11, 0.12, 1.0); // Sunken grays
-      gl.uniform4f(this.checkerboardUniforms!.color2, 0.08, 0.09, 0.1, 1.0);
+      gl.uniform2f(this.checkerboardUniforms!.resolution!, canvas.width, canvas.height);
+      gl.uniform1f(this.checkerboardUniforms!.checkSize!, 8.0); // 8px grids
+      const { color1, color2 } = getCheckerboardColors();
+      gl.uniform4f(this.checkerboardUniforms!.color1!, color1[0], color1[1], color1[2], color1[3]);
+      gl.uniform4f(this.checkerboardUniforms!.color2!, color2[0], color2[1], color2[2], color2[3]);
 
-      const checkerRectLocation = gl.getUniformLocation(this.checkerboardProgram, "u_layerRect");
-      const checkerProjLocation = gl.getUniformLocation(this.checkerboardProgram, "u_viewProj");
-      
-      // Render checkerboard ONLY within the bounds of the artboard/document
-      gl.uniform4f(checkerRectLocation, 0, 0, docW, docH);
-      gl.uniformMatrix4fv(checkerProjLocation, false, viewProj);
-
+      // The checkerboard uses a dedicated fullscreen-quad vertex shader
+      // (CHECKERBOARD_VERTEX_SOURCE) that places vertices directly in NDC.
+      // No u_layerRect/u_layerCenter/u_viewProj needed — that dependency on
+      // the layer program's transform math was the source of the previous
+      // bug where the quad ended up outside clip space.
+      //
+      // The vertex shader fills the full NDC range, so we restrict output
+      // to the artboard bounds with a scissor test. This keeps the pasteboard
+      // (the area outside the document) clear of the checker pattern, so
+      // transparent layer pixels reveal checker inside the artboard only.
+      const scissor = projectDocumentScissor(viewProj, docW, docH, canvas.width, canvas.height);
+      gl.enable(gl.SCISSOR_TEST);
+      gl.scissor(scissor.x, scissor.y, scissor.width, scissor.height);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
+      gl.disable(gl.SCISSOR_TEST);
     }
 
     // 2. Render final FBO onto the checkerboard

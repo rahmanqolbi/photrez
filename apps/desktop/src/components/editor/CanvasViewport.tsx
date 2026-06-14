@@ -88,6 +88,8 @@ export function CanvasViewport() {
     moveAutoSelect,
     selectedLayerId,
     layerTransformSession,
+    selectionEditMode,
+    setSelectionEditMode,
     scheduler,
   } = useEditor();
 
@@ -718,6 +720,10 @@ export function CanvasViewport() {
                   transition: "none",
                 }
               : {
+                  // Fill the container with the canvas. The drawing buffer
+                  // is sized to the same container via renderer.resizeToViewport,
+                  // so the buffer's aspect ratio matches the CSS box — no
+                  // non-uniform scaling, no stretched cells.
                   position: "absolute",
                   inset: "0px",
                   width: "100%",
@@ -781,6 +787,7 @@ export function CanvasViewport() {
                   }}
                   zoom={zoom()}
                   pan={pan()}
+                  editMode={selectionEditMode()}
                   onRotatePointerDown={() => startSelectionRotation()}
                 />
               )}

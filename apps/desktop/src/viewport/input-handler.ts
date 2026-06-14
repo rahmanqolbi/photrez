@@ -66,6 +66,11 @@ export function handlePointerDown(
   if (tool === "selection") {
     const bounds = context.selectionBounds;
     if (bounds && isPointInSelection(docX, docY, bounds)) {
+      // Commit pre-move snapshot to history so the user can undo/redo
+      // the selection move. Without this, moving the selection rect
+      // mutates the engine state silently and the prior position is
+      // unrecoverable.
+      history.commit(engine.snapshot());
       context.dragMode = "move-selection";
       context.dragStart = { x: docX - bounds.x, y: docY - bounds.y };
     } else {

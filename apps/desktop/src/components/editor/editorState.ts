@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import type { LayerNode, DocumentTabSummary, Transform2D, DocumentModel } from "@/engine/types";
+import type { LayerNode, DocumentTabSummary, Transform2D, DocumentModel, SelectionState } from "@/engine/types";
 
 export interface LayerTransformSession {
   documentId: string;
@@ -50,12 +50,16 @@ export function createEditorState() {
   const [eraserPresetId, setEraserPresetId] = createSignal<string | null>(null);
 
   const [selectedLayerId, setSelectedLayerId] = createSignal<string | null>(null);
+  const [selection, setSelection] = createSignal<SelectionState | null>(null);
+  const [selectionEditMode, setSelectionEditMode] = createSignal(false);
   const [showResizeDialog, setShowResizeDialog] = createSignal(false);
   const [showExportDialog, setShowExportDialog] = createSignal(false);
 
   return {
     activeTool, setActiveTool,
     selectedLayerId, setSelectedLayerId,
+    selection, setSelection,
+    selectionEditMode, setSelectionEditMode,
     fgColor, setFgColor,
     bgColor, setBgColor,
     zoom, setZoom,

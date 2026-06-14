@@ -9,6 +9,7 @@ function renderComponent(props: {
   pan?: { x: number; y: number };
   onHandlePointerDown?: (handleId: string) => void;
   onRotatePointerDown?: () => void;
+  editMode?: boolean;
 }) {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -22,6 +23,7 @@ function renderComponent(props: {
         pan={props.pan ?? { x: 0, y: 0 }}
         onHandlePointerDown={props.onHandlePointerDown ?? vi.fn()}
         onRotatePointerDown={props.onRotatePointerDown ?? vi.fn()}
+        editMode={props.editMode ?? false}
       />
     ),
     svg,
@@ -29,18 +31,17 @@ function renderComponent(props: {
   return { container, dispose };
 }
 
-describe("SelectionRenderer", () => {
+describe("SelectionRenderer — base state (no edit mode)", () => {
   it("renders nothing when selection is null", () => {
     const { container, dispose } = renderComponent({ selection: null });
-    expect(container.querySelector("rect")).toBeNull();
-    expect(container.querySelector("circle")).toBeNull();
+    expect(container.querySelector("[data-selection-group]")).toBeNull();
     dispose();
   });
 
-  it("renders marquee rect with screen-space coordinates", () => {
+  it("renders marquee rect with screen-space coordinates in base state", () => {
     const sel: SelectionState = { x: 100, y: 50, width: 200, height: 150, angle: 0 };
     const { container, dispose } = renderComponent({ selection: sel, zoom: 2, pan: { x: 10, y: 20 } });
-    const rect = container.querySelector("rect");
+    const rect = container.querySelector("[data-selection-marquee]");
     expect(rect).not.toBeNull();
     expect(rect!.getAttribute("x")).toBe("210");
     expect(rect!.getAttribute("y")).toBe("120");
@@ -49,53 +50,178 @@ describe("SelectionRenderer", () => {
     dispose();
   });
 
-  it("renders with rotation group when angle !== 0", () => {
+  it("marquee rect uses animate-dash class in base state", () => {
+    const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel });
+    expect(container.querySelector("[data-selection-marquee].animate-dash")).not.toBeNull();
+    dispose();
+  });
+
+  it("marquee rect uses non-scaling stroke in base state", () => {
+    const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel, zoom: 4 });
+    const rect = container.querySelector("[data-selection-marquee]");
+    expect(rect!.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+    dispose();
+  });
+
+  it("renders with rotation group when angle !== 0 (base state)", () => {
     const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 45 };
     const { container, dispose } = renderComponent({ selection: sel });
-    const g = container.querySelector("g[transform]");
+    const g = container.querySelector("[data-selection-group]");
     expect(g).not.toBeNull();
     expect(g!.getAttribute("transform")).toContain("rotate(45");
     dispose();
   });
 
-  it("renders with animate-dash class on rect", () => {
+  it("selection group has data-selection-active=true in base state", () => {
     const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
     const { container, dispose } = renderComponent({ selection: sel });
-    expect(container.querySelector("rect.animate-dash")).not.toBeNull();
+    const group = container.querySelector("[data-selection-group]");
+    expect(group).not.toBeNull();
+    expect(group!.getAttribute("data-selection-active")).toBe("true");
     dispose();
   });
+});
 
-  it("renders 8 resize handles", () => {
+describe("SelectionRenderer — base state: NO transform handles", () => {
+  it("base state does NOT render any resize handles", () => {
     const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
     const { container, dispose } = renderComponent({ selection: sel });
     const handles = container.querySelectorAll("[data-handle-id]");
-    expect(handles.length).toBe(8);
-    const ids = Array.from(handles).map((h) => h.getAttribute("data-handle-id"));
-    expect(ids).toContain("nw");
-    expect(ids).toContain("n");
-    expect(ids).toContain("ne");
-    expect(ids).toContain("e");
-    expect(ids).toContain("se");
-    expect(ids).toContain("s");
-    expect(ids).toContain("sw");
-    expect(ids).toContain("w");
+    expect(handles.length).toBe(0);
     dispose();
   });
 
-  it("renders rotation handle", () => {
+  it("base state does NOT render rotation handle", () => {
     const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
     const { container, dispose } = renderComponent({ selection: sel });
     const rotHandle = container.querySelector("[data-rotation-handle]");
-    expect(rotHandle).not.toBeNull();
+    expect(rotHandle).toBeNull();
     dispose();
   });
 
-  it("calls onHandlePointerDown with correct handle id on pointer down", () => {
+  it("base state does NOT render rotation connector line", () => {
+    const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel });
+    const connector = container.querySelector("[data-rotation-connector]");
+    expect(connector).toBeNull();
+    dispose();
+  });
+
+  it("base state has data-mode attribute set to 'base'", () => {
+    const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel });
+    const group = container.querySelector("[data-selection-group]");
+    expect(group!.getAttribute("data-mode")).toBe("base");
+    dispose();
+  });
+});
+
+describe("SelectionRenderer — edit mode (transform handles visible)", () => {
+  it("edit mode renders 8 resize handles as squares", () => {
+    const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel, editMode: true });
+    const handles = container.querySelectorAll("[data-handle-id]");
+    expect(handles.length).toBe(8);
+    handles.forEach((h) => {
+      expect(h.tagName.toLowerCase()).toBe("rect");
+    });
+    dispose();
+  });
+
+  it("edit mode marks corner handles with data-handle-type=corner", () => {
+    const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel, editMode: true });
+    const nw = container.querySelector('[data-handle-id="nw"]');
+    expect(nw!.getAttribute("data-handle-type")).toBe("corner");
+    dispose();
+  });
+
+  it("edit mode marks edge handles with data-handle-type=edge", () => {
+    const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel, editMode: true });
+    const n = container.querySelector('[data-handle-id="n"]');
+    expect(n!.getAttribute("data-handle-type")).toBe("edge");
+    dispose();
+  });
+
+  it("edit mode renders rotation handle as circle", () => {
+    const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel, editMode: true });
+    const rotHandle = container.querySelector("[data-rotation-handle]");
+    expect(rotHandle).not.toBeNull();
+    expect(rotHandle!.tagName.toLowerCase()).toBe("circle");
+    dispose();
+  });
+
+  it("edit mode renders rotation connector line", () => {
+    const sel: SelectionState = { x: 50, y: 100, width: 100, height: 80, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel, editMode: true });
+    const line = container.querySelector("[data-rotation-connector]");
+    expect(line).not.toBeNull();
+    expect(line!.tagName.toLowerCase()).toBe("line");
+    dispose();
+  });
+
+  it("edit mode positions nw handle at top-left corner", () => {
+    const sel: SelectionState = { x: 50, y: 30, width: 100, height: 80, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel, editMode: true });
+    const nw = container.querySelector('[data-handle-id="nw"]') as SVGRectElement;
+    expect(nw.getAttribute("x")).toBe("46");
+    expect(nw.getAttribute("y")).toBe("26");
+    expect(nw.getAttribute("width")).toBe("8");
+    expect(nw.getAttribute("height")).toBe("8");
+    dispose();
+  });
+
+  it("edit mode positions se handle at bottom-right corner", () => {
+    const sel: SelectionState = { x: 50, y: 30, width: 100, height: 80, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel, editMode: true });
+    const se = container.querySelector('[data-handle-id="se"]') as SVGRectElement;
+    expect(se.getAttribute("x")).toBe("146");
+    expect(se.getAttribute("y")).toBe("106");
+    dispose();
+  });
+
+  it("edit mode positions n edge handle at top-center", () => {
+    const sel: SelectionState = { x: 50, y: 30, width: 100, height: 80, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel, editMode: true });
+    const n = container.querySelector('[data-handle-id="n"]') as SVGRectElement;
+    expect(n.getAttribute("x")).toBe("97");
+    expect(n.getAttribute("y")).toBe("27");
+    dispose();
+  });
+
+  it("edit mode rotation handle is positioned above top edge", () => {
+    const sel: SelectionState = { x: 50, y: 100, width: 100, height: 80, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel, editMode: true });
+    const rotHandle = container.querySelector("[data-rotation-handle]") as SVGCircleElement;
+    expect(rotHandle.getAttribute("cx")).toBe("100");
+    expect(rotHandle.getAttribute("cy")).toBe("76");
+    dispose();
+  });
+
+  it("edit mode renders connector line from top-center to rotation handle (stops at handle edge)", () => {
+    const sel: SelectionState = { x: 50, y: 100, width: 100, height: 80, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel, editMode: true });
+    const line = container.querySelector("[data-rotation-connector]");
+    expect(line).not.toBeNull();
+    expect(line!.tagName.toLowerCase()).toBe("line");
+    expect(line!.getAttribute("x1")).toBe("100");
+    expect(line!.getAttribute("y1")).toBe("96");
+    expect(line!.getAttribute("x2")).toBe("100");
+    expect(line!.getAttribute("y2")).toBe("81");
+    dispose();
+  });
+
+  it("edit mode calls onHandlePointerDown with correct handle id", () => {
     const onHandle = vi.fn();
     const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
     const { container, dispose } = renderComponent({
       selection: sel,
       onHandlePointerDown: onHandle,
+      editMode: true,
     });
     const seHandle = container.querySelector('[data-handle-id="se"]');
     expect(seHandle).not.toBeNull();
@@ -104,12 +230,13 @@ describe("SelectionRenderer", () => {
     dispose();
   });
 
-  it("calls onRotatePointerDown on rotation handle pointer down", () => {
+  it("edit mode calls onRotatePointerDown on rotation handle pointer down", () => {
     const onRotate = vi.fn();
     const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
     const { container, dispose } = renderComponent({
       selection: sel,
       onRotatePointerDown: onRotate,
+      editMode: true,
     });
     const rotHandle = container.querySelector("[data-rotation-handle]");
     expect(rotHandle).not.toBeNull();
@@ -118,18 +245,20 @@ describe("SelectionRenderer", () => {
     dispose();
   });
 
-  it("positions handles at correct corners for unrotated selection", () => {
-    const sel: SelectionState = { x: 50, y: 30, width: 100, height: 80, angle: 0 };
-    const { container, dispose } = renderComponent({ selection: sel });
-    const nw = container.querySelector('[data-handle-id="nw"]') as SVGCircleElement;
-    const se = container.querySelector('[data-handle-id="se"]') as SVGCircleElement;
-    const n = container.querySelector('[data-handle-id="n"]') as SVGCircleElement;
-    expect(nw.getAttribute("cx")).toBe("50");
-    expect(nw.getAttribute("cy")).toBe("30");
-    expect(se.getAttribute("cx")).toBe("150");
-    expect(se.getAttribute("cy")).toBe("110");
-    expect(n.getAttribute("cx")).toBe("100");
-    expect(n.getAttribute("cy")).toBe("30");
+  it("edit mode has data-mode attribute set to 'edit'", () => {
+    const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel, editMode: true });
+    const group = container.querySelector("[data-selection-group]");
+    expect(group!.getAttribute("data-mode")).toBe("edit");
+    dispose();
+  });
+
+  it("edit mode has stronger stroke-width (1.5+) for handles", () => {
+    const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
+    const { container, dispose } = renderComponent({ selection: sel, editMode: true });
+    const nw = container.querySelector('[data-handle-id="nw"]')!;
+    const strokeWidth = parseFloat(nw.getAttribute("stroke-width") || "0");
+    expect(strokeWidth).toBeGreaterThanOrEqual(1.5);
     dispose();
   });
 });

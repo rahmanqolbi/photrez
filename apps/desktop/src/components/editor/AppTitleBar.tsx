@@ -49,10 +49,14 @@ export function AppTitleBar(props: AppTitleBarProps) {
       if (engine && history && history.canUndo()) {
         const prev = history.undo(engine.snapshot());
         if (prev) {
+          // Default behavior preserves the user's current viewport (zoom/pan)
+          // so undo/redo don't cause zoom-popping (per docs/AI_HISTORY.md
+          // 2026-06-11 fix). The drawing buffer is sized to the container
+          // via renderer.resizeToViewport() in the createEffect, and that
+          // buffer remains valid for the restored engine state because the
+          // camera matrix and the buffer both refer to the viewport (not
+          // docW * zoom), so layer compositing is geometrically consistent.
           engine.restore(prev);
-          syncViewport();
-          const dpr = window.devicePixelRatio || 1;
-          renderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr);
           for (const layer of engine.getLayers()) {
             if (layer.imageBitmap) {
               renderer.uploadImage(layer.id, layer.imageBitmap);
@@ -84,10 +88,8 @@ export function AppTitleBar(props: AppTitleBarProps) {
       if (engine && history && history.canRedo()) {
         const next = history.redo(engine.snapshot());
         if (next) {
+          // See handleUndo for the viewport-preservation rationale.
           engine.restore(next);
-          syncViewport();
-          const dpr = window.devicePixelRatio || 1;
-          renderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr);
           for (const layer of engine.getLayers()) {
             if (layer.imageBitmap) {
               renderer.uploadImage(layer.id, layer.imageBitmap);

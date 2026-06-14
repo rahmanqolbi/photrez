@@ -37,11 +37,12 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
     const engine = workspace.getActiveEngine();
     if (!engine) return;
     const dpr = window.devicePixelRatio || 1;
-    if (activeTool() === "crop" && cropInteractionMode() === "modern") {
-      renderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr);
-    } else {
-      renderer.resizeToViewport(viewportWidth(), viewportHeight(), dpr);
-    }
+    // Resize the WebGL canvas backing buffer to match the container so the
+    // browser does NOT need to scale the buffer to fit (which would cause
+    // non-uniform scaling and stretched cells). The camera's matrix and
+    // the GL viewport both refer to this same buffer, so layer compositing
+    // in pass 1 is geometrically consistent.
+    renderer.resizeToViewport(viewportWidth(), viewportHeight(), dpr);
   }
 
   // Shared fit-to-screen workflow

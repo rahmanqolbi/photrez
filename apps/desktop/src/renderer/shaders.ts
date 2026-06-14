@@ -148,6 +148,34 @@ void main() {
   fragColor = vec4(outColor, outAlpha);
 }`;
 
+// Dedicated vertex shader for the checkerboard pass. Renders a full-viewport
+// quad in normalized device coordinates (NDC), bypassing the layer program's
+// complex transform math (which depends on u_layerRect + u_layerCenter to
+// position the quad). The checkerboard should always fill the entire
+// framebuffer; per-artboard clipping is left to the fragment shader (which
+// is currently full-frame, matching the design where the artboard is the
+// whole canvas in the MVP).
+export const CHECKERBOARD_VERTEX_SOURCE = `#version 300 es
+precision highp float;
+
+out vec2 v_texCoord;
+
+void main() {
+  // Two triangles covering the full NDC range [-1, 1] × [-1, 1].
+  // gl_VertexID 0,1,2 = first triangle; 3,4,5 = second.
+  // Standard NDC fullscreen quad layout (Y up).
+  vec2 pos;
+  if (gl_VertexID == 0) pos = vec2(-1.0, -1.0);
+  else if (gl_VertexID == 1) pos = vec2( 1.0, -1.0);
+  else if (gl_VertexID == 2) pos = vec2(-1.0,  1.0);
+  else if (gl_VertexID == 3) pos = vec2(-1.0,  1.0);
+  else if (gl_VertexID == 4) pos = vec2( 1.0, -1.0);
+  else                  pos = vec2( 1.0,  1.0);
+
+  v_texCoord = pos * 0.5 + 0.5;
+  gl_Position = vec4(pos, 0.0, 1.0);
+}`;
+
 // Checkerboard fragment shader
 export const CHECKERBOARD_FRAGMENT_SOURCE = `#version 300 es
 precision highp float;
@@ -156,13 +184,12 @@ uniform vec2 u_resolution;
 uniform float u_checkSize;
 uniform vec4 u_color1;
 uniform vec4 u_color2;
-uniform mat4 u_viewProj; // Optional viewport alignment if requested
 
 in vec2 v_texCoord;
 out vec4 fragColor;
 
 void main() {
-  // Simple screen-space checkerboard
+  // Screen-space checkerboard — independent of any transform state.
   vec2 pos = gl_FragCoord.xy / u_checkSize;
   float checker = mod(floor(pos.x) + floor(pos.y), 2.0);
   fragColor = mix(u_color1, u_color2, checker);

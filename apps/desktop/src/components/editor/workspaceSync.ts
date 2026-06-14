@@ -1,7 +1,7 @@
 import { batch } from "solid-js";
 import type { WorkspaceManager } from "@/engine/workspace";
 import type { RenderScheduler } from "@/renderer/scheduler";
-import type { DocumentTabSummary, LayerNode } from "@/engine/types";
+import type { DocumentTabSummary, LayerNode, SelectionState } from "@/engine/types";
 import { ViewportCamera } from "@/viewport/viewportCamera";
 
 interface SyncStateParams {
@@ -12,6 +12,8 @@ interface SyncStateParams {
   setLayers: (layers: LayerNode[]) => void;
   setActiveLayerId: (id: string | null) => void;
   setSelectedLayerId: (id: string | null) => void;
+  setSelection: (sel: SelectionState | null) => void;
+  setSelectionEditMode: (edit: boolean) => void;
   setDocWidth: (width: number) => void;
   setDocHeight: (height: number) => void;
   setZoom: (zoom: number) => void;
@@ -31,12 +33,21 @@ export function setupWorkspaceSync(params: SyncStateParams) {
         params.setLayers(engine.getLayers().map(l => ({ ...l, transform: { ...l.transform } })));
         params.setActiveLayerId(engine.getActiveLayerId());
         params.setSelectedLayerId(engine.getActiveLayerId());
+        const newSel = engine.getSelection() ? { ...engine.getSelection()! } : null;
+        const hadSelection = params.workspace.getActiveEngine()?.getSelection() != null;
+        params.setSelection(newSel);
+        // Auto-disable edit mode when selection is cleared
+        if (!newSel && hadSelection) {
+          params.setSelectionEditMode(false);
+        }
         params.setDocWidth(engine.getWidth());
         params.setDocHeight(engine.getHeight());
       } else {
         params.setLayers([]);
         params.setActiveLayerId(null);
         params.setSelectedLayerId(null);
+        params.setSelection(null);
+        params.setSelectionEditMode(false);
       }
     });
   };

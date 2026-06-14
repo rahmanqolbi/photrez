@@ -29,6 +29,7 @@
 | ✅ DONE      | Photoshop-style Opacity Popover Slider     |
 | ✅ DONE      | Inline double-click renaming input         |
 | ✅ DONE      | Live Canvas Row Thumbnails (checkerboard background) |
+| ✅ DONE      | Canvas checkerboard pattern (transparent-pixel indicator behind layers — Photopea-style light/dark gray grid, always on, no toggle) |
 
 ---
 
@@ -41,7 +42,9 @@
 | ✅ DONE      | Move selection boundary (click+drag inside marquee) |
 | ✅ DONE      | Rotate selection marquee (rotation handle drag) |
 | ✅ DONE      | Selection OptionBar — editable X/Y/W/H/Angle, Invert, Deselect buttons |
-| ✅ DONE      | Selection keyboard shortcuts — Ctrl+D (deselect), Ctrl+I (invert), Escape (cancel), Delete/Backspace |
+| ✅ DONE      | Selection keyboard shortcuts — Ctrl+D (deselect), Ctrl+I (invert), Ctrl+T (transform toggle), Ctrl+X (cut), Ctrl+C (copy), Ctrl+V (paste), Delete/Backspace (delete pixels), Escape (cancel) |
+| ✅ DONE      | Selection cut/copy/paste/delete (real pixel ops on active layer — in-memory clipboard; cut=copy+clear, delete=clear pixels, paste=creates new "Pasted Layer") |
+| ✅ DONE      | Selection option bar — Cut / Copy / Paste / Delete buttons in addition to Invert / Deselect |
 | ✅ DONE      | Move selection/layer                       |
 | ✅ DONE      | Post-crop Move Tool enters clean no-selection state (selectedLayerId independent from activeLayerId) |
 | ✅ DONE      | Scale transform (bounding box resize handles) |

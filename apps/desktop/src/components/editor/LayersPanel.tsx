@@ -105,6 +105,10 @@ export function LayersPanel() {
     if (!engine || !history || !history.canUndo()) return;
     const previous = history.undo(engine.snapshot());
     if (!previous) return;
+    // Default behavior preserves the user's current viewport (zoom/pan) so
+    // undo/redo don't cause zoom-popping (per docs/AI_HISTORY.md 2026-06-11
+    // fix). The drawing buffer is sized to the container via
+    // renderer.resizeToViewport() and stays valid for the restored state.
     engine.restore(previous);
     uploadCurrentLayerTextures();
     scheduler.requestRender();

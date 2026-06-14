@@ -7,6 +7,7 @@ import { flattenAllLayers, mergeActiveLayerDown } from "./layerOperations";
 import { cancelLayerTransformSession, commitLayerTransformSession } from "./transformSession";
 import { discardCropSession, applyCropPreview } from "./cropToolActions";
 import { PAINT_SIZE_STEP, PAINT_SIZE_STEP_HARDNESS, adjustPaintSize, adjustPaintHardness } from "./brushToolState";
+import { SelectionOperations } from "@/features/selection/SelectionOperations";
 
 interface CanvasKeyboardOptions {
   isSpacePressed: () => boolean;
@@ -67,6 +68,8 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     setSelectedLayerId,
     layerTransformSession,
     setLayerTransformSession,
+    selectionEditMode,
+    setSelectionEditMode,
     brushSize,
     setBrushSize,
     eraserSize,
@@ -140,51 +143,6 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
       // Crop tool keyboard shortcuts
       if (activeTool() === "crop") {
         const ctrl = e.ctrlKey || e.metaKey;
-      // Selection tool keyboard shortcuts
-      if (activeTool() === "selection") {
-        // Ctrl+D: Deselect
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
-          e.preventDefault();
-          e.stopPropagation();
-          engine.clearSelection();
-          options.onSelectionChange?.();
-          scheduler.requestRender();
-          return;
-        }
-
-        // Ctrl+I: Invert selection
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "i") {
-          e.preventDefault();
-          e.stopPropagation();
-          engine.invertSelection();
-          options.onSelectionChange?.();
-          scheduler.requestRender();
-          return;
-        }
-
-        // Escape: Cancel drawing / deselect
-        if (e.key === "Escape") {
-          e.preventDefault();
-          engine.clearSelection();
-          options.onSelectionChange?.();
-          scheduler.requestRender();
-          return;
-        }
-
-        // Delete / Backspace: Delete selection
-        if (e.key === "Delete" || e.key === "Backspace") {
-          e.preventDefault();
-          e.stopPropagation();
-          const sel = engine.getSelection();
-          if (sel) {
-            engine.clearSelection();
-            options.onSelectionChange?.();
-            scheduler.requestRender();
-          }
-          return;
-        }
-      }
-
       const key = e.key.toLowerCase();
         if (ctrl && e.shiftKey && key === "z") {
           e.preventDefault();
@@ -328,6 +286,132 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
             });
           }
           scheduler.requestRender();
+          return;
+        }
+      }
+
+      // Selection tool keyboard shortcuts
+      if (activeTool() === "selection") {
+        // Ctrl+D: Deselect
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
+          e.preventDefault();
+          e.stopPropagation();
+          engine.clearSelection();
+          options.onSelectionChange?.();
+          scheduler.requestRender();
+          return;
+        }
+
+        // Ctrl+I: Invert selection
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "i") {
+          e.preventDefault();
+          e.stopPropagation();
+          engine.invertSelection();
+          options.onSelectionChange?.();
+          scheduler.requestRender();
+          return;
+        }
+
+        // Ctrl+T: Toggle transform/edit mode (show resize/rotate handles)
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "t") {
+          e.preventDefault();
+          e.stopPropagation();
+          if (engine.getSelection()) {
+            setSelectionEditMode(!selectionEditMode());
+            scheduler.requestRender();
+          }
+          return;
+        }
+
+        // Escape: Cancel drawing / deselect
+        if (e.key === "Escape") {
+          e.preventDefault();
+          engine.clearSelection();
+          options.onSelectionChange?.();
+          scheduler.requestRender();
+          return;
+        }
+
+        // Ctrl+X: Cut selection
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "x") {
+          e.preventDefault();
+          e.stopPropagation();
+          if (engine.getSelection()) {
+            // Commit pre-action snapshot so the cut is undoable AND redoable.
+            // Without this, the post-cut state was never pushed to the undo
+            // stack and redo had no entry to replay.
+            history.commit(engine.snapshot());
+            SelectionOperations.cutSelection(engine);
+            // Re-upload the modified layer's bitmap to the renderer so the
+            // canvas reflects the cut immediately (otherwise the GPU texture
+            // still holds the pre-cut pixels until the next texture refresh).
+            const activeId = engine.getActiveLayerId();
+            if (activeId) {
+              const layer = engine.getLayer(activeId);
+              if (layer?.imageBitmap) {
+                renderer.uploadImage(layer.id, layer.imageBitmap);
+              }
+            }
+            options.onSelectionChange?.();
+            scheduler.requestRender();
+          }
+          return;
+        }
+
+        // Ctrl+C: Copy selection
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
+          e.preventDefault();
+          e.stopPropagation();
+          if (engine.getSelection()) {
+            SelectionOperations.copySelection(engine);
+            scheduler.requestRender();
+          }
+          return;
+        }
+
+        // Ctrl+V: Paste selection
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
+          e.preventDefault();
+          e.stopPropagation();
+          // Commit pre-action snapshot so the new layer is undoable/redoable.
+          history.commit(engine.snapshot());
+          SelectionOperations.pasteSelection(engine);
+          // Re-upload the newly-pasted layer's bitmap to the renderer. After
+          // pasteSelection, engine.getActiveLayerId() points at the new
+          // "Pasted Layer" (addLayer sets activeLayerId to the new layer).
+          const pastedId = engine.getActiveLayerId();
+          if (pastedId) {
+            const pastedLayer = engine.getLayer(pastedId);
+            if (pastedLayer?.imageBitmap) {
+              renderer.uploadImage(pastedLayer.id, pastedLayer.imageBitmap);
+            }
+          }
+          options.onSelectionChange?.();
+          scheduler.requestRender();
+          return;
+        }
+
+        // Delete / Backspace: Delete selection pixels
+        if (e.key === "Delete" || e.key === "Backspace") {
+          e.preventDefault();
+          e.stopPropagation();
+          const sel = engine.getSelection();
+          if (sel) {
+            // Commit pre-action snapshot so the deletion is undoable/redoable.
+            history.commit(engine.snapshot());
+            SelectionOperations.deleteSelection(engine);
+            // Re-upload the modified layer's bitmap to the renderer so the
+            // canvas reflects the deletion immediately.
+            const activeId = engine.getActiveLayerId();
+            if (activeId) {
+              const layer = engine.getLayer(activeId);
+              if (layer?.imageBitmap) {
+                renderer.uploadImage(layer.id, layer.imageBitmap);
+              }
+            }
+            options.onSelectionChange?.();
+            scheduler.requestRender();
+          }
           return;
         }
       }

@@ -5,6 +5,7 @@ function createMockEngine() {
   return {
     createSelection: vi.fn(),
     clearSelection: vi.fn(),
+    snapshot: vi.fn(() => ({})),  // added so history.commit(engine.snapshot()) works
   };
 }
 
@@ -171,6 +172,35 @@ describe("input-handler: selection tool draw modifiers", () => {
       expect(ctx.dragMode).toBe("move-selection");
       handlePointerUp("selection", 150, 150, engine as any, mockHistory(), vi.fn(), ctx);
       expect(ctx.dragMode).toBeNull();
+    });
+  });
+
+  describe("history commits for selection edits", () => {
+    it("move-selection start commits history so undo can revert the move (regression: edits not saved)", () => {
+      const engine = createMockEngine();
+      const ctx = createContext({
+        selectionBounds: { x: 50, y: 50, width: 200, height: 150 },
+      });
+      const history = mockHistory();
+
+      handlePointerDown("selection", 100, 100, engine as any, history, vi.fn(), ctx);
+      handlePointerMove("selection", 150, 130, engine as any, vi.fn(), ctx);
+
+      // Pointer-down on existing selection must commit the pre-move state
+      // to history so the user can undo to restore the prior selection rect.
+      expect(history.commit).toHaveBeenCalled();
+    });
+
+    it("drawing a fresh selection does NOT commit history (regression: avoid history noise)", () => {
+      const engine = createMockEngine();
+      const ctx = createContext();
+      const history = mockHistory();
+
+      handlePointerDown("selection", 100, 100, engine as any, history, vi.fn(), ctx);
+
+      // Fresh draws should not pollute the undo stack — undo should not
+      // revert to "no selection" if the user hasn't moved anything yet.
+      expect(history.commit).not.toHaveBeenCalled();
     });
   });
 

@@ -530,6 +530,11 @@ export class DocumentEngine {
   }
 
   // ─── Image Data ───
+  getLayerImageBitmap(id: LayerId): ImageBitmap | null {
+    const layer = this.getLayer(id);
+    return layer ? layer.imageBitmap : null;
+  }
+
   setLayerImageBitmap(id: LayerId, bitmap: ImageBitmap): void {
     const layer = this.getLayer(id);
     if (layer) {

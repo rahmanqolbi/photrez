@@ -2,7 +2,7 @@ import { createContext, useContext, onMount, createEffect, batch } from "solid-j
 import { WorkspaceManager } from "@/engine/workspace";
 import { WebGL2Backend } from "@/renderer/webgl2";
 import { RenderScheduler } from "@/renderer/scheduler";
-import { LayerNode, DocumentTabSummary } from "@/engine/types";
+import { LayerNode, DocumentTabSummary, SelectionState } from "@/engine/types";
 import { Accessor, Setter } from "solid-js";
 import { createEditorState, LayerTransformSession } from "./editorState";
 import { createCropState, CropPreview, CropFillSource } from "./cropState";
@@ -53,6 +53,10 @@ export interface EditorContextValue {
   activeLayerId: Accessor<string | null>;
   selectedLayerId: Accessor<string | null>;
   setSelectedLayerId: Setter<string | null>;
+  selection: Accessor<SelectionState | null>;
+  setSelection: Setter<SelectionState | null>;
+  selectionEditMode: Accessor<boolean>;
+  setSelectionEditMode: Setter<boolean>;
   hoveredLayerId: Accessor<string | null>;
   setHoveredLayerId: Setter<string | null>;
   hoverHandle: Accessor<string | null>;
@@ -225,6 +229,8 @@ export function EditorProvider(props: {
     setLayers: editorState.setLayers,
     setActiveLayerId: editorState.setActiveLayerId,
     setSelectedLayerId: editorState.setSelectedLayerId,
+    setSelection: editorState.setSelection,
+    setSelectionEditMode: editorState.setSelectionEditMode,
     setDocWidth: editorState.setDocWidth,
     setDocHeight: editorState.setDocHeight,
     setZoom: editorState.setZoom,

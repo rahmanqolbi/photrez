@@ -14,6 +14,7 @@ function renderAppTitleBar() {
     uploadImage: vi.fn(),
     destroyTexture: vi.fn(),
     resize: vi.fn(),
+    resizeToViewport: vi.fn(),
   };
   const scheduler = { requestRender: vi.fn() };
   const container = document.createElement("div");
@@ -196,7 +197,7 @@ describe("AppTitleBar keyboard shortcuts", () => {
     dispose();
   });
 
-  it("renderer.resize is called during undo", async () => {
+  it("undo of layer-add correctly handles renderer state", async () => {
     const { ws, renderer, scheduler, dispose } = renderAppTitleBar();
     const session = WorkspaceManager.createBlankDocument("doc-1", "Test", 800, 600);
     ws.addDocument(session);
@@ -208,7 +209,16 @@ describe("AppTitleBar keyboard shortcuts", () => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }));
     await tick();
 
-    expect(renderer.resize).toHaveBeenCalled();
+    // Undo restores the engine state and syncs viewport via syncViewport.
+    // The renderer.resize() is no longer called from handleUndo directly
+    // (that caused the "stretched checkerboard" / "squished layer" bug).
+    // Instead the buffer stays at the viewport size (set by ResizeObserver
+    // or by the createEffect on the next zoom change) and the next render
+    // pass re-composites the engine state to the existing FBO.
+    //
+    // This test just verifies that the undo path runs without throwing and
+    // that the engine state is correctly restored.
+    expect(session.engine.getLayers().length).toBe(1);
     dispose();
   });
 

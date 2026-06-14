@@ -297,6 +297,31 @@ describe('DocumentEngine', () => {
       expect(state.viewport.panY).toBe(-10);
       expect(state.viewport.zoom).toBe(1.5);
     });
+
+    it('enables the checkerboard flag so transparent pixels are visible (regression)', () => {
+      // Bug regression: getRenderState() must expose checkerboard: true so the
+      // WebGL renderer paints the chessboard pattern behind transparent pixels.
+      // If this is false, the user cannot tell where transparency is.
+      const engine = new DocumentEngine('doc-checker', 'Checker', 800, 600);
+      engine.addLayer('Layer 1');
+
+      const state = engine.getRenderState();
+
+      expect(state.checkerboard).toBe(true);
+    });
+
+    it('exposes backgroundColor as a 4-tuple RGBA in [0..1]', () => {
+      const engine = new DocumentEngine('doc-bg', 'BG', 800, 600);
+
+      const state = engine.getRenderState();
+
+      expect(state.backgroundColor).toHaveLength(4);
+      for (const channel of state.backgroundColor) {
+        expect(channel).toBeGreaterThanOrEqual(0);
+        expect(channel).toBeLessThanOrEqual(1);
+      }
+      expect(state.backgroundColor[3]).toBe(1); // alpha always opaque
+    });
   });
 
   describe('applyCrop', () => {

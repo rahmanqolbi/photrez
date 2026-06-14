@@ -280,6 +280,102 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     expect(scheduler.requestRender).toHaveBeenCalled();
   });
 
+  it("selection marquee stays visible after pointer up (no spurious clear)", async () => {
+    const { session } = renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("selection");
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    if (!canvas) throw new Error("Canvas not found");
+
+    // Full draw flow
+    canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 50, clientY: 50, button: 0, pointerId: 1 }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 150, clientY: 150, button: 0, pointerId: 1 }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, clientX: 150, clientY: 150, button: 0, pointerId: 1 }));
+
+    // Engine should now have a selection
+    expect(session.engine.getSelection()).not.toBeNull();
+
+    // Marquee should STILL be visible after pointer up
+    expect(container.querySelector("rect.animate-dash")).not.toBeNull();
+  });
+
+  it("selection marquee updates in real-time during drag (live preview)", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("selection");
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    if (!canvas) throw new Error("Canvas not found");
+
+    canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 10, clientY: 10, button: 0, pointerId: 1 }));
+
+    canvas.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 50, clientY: 50, button: 0, pointerId: 1 }));
+    const rect1 = container.querySelector("rect.animate-dash") as SVGRectElement | null;
+    expect(rect1).not.toBeNull();
+    const w1 = parseFloat(rect1!.getAttribute("width") || "0");
+
+    canvas.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 200, clientY: 200, button: 0, pointerId: 1 }));
+    const rect2 = container.querySelector("rect.animate-dash") as SVGRectElement | null;
+    expect(rect2).not.toBeNull();
+    const w2 = parseFloat(rect2!.getAttribute("width") || "0");
+
+    // Width should have grown
+    expect(w2).toBeGreaterThan(w1);
+
+    canvas.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, clientX: 200, clientY: 200, button: 0, pointerId: 1 }));
+  });
+
+  it("SelectionOptionBar appears when selection is committed (engine state)", async () => {
+    const { session } = renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("selection");
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    if (!canvas) throw new Error("Canvas not found");
+
+    canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 50, clientY: 50, button: 0, pointerId: 1 }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 150, clientY: 150, button: 0, pointerId: 1 }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, clientX: 150, clientY: 150, button: 0, pointerId: 1 }));
+
+    // Engine has selection
+    expect(session.engine.getSelection()).not.toBeNull();
+  });
+
+  it("clicking inside an existing selection moves it (drag-in-selection)", async () => {
+    const { session } = renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("selection");
+
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    if (!canvas) throw new Error("Canvas not found");
+
+    // First, create a selection
+    canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 100, clientY: 100, button: 0, pointerId: 1 }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 200, clientY: 200, button: 0, pointerId: 1 }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, clientX: 200, clientY: 200, button: 0, pointerId: 1 }));
+
+    const initialSel = session.engine.getSelection();
+    expect(initialSel).not.toBeNull();
+    expect(initialSel!.x).toBe(100);
+    expect(initialSel!.width).toBe(100);
+
+    // Now click inside the selection and drag
+    canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 150, clientY: 150, button: 0, pointerId: 2 }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 200, clientY: 200, button: 0, pointerId: 2 }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, clientX: 200, clientY: 200, button: 0, pointerId: 2 }));
+
+    const newSel = session.engine.getSelection();
+    expect(newSel).not.toBeNull();
+    // Selection should have moved (x increased by 50)
+    expect(newSel!.x).toBe(150);
+    expect(newSel!.width).toBe(100); // width preserved
+  });
+
   it("does not clear active layer when transform session is active", async () => {
     const { session } = renderViewport();
     await new Promise((resolve) => setTimeout(resolve, 0));
