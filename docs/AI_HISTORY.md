@@ -1,5 +1,31 @@
 # AI History — Photrez
 
+## [2026-06-14] FEATURE — Rectangle Selection Tool (TDD Phases 1-4) [IN PROGRESS]
+
+### Kategori: FEATURE / FRONTEND / SELECTION TOOL
+
+**Goal:**
+Implement Rectangle Selection tool with isolated architecture using TDD.
+
+**Done:**
+1. Phase 1: SelectionValidator — 19 tests, state validation + normalization.
+2. Phase 2: SelectionManager — 18 tests, state machine with events + snapshot.
+3. Phase 3: SelectionOperations — 12 tests, cut/copy/paste/delete stubs.
+4. Phase 4: SelectionRenderer — 9 tests, SVG marquee with rotation + 8 resize handles + rotation handle.
+
+**Files Created:**
+- `src/features/selection/SelectionTypes.ts`
+- `src/features/selection/SelectionValidator.ts`
+- `src/features/selection/SelectionManager.ts`
+- `src/features/selection/SelectionOperations.ts`
+- `src/features/selection/SelectionRenderer.tsx`
+
+**Verification:**
+- PASS: 895 frontend unit tests
+- PASS: TypeScript + Vite build
+
+---
+
 ## [2026-06-13] BUG FIX — Canvas Layer Auto-Selection When No Layer is Selected [COMPLETE]
 
 ### Kategori: BUG FIX / UI / FRONTEND / MOVE TOOL / AUTO-SELECT
@@ -4575,4 +4601,29 @@ When `|dw| â‰ˆ |dh|` (common during diagonal drags along the ratio diagonal)
 
 ### Verification
 - PASS: `pnpm.cmd --filter photrez-desktop test --run --pool=threads --maxWorkers=1` (616 tests, 50 files)
+- PASS: `pnpm.cmd run build`
+
+---
+
+## [2026-06-14] FEATURE — Rectangle Selection: Move Boundary, Rotation, Invert, Editable Options [COMPLETE]
+
+### Kategori: FEATURE / FRONTEND / SELECTION TOOL
+
+**Goal:**
+Complete remaining MVP features for Rectangle Selection tool: move selection boundary, rotate marquee, Ctrl+I invert selection, editable W/H/Angle in OptionBar.
+
+**Done:**
+1. Move selection boundary — click+drag inside existing selection to reposition (with `isPointInSelection` helper)
+2. Rotate marquee — click+drag rotation handle → document-level pointer events track angle from center
+3. Ctrl+I invert selection — toggles between null and full-document selection
+4. Editable W/H/Angle in SelectionOptionBar — `EditableNumField` for X, Y, W, H, Angle with engine commit on submit
+5. Added `angle` field to engine's `SelectionState` type for consistency with feature types
+6. Invert button wired in SelectionOptionBar
+
+**Tests Added:**
+- 8 new tests: move-selection (5), isPointInSelection (3), invertSelection (2 engine tests)
+- 7 existing draw-modifier tests preserved
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop exec vitest run` (911 tests, 64 files)
 - PASS: `pnpm.cmd run build`

@@ -18,6 +18,7 @@ import { BrushCursorOverlay } from "./BrushCursorOverlay";
 import { CropOverlay } from "./CropOverlay";
 import { ModernCropOverlay } from "./ModernCropOverlay";
 import { TransformHud } from "./TransformHud";
+import { SelectionRenderer } from "@/features/selection/SelectionRenderer";
 import { BrushContextMenu } from "./BrushContextMenu";
 import { getPasteboardClickAction } from "./pasteboardClickPolicy";
 import {
@@ -258,6 +259,7 @@ export function CanvasViewport() {
     setSnapLines,
     selectionBox,
     setSelectionBoxSignal,
+    startSelectionRotation,
     hudInfo,
     setHudInfo,
     handleDoubleClick,
@@ -389,6 +391,15 @@ export function CanvasViewport() {
     fitToScreenAndRender,
     syncViewport,
     getCanvasContainerRef: () => canvasContainerRef,
+    onSelectionChange: () => {
+      const engine = workspace.getActiveEngine();
+      const sel = engine?.getSelection();
+      if (sel) {
+        setSelectionBoxSignal({ x: sel.x, y: sel.y, w: sel.width, h: sel.height, angle: sel.angle });
+      } else {
+        setSelectionBoxSignal(null);
+      }
+    },
   });
 
   // Derived canvas screen rect for expansion fill indicator — memo outside Show to guarantee reactivity
@@ -532,6 +543,7 @@ export function CanvasViewport() {
 
     if (action === "clear-selection-preview") {
       setSelectionBoxSignal(null);
+      engine?.clearSelection();
       setSnapLines([]);
       setHudInfo(null);
       scheduler.requestRender();
@@ -758,29 +770,20 @@ export function CanvasViewport() {
           >
             {/* Selection marquee — screen-space coordinates */}
             <Show when={selectionBox()}>
-              {(box) => {
-                const screenTL = createMemo(() => {
-                  const z = zoom();
-                  const p = pan();
-                  return { x: box().x * z + p.x, y: box().y * z + p.y };
-                });
-                const screenW = createMemo(() => box().w * zoom());
-                const screenH = createMemo(() => box().h * zoom());
-                return (
-                  <rect
-                    x={screenTL().x}
-                    y={screenTL().y}
-                    width={screenW()}
-                    height={screenH()}
-                    fill="none"
-                    stroke="#E15A17"
-                    stroke-width={1}
-                    stroke-dasharray="4 4"
-                    class="animate-dash"
-                    style={{ "pointer-events": "none" }}
-                  />
-                );
-              }}
+              {(box) => (
+                <SelectionRenderer
+                  selection={{
+                    x: box().x,
+                    y: box().y,
+                    width: box().w,
+                    height: box().h,
+                    angle: box().angle ?? 0,
+                  }}
+                  zoom={zoom()}
+                  pan={pan()}
+                  onRotatePointerDown={() => startSelectionRotation()}
+                />
+              )}
             </Show>
             <HoverHighlight />
             <SmartGuides lines={snapLines()} />

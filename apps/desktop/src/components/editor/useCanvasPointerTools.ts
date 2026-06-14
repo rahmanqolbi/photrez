@@ -162,6 +162,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     y: number;
     w: number;
     h: number;
+    angle: number;
   } | null>(null);
 
   const [hudInfo, setHudInfoInner] = createSignal<HudData | null>(null);
@@ -182,6 +183,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     paintSettings: { size: 20, hardness: 0.8, opacity: 1, flow: 1, smoothing: 0 },
     selectedLayerId: null,
     isAltPressed: false,
+    isShiftPressed: false,
     isDragging: false,
     dragStart: { x: 0, y: 0 },
     dragCurrent: { x: 0, y: 0 },
@@ -212,7 +214,33 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     interactiveState.setFgColor = setFgColor;
     interactiveState.setBgColor = setBgColor;
     interactiveState.onSelectionCreated = (x, y, w, h) => {
-      setSelectionBoxSignal({ x, y, w, h });
+      setSelectionBoxSignal({ x, y, w, h, angle: selectionBox()?.angle ?? 0 });
+    };
+    interactiveState.selectionBounds = selectionBox() ? {
+      x: selectionBox()!.x,
+      y: selectionBox()!.y,
+      width: selectionBox()!.w,
+      height: selectionBox()!.h,
+    } : null;
+    interactiveState.onSelectionMoved = (x, y) => {
+      const box = selectionBox();
+      const eng = workspace.getActiveEngine();
+      if (box && eng) {
+        setSelectionBoxSignal({ ...box, x, y });
+        eng.createSelection(x, y, box.w, box.h);
+      }
+    };
+    interactiveState.onSelectionRotated = (angle: number) => {
+      const box = selectionBox();
+      if (box) {
+        setSelectionBoxSignal({ ...box, angle });
+      }
+    };
+    interactiveState.onRotateStart = (centerX: number, centerY: number) => {
+      interactiveState.dragMode = "rotate-selection";
+      interactiveState.rotateCenter = { x: centerX, y: centerY };
+      interactiveState.rotateStartAngle = 0;
+      interactiveState.selectionAngle = selectionBox()?.angle ?? 0;
     };
     interactiveState.onCropCreated = (x, y, w, h) => {
       const nextRect = createCropRectFromDocumentPoints(
@@ -381,6 +409,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     }
 
     prepareToolContext();
+    interactiveState.isShiftPressed = e.shiftKey;
     setSnapLines([]);
     const canvas = params.getCanvasRef();
     if (canvas) canvas.setPointerCapture(e.pointerId);
@@ -505,6 +534,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     }
 
     interactiveState.isAltPressed = params.isAltPressed();
+    interactiveState.isShiftPressed = e.shiftKey;
 
     let coords = getDocCoords(e);
 
@@ -658,7 +688,16 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       isPendingCropClick = false;
     }
 
-    setSelectionBoxSignal(null);
+    if (activeTool() === "selection") {
+      const sel = engine.getSelection();
+      if (sel) {
+        setSelectionBoxSignal({ x: sel.x, y: sel.y, w: sel.width, h: sel.height, angle: sel.angle });
+      } else {
+        setSelectionBoxSignal(null);
+      }
+    } else {
+      setSelectionBoxSignal(null);
+    }
   };
 
   function commitDragCreateFrame(
@@ -786,6 +825,38 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     resetModernDragState();
   };
 
+  const startSelectionRotation = () => {
+    const box = selectionBox();
+    if (!box) return;
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+    const centerX = box.x + box.w / 2;
+    const centerY = box.y + box.h / 2;
+    const initialAngle = Math.atan2(0, -1) * (180 / Math.PI);
+
+    const handleDocPointerMove = (e: PointerEvent) => {
+      const rect = params.getCanvasContainerRef()?.getBoundingClientRect();
+      if (!rect) return;
+      const docPt = screenToDocument(e.clientX, e.clientY, rect, engine.getViewport());
+      const currentAngle = Math.atan2(docPt.y - centerY, docPt.x - centerX) * (180 / Math.PI);
+      let angle = currentAngle - initialAngle;
+      if (e.shiftKey) {
+        angle = Math.round(angle / 15) * 15;
+      }
+      angle = ((angle % 360) + 360) % 360;
+      if (angle > 180) angle -= 360;
+      setSelectionBoxSignal({ ...box, angle });
+    };
+
+    const handleDocPointerUp = () => {
+      document.removeEventListener("pointermove", handleDocPointerMove);
+      document.removeEventListener("pointerup", handleDocPointerUp);
+    };
+
+    document.addEventListener("pointermove", handleDocPointerMove);
+    document.addEventListener("pointerup", handleDocPointerUp);
+  };
+
   return {
     cropDragPreview,
     setCropDragPreview,
@@ -793,6 +864,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     setSnapLines,
     selectionBox,
     setSelectionBoxSignal,
+    startSelectionRotation,
     hudInfo,
     setHudInfo,
     getDocCoords,

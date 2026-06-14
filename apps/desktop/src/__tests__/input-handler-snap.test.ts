@@ -55,6 +55,7 @@ describe("input-handler snap wiring", () => {
       strokePoints: [],
       dragTool: null,
       isAltPressed: false,
+      isShiftPressed: false,
       onComputeSnap,
       onSnapLines,
     };
@@ -86,6 +87,7 @@ describe("input-handler snap wiring", () => {
       strokePoints: [],
       dragTool: null,
       isAltPressed: true,
+      isShiftPressed: false,
       onComputeSnap,
       onSnapLines,
     };
@@ -116,6 +118,7 @@ describe("input-handler snap wiring", () => {
       strokePoints: [],
       dragTool: null,
       isAltPressed: false,
+      isShiftPressed: false,
       onComputeSnap: () => ({ dx: 0, dy: 0, lines }),
       onSnapLines,
     };
@@ -150,6 +153,7 @@ describe("input-handler snap wiring", () => {
       strokePoints: [],
       dragTool: null,
       isAltPressed: false,
+      isShiftPressed: false,
       onComputeSnap,
       onSnapLines: vi.fn(),
     };

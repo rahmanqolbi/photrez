@@ -42,6 +42,7 @@ export interface SelectionState {
   y: number;
   width: number;
   height: number;
+  angle: number;
 }
 
 // ─── Viewport ───

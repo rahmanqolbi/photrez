@@ -506,6 +506,29 @@ Updated 17+ tests to use `clickPill(container, label)` replacing `fireModeChange
 
 ## Current Task
 
+### [2026-06-14] Feature — Rectangle Selection Tool [COMPLETE]
+
+**Goal:**
+Design and implement a full-featured Rectangle Selection tool with isolated architecture, scalable design, and MVP feature set (draw, move, rotate marquee, operations).
+
+**Status:** MVP complete. All Phase 1 features implemented.
+
+**Implementation Phases:**
+1. TDD Phase 1-4: SelectionValidator (19 tests), SelectionManager (18 tests), SelectionOperations (12 tests), SelectionRenderer (9 tests)
+2. SelectionRenderer integrated into CanvasViewport
+3. Keyboard shortcuts: Ctrl+D (deselect), Escape, Delete/Backspace, Ctrl+I (invert)
+4. SelectionOptionBar created with X, Y, W, H, Angle (editable), Invert, Deselect
+5. Selection draw with Shift (constrain square) and Alt (draw from center) modifiers
+6. Move selection boundary (click+drag inside existing selection)
+7. Rotate marquee (rotation handle drag)
+8. Ctrl+I invert selection, Invert button wired
+
+**Verification:**
+- PASS: 911 frontend tests (64 files)
+- PASS: TypeScript + Vite build
+
+---
+
 ### [2026-06-10] Smart Guides (Crop) â€” Classic + Modern [COMPLETE]
 
 Implemented snap to document edges, center, and rule-of-thirds during crop drag-create + cyan dashed snap lines.

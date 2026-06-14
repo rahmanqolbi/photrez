@@ -16,6 +16,7 @@ interface CanvasKeyboardOptions {
   isPanning: () => boolean;
   setIsPanning: (panning: boolean) => void;
   stopMomentum: () => void;
+  onSelectionChange?: () => void;
   fitToScreenAndRender: (animated?: boolean) => void;
   syncViewport: () => void;
   getCanvasContainerRef: () => HTMLDivElement | undefined;
@@ -139,7 +140,52 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
       // Crop tool keyboard shortcuts
       if (activeTool() === "crop") {
         const ctrl = e.ctrlKey || e.metaKey;
-        const key = e.key.toLowerCase();
+      // Selection tool keyboard shortcuts
+      if (activeTool() === "selection") {
+        // Ctrl+D: Deselect
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
+          e.preventDefault();
+          e.stopPropagation();
+          engine.clearSelection();
+          options.onSelectionChange?.();
+          scheduler.requestRender();
+          return;
+        }
+
+        // Ctrl+I: Invert selection
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "i") {
+          e.preventDefault();
+          e.stopPropagation();
+          engine.invertSelection();
+          options.onSelectionChange?.();
+          scheduler.requestRender();
+          return;
+        }
+
+        // Escape: Cancel drawing / deselect
+        if (e.key === "Escape") {
+          e.preventDefault();
+          engine.clearSelection();
+          options.onSelectionChange?.();
+          scheduler.requestRender();
+          return;
+        }
+
+        // Delete / Backspace: Delete selection
+        if (e.key === "Delete" || e.key === "Backspace") {
+          e.preventDefault();
+          e.stopPropagation();
+          const sel = engine.getSelection();
+          if (sel) {
+            engine.clearSelection();
+            options.onSelectionChange?.();
+            scheduler.requestRender();
+          }
+          return;
+        }
+      }
+
+      const key = e.key.toLowerCase();
         if (ctrl && e.shiftKey && key === "z") {
           e.preventDefault();
           e.stopPropagation();

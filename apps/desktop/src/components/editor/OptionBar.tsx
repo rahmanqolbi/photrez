@@ -4,6 +4,7 @@ import { MoveOptionBar } from "./MoveOptionBar";
 import { CropOptionBar } from "./CropOptionBar";
 import { BrushOptionBar } from "./BrushOptionBar";
 import { TransformOptionBar } from "./TransformOptionBar";
+import { SelectionOptionBar } from "./SelectionOptionBar";
 
 export function OptionBar() {
   const { activeTool, layerTransformSession } = useEditor();
@@ -14,7 +15,11 @@ export function OptionBar() {
         when={layerTransformSession()}
         fallback={
           <>
-            <Show when={activeTool() === "move" || activeTool() === "selection"}>
+            <Show when={activeTool() === "selection"}>
+              <SelectionOptionBar />
+            </Show>
+
+            <Show when={activeTool() === "move"}>
               <MoveOptionBar />
             </Show>
 

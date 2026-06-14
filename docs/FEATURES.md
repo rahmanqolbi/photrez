@@ -37,6 +37,11 @@
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Rectangular selection (marquee)            |
+| ✅ DONE      | Selection draw with Shift (constrain square) and Alt (draw from center) modifiers |
+| ✅ DONE      | Move selection boundary (click+drag inside marquee) |
+| ✅ DONE      | Rotate selection marquee (rotation handle drag) |
+| ✅ DONE      | Selection OptionBar — editable X/Y/W/H/Angle, Invert, Deselect buttons |
+| ✅ DONE      | Selection keyboard shortcuts — Ctrl+D (deselect), Ctrl+I (invert), Escape (cancel), Delete/Backspace |
 | ✅ DONE      | Move selection/layer                       |
 | ✅ DONE      | Post-crop Move Tool enters clean no-selection state (selectedLayerId independent from activeLayerId) |
 | ✅ DONE      | Scale transform (bounding box resize handles) |

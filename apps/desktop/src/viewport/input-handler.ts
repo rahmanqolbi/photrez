@@ -14,6 +14,7 @@ export interface ToolContext {
   brushOpacity: number;
   selectedLayerId: string | null;
   isAltPressed: boolean;
+  isShiftPressed?: boolean;
 
   // Transient interactive state
   isDragging: boolean;
@@ -36,6 +37,16 @@ export interface ToolContext {
   onHoverHandle?: (handle: string | null) => void;
   onComputeSnap?: (rect: SnapRect) => SnapResult;
   onSnapLines?: (lines: SnapLine[]) => void;
+
+  // Selection move support
+  selectionBounds?: { x: number; y: number; width: number; height: number } | null;
+  onSelectionMoved?: (x: number, y: number) => void;
+  onSelectionRotated?: (angle: number) => void;
+  onRotateStart?: (centerX: number, centerY: number) => void;
+  dragMode?: "draw" | "move-selection" | "rotate-selection" | null;
+  rotateCenter?: { x: number; y: number };
+  rotateStartAngle?: number;
+  selectionAngle?: number;
 }
 
 export function handlePointerDown(
@@ -53,8 +64,14 @@ export function handlePointerDown(
   context.dragCurrent = { x: docX, y: docY };
 
   if (tool === "selection") {
-    // Start rectangular selection marquee
-    context.onSelectionCreated?.(docX, docY, 0, 0);
+    const bounds = context.selectionBounds;
+    if (bounds && isPointInSelection(docX, docY, bounds)) {
+      context.dragMode = "move-selection";
+      context.dragStart = { x: docX - bounds.x, y: docY - bounds.y };
+    } else {
+      context.dragMode = "draw";
+      context.onSelectionCreated?.(docX, docY, 0, 0);
+    }
   } else if (tool === "crop") {
     context.onCropCreated?.(docX, docY, 0, 0);
   } else if (tool === "brush" || tool === "eraser") {
@@ -90,11 +107,55 @@ export function handlePointerMove(
 
   const tool = context.dragTool ?? _tool;
   if (tool === "selection") {
-    const x = Math.min(context.dragStart.x, docX);
-    const y = Math.min(context.dragStart.y, docY);
-    const w = Math.abs(context.dragStart.x - docX);
-    const h = Math.abs(context.dragStart.y - docY);
-    context.onSelectionCreated?.(x, y, w, h);
+    if (context.dragMode === "move-selection") {
+      const newX = docX - context.dragStart.x;
+      const newY = docY - context.dragStart.y;
+      context.onSelectionMoved?.(newX, newY);
+    } else if (context.dragMode === "rotate-selection" && context.rotateCenter) {
+      const cx = context.rotateCenter.x;
+      const cy = context.rotateCenter.y;
+      const startAngle = context.rotateStartAngle ?? 0;
+      const currentAngle = Math.atan2(docY - cy, docX - cx) * (180 / Math.PI);
+      let newAngle = currentAngle - startAngle;
+      if (context.isShiftPressed) {
+        newAngle = Math.round(newAngle / 15) * 15;
+      }
+      newAngle = ((newAngle % 360) + 360) % 360;
+      if (newAngle > 180) newAngle -= 360;
+      context.onSelectionRotated?.(newAngle);
+    } else {
+      const centerX = context.dragStart.x;
+      const centerY = context.dragStart.y;
+      const dx = docX - centerX;
+      const dy = docY - centerY;
+
+      let w = Math.abs(dx);
+      let h = Math.abs(dy);
+
+      if (context.isShiftPressed) {
+        const side = Math.max(w, h);
+        w = side;
+        h = side;
+      }
+
+      if (context.isAltPressed) {
+        w *= 2;
+        h *= 2;
+      }
+
+      let x: number;
+      let y: number;
+
+      if (context.isAltPressed) {
+        x = centerX - w / 2;
+        y = centerY - h / 2;
+      } else {
+        x = Math.min(centerX, docX);
+        y = Math.min(centerY, docY);
+      }
+
+      context.onSelectionCreated?.(x, y, w, h);
+    }
   } else if (tool === "crop") {
     const x = Math.min(context.dragStart.x, docX);
     const y = Math.min(context.dragStart.y, docY);
@@ -150,15 +211,50 @@ export function handlePointerUp(
 
   const tool = context.dragTool ?? _tool;
   if (tool === "selection") {
-    const x = Math.min(context.dragStart.x, docX);
-    const y = Math.min(context.dragStart.y, docY);
-    const w = Math.abs(context.dragStart.x - docX);
-    const h = Math.abs(context.dragStart.y - docY);
-    if (w > 2 && h > 2) {
-      engine.createSelection(x, y, w, h);
+    if (context.dragMode === "move-selection") {
+      const newX = docX - context.dragStart.x;
+      const newY = docY - context.dragStart.y;
+      context.onSelectionMoved?.(newX, newY);
+    } else if (context.dragMode === "rotate-selection") {
+      // Rotation is already applied live via onSelectionRotated in move handler
     } else {
-      engine.clearSelection();
+      const centerX = context.dragStart.x;
+      const centerY = context.dragStart.y;
+      const dx = docX - centerX;
+      const dy = docY - centerY;
+
+      let w = Math.abs(dx);
+      let h = Math.abs(dy);
+
+      if (context.isShiftPressed) {
+        const side = Math.max(w, h);
+        w = side;
+        h = side;
+      }
+
+      if (context.isAltPressed) {
+        w *= 2;
+        h *= 2;
+      }
+
+      let x: number;
+      let y: number;
+
+      if (context.isAltPressed) {
+        x = centerX - w / 2;
+        y = centerY - h / 2;
+      } else {
+        x = Math.min(centerX, docX);
+        y = Math.min(centerY, docY);
+      }
+
+      if (w > 2 && h > 2) {
+        engine.createSelection(x, y, w, h);
+      } else {
+        engine.clearSelection();
+      }
     }
+    context.dragMode = null;
   } else if (tool === "brush" || tool === "eraser") {
     if (context.selectedLayerId && context.strokePoints.length > 0) {
       context.onPaintStroke?.([...context.strokePoints], tool === "eraser", context.paintSettings);
@@ -185,4 +281,17 @@ function rgbToHex(r: number, g: number, b: number): string {
     return hex.length === 1 ? "0" + hex : hex;
   };
   return "#" + toHex(r) + toHex(g) + toHex(b);
+}
+
+export function isPointInSelection(
+  px: number,
+  py: number,
+  bounds: { x: number; y: number; width: number; height: number },
+): boolean {
+  return (
+    px >= bounds.x &&
+    px <= bounds.x + bounds.width &&
+    py >= bounds.y &&
+    py <= bounds.y + bounds.height
+  );
 }

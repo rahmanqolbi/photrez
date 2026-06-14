@@ -401,7 +401,7 @@ export class DocumentEngine {
 
   // ─── Selection ───
   createSelection(x: number, y: number, w: number, h: number): void {
-    this.model.selection = { x, y, width: w, height: h };
+    this.model.selection = { x, y, width: w, height: h, angle: 0 };
     this.notifyChange();
   }
 
@@ -415,8 +415,24 @@ export class DocumentEngine {
       x: 0,
       y: 0,
       width: this.model.width,
-      height: this.model.height
+      height: this.model.height,
+      angle: 0,
     };
+    this.notifyChange();
+  }
+
+  invertSelection(): void {
+    if (this.model.selection) {
+      this.model.selection = null;
+    } else {
+      this.model.selection = {
+        x: 0,
+        y: 0,
+        width: this.model.width,
+        height: this.model.height,
+        angle: 0,
+      };
+    }
     this.notifyChange();
   }
 

@@ -148,7 +148,7 @@ describe('CommandHistory', () => {
       width: 1920,
       height: 1080,
       activeLayerId: 'layer-42',
-      selection: { x: 10, y: 20, width: 100, height: 200 },
+      selection: { x: 10, y: 20, width: 100, height: 200, angle: 0 },
       viewport: { panX: 50, panY: -30, zoom: 1.5, rotation: 0 },
       dirty: true,
       layers: [
@@ -171,7 +171,7 @@ describe('CommandHistory', () => {
     expect(restored?.width).toBe(1920);
     expect(restored?.height).toBe(1080);
     expect(restored?.activeLayerId).toBe('layer-42');
-    expect(restored?.selection).toEqual({ x: 10, y: 20, width: 100, height: 200 });
+    expect(restored?.selection).toEqual({ x: 10, y: 20, width: 100, height: 200, angle: 0 });
     expect(restored?.viewport).toEqual({ panX: 50, panY: -30, zoom: 1.5, rotation: 0 });
     expect(restored?.dirty).toBe(true);
     expect(restored?.layers.length).toBe(1);

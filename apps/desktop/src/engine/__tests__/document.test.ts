@@ -99,13 +99,26 @@ describe('DocumentEngine', () => {
     const engine = new DocumentEngine('doc-1', 'My Document', 800, 600);
     
     engine.createSelection(10, 20, 100, 200);
-    expect(engine.getSelection()).toEqual({ x: 10, y: 20, width: 100, height: 200 });
+    expect(engine.getSelection()).toEqual({ x: 10, y: 20, width: 100, height: 200, angle: 0 });
 
     engine.selectAll();
-    expect(engine.getSelection()).toEqual({ x: 0, y: 0, width: 800, height: 600 });
+    expect(engine.getSelection()).toEqual({ x: 0, y: 0, width: 800, height: 600, angle: 0 });
 
     engine.clearSelection();
     expect(engine.getSelection()).toBeNull();
+  });
+
+  it('invertSelection toggles between null and full document', () => {
+    const engine = new DocumentEngine('doc-1', 'My Document', 800, 600);
+
+    engine.createSelection(10, 20, 100, 200);
+    expect(engine.getSelection()).toEqual({ x: 10, y: 20, width: 100, height: 200, angle: 0 });
+
+    engine.invertSelection();
+    expect(engine.getSelection()).toBeNull();
+
+    engine.invertSelection();
+    expect(engine.getSelection()).toEqual({ x: 0, y: 0, width: 800, height: 600, angle: 0 });
   });
 
   it('performs snapshot and restore round-trips correctly', () => {
@@ -146,10 +159,10 @@ describe('DocumentEngine', () => {
     engine.createSelection(10, 20, 100, 200);
 
     const snap = engine.snapshot();
-    expect(snap.selection).toEqual({ x: 10, y: 20, width: 100, height: 200 });
+    expect(snap.selection).toEqual({ x: 10, y: 20, width: 100, height: 200, angle: 0 });
 
     engine.clearSelection();
-    expect(snap.selection).toEqual({ x: 10, y: 20, width: 100, height: 200 });
+    expect(snap.selection).toEqual({ x: 10, y: 20, width: 100, height: 200, angle: 0 });
   });
 
   it('restore replaces all mutable state', () => {
@@ -168,7 +181,7 @@ describe('DocumentEngine', () => {
 
     expect(engine.getLayers().length).toBe(1);
     expect(engine.getViewport()).toEqual({ panX: 100, panY: 50, zoom: 2, rotation: 0 });
-    expect(engine.getSelection()).toEqual({ x: 0, y: 0, width: 400, height: 300 });
+    expect(engine.getSelection()).toEqual({ x: 0, y: 0, width: 400, height: 300, angle: 0 });
   });
 
   it('restore handles selection of null', () => {
