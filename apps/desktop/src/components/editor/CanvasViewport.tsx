@@ -205,7 +205,7 @@ export function CanvasViewport() {
     return activeEngine.getLayer(activeId);
   });
 
-  const overlayCanvasStyle = createMemo(() => {
+  const overlayCanvasStyleScreenSpace = createMemo(() => {
     const layer = activeLayer();
     const tool = activeTool();
     const isBrushOrEraser = tool === "brush" || tool === "eraser";
@@ -223,19 +223,13 @@ export function CanvasViewport() {
     const flipX = transform.flipH ? -1 : 1;
     const flipY = transform.flipV ? -1 : 1;
 
-    const transformStr = [
-      `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      `rotate(${rot}deg)`,
-      `scale(${scaleX * flipX}, ${scaleY * flipY})`,
-    ].join(" ");
-
     return {
       position: "absolute" as const,
-      left: "0px",
-      top: "0px",
-      width: `${layer.width}px`,
-      height: `${layer.height}px`,
-      transform: transformStr,
+      left: `${pan().x + (transform.x ?? 0) * zoom()}px`,
+      top: `${pan().y + (transform.y ?? 0) * zoom()}px`,
+      width: `${layer.width * zoom()}px`,
+      height: `${layer.height * zoom()}px`,
+      transform: `rotate(${rot}deg) scale(${scaleX * flipX}, ${scaleY * flipY})`,
       "transform-origin": "0 0",
       opacity: layer.opacity ?? 1,
       "pointer-events": "none" as const,
@@ -736,33 +730,26 @@ export function CanvasViewport() {
         <Show
           when={activeTool() !== "crop" || cropInteractionMode() !== "modern"}
         >
-          {/* Document-space CSS transform container for background previews */}
-          <div
-            style={{
-              transform: `translate3d(${pan().x}px, ${pan().y}px, 0) scale(${zoom()})`,
-              "transform-origin": "0 0",
-              transition: "none",
-              "will-change":
-                isPanning() || isCropDragging() ? "transform" : "auto",
-              position: "absolute",
-              width: `${docWidth()}px`,
-              height: `${docHeight()}px`,
-              "pointer-events": "none",
-            }}
-          >
-            {/* Overlay canvas — sync 2D brush preview, no createImageBitmap per move */}
-            <canvas ref={setOverlayCanvasRef} data-overlay-canvas style={overlayCanvasStyle()} />
+          {/* 2D brush preview canvas — screen-space coords, layer transform preserved */}
+          <canvas
+            ref={setOverlayCanvasRef}
+            data-overlay-canvas
+            style={overlayCanvasStyleScreenSpace()}
+          />
 
-            {/* Artboard border & shadow */}
-            <div
-              data-artboard-border
-              class="absolute inset-0 pointer-events-none border border-white/10"
-              style={{
-                "box-shadow":
-                  "0 0 0 1px rgba(0, 0, 0, 0.6), 0 8px 32px rgba(0, 0, 0, 0.7)",
-              }}
-            />
-          </div>
+          {/* Artboard border & shadow — screen-space coords */}
+          <div
+            data-artboard-border
+            class="absolute pointer-events-none border border-white/10"
+            style={{
+              left: `${pan().x}px`,
+              top: `${pan().y}px`,
+              width: `${docWidth() * zoom()}px`,
+              height: `${docHeight() * zoom()}px`,
+              "box-shadow":
+                "0 0 0 1px rgba(0, 0, 0, 0.6), 0 8px 32px rgba(0, 0, 0, 0.7)",
+            }}
+          />
 
           {/* Screen-space SVG Overlay Layer */}
           <svg

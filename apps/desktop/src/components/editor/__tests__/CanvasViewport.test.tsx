@@ -2636,3 +2636,84 @@ describe("Phase 5 Cross-Tool State Interaction (UX contracts)", () => {
     expect(secondFrame.h).toBeGreaterThan(0);
   });
 });
+
+describe("CanvasViewport Overlay Container (Screen-Space Migration)", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    ws = new WorkspaceManager();
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+  });
+
+  afterEach(() => {
+    if (dispose) dispose();
+    container.parentNode?.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  it("positions artboard border in screen-space coords (no CSS transform wrapper)", async () => {
+    const session = WorkspaceManager.createBlankDocument(
+      "doc-screen-space",
+      "Doc",
+      800,
+      600,
+    );
+    ws.addDocument(session);
+    ws.switchDocument("doc-screen-space");
+
+    const result = render(
+      () => (
+        <EditorProvider
+          workspace={ws}
+          renderer={renderer}
+          scheduler={scheduler}
+        >
+          <TestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+    dispose = result;
+    setCropInteractionMode("classic");
+
+    const engine = session.engine;
+    engine.setViewport({ panX: 50, panY: 50, zoom: 2.0 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const artboard = container.querySelector(
+      "[data-artboard-border]",
+    ) as HTMLDivElement;
+    expect(artboard).not.toBeNull();
+
+    // Artboard border must use explicit screen-space coords, NOT CSS transform
+    expect(artboard.style.left).toBe("50px");
+    expect(artboard.style.top).toBe("50px");
+    expect(artboard.style.width).toBe("1600px");
+    expect(artboard.style.height).toBe("1200px");
+    expect(artboard.style.transform).toBe("");
+
+    // No wrapper div with transform: translate3d(...) scale(...) should exist
+    // (In this test crop mode is not active, so the only transform that
+    // would be a "wrapper" is the overlay container's viewport transform.)
+    const allDivs = container.querySelectorAll("div");
+    for (const div of Array.from(allDivs)) {
+      const t = (div as HTMLDivElement).style.transform;
+      if (t && t.includes("translate3d") && t.includes("scale(")) {
+        throw new Error(
+          `Found unexpected CSS transform wrapper: div.transform="${t}"`,
+        );
+      }
+    }
+  });
+});
