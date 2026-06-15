@@ -139,6 +139,63 @@ describe("Resize pointer-capture fix", () => {
     container.parentNode?.removeChild(container);
   });
 
+  it("keeps the active resize cursor on the move-zone inner rect during pointer-captured resize drag", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("cursor-inner", "Cursor Inner", 800, 600);
+    const mockRenderer = {} as any;
+    const mockScheduler = { requestRender: vi.fn() } as any;
+    const origSet = SVGElement.prototype.setPointerCapture;
+    const setSpy = vi.fn();
+    SVGElement.prototype.setPointerCapture = setSpy;
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    const releaseSpy = vi.fn();
+    SVGElement.prototype.releasePointerCapture = releaseSpy;
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      h(
+        EditorProvider,
+        { workspace: ws, renderer: mockRenderer, scheduler: mockScheduler },
+        h(SelectionTransformOverlay, null),
+      ),
+      container,
+    );
+    ws.addDocument(session);
+    await Promise.resolve();
+
+    const svg = container.querySelector("svg[data-overlay-svg]") as SVGSVGElement;
+    const moveRect = container.querySelector("rect[data-move]") as SVGElement;
+    const eHandle = container.querySelector("[data-handle='e']") as SVGElement;
+    expect(svg).not.toBeNull();
+    expect(moveRect).not.toBeNull();
+    expect(eHandle).not.toBeNull();
+
+    expect(moveRect.style.cursor).toBe("move");
+
+    eHandle.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 88,
+      bubbles: true,
+      cancelable: true,
+      clientX: 0,
+      clientY: 0,
+    }));
+
+    expect(setSpy).toHaveBeenCalledWith(88);
+    expect(moveRect.style.cursor).toBe("ew-resize");
+
+    svg.dispatchEvent(new PointerEvent("pointerup", {
+      pointerId: 88,
+      bubbles: true,
+    }));
+
+    expect(moveRect.style.cursor).toBe("move");
+    dispose();
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    container.parentNode?.removeChild(container);
+  });
+
   it("captures pointer on root SVG, not on per-handle element", () => {
     const ws = new WorkspaceManager();
     const session = WorkspaceManager.createBlankDocument("test", "Test", 800, 600);

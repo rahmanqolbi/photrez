@@ -1,5 +1,40 @@
 # AI History — Photrez
 
+## [2026-06-14] BUG FIX — Move Tool Resize Cursor Drops To Default [COMPLETE]
+
+### Kategori: BUG FIX / FRONTEND / MOVE TOOL
+
+**Root Cause:**
+Di `SelectionTransformOverlay.tsx`, tiga inner element (move zone line 159, rotate zone line 184, handle hit zone line 207) hardcode `cursor: "move"` / `cursor: rotateCursor()` / `cursor: cursor()` — tanpa awareness terhadap `activeDragCursor()`. Saat user drag handle resize (mis. "e"), dragState.type = "e" tapi mouse bisa bergerak ke atas move zone (karena layer grow, handle bergeser, mouse relative diam). Inner element's `cursor` property override parent SVG's `cursor: activeDragCursor() ?? "default"` per CSS spec (child cursor wins). Result: cursor "move" tampil walaupun user aktif resizing.
+
+Test existing di `SelectionTransformOverlay.test.ts:88-140` hanya cek root SVG cursor (yang sudah benar), tidak cover inner element override — sehingga test pass tapi bug ada di production.
+
+**Fix Rationale:**
+- Smallest state-aware change: pakai `activeDragCursor()` (sudah di-destructure dari hook) sebagai fallback di 3 inner elements
+- Pattern: `cursor: activeDragCursor() ?? <element's natural cursor>` — saat idle pakai element's natural cursor (move, rotate, resize direction), saat drag pakai active drag cursor
+- Active drag cursor logic di `useSelectionTransformDrag.ts:134-141` sudah return null saat no drag, jadi fallback ke natural cursor aman
+- Tidak perlu ubah hook, tidak perlu ubah CSS, tidak perlu global cursor state di body
+
+**Files Changed:**
+- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx:159` — `cursor: "move"` → `cursor: activeDragCursor() ?? "move"`
+- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx:184` — `cursor: rotateCursor()` → `cursor: activeDragCursor() ?? rotateCursor()`
+- `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx:207` — `cursor: cursor()` → `cursor: activeDragCursor() ?? cursor()`
+- `apps/desktop/src/components/editor/__tests__/SelectionTransformOverlay.test.ts` — added 1 regression test "keeps the active resize cursor on the move-zone inner rect during pointer-captured resize drag" (line ~142-200)
+
+**Done:**
+1. Wrote failing regression test that checks `moveRect.style.cursor === "ew-resize"` after pointerdown on "e" handle. Test confirmed bug (received "move" instead of "ew-resize").
+2. Applied 3-line fix to SelectionTransformOverlay.tsx (one per inner element).
+3. Verified new test passes.
+4. Verified all 957 frontend tests pass (was 956, +1 new regression).
+5. Verified `pnpm run build` succeeds.
+
+**Verification:**
+- PASS: `pnpm --filter photrez-desktop test --run` (957 tests, 58.41s)
+- PASS: `pnpm run build` (8.09s)
+- PASS: `pnpm --filter photrez-desktop exec vitest run src/components/editor/__tests__/SelectionTransformOverlay.test.ts` (21/21 tests in file)
+
+---
+
 ## [2026-06-14] FEATURE — Rectangle Selection Tool (TDD Phases 1-4) [IN PROGRESS]
 
 ### Kategori: FEATURE / FRONTEND / SELECTION TOOL

@@ -82,18 +82,18 @@ Clean up the `docs/` directory by removing leading numbers from filenames and gr
 
 ---
 
-### [2026-06-13] Bug Hunt â€” Move Tool Resize Cursor Drops To Default [DEFERRED]
+### [2026-06-13] Bug Hunt â€” Move Tool Resize Cursor Drops To Default [COMPLETE]
 
 **Goal:**
 Fix the Move Tool regression where the cursor falls back to the normal pointer while resizing instead of preserving the active resize/rotate indicator during pointer-captured transform drags.
 
-**Status:** Investigation planned but not yet started. Deferred pending user prioritization.
+**Status:** [COMPLETE] 2026-06-14. Resolved as part of Phase 2 pilot test overhaul. Detail di `docs/AI_HISTORY.md` Â§`[2026-06-14] BUG FIX â" Move Tool Resize Cursor Drops To Default`.
 
-**Planned (when resumed):**
-1. Inspect `SelectionTransformOverlay` and `useSelectionTransformDrag` cursor flow for hover vs active drag state.
-2. Add a regression test proving the root overlay uses the active resize cursor during drag while staying default when idle.
-3. Patch the cursor resolver with the smallest state-aware change.
-4. Run focused Move Tool cursor tests plus frontend verification.
+**Done:**
+1. Investigated `SelectionTransformOverlay` + `useSelectionTransformDrag` cursor flow. Found inner elements (move zone, rotate zone, handle hit zone) hardcoded cursor without `activeDragCursor` awareness.
+2. Added 1 regression test in `SelectionTransformOverlay.test.ts` proving inner `moveRect.style.cursor === "ew-resize"` after pointerdown on "e" handle (was receiving "move").
+3. Applied 3-line fix to `SelectionTransformOverlay.tsx`: use `activeDragCursor() ?? <natural cursor>` pattern in all 3 inner elements.
+4. Verified all 957 frontend tests pass (was 956, +1 new regression), build succeeds.
 
 ---
 

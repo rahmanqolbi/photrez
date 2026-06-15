@@ -156,7 +156,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
               width={screenW()}
               height={screenH()}
               fill="transparent"
-              style={{ "pointer-events": props.isNavigationMode ? "none" : "all", cursor: "move" }}
+              style={{ "pointer-events": props.isNavigationMode ? "none" : "all", cursor: activeDragCursor() ?? "move" }}
               data-move
               onPointerDown={(e) => handlePointerDown(e, "move")}
               onPointerEnter={() => setHoverHandle("move")}
@@ -181,7 +181,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
                         d={getRotatePath(type, hx(), hy(), ro(), ht())}
                         fill="transparent"
                         fill-rule="evenodd"
-                        style={{ "pointer-events": props.isNavigationMode ? "none" : "all", cursor: rotateCursor() }}
+                        style={{ "pointer-events": props.isNavigationMode ? "none" : "all", cursor: activeDragCursor() ?? rotateCursor() }}
                         onPointerDown={(e) => handlePointerDown(e, "rotate")}
                         onPointerEnter={(e) => {
                           setHoverHandle(`rotate-${type}`);
@@ -204,7 +204,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
                       width={ht()}
                       height={ht()}
                       fill="transparent"
-                      style={{ "pointer-events": props.isNavigationMode ? "none" : "all", cursor: cursor() }}
+                      style={{ "pointer-events": props.isNavigationMode ? "none" : "all", cursor: activeDragCursor() ?? cursor() }}
                       data-handle={type}
                       onPointerDown={(e) => handlePointerDown(e, type)}
                       onPointerEnter={() => setHoverHandle(type)}
