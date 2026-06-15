@@ -91,6 +91,7 @@ export function CanvasViewport() {
     selectionEditMode,
     setSelectionEditMode,
     scheduler,
+    useGPUCameraForModernCrop,
   } = useEditor();
 
   const {
@@ -135,6 +136,63 @@ export function CanvasViewport() {
       replacementStarted: boolean;
     } | null>(null);
 
+  // Sync modern crop state to camera image transform.
+  // The camera's VP matrix will include this transform, eliminating
+  // the need for CSS transform on the canvas.
+  createEffect(() => {
+    if (!useGPUCameraForModernCrop()) {
+      // Feature flag disabled: don't touch camera, let CSS handle it
+      return;
+    }
+
+    const tool = activeTool();
+    const mode = cropInteractionMode();
+
+    if (tool !== "crop" || mode !== "modern") {
+      camera.resetImageTransform();
+      return;
+    }
+
+    const frame = modernCropFrame();
+    const transform = modernCropImageTransform();
+
+    if (!frame) {
+      // No frame: apply offset + scale only (no rotation pivot)
+      camera.setImageTransform({
+        offsetX: transform.offsetX,
+        offsetY: transform.offsetY,
+        rotation: 0,
+        scale: transform.scale,
+        pivotScreen: null,
+        pivotDocument: null,
+      });
+      return;
+    }
+
+    // With frame: compute pivot, apply full transform
+    const pivot = getModernCropImagePivot({
+      frame,
+      viewport: {
+        width: viewportWidth(),
+        height: viewportHeight(),
+        panX: pan().x,
+        panY: pan().y,
+        zoom: zoom(),
+      },
+      transform,
+    });
+
+    camera.setImageTransform({
+      offsetX: transform.offsetX,
+      offsetY: transform.offsetY,
+      rotation: transform.rotation,
+      scale: transform.scale,
+      pivotScreen: pivot.screen,
+      pivotDocument: pivot.document,
+    });
+  });
+
+  // Modern crop CSS transform string (used only when feature flag is OFF)
   const modernImageTransformStyle = createMemo(() => {
     const frame = modernCropFrame();
     const transform = modernCropImageTransform();
