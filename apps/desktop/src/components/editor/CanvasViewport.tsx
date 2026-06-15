@@ -460,13 +460,16 @@ export function CanvasViewport() {
   });
 
   // Derived canvas screen rect for expansion fill indicator — memo outside Show to guarantee reactivity
+  // The dashed canvas boundary line represents the DOC boundary, not the
+  // image's transformed position. So it should be at pan + 0, size = doc * zoom,
+  // independent of modernCropImageTransform (offset/scale/rotation).
   const canvasScreenRect = createMemo(() => {
     if (modernCropImageTransform().rotation !== 0) return null;
     return {
-      x: pan().x + modernCropImageTransform().offsetX,
-      y: pan().y + modernCropImageTransform().offsetY,
-      w: docWidth() * zoom() * (modernCropImageTransform().scale ?? 1),
-      h: docHeight() * zoom() * (modernCropImageTransform().scale ?? 1),
+      x: pan().x,
+      y: pan().y,
+      w: docWidth() * zoom(),
+      h: docHeight() * zoom(),
     };
   });
 

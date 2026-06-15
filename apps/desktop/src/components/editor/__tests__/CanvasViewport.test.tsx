@@ -2721,6 +2721,102 @@ describe("CanvasViewport Overlay Container (Screen-Space Migration)", () => {
   });
 });
 
+describe("CanvasViewport Modern Crop dashed canvas boundary line", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    ws = new WorkspaceManager();
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+  });
+
+  afterEach(() => {
+    if (dispose) dispose();
+    container.parentNode?.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  it("dashed canvas boundary line is at doc position, NOT affected by image transform offset/scale", async () => {
+    const session = WorkspaceManager.createBlankDocument(
+      "doc-dashed",
+      "Doc",
+      800,
+      600,
+    );
+    ws.addDocument(session);
+    ws.switchDocument("doc-dashed");
+
+    const result = render(
+      () => (
+        <EditorProvider
+          workspace={ws}
+          renderer={renderer}
+          scheduler={scheduler}
+        >
+          <TestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+    dispose = result;
+    setCropInteractionMode("classic");
+
+    // Enter modern crop with default frame
+    setTool("crop");
+    setCropInteractionMode("modern");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Find the dashed line rect (stroke-dasharray="6,4")
+    const dashedRect = container.querySelector(
+      'rect[stroke-dasharray="6,4"]',
+    ) as SVGRectElement | null;
+
+    // The dashed line may not be visible if the frame fits inside the doc.
+    // To force it to show, set frame to be larger than the doc.
+    setModernFrameState({ x: -200, y: -200, w: 1200, h: 1000 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const dashedAfterFrame = container.querySelector(
+      'rect[stroke-dasharray="6,4"]',
+    ) as SVGRectElement | null;
+    expect(dashedAfterFrame).not.toBeNull();
+    const dashXBefore = dashedAfterFrame!.getAttribute("x");
+    const dashYBefore = dashedAfterFrame!.getAttribute("y");
+    const dashWBefore = dashedAfterFrame!.getAttribute("width");
+    const dashHBefore = dashedAfterFrame!.getAttribute("height");
+
+    // Now set a non-zero image transform offset (simulating user dragging the cropbox)
+    setModernImageTransform({
+      offsetX: 50,
+      offsetY: 30,
+      rotation: 0,
+      scale: 1.5,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const dashedAfterOffset = container.querySelector(
+      'rect[stroke-dasharray="6,4"]',
+    ) as SVGRectElement | null;
+    expect(dashedAfterOffset).not.toBeNull();
+
+    // The dashed line should be at the SAME doc position (NOT affected by offset)
+    expect(dashedAfterOffset!.getAttribute("x")).toBe(dashXBefore);
+    expect(dashedAfterOffset!.getAttribute("y")).toBe(dashYBefore);
+    expect(dashedAfterOffset!.getAttribute("width")).toBe(dashWBefore);
+    expect(dashedAfterOffset!.getAttribute("height")).toBe(dashHBefore);
+  });
+});
+
 describe("CanvasViewport Modern Crop → Camera Image Transform Sync", () => {
   let ws: WorkspaceManager;
   let renderer: any;
