@@ -150,6 +150,7 @@ export function CanvasViewport() {
 
     if (tool !== "crop" || mode !== "modern") {
       camera.resetImageTransform();
+      scheduler.requestRender();
       return;
     }
 
@@ -166,6 +167,7 @@ export function CanvasViewport() {
         pivotScreen: null,
         pivotDocument: null,
       });
+      scheduler.requestRender();
       return;
     }
 
@@ -190,6 +192,7 @@ export function CanvasViewport() {
       pivotScreen: pivot.screen,
       pivotDocument: pivot.document,
     });
+    scheduler.requestRender();
   });
 
   // Modern crop CSS transform string (used only when feature flag is OFF)

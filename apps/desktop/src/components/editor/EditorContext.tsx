@@ -308,6 +308,13 @@ export function EditorProvider(props: {
     setUseGPUCameraForModernCrop,
   };
 
+  // Expose editor on window for E2E test introspection (Playwright).
+  // Safe — only useful in dev/test where window is available.
+  if (typeof window !== "undefined") {
+    (window as unknown as { __photrezEditor: EditorContextValue }).__photrezEditor =
+      value;
+  }
+
   return (
     <EditorContext.Provider value={value}>
       {props.children}
