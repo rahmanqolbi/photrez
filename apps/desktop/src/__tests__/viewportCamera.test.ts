@@ -333,6 +333,97 @@ describe("ViewportCamera", () => {
     expect(m[1] * 700 + m[5] * 500 + m[13]).toBeCloseTo(-0.4, 5);
   });
 
+  it("getViewProjectionMatrix with image transform + camera pan: pivotDocument maps to NDC(pivotScreen)", () => {
+    // Camera with non-zero pan and non-unity zoom. The pivot must land at
+    // its screen position regardless of the camera's pan offset. This is
+    // the user-facing invariant: in modern crop, the image's pivot doc
+    // point should appear at the frame's center (pivotScreen).
+    camera.setState({ x: 100, y: 50, zoom: 0.8 });
+
+    // Pivot at screen (500, 400) in a 800x600 viewport.
+    // doc = (screen - pan) / zoom = (400/0.8, 350/0.8) = (500, 437.5)
+    camera.setImageTransform({
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 0,
+      scale: 1.0,
+      pivotScreen: { x: 500, y: 400 },
+      pivotDocument: { x: 500, y: 437.5 },
+    });
+
+    const m = camera.getViewProjectionMatrix(800, 600);
+
+    // Invariant: M * pivotDocument must equal NDC(pivotScreen).
+    const expectedNdcX = (2 * 500) / 800 - 1; // 0.25
+    const expectedNdcY = 1 - (2 * 400) / 600; // -1/3
+    expect(m[0] * 500 + m[4] * 437.5 + m[12]).toBeCloseTo(expectedNdcX, 5);
+    expect(m[1] * 500 + m[5] * 437.5 + m[13]).toBeCloseTo(expectedNdcY, 5);
+
+    // Sanity: a doc point to the right of the pivot lands to the right
+    // of the pivot on screen (and 1/0.8 = 1.25x screen units because zoom=0.8
+    // means a doc unit is 0.8 screen units away from its origin).
+    // doc (700, 437.5) = pivot + (200, 0) → screen (660, 400) → NDC.x = 0.65
+    expect(m[0] * 700 + m[4] * 437.5 + m[12]).toBeCloseTo(0.65, 5);
+  });
+
+  it("getViewProjectionMatrix with image transform + pan: offsetX/Y do NOT double-shift pivot", () => {
+    // offsetX/Y in the pivot mode should not be added on top of pivotScreen
+    // (otherwise the image would be displaced relative to the pivot). This
+    // test sets non-zero offsetX/Y to verify they are ignored in pivot mode.
+    camera.setState({ x: 100, y: 50, zoom: 1.0 });
+
+    camera.setImageTransform({
+      offsetX: 20,
+      offsetY: 10,
+      rotation: 0,
+      scale: 1.0,
+      pivotScreen: { x: 500, y: 400 },
+      pivotDocument: { x: 400, y: 350 },
+    });
+
+    const m = camera.getViewProjectionMatrix(800, 600);
+
+    // Pivot must map to NDC(pivotScreen). The presence of offsetX/Y must
+    // not shift the pivot.
+    const expectedNdcX = (2 * 500) / 800 - 1; // 0.25
+    const expectedNdcY = 1 - (2 * 400) / 600; // -1/3
+    expect(m[0] * 400 + m[4] * 350 + m[12]).toBeCloseTo(expectedNdcX, 5);
+    expect(m[1] * 400 + m[5] * 350 + m[13]).toBeCloseTo(expectedNdcY, 5);
+  });
+
+  it("getViewProjectionMatrix with image transform rotation + camera pan: pivotDocument maps to NDC(pivotScreen)", () => {
+    // Rotation around a pivot must preserve the pivot's screen position
+    // even when the camera has pan. This is the core invariant for any
+    // modern crop / rotate-without-moving-center operation.
+    camera.setState({ x: 50, y: 30, zoom: 1.0 });
+
+    camera.setImageTransform({
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 45,
+      scale: 1.0,
+      pivotScreen: { x: 600, y: 400 },
+      pivotDocument: { x: 550, y: 370 },
+    });
+
+    const m = camera.getViewProjectionMatrix(1000, 600);
+
+    // Pivot at screen (600, 400): NDC = (0.2, -1/3)
+    const expectedNdcX = (2 * 600) / 1000 - 1; // 0.2
+    const expectedNdcY = 1 - (2 * 400) / 600; // -1/3
+    expect(m[0] * 550 + m[4] * 370 + m[12]).toBeCloseTo(expectedNdcX, 5);
+    expect(m[1] * 550 + m[5] * 370 + m[13]).toBeCloseTo(expectedNdcY, 5);
+
+    // Other doc points should rotate around the pivot. Doc (700, 370) is
+    // 150 to the right of the pivot; after R(45°), it's 150*(cosR, sinR) ≈
+    // (106.07, 106.07) from the pivot. Screen pivot + offset = (706.07, 506.07).
+    // NDC: (2*706.07/1000 - 1, 1 - 2*506.07/600) ≈ (0.4121, -0.6869)
+    const expectedRightNdcX = 2 * 706.066 / 1000 - 1;
+    const expectedRightNdcY = 1 - (2 * 506.066) / 600;
+    expect(m[0] * 700 + m[4] * 370 + m[12]).toBeCloseTo(expectedRightNdcX, 4);
+    expect(m[1] * 700 + m[5] * 370 + m[13]).toBeCloseTo(expectedRightNdcY, 4);
+  });
+
   it("getViewProjectionMatrix composes image transform with camera pan", () => {
     camera.setState({ x: 100, y: 50, zoom: 1.0 });
     camera.setImageTransform({
@@ -356,14 +447,25 @@ describe("ViewportCamera", () => {
     expect(m[4]).toBeCloseTo(expected_m4, 5);
     expect(m[5]).toBeCloseTo(expected_m5, 5);
 
-    // m[12] = -1 + (2/1000) * (1.5 * (-cos(45°)*400 + sin(45°)*400) + 500 + 100 + 20)
-    //       = -1 + 0.002 * (1.5 * 0 + 620) = -1 + 1.24 = 0.24
-    const expected_m12 = -1 + 0.002 * (1.5 * (-Math.cos(Math.PI / 4) * 400 + Math.sin(Math.PI / 4) * 400) + 500 + 100 + 20);
+    // m[12] = -1 + (2/1000) * (1.5 * (-cos(45°)*400 + sin(45°)*400) + 500)
+    //       = -1 + 0.002 * (1.5 * 0 + 500) = -1 + 1.0 = 0
+    // Note: pivotScreen is the authoritative screen position, so the
+    // camera pan (x=100) is NOT added on top of it. See the regression
+    // tests above for the pivot invariant.
+    const expected_m12 = -1 + 0.002 * (1.5 * (-Math.cos(Math.PI / 4) * 400 + Math.sin(Math.PI / 4) * 400) + 500);
     expect(m[12]).toBeCloseTo(expected_m12, 5);
 
-    // m[13] = 1 + (2/1000) * (1.5 * (sin(45°)*400 + cos(45°)*400) - 500 - 50 - 0)
-    const expected_m13 = 1 + 0.002 * (1.5 * (Math.sin(Math.PI / 4) * 400 + Math.cos(Math.PI / 4) * 400) - 500 - 50);
+    // m[13] = 1 + (2/1000) * (1.5 * (sin(45°)*400 + cos(45°)*400) - 500)
+    //       = 1 + 0.002 * (1.5 * 565.685 - 500) = 1 + 0.002 * 348.528 ≈ 1.697
+    // Note: camera pan (y=50) is NOT added on top of pivotScreen.y.
+    const expected_m13 = 1 + 0.002 * (1.5 * (Math.sin(Math.PI / 4) * 400 + Math.cos(Math.PI / 4) * 400) - 500);
     expect(m[13]).toBeCloseTo(expected_m13, 5);
+
+    // Pivot invariant: pivotDocument (400, 400) must map to NDC(pivotScreen = (500, 500))
+    // = (0, 0). This is what makes the image's rotation center stay at the
+    // frame center on screen, regardless of camera pan.
+    expect(m[0] * 400 + m[4] * 400 + m[12]).toBeCloseTo(0, 5);
+    expect(m[1] * 400 + m[5] * 400 + m[13]).toBeCloseTo(0, 5);
   });
 
   it("resetImageTransform causes getViewProjectionMatrix to return camera-only matrix", () => {

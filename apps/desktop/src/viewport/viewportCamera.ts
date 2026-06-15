@@ -208,8 +208,14 @@ export class ViewportCamera {
       return m;
     }
 
-    // With pivot: full composition
-    // M = T(pan) * T(pivotScreen + offset) * R(rotation) * S(zoom*imageScale) * T(-pivotDocument)
+    // With pivot: image is rendered with its pivotDocument at pivotScreen.
+    // Linear part: R * (zoom*imageScale) * (p - pivotDocument)
+    // Translation: +pivotScreen (in NDC, with Y flipped).
+    // The camera pan is already baked into the linear part (via zoom), so
+    // we do NOT add it again here — otherwise the image is double-panned
+    // and pivotDocument would render at pivotScreen + pan instead of
+    // pivotScreen. Similarly, offsetX/Y are ignored in pivot mode because
+    // pivotScreen is the authoritative screen position of the image.
     const cosR = Math.cos((it.rotation * Math.PI) / 180);
     const sinR = Math.sin((it.rotation * Math.PI) / 180);
     const pd = it.pivotDocument!;
@@ -220,8 +226,8 @@ export class ViewportCamera {
     m[4]  = -(2 * zs * sinR) / w;
     m[5]  = -(2 * zs * cosR) / h;
     m[10] = 1;
-    m[12] = -1 + (2 / w) * (zs * (-cosR * pd.x + sinR * pd.y) + ps.x + x + it.offsetX);
-    m[13] =  1 + (2 / h) * (zs * (sinR * pd.x + cosR * pd.y) - ps.y - y - it.offsetY);
+    m[12] = -1 + (2 / w) * (zs * (-cosR * pd.x + sinR * pd.y) + ps.x);
+    m[13] =  1 + (2 / h) * (zs * (sinR * pd.x + cosR * pd.y) - ps.y);
     m[15] = 1;
 
     return m;
