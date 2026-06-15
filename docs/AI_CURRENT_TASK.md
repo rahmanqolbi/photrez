@@ -4,6 +4,46 @@
 
 ## Current Tasks
 
+### [2026-06-14] Photrez Test Quality & Speed Overhaul [IN PROGRESS]
+
+**Goal:**
+Address the recurring "every new tool passes unit test but fails in frontend" pattern by building proper test infrastructure, contract tests that catch wiring bugs at the engine→signal→UI boundary, and a faster test suite. Pilot on Move Tool (which has a deferred bug), then replicate to all other tools.
+
+**Phase 0 — COMPLETE:**
+- [x] AI_CURRENT_TASK.md updated
+- [x] Pickup reference doc created: `docs/plans/2026-06-14-test-overhaul-reference.md`
+- [x] Selection work committed (441b35e)
+- [x] Baseline measured: 114.58s (956 tests, 66 files)
+- [x] Bottleneck identified: import + jsdom env overhead (89% of total); test logic only 12.4s
+
+**Phase 1 — COMPLETE:**
+- [x] `@solidjs/testing-library@0.8.10` + `@testing-library/user-event@14.6.1` installed
+- [x] `apps/desktop/src/test/setup.ts` created (minimal: jest-dom + DOM reset)
+- [x] `vite.config.ts` updated: `setupFiles` + `pool: 'threads'`
+- [x] All 956 tests pass with new config
+- [x] `pnpm run build` succeeds (6.56s)
+- [x] **Speedup: 114.58s → 60.56s (1.89×)**
+
+**Phase 1 findings (documented in setup.ts + reference doc):**
+- `pool: 'threads'` alone is safe and gives 1.89× speedup
+- `sequence: { concurrent: true }` BREAKS 67 tests due to vite-plugin-solid state pollution
+- Global mocks for pointer capture, WebGL2, getComputedStyle, RAF were tried and reverted — they broke existing pixel-dependent and positioning tests. Use per-test mocks instead.
+- `vi.clearAllMocks()` in global beforeEach clears spies set up in test file's own beforeEach — skip it
+
+**Planned Phases (remaining):**
+- **Phase 2:** Pilot on Move Tool — resolve deferred Resize Cursor bug, add 1 CanvasViewport integration test, add contract test
+- **Phase 3:** Replicate contract test pattern to Selection, Brush, Crop, Transform
+- **Phase 4:** Enforce via Definition of Done in `AGENTS.md` + tool creation recipe in `CONVENTIONS.md`
+
+**References:**
+- Q-Print project (D:\Project\aplikasi-cetak-massal) — `vitest.setup.ts` (216 lines) reviewed for mock patterns; ultimately only jest-dom import + DOM reset adopted for Photrez due to jsdom 29 + vite-plugin-solid + Solid reactivity constraints
+- Speed comparison data in `docs/plans/2026-06-14-test-overhaul-reference.md` §1.3
+
+**Out of Scope (Future Reminder):**
+Non-tool UI (Layers panel, Properties, Export dialog, File menu, Settings, Document tabs, Status bar) + Backend (Tauri commands, Rust core, IPC contract tests) — pakai pattern yang sama (contract + integration test) saat siap. Detail di `docs/plans/2026-06-14-test-overhaul-reference.md` §`Future Work`.
+
+---
+
 ### [2026-06-13] Bug Hunt — Layer Selection on Canvas Requires Multiple Clicks [COMPLETE]
 
 **Goal:**
