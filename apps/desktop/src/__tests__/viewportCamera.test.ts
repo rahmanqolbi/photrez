@@ -267,6 +267,37 @@ describe("ViewportCamera", () => {
     expect(m2[12]).toBeCloseTo(-0.875, 5);
     expect(m2[13]).toBeCloseTo(m1[13], 5);
   });
+
+  it("getViewProjectionMatrix with image transform scale + pivot: pivot maps to NDC center, scaled point maps correctly", () => {
+    camera.setState({ x: 0, y: 0, zoom: 1.0 });
+    camera.setImageTransform({
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 0,
+      scale: 2.0,
+      pivotScreen: { x: 500, y: 500 },
+      pivotDocument: { x: 500, y: 500 },
+    });
+
+    const m = camera.getViewProjectionMatrix(1000, 1000);
+
+    expect(m[0]).toBeCloseTo(0.004, 5);
+    expect(m[1]).toBeCloseTo(0, 5);
+    expect(m[4]).toBeCloseTo(0, 5);
+    expect(m[5]).toBeCloseTo(-0.004, 5);
+    expect(m[12]).toBeCloseTo(-2, 5);
+    expect(m[13]).toBeCloseTo(2, 5);
+
+    // Pivot maps to NDC origin
+    expect(m[0] * 500 + m[4] * 500 + m[12]).toBeCloseTo(0, 5);
+    expect(m[1] * 500 + m[5] * 500 + m[13]).toBeCloseTo(0, 5);
+
+    // Doc (700, 500): 200 right of pivot
+    // After scale=2: (400, 0) from pivot, +pivot_screen (500,500) = (900, 500)
+    // NDC: (900*2/1000 - 1, -500*2/1000 + 1) = (0.8, 0)
+    expect(m[0] * 700 + m[4] * 500 + m[12]).toBeCloseTo(0.8, 5);
+    expect(m[1] * 700 + m[5] * 500 + m[13]).toBeCloseTo(0, 5);
+  });
 });
 
 describe("coords.screenToDocument vs camera.screenToDocument equivalency", () => {
