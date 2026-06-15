@@ -262,6 +262,25 @@ export function EditorProvider(props: {
     prevActiveLayerId = id;
   });
 
+  // Tool switch cleanup: when activeTool changes, clear tool-specific
+  // transient state (hoverHandle, hoverPos, layerTransformSession,
+  // selectionEditMode). These are tool-local; if not cleared on switch,
+  // they leak into the next tool (P0-1 class bug). Caught by
+  // CanvasViewport.test.tsx §"Phase 4 Deep Tool State Cleanup".
+  let prevActiveTool: string | null = null;
+  createEffect(() => {
+    const tool = editorState.activeTool();
+    if (prevActiveTool !== null && tool !== prevActiveTool) {
+      batch(() => {
+        editorState.setHoverHandle(null);
+        editorState.setHoverPos(null);
+        editorState.setLayerTransformSession(null);
+        editorState.setSelectionEditMode(false);
+      });
+    }
+    prevActiveTool = tool;
+  });
+
   const value: EditorContextValue = {
     workspace: props.workspace,
     renderer: props.renderer,

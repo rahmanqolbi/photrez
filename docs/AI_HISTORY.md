@@ -1,5 +1,74 @@
 # AI History — Photrez
 
+## [2026-06-14] BUG FIX — Deep Tool State Cleanup on Tool Switch [COMPLETE]
+
+### Kategori: BUG FIX / FRONTEND / TOOL SWITCH
+
+**Root Cause:**
+Saat user switch tool (mis. Move → Brush), tool-specific transient state tidak dibersihkan. Effects:
+- **Move tool**: `hoverHandle`, `hoverPos`, dan `layerTransformSession` leak ke tool berikutnya. Cursor masih menunjukkan handle direction padahal user sudah switch tool.
+- **Selection tool**: `selectionEditMode` (true saat user drag handle selection) tidak reset. Tool berikutnya masih think user in edit mode.
+- **Transform tool**: `layerTransformSession` (active resize/rotate session) tidak dibersihkan. Memory leak + potential UI bug (overlay masih render).
+
+Tiga class bug ini P0-1 family (state leak across tool switch) yang sebelumnya tidak tertangkap karena:
+- Existing tests cek `engine works` setelah switch (too shallow)
+- Existing tests per-tool, tidak cross-tool
+- Tidak ada test yang verify per-signal state cleared on switch
+
+**Fix Rationale:**
+Single `createEffect` di `EditorContext.tsx` yang watches `activeTool()` dan clears transient state pada change. Pattern:
+```ts
+let prevActiveTool: string | null = null;
+createEffect(() => {
+  const tool = editorState.activeTool();
+  if (prevActiveTool !== null && tool !== prevActiveTool) {
+    batch(() => {
+      editorState.setHoverHandle(null);
+      editorState.setHoverPos(null);
+      editorState.setLayerTransformSession(null);
+      editorState.setSelectionEditMode(false);
+    });
+  }
+  prevActiveTool = tool;
+});
+```
+
+State yang di-clear:
+- `hoverHandle`, `hoverPos` — Move tool transient
+- `layerTransformSession` — Move/Transform mid-drag session
+- `selectionEditMode` — Selection edit mode flag
+
+State yang TIDAK di-clear (by design, document-level):
+- `selection` (user can have selection in any tool)
+- `activeLayerId`, `layers` (document state)
+- `brushSize`, `brushHardness` (user preferences)
+- `modernCropFrame`, `cropRect` (already auto-cleaned by existing modernCropState effect)
+
+`prevActiveTool !== null` guard mencegah cleanup pada initial mount (signal sudah default null, no observable effect, but defensive).
+
+**Files Changed:**
+- `apps/desktop/src/components/editor/EditorContext.tsx:265-281` — 1 new createEffect
+- `apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx` — 4 new deep tests in §"Phase 4 Deep Tool State Cleanup"
+
+**Tests Added (4):**
+1. Move: switching away clears hoverHandle, hoverPos, layerTransformSession
+2. Selection: switching away preserves selection but exits edit mode (no orphan edit mode)
+3. Crop (modern): switching away clears modernCropFrame, modernCropImageTransform, undo/redo (passed — already covered by existing effect)
+4. Transform: switching away clears layerTransformSession (orphan transform state)
+
+**Bug caught by tests:**
+- 3 of 4 tests FAILED on first run before the fix
+- All 3 real bugs were SILENT — no existing test caught them
+- This validates the deep test pattern: per-signal assertions find what shallow tests miss
+
+**Verification:**
+- PASS: 4 new deep tests after fix
+- PASS: 976/976 frontend tests (was 972, +4 new)
+- PASS: `pnpm run build` (9.55s)
+- PASS: pre-commit pipeline (TS build + frontend tests + Rust tests)
+
+---
+
 ## [2026-06-14] FEATURE — Engine ↔ Signal Contract Test Suite [COMPLETE]
 
 ### Kategori: FEATURE / INFRASTRUCTURE / TEST

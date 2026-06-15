@@ -2275,3 +2275,179 @@ describe("Phase 3 Tool Switch Contracts (Move, Selection, Brush, Transform)", ()
     expect(engine).toBeDefined();
   });
 });
+
+describe("Phase 4 Deep Tool State Cleanup (per-signal assertions)", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+  let editorRef: { current: any };
+
+  const tick = (ms = 50) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+  const DeepTestConsumer = () => {
+    editorRef.current = useEditor();
+    return null;
+  };
+
+  beforeEach(async () => {
+    ws = new WorkspaceManager();
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    editorRef = { current: null };
+
+    mockOnViewportPointerDown.mockClear();
+    mockOnViewportPointerUp.mockClear();
+    mockOnViewportPointerCancel.mockClear();
+    mockOnViewportLostPointerCapture.mockClear();
+    mockCommitBrushStroke.mockClear();
+    mockSpacePressed = false;
+    mockPanningActive = false;
+
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+
+    const session = WorkspaceManager.createBlankDocument("deep", "Deep", 800, 600);
+    ws.addDocument(session);
+
+    dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer} scheduler={scheduler}>
+          <TestConsumer />
+          <DeepTestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+
+    await tick();
+  });
+
+  afterEach(() => {
+    if (dispose) dispose();
+    if (container.parentNode) container.parentNode.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  it("Move: switching away clears hoverHandle, hoverPos, layerTransformSession", async () => {
+    const ed = editorRef.current;
+    setTool("move");
+    await tick();
+
+    // Simulate Move-specific state
+    ed.setHoverHandle("nw");
+    ed.setHoverPos({ x: 100, y: 100 });
+    const engine = ws.getActiveEngine()!;
+    const l1 = engine.addLayer("L1");
+    await tick();
+    ed.setLayerTransformSession({
+      documentId: "deep",
+      layerId: l1.id,
+      originalSnapshot: engine.snapshot(),
+      originalTransform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
+      mode: "resize",
+      lockRatio: false,
+      startedAt: Date.now(),
+    });
+    await tick();
+
+    // Verify state is set
+    expect(ed.hoverHandle()).toBe("nw");
+    expect(ed.hoverPos()).not.toBeNull();
+    expect(ed.layerTransformSession()).not.toBeNull();
+
+    // Switch to another tool
+    setTool("brush");
+    await tick();
+
+    // All Move-specific transient state should be cleared
+    expect(ed.hoverHandle()).toBeNull();
+    expect(ed.hoverPos()).toBeNull();
+    expect(ed.layerTransformSession()).toBeNull();
+  });
+
+  it("Selection: switching away preserves selection but exits edit mode (no orphan edit mode)", async () => {
+    const ed = editorRef.current;
+    setTool("select");
+    await tick();
+
+    // Set selection and enter edit mode
+    ed.setSelection({ x: 10, y: 10, width: 100, height: 100, angle: 0 });
+    ed.setSelectionEditMode(true);
+    await tick();
+
+    expect(ed.selection()).not.toBeNull();
+    expect(ed.selectionEditMode()).toBe(true);
+
+    // Switch to move
+    setTool("move");
+    await tick();
+
+    // Selection persists (user can have selection in any tool),
+    // but edit mode is off (orphan edit mode is the bug)
+    expect(ed.selection()).not.toBeNull();
+    expect(ed.selectionEditMode()).toBe(false);
+  });
+
+  it("Crop (modern): switching away clears modernCropFrame, modernCropImageTransform, undo/redo", async () => {
+    const ed = editorRef.current;
+    setTool("crop");
+    setCropInteractionMode("modern");
+    await tick();
+
+    // setTool("crop") with modern mode auto-creates a frame
+    expect(ed.modernCropFrame()).not.toBeNull();
+
+    // Set custom image transform
+    ed.setModernCropImageTransform({ offsetX: 50, offsetY: 25, rotation: 45, scale: 1.5 });
+    await tick();
+
+    // Switch to another tool
+    setTool("move");
+    await tick();
+
+    // All crop-specific state should be cleared
+    expect(ed.modernCropFrame()).toBeNull();
+    const t = ed.modernCropImageTransform();
+    expect(t.offsetX).toBe(0);
+    expect(t.offsetY).toBe(0);
+    expect(t.rotation).toBe(0);
+    expect(t.scale).toBe(1);
+    expect(ed.canModernCropUndo()).toBe(false);
+  });
+
+  it("Transform: switching away clears layerTransformSession (orphan transform state)", async () => {
+    const ed = editorRef.current;
+    setTool("move");
+    await tick();
+
+    const engine = ws.getActiveEngine()!;
+    const l1 = engine.addLayer("L1");
+    await tick();
+
+    // Set up an active transform session (simulates mid-drag)
+    ed.setLayerTransformSession({
+      documentId: "deep",
+      layerId: l1.id,
+      originalSnapshot: engine.snapshot(),
+      originalTransform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
+      mode: "resize",
+      lockRatio: false,
+      startedAt: Date.now(),
+    });
+    await tick();
+
+    expect(ed.layerTransformSession()).not.toBeNull();
+
+    // Switch to crop (any other tool)
+    setTool("crop");
+    await tick();
+
+    // Transform session should be cleared
+    expect(ed.layerTransformSession()).toBeNull();
+  });
+});

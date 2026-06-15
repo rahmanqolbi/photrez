@@ -47,10 +47,21 @@ Address the recurring "every new tool passes unit test but fails in frontend" pa
 - [x] Added "Definition of Done for a New Tool" section to `AGENTS.md` with 9-step wiring checklist + test coverage + verification + anti-pattern check
 - [x] Added "Tool Creation Recipe (9-12 langkah wiring)" section to `CONVENTIONS.md` with pattern, common bugs table, tool switch cleanup contract
 
-**Phase 4.5 — Engine ↔ Signal Contract Suite [IN PROGRESS]**
+**Phase 4.5 — Engine ↔ Signal Contract Suite [COMPLETE]**
 - [x] Created `apps/desktop/src/components/editor/__tests__/engine-signal-contract.test.tsx`
 - [x] 11 tests covering: initial sync, setActiveLayer, addLayer, deleteLayer, transformLayer, setLayerOpacity, setSelection, setLayerTransformSession, undo (P0-1 regression), switchDocument, history cursor
-- [x] 972/972 frontend tests pass (was 961, +11)
+- [x] 976/976 frontend tests pass (was 961, +15 since Phase 4.5)
+- [x] `pnpm run build` succeeds
+
+**Phase 4.6 — Deep Tool State Cleanup [COMPLETE]**
+- [x] Added 4 deep per-signal cleanup tests in `CanvasViewport.test.tsx` §"Phase 4 Deep Tool State Cleanup"
+- [x] 3 of 4 tests FAILED on first run — caught REAL bugs:
+  - Move: hoverHandle, hoverPos, layerTransformSession not cleared on tool switch
+  - Selection: selectionEditMode not reset on tool switch
+  - Transform: layerTransformSession not cleared on tool switch
+- [x] Fixed with 1 createEffect in `EditorContext.tsx` (line ~265) — watches activeTool, clears transient state on change
+- [x] All 4 deep tests pass after fix
+- [x] 976/976 frontend tests pass (was 972, +4 new)
 - [x] `pnpm run build` succeeds
 
 **References:**
