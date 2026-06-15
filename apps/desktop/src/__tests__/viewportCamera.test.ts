@@ -220,6 +220,35 @@ describe("ViewportCamera", () => {
     expect(t.pivotScreen).toBeNull();
     expect(t.pivotDocument).toBeNull();
   });
+
+  it("getViewProjectionMatrix with identity image transform matches camera-only matrix", () => {
+    camera.setState({ x: 100, y: 50, zoom: 2.0 });
+
+    const m1 = camera.getViewProjectionMatrix(800, 600);
+
+    camera.setImageTransform({});
+    const m2 = camera.getViewProjectionMatrix(800, 600);
+
+    expect(m2).toEqual(m1);
+  });
+
+  it("getViewProjectionMatrix with null pivots matches camera-only matrix", () => {
+    camera.setState({ x: 100, y: 50, zoom: 2.0 });
+
+    const m1 = camera.getViewProjectionMatrix(800, 600);
+
+    camera.setImageTransform({
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 0,
+      scale: 1.0,
+      pivotScreen: null,
+      pivotDocument: null,
+    });
+    const m2 = camera.getViewProjectionMatrix(800, 600);
+
+    expect(m2).toEqual(m1);
+  });
 });
 
 describe("coords.screenToDocument vs camera.screenToDocument equivalency", () => {
