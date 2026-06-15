@@ -332,6 +332,39 @@ describe("ViewportCamera", () => {
     expect(m[0] * 700 + m[4] * 500 + m[12]).toBeCloseTo(0, 5);
     expect(m[1] * 700 + m[5] * 500 + m[13]).toBeCloseTo(-0.4, 5);
   });
+
+  it("getViewProjectionMatrix composes image transform with camera pan", () => {
+    camera.setState({ x: 100, y: 50, zoom: 1.0 });
+    camera.setImageTransform({
+      offsetX: 20,
+      offsetY: 0,
+      rotation: 45,
+      scale: 1.5,
+      pivotScreen: { x: 500, y: 500 },
+      pivotDocument: { x: 400, y: 400 },
+    });
+
+    const m = camera.getViewProjectionMatrix(1000, 1000);
+
+    // zs = 1 * 1.5 = 1.5
+    const expected_m0 = (2 * 1.5 * Math.cos(Math.PI / 4)) / 1000;
+    const expected_m1 = -(2 * 1.5 * Math.sin(Math.PI / 4)) / 1000;
+    const expected_m4 = -(2 * 1.5 * Math.sin(Math.PI / 4)) / 1000;
+    const expected_m5 = -(2 * 1.5 * Math.cos(Math.PI / 4)) / 1000;
+    expect(m[0]).toBeCloseTo(expected_m0, 5);
+    expect(m[1]).toBeCloseTo(expected_m1, 5);
+    expect(m[4]).toBeCloseTo(expected_m4, 5);
+    expect(m[5]).toBeCloseTo(expected_m5, 5);
+
+    // m[12] = -1 + (2/1000) * (1.5 * (-cos(45°)*400 + sin(45°)*400) + 500 + 100 + 20)
+    //       = -1 + 0.002 * (1.5 * 0 + 620) = -1 + 1.24 = 0.24
+    const expected_m12 = -1 + 0.002 * (1.5 * (-Math.cos(Math.PI / 4) * 400 + Math.sin(Math.PI / 4) * 400) + 500 + 100 + 20);
+    expect(m[12]).toBeCloseTo(expected_m12, 5);
+
+    // m[13] = 1 + (2/1000) * (1.5 * (sin(45°)*400 + cos(45°)*400) - 500 - 50 - 0)
+    const expected_m13 = 1 + 0.002 * (1.5 * (Math.sin(Math.PI / 4) * 400 + Math.cos(Math.PI / 4) * 400) - 500 - 50);
+    expect(m[13]).toBeCloseTo(expected_m13, 5);
+  });
 });
 
 describe("coords.screenToDocument vs camera.screenToDocument equivalency", () => {
