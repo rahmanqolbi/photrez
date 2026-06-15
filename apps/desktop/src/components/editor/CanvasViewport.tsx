@@ -1013,6 +1013,9 @@ export function CanvasViewport() {
                 imageTransform={modernCropImageTransform()}
                 viewportWidth={viewportWidth()}
                 viewportHeight={viewportHeight()}
+                panX={pan().x}
+                panY={pan().y}
+                zoom={zoom()}
                 projectedWidth={
                   docWidth() * zoom() * (modernCropImageTransform().scale ?? 1)
                 }
