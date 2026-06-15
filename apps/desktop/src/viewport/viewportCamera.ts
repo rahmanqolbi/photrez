@@ -6,6 +6,15 @@ export interface CameraState {
   zoom: number;
 }
 
+export interface ImageTransformState {
+  offsetX: number;
+  offsetY: number;
+  rotation: number;
+  scale: number;
+  pivotScreen: { x: number; y: number } | null;
+  pivotDocument: { x: number; y: number } | null;
+}
+
 export interface AnimationState {
   from: CameraState;
   to: CameraState;
@@ -22,6 +31,14 @@ export class ViewportCamera {
   private animation: AnimationState | null = null;
   private viewportWidth = 800;
   private viewportHeight = 600;
+  private imageTransform: ImageTransformState = {
+    offsetX: 0,
+    offsetY: 0,
+    rotation: 0,
+    scale: 1.0,
+    pivotScreen: null,
+    pivotDocument: null,
+  };
 
   public onAnimationStart?: () => void;
   public onAnimationEnd?: () => void;
