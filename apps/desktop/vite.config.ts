@@ -13,9 +13,11 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: [],
+    setupFiles: ['./src/test/setup.ts'],
     css: true,
     exclude: ["node_modules/**", "dist/**", "e2e/**"],
+
+    pool: 'threads',
   },
 
   // Prevent vite from obscuring rust errors
