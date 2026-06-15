@@ -167,6 +167,11 @@ export interface EditorContextValue {
 
 const EditorContext = createContext<EditorContextValue>();
 
+// Module-level signal so render callbacks outside the provider
+// (e.g., EditorShell's RenderScheduler) can read the same flag.
+const [useGPUCameraForModernCrop, setUseGPUCameraForModernCrop] = createSignal(true);
+export { useGPUCameraForModernCrop, setUseGPUCameraForModernCrop };
+
 export function useEditor(): EditorContextValue {
   const context = useContext(EditorContext);
   if (!context) {
@@ -206,7 +211,6 @@ export function EditorProvider(props: {
   const editorState = createEditorState();
   const cropState = createCropState();
   const modernCropState = createModernCropState();
-  const [useGPUCameraForModernCrop, setUseGPUCameraForModernCrop] = createSignal(true);
 
   const setViewportState = (next: { x: number; y: number; zoom: number }) => {
     camera.setState(next);

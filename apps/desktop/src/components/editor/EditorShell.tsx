@@ -15,7 +15,7 @@ import { ExportDialog } from "./ExportDialog";
 import { WorkspaceManager } from "@/engine/workspace";
 import { WebGL2Backend } from "@/renderer/webgl2";
 import { RenderScheduler } from "@/renderer/scheduler";
-import { EditorProvider, useEditor } from "./EditorContext";
+import { EditorProvider, useEditor, useGPUCameraForModernCrop } from "./EditorContext";
 import { ViewportCamera } from "../../viewport/viewportCamera";
 
 function EditorLayout(props: {
@@ -73,10 +73,18 @@ export function EditorShell() {
   const workspace = new WorkspaceManager();
   const camera = new ViewportCamera();
   const renderer = new WebGL2Backend();
+  // Render scheduler uses the shared useGPUCameraForModernCrop signal
+  // (defined at module level in EditorContext) so it stays in sync
+  // with the context flag. When the flag is true, the new GPU-camera
+  // path always passes a VP matrix (image transform is in the matrix).
+  // When false, falls back to the legacy CSS-path conditional.
   const scheduler = new RenderScheduler(() => {
     const engine = workspace.getActiveEngine();
     if (!engine) return;
-    if (camera.isModernCropActive) {
+    if (useGPUCameraForModernCrop()) {
+      const matrix = camera.getViewProjectionMatrix();
+      renderer.render(engine.getRenderState(), matrix);
+    } else if (camera.isModernCropActive) {
       renderer.render(engine.getRenderState());
     } else {
       const matrix = camera.getViewProjectionMatrix();
