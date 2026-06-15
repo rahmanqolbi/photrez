@@ -79,6 +79,21 @@ export class ViewportCamera {
     return { width: this.viewportWidth, height: this.viewportHeight };
   }
 
+  public setImageTransform(t: Partial<ImageTransformState>): void {
+    this.imageTransform = {
+      offsetX: t.offsetX ?? 0,
+      offsetY: t.offsetY ?? 0,
+      rotation: t.rotation ?? 0,
+      scale: t.scale ?? 1.0,
+      pivotScreen: t.pivotScreen ?? null,
+      pivotDocument: t.pivotDocument ?? null,
+    };
+  }
+
+  public getImageTransform(): ImageTransformState {
+    return { ...this.imageTransform };
+  }
+
   public isAnimating(): boolean {
     return this.animation !== null;
   }

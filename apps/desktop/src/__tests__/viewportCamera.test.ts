@@ -162,6 +162,44 @@ describe("ViewportCamera", () => {
     expect(docAfter.x).toBeCloseTo(docBefore.x);
     expect(docAfter.y).toBeCloseTo(docBefore.y);
   });
+
+  it("setImageTransform stores state retrievable via getImageTransform", () => {
+    camera.setImageTransform({
+      offsetX: 10,
+      offsetY: 20,
+      rotation: 30,
+      scale: 1.5,
+      pivotScreen: { x: 100, y: 200 },
+      pivotDocument: { x: 50, y: 60 },
+    });
+
+    const t = camera.getImageTransform();
+    expect(t.offsetX).toBe(10);
+    expect(t.offsetY).toBe(20);
+    expect(t.rotation).toBe(30);
+    expect(t.scale).toBe(1.5);
+    expect(t.pivotScreen).toEqual({ x: 100, y: 200 });
+    expect(t.pivotDocument).toEqual({ x: 50, y: 60 });
+  });
+
+  it("getImageTransform returns a copy (mutating result does not affect camera)", () => {
+    camera.setImageTransform({ offsetX: 5 });
+    const t = camera.getImageTransform();
+    t.offsetX = 999;
+    expect(camera.getImageTransform().offsetX).toBe(5);
+  });
+
+  it("setImageTransform defaults unspecified fields to identity", () => {
+    camera.setImageTransform({ offsetX: 10 });
+
+    const t = camera.getImageTransform();
+    expect(t.offsetX).toBe(10);
+    expect(t.offsetY).toBe(0);
+    expect(t.rotation).toBe(0);
+    expect(t.scale).toBe(1.0);
+    expect(t.pivotScreen).toBeNull();
+    expect(t.pivotDocument).toBeNull();
+  });
 });
 
 describe("coords.screenToDocument vs camera.screenToDocument equivalency", () => {
