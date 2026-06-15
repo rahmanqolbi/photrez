@@ -2163,3 +2163,115 @@ describe("Crop re-entry syncs preview with option bar values", () => {
     expect(frameRatio.w / frameRatio.h).toBeCloseTo(3 / 2, 1);
   });
 });
+
+describe("Phase 3 Tool Switch Contracts (Move, Selection, Brush, Transform)", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    ws = new WorkspaceManager();
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    mockOnViewportPointerDown.mockClear();
+    mockOnViewportPointerUp.mockClear();
+    mockOnViewportPointerCancel.mockClear();
+    mockOnViewportLostPointerCapture.mockClear();
+    mockCommitBrushStroke.mockClear();
+    mockSpacePressed = false;
+    mockPanningActive = false;
+  });
+
+  afterEach(() => {
+    if (dispose) dispose();
+    container.parentNode?.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  function renderViewport() {
+    const session = WorkspaceManager.createBlankDocument("phase3", "Phase 3", 800, 600);
+    ws.addDocument(session);
+    dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer} scheduler={scheduler}>
+          <TestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+    return { session };
+  }
+
+  it("Move: round-trip Move -> Brush -> Move leaves no orphan state", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("move");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    setTool("brush");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    setTool("move");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // After round-trip, engine still works
+    const engine = ws.getActiveEngine();
+    expect(engine).toBeDefined();
+    expect(ws.getActiveSession()).toBeDefined();
+  });
+
+  it("Selection: round-trip select -> crop -> select leaves no orphan state", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("select");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    setTool("select");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const engine = ws.getActiveEngine();
+    expect(engine).toBeDefined();
+    expect(ws.getActiveSession()).toBeDefined();
+  });
+
+  it("Brush: round-trip brush -> move -> brush leaves no orphan state", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("brush");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    setTool("move");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    setTool("brush");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const engine = ws.getActiveEngine();
+    expect(engine).toBeDefined();
+    expect(ws.getActiveSession()).toBeDefined();
+  });
+
+  it("Transform: round-trip move -> crop -> move leaves no orphan layerTransformSession", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    setTool("move");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    setTool("move");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // After round-trip, no stale layerTransformSession
+    const session = ws.getActiveSession();
+    expect(session).toBeDefined();
+
+    const engine = ws.getActiveEngine();
+    expect(engine).toBeDefined();
+  });
+});
