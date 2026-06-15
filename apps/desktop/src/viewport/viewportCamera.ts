@@ -192,15 +192,38 @@ export class ViewportCamera {
     const w = this.viewportWidth;
     const h = this.viewportHeight;
     const m = new Float32Array(16);
-    
-    // Orthographic Matrix components combined with camera transform
-    m[0]  = (2 * zoom) / w;
-    m[5]  = (-2 * zoom) / h;   // Y-flip (screen top = 0)
+
+    const it = this.imageTransform;
+    const hasPivot = it.pivotScreen !== null && it.pivotDocument !== null;
+    const zs = zoom * it.scale;
+
+    if (!hasPivot) {
+      // No pivot: offset is added to pan in screen pixel space
+      m[0]  = (2 * zs) / w;
+      m[5]  = (-2 * zs) / h;
+      m[10] = 1;
+      m[12] = -1 + ((x + it.offsetX) * 2) / w;
+      m[13] =  1 + ((y + it.offsetY) * -2) / h;
+      m[15] = 1;
+      return m;
+    }
+
+    // With pivot: full composition
+    // M = T(pan) * T(pivotScreen + offset) * R(rotation) * S(zoom*imageScale) * T(-pivotDocument)
+    const cosR = Math.cos((it.rotation * Math.PI) / 180);
+    const sinR = Math.sin((it.rotation * Math.PI) / 180);
+    const pd = it.pivotDocument!;
+    const ps = it.pivotScreen!;
+
+    m[0]  =  (2 * zs * cosR) / w;
+    m[1]  = -(2 * zs * sinR) / h;
+    m[4]  = -(2 * zs * sinR) / w;
+    m[5]  = -(2 * zs * cosR) / h;
     m[10] = 1;
-    m[12] = -1 + (x * 2) / w;  // Translation X
-    m[13] =  1 + (y * -2) / h; // Translation Y
+    m[12] = -1 + (2 / w) * (zs * (-cosR * pd.x + sinR * pd.y) + ps.x + x + it.offsetX);
+    m[13] =  1 + (2 / h) * (zs * (sinR * pd.x + cosR * pd.y) - ps.y - y - it.offsetY);
     m[15] = 1;
-    
+
     return m;
   }
 

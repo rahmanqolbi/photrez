@@ -249,6 +249,24 @@ describe("ViewportCamera", () => {
 
     expect(m2).toEqual(m1);
   });
+
+  it("getViewProjectionMatrix with image transform offset shifts matrix translation by offset in screen pixels", () => {
+    camera.setState({ x: 0, y: 0, zoom: 1.0 });
+
+    const m1 = camera.getViewProjectionMatrix(800, 600);
+    expect(m1[12]).toBeCloseTo(-1, 5);
+
+    camera.setImageTransform({
+      offsetX: 50,
+      offsetY: 0,
+      pivotScreen: null,
+      pivotDocument: null,
+    });
+    const m2 = camera.getViewProjectionMatrix(800, 600);
+
+    expect(m2[12]).toBeCloseTo(-0.875, 5);
+    expect(m2[13]).toBeCloseTo(m1[13], 5);
+  });
 });
 
 describe("coords.screenToDocument vs camera.screenToDocument equivalency", () => {
