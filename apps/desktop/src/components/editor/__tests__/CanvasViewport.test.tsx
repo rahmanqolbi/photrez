@@ -3,6 +3,7 @@ import { render } from "solid-js/web";
 import { EditorProvider, useEditor } from "../EditorContext";
 import { CanvasViewport } from "../CanvasViewport";
 import { WorkspaceManager } from "@/engine/workspace";
+import { ViewportCamera } from "@/viewport/viewportCamera";
 
 // Mock useViewportRenderer
 vi.mock("../useViewportRenderer", () => ({
@@ -75,6 +76,7 @@ let setModernImageTransform: (t: any) => void = () => {};
 let getModernFrame: () => any = () => null;
 let setModernFrameState: (frame: any) => void = () => {};
 let resetModernCropState: () => void = () => {};
+let setUseGPUCameraForModernCrop: (v: boolean) => void = () => {};
 let getCropMode: () => string = () => "free";
 let setCropModeState: (mode: any) => void = () => {};
 let getCropAspect: () => any = () => null;
@@ -104,6 +106,7 @@ const TestConsumer = () => {
   getModernFrame = editor.modernCropFrame;
   setModernFrameState = editor.setModernCropFrame;
   resetModernCropState = editor.resetModernCrop;
+  setUseGPUCameraForModernCrop = editor.setUseGPUCameraForModernCrop;
   getCropMode = editor.cropMode;
   setCropModeState = editor.setCropMode;
   getCropAspect = editor.cropAspect;
@@ -2715,5 +2718,180 @@ describe("CanvasViewport Overlay Container (Screen-Space Migration)", () => {
         );
       }
     }
+  });
+});
+
+describe("CanvasViewport Modern Crop → Camera Image Transform Sync", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+  let testCamera: ViewportCamera;
+
+  beforeEach(() => {
+    ws = new WorkspaceManager();
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+
+    testCamera = new ViewportCamera();
+  });
+
+  afterEach(() => {
+    if (dispose) dispose();
+    container.parentNode?.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  it("modern crop with frame + transform propagates to camera image transform", async () => {
+    const session = WorkspaceManager.createBlankDocument(
+      "doc-mc-1",
+      "Doc",
+      800,
+      600,
+    );
+    ws.addDocument(session);
+    ws.switchDocument("doc-mc-1");
+
+    const result = render(
+      () => (
+        <EditorProvider
+          workspace={ws}
+          renderer={renderer}
+          scheduler={scheduler}
+          camera={testCamera}
+        >
+          <TestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+    dispose = result;
+    setCropInteractionMode("classic");
+
+    // Set frame BEFORE entering modern crop to use our specific frame
+    setModernFrameState({ x: 100, y: 100, w: 200, h: 200 });
+    setModernImageTransform({
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 30,
+      scale: 1,
+    });
+    setTool("crop");
+    setCropInteractionMode("modern");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const it = testCamera.getImageTransform();
+    expect(it.rotation).toBe(30);
+    expect(it.scale).toBe(1);
+    expect(it.pivotScreen).not.toBeNull();
+    expect(it.pivotDocument).not.toBeNull();
+    // With scale=1, pan=0, offset=0: pivotScreen == pivotDocument
+    expect(it.pivotScreen?.x).toBeCloseTo(it.pivotDocument?.x ?? 0, 5);
+    expect(it.pivotScreen?.y).toBeCloseTo(it.pivotDocument?.y ?? 0, 5);
+  });
+
+  it("modern crop exit resets camera image transform to identity", async () => {
+    const session = WorkspaceManager.createBlankDocument(
+      "doc-mc-2",
+      "Doc",
+      800,
+      600,
+    );
+    ws.addDocument(session);
+    ws.switchDocument("doc-mc-2");
+
+    const result = render(
+      () => (
+        <EditorProvider
+          workspace={ws}
+          renderer={renderer}
+          scheduler={scheduler}
+          camera={testCamera}
+        >
+          <TestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+    dispose = result;
+    setCropInteractionMode("classic");
+
+    setModernFrameState({ x: 100, y: 100, w: 200, h: 200 });
+    setModernImageTransform({
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 45,
+      scale: 1.5,
+    });
+    setTool("crop");
+    setCropInteractionMode("modern");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(testCamera.getImageTransform().rotation).toBe(45);
+
+    setTool("move");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const it = testCamera.getImageTransform();
+    expect(it.rotation).toBe(0);
+    expect(it.scale).toBe(1);
+    expect(it.pivotScreen).toBeNull();
+    expect(it.pivotDocument).toBeNull();
+  });
+
+  it("feature flag OFF: modern crop uses legacy CSS path (camera not touched)", async () => {
+    const session = WorkspaceManager.createBlankDocument(
+      "doc-mc-flag",
+      "Doc",
+      800,
+      600,
+    );
+    ws.addDocument(session);
+    ws.switchDocument("doc-mc-flag");
+
+    const result = render(
+      () => (
+        <EditorProvider
+          workspace={ws}
+          renderer={renderer}
+          scheduler={scheduler}
+          camera={testCamera}
+        >
+          <TestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+    dispose = result;
+    setCropInteractionMode("classic");
+
+    // Disable the feature flag
+    setUseGPUCameraForModernCrop(false);
+
+    setModernFrameState({ x: 100, y: 100, w: 200, h: 200 });
+    setModernImageTransform({
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 60,
+      scale: 2,
+    });
+    setTool("crop");
+    setCropInteractionMode("modern");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Camera should NOT have the transform set (legacy path uses CSS instead)
+    const it = testCamera.getImageTransform();
+    expect(it.rotation).toBe(0);
+    expect(it.scale).toBe(1);
+    expect(it.pivotScreen).toBeNull();
+    expect(it.pivotDocument).toBeNull();
   });
 });
