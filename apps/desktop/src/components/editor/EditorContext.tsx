@@ -1,4 +1,4 @@
-import { createContext, useContext, onMount, createEffect, batch } from "solid-js";
+import { createContext, useContext, onMount, createEffect, createSignal, batch } from "solid-js";
 import { WorkspaceManager } from "@/engine/workspace";
 import { WebGL2Backend } from "@/renderer/webgl2";
 import { RenderScheduler } from "@/renderer/scheduler";
@@ -158,6 +158,10 @@ export interface EditorContextValue {
   setShowResizeDialog: Setter<boolean>;
   showExportDialog: Accessor<boolean>;
   setShowExportDialog: Setter<boolean>;
+
+  // Feature flag: GPU camera image transform for Modern Crop
+  useGPUCameraForModernCrop: Accessor<boolean>;
+  setUseGPUCameraForModernCrop: Setter<boolean>;
 }
 
 
@@ -184,6 +188,8 @@ export function useEditor(): EditorContextValue {
       hoverPos: () => null,
       setHoverPos: () => {},
       commitCropState: () => {},
+      useGPUCameraForModernCrop: () => true,
+      setUseGPUCameraForModernCrop: () => {},
     } as unknown as EditorContextValue;
   }
   return context;
@@ -200,6 +206,7 @@ export function EditorProvider(props: {
   const editorState = createEditorState();
   const cropState = createCropState();
   const modernCropState = createModernCropState();
+  const [useGPUCameraForModernCrop, setUseGPUCameraForModernCrop] = createSignal(true);
 
   const setViewportState = (next: { x: number; y: number; zoom: number }) => {
     camera.setState(next);
@@ -293,6 +300,8 @@ export function EditorProvider(props: {
     ...cropState,
     ...modernCropState,
     syncViewport,
+    useGPUCameraForModernCrop,
+    setUseGPUCameraForModernCrop,
   };
 
   return (
