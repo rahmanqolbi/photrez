@@ -37,11 +37,6 @@ interface ModernCropOverlayProps {
   projectedHeight: number;
   /** Screen-space rect of the projected canvas (non-rotated) */
   canvasScreenRect?: { x: number; y: number; w: number; h: number } | null;
-  /** Camera viewport state — needed to convert frame doc coords → screen coords.
-   * Optional for backward compat with tests; defaults to identity (pan=0, zoom=1). */
-  panX?: number;
-  panY?: number;
-  zoom?: number;
   cropMode: "free" | "ratio" | "size";
   cropAspect: { w: number; h: number } | null;
   guideMode: "none" | "thirds" | "grid" | "diagonal" | "golden";
@@ -96,11 +91,11 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
 
   const navMode = () => props.isNavigationMode ?? false;
   const screenRect = createMemo(() =>
-    getModernCropFrameScreenRect(props.frame, {
-      panX: props.panX ?? 0,
-      panY: props.panY ?? 0,
-      zoom: props.zoom ?? 1,
-    }),
+    getModernCropFrameScreenRect(
+      props.frame,
+      props.viewportWidth,
+      props.viewportHeight,
+    ),
   );
   const center = createMemo(() => {
     const rect = screenRect();

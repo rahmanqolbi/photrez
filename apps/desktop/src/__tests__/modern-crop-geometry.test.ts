@@ -30,29 +30,21 @@ describe("modern crop geometry", () => {
   });
 
   it("centers the frame in viewport coordinates", () => {
-    // f(400, 300, 400, 250) → {w:400, h:300, x:400, y:250}
-    // For a frame ALREADY centered in a viewport at panX=400, panY=250, zoom=1,
-    // the screen rect equals the frame coords * zoom + pan:
-    // = (400*1+400, 250*1+250, 400*1, 300*1) = (800, 500, 400, 300)
-    expect(
-      getModernCropFrameScreenRect(f(400, 300, 400, 250), {
-        panX: 400,
-        panY: 250,
-        zoom: 1,
-      }),
-    ).toEqual({ x: 800, y: 500, w: 400, h: 300 });
+    // ModernCropFrame is in SCREEN/viewport space (not doc space). The
+    // function returns the frame coords as-is, with viewportWidth/Height
+    // being legacy unused parameters.
+    expect(getModernCropFrameScreenRect(f(400, 300, 400, 250), 1200, 800))
+      .toEqual({ x: 400, y: 250, w: 400, h: 300 });
   });
 
-  it("getModernCropFrameScreenRect applies pan and zoom to frame coords", () => {
+  it("getModernCropFrameScreenRect returns the frame as-is (frame is in screen space)", () => {
     const frame = { x: 100, y: 50, w: 200, h: 150 };
-    // panX=50, panY=30, zoom=2: screen rect = frame*2 + (50, 30)
+    // Frame is in screen space. Function returns the frame coords unchanged.
     expect(
-      getModernCropFrameScreenRect(frame, { panX: 50, panY: 30, zoom: 2 }),
-    ).toEqual({ x: 250, y: 130, w: 400, h: 300 });
-    // No pan, zoom=1: screen rect = frame coords
-    expect(
-      getModernCropFrameScreenRect(frame, { panX: 0, panY: 0, zoom: 1 }),
+      getModernCropFrameScreenRect(frame, 1000, 800),
     ).toEqual({ x: 100, y: 50, w: 200, h: 150 });
+    // Pan/zoom should NOT be applied at render time — those conversions
+    // happen at Apply time when converting the frame to a doc crop rect.
   });
 
   it("computes the modern image pivot from the rendered cropbox center", () => {
@@ -62,21 +54,14 @@ describe("modern crop geometry", () => {
       transform: { offsetX: 25, offsetY: 10, rotation: 30, scale: 1.5 },
     });
 
-    // Frame center in doc = (400 + 200, 240 + 120) = (600, 360)
-    // Wait: f(400, 240, 400, 260) returns {x:400, y:260, w:400, h:240}
-    // Frame center in doc = (400 + 200, 260 + 120) = (600, 380)
-    // Screen center with panX=75, panY=-30, zoom=2 = (600*2+75, 380*2-30) = (1275, 730)
-    expect(getModernCropFrameScreenCenter(f(400, 240, 400, 260), {
-      panX: 75,
-      panY: -30,
-      zoom: 2,
-    })).toEqual({ x: 1275, y: 730 });
-    expect(pivot.screen).toEqual({ x: 1275, y: 730 });
+    // f(400, 240, 400, 260) → {x:400, y:260, w:400, h:240}
+    // Frame center = (600, 380)
+    expect(getModernCropFrameScreenCenter(f(400, 240, 400, 260), 1200, 760))
+      .toEqual({ x: 600, y: 380 });
+    expect(pivot.screen).toEqual({ x: 600, y: 380 });
     // document = (screen - pan - offset) / scale
-    // = (1275 - 75 - 25) / 3 = 391.67
-    // = (730 - (-30) - 10) / 3 = 250
-    expect(pivot.document.x).toBeCloseTo((1275 - 75 - 25) / 3);
-    expect(pivot.document.y).toBeCloseTo((730 - -30 - 10) / 3);
+    expect(pivot.document.x).toBeCloseTo((600 - 75 - 25) / 3);
+    expect(pivot.document.y).toBeCloseTo((380 - -30 - 10) / 3);
   });
 
   it("converts Modern preview rotation to the crop engine rotation convention", () => {
@@ -104,35 +89,38 @@ describe("modern crop geometry", () => {
 
   it("maps centered screen frame to document crop rect with pan and zoom", () => {
     // frame: f(400, 300, 400, 250) → {x:400, y:250, w:400, h:300}
-    // viewport: panX=100, panY=50, zoom=2; transform: no offset
-    // Screen rect (PAGE coords): (400*2+100, 250*2+50, 400*2, 300*2) = (900, 550, 800, 600)
-    // Screen center: (1300, 850)
-    // pivot.document = (screen - pan - offset) / scale = ((1300-100-0)/2, (850-50-0)/2) = (600, 400)
-    // scale = 2; width = 400/2 = 200; height = 300/2 = 150
-    // rect = (pivot - size/2) = (600-100, 400-75) = (500, 325)
+    // viewport: panX=100, panY=50, zoom=2
+    // transform: offsetX=0, offsetY=0, scale=1
+    //
+    // ModernCropFrame is in SCREEN space. getModernCropFrameScreenCenter
+    // returns the frame center in screen space: (400 + 200, 250 + 150) = (600, 400).
+    // The pivot then computes document = (screen - pan - offset) / scale.
+    // document = (500/2, 350/2) = (250, 175)
+    // width = 400/2 = 200, height = 300/2 = 150
+    // rect = (pivot - size/2) = (250-100, 175-75) = (150, 100, 200, 150)
     const rect = modernFrameToCropRect({
       frame: f(400, 300, 400, 250),
       viewport: { width: 1200, height: 800, panX: 100, panY: 50, zoom: 2 },
       transform: { offsetX: 0, offsetY: 0, rotation: 0, scale: 1 },
     });
 
-    expect(rect.x).toBeCloseTo(500);
-    expect(rect.y).toBeCloseTo(325);
+    expect(rect.x).toBeCloseTo(150);
+    expect(rect.y).toBeCloseTo(100);
     expect(rect.w).toBeCloseTo(200);
     expect(rect.h).toBeCloseTo(150);
   });
 
   it("includes image offset when mapping to document crop rect", () => {
-    // With offsetX=40: document.x decreases by 40/scale = 20 → rect.x = 480
-    // With offsetY=-20: document.y increases by 20/scale = 10 → rect.y = 335
+    // With offsetX=40: document.x decreases by 40/scale = 20 → rect.x = 130
+    // With offsetY=-20: document.y increases by 20/scale = 10 → rect.y = 110
     const rect = modernFrameToCropRect({
       frame: f(400, 300, 400, 250),
       viewport: { width: 1200, height: 800, panX: 100, panY: 50, zoom: 2 },
       transform: { offsetX: 40, offsetY: -20, rotation: 0, scale: 1 },
     });
 
-    expect(rect.x).toBeCloseTo(480);
-    expect(rect.y).toBeCloseTo(335);
+    expect(rect.x).toBeCloseTo(130);
+    expect(rect.y).toBeCloseTo(110);
   });
 
   it("fits the default frame inside the smaller of viewport and projected canvas", () => {

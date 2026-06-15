@@ -37,23 +37,25 @@ export function getProjectedCanvasSize(params: {
 
 export function getModernCropFrameScreenRect(
   frame: ModernCropFrame,
-  viewport: { panX: number; panY: number; zoom: number }
+  _viewportWidth?: number,
+  _viewportHeight?: number,
 ) {
   return {
-    x: frame.x * viewport.zoom + viewport.panX,
-    y: frame.y * viewport.zoom + viewport.panY,
-    w: frame.w * viewport.zoom,
-    h: frame.h * viewport.zoom,
+    x: frame.x,
+    y: frame.y,
+    w: frame.w,
+    h: frame.h,
   };
 }
 
 export function getModernCropFrameScreenCenter(
   frame: ModernCropFrame,
-  viewport: { panX: number; panY: number; zoom: number }
+  _viewportWidth?: number,
+  _viewportHeight?: number,
 ) {
   return {
-    x: frame.x * viewport.zoom + viewport.panX + (frame.w * viewport.zoom) / 2,
-    y: frame.y * viewport.zoom + viewport.panY + (frame.h * viewport.zoom) / 2,
+    x: frame.x + frame.w / 2,
+    y: frame.y + frame.h / 2,
   };
 }
 
@@ -68,11 +70,8 @@ export function getModernCropImagePivot(params: {
 }) {
   const screen = getModernCropFrameScreenCenter(
     params.frame,
-    {
-      panX: params.viewport.panX,
-      panY: params.viewport.panY,
-      zoom: params.viewport.zoom,
-    },
+    params.viewport.width,
+    params.viewport.height,
   );
   const scale = params.viewport.zoom * params.transform.scale;
   return {
