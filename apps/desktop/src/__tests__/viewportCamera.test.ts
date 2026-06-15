@@ -365,6 +365,23 @@ describe("ViewportCamera", () => {
     const expected_m13 = 1 + 0.002 * (1.5 * (Math.sin(Math.PI / 4) * 400 + Math.cos(Math.PI / 4) * 400) - 500 - 50);
     expect(m[13]).toBeCloseTo(expected_m13, 5);
   });
+
+  it("resetImageTransform causes getViewProjectionMatrix to return camera-only matrix", () => {
+    camera.setState({ x: 100, y: 50, zoom: 2.0 });
+
+    camera.setImageTransform({
+      scale: 1.5,
+      rotation: 30,
+      pivotScreen: { x: 400, y: 300 },
+      pivotDocument: { x: 400, y: 300 },
+    });
+
+    camera.resetImageTransform();
+    const m = camera.getViewProjectionMatrix(800, 600);
+
+    expect(m[0]).toBeCloseTo(0.005, 5);
+    expect(m[12]).toBeCloseTo(-0.75, 5);
+  });
 });
 
 describe("coords.screenToDocument vs camera.screenToDocument equivalency", () => {
