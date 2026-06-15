@@ -94,6 +94,10 @@ export class ViewportCamera {
     return { ...this.imageTransform };
   }
 
+  public resetImageTransform(): void {
+    this.setImageTransform({});
+  }
+
   public isAnimating(): boolean {
     return this.animation !== null;
   }

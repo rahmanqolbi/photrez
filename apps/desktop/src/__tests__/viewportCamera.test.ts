@@ -200,6 +200,26 @@ describe("ViewportCamera", () => {
     expect(t.pivotScreen).toBeNull();
     expect(t.pivotDocument).toBeNull();
   });
+
+  it("resetImageTransform returns state to identity (default)", () => {
+    camera.setImageTransform({
+      offsetX: 10,
+      offsetY: 20,
+      rotation: 30,
+      scale: 1.5,
+      pivotScreen: { x: 100, y: 200 },
+      pivotDocument: { x: 50, y: 60 },
+    });
+    camera.resetImageTransform();
+
+    const t = camera.getImageTransform();
+    expect(t.offsetX).toBe(0);
+    expect(t.offsetY).toBe(0);
+    expect(t.rotation).toBe(0);
+    expect(t.scale).toBe(1.0);
+    expect(t.pivotScreen).toBeNull();
+    expect(t.pivotDocument).toBeNull();
+  });
 });
 
 describe("coords.screenToDocument vs camera.screenToDocument equivalency", () => {
