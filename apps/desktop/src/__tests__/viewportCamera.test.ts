@@ -298,6 +298,40 @@ describe("ViewportCamera", () => {
     expect(m[0] * 700 + m[4] * 500 + m[12]).toBeCloseTo(0.8, 5);
     expect(m[1] * 700 + m[5] * 500 + m[13]).toBeCloseTo(0, 5);
   });
+
+  it("getViewProjectionMatrix with image transform rotation + pivot: doc point rotates around pivot", () => {
+    camera.setState({ x: 0, y: 0, zoom: 1.0 });
+    camera.setImageTransform({
+      offsetX: 0,
+      offsetY: 0,
+      rotation: 90,
+      scale: 1.0,
+      pivotScreen: { x: 500, y: 500 },
+      pivotDocument: { x: 500, y: 500 },
+    });
+
+    const m = camera.getViewProjectionMatrix(1000, 1000);
+
+    // cos(90°) = 0, sin(90°) = 1
+    expect(m[0]).toBeCloseTo(0, 5);
+    expect(m[1]).toBeCloseTo(-0.002, 5);
+    expect(m[4]).toBeCloseTo(-0.002, 5);
+    expect(m[5]).toBeCloseTo(0, 5);
+    expect(m[12]).toBeCloseTo(1, 5);
+    expect(m[13]).toBeCloseTo(1, 5);
+
+    // Pivot maps to NDC center
+    expect(m[0] * 500 + m[4] * 500 + m[12]).toBeCloseTo(0, 5);
+    expect(m[1] * 500 + m[5] * 500 + m[13]).toBeCloseTo(0, 5);
+
+    // Doc (700, 500): 200 right of pivot
+    // After T(-pivot_doc): (200, 0)
+    // After R(90°): (cos*200 - sin*0, sin*200 + cos*0) = (0, 200)
+    // After T(pivot_screen): (500, 700)
+    // NDC: (500*2/1000 - 1, -700*2/1000 + 1) = (0, -0.4)
+    expect(m[0] * 700 + m[4] * 500 + m[12]).toBeCloseTo(0, 5);
+    expect(m[1] * 700 + m[5] * 500 + m[13]).toBeCloseTo(-0.4, 5);
+  });
 });
 
 describe("coords.screenToDocument vs camera.screenToDocument equivalency", () => {
