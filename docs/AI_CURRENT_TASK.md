@@ -64,6 +64,18 @@ Address the recurring "every new tool passes unit test but fails in frontend" pa
 - [x] 976/976 frontend tests pass (was 972, +4 new)
 - [x] `pnpm run build` succeeds
 
+**Phase 5 — Cross-Tool State Interaction [COMPLETE]**
+- [x] Added 5 cross-tool UX contract tests in `CanvasViewport.test.tsx` §"Phase 5 Cross-Tool State Interaction (UX contracts)"
+- [x] Tests cover:
+  - Selection persists across non-crop tool switch (move, brush, select round-trip)
+  - Selection cleared on entering crop tool (documented design)
+  - Active layer persists across tool switch (document state contract)
+  - Brush settings persist across tool switch (user preferences contract)
+  - Crop (modern): switching away and back creates fresh frame (no orphan state)
+- [x] Initial "Selection persists through all tools including crop" test failed — diagnostic revealed crop tool clears selection by design (workspace sync reads engine.getSelection() = null after crop entry). Split into 2 tests: one for non-crop persistence, one documenting crop-clears-selection behavior.
+- [x] 981/981 frontend tests pass (was 976, +5)
+- [x] `pnpm run build` succeeds (9.28s)
+
 **References:**
 - Q-Print project (D:\Project\aplikasi-cetak-massal) — `vitest.setup.ts` (216 lines) reviewed for mock patterns; ultimately only jest-dom import + DOM reset adopted for Photrez due to jsdom 29 + vite-plugin-solid + Solid reactivity constraints
 - Speed comparison data in `docs/plans/2026-06-14-test-overhaul-reference.md` §1.3

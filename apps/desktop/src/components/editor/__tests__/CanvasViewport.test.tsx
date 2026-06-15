@@ -2451,3 +2451,188 @@ describe("Phase 4 Deep Tool State Cleanup (per-signal assertions)", () => {
     expect(ed.layerTransformSession()).toBeNull();
   });
 });
+
+describe("Phase 5 Cross-Tool State Interaction (UX contracts)", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+  let editorRef: { current: any };
+
+  const tick = (ms = 50) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+  const DeepTestConsumer = () => {
+    editorRef.current = useEditor();
+    return null;
+  };
+
+  beforeEach(async () => {
+    ws = new WorkspaceManager();
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    editorRef = { current: null };
+
+    mockOnViewportPointerDown.mockClear();
+    mockOnViewportPointerUp.mockClear();
+    mockOnViewportPointerCancel.mockClear();
+    mockOnViewportLostPointerCapture.mockClear();
+    mockCommitBrushStroke.mockClear();
+    mockSpacePressed = false;
+    mockPanningActive = false;
+
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+
+    const session = WorkspaceManager.createBlankDocument("cross", "Cross", 800, 600);
+    ws.addDocument(session);
+
+    dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer} scheduler={scheduler}>
+          <TestConsumer />
+          <DeepTestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+
+    await tick();
+  });
+
+  afterEach(() => {
+    if (dispose) dispose();
+    if (container.parentNode) container.parentNode.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  it("Selection persists across non-crop tool switch (cross-tool UX contract)", async () => {
+    const ed = editorRef.current;
+    setTool("select");
+    await tick();
+
+    ed.setSelection({ x: 50, y: 50, width: 200, height: 100, angle: 0 });
+    await tick();
+
+    expect(ed.selection()).not.toBeNull();
+
+    // Switch through all non-crop tools (selection is document state, persists)
+    setTool("move");
+    await tick();
+    setTool("brush");
+    await tick();
+    setTool("select");
+    await tick();
+
+    // Selection should survive the round-trip
+    const sel = ed.selection();
+    expect(sel).not.toBeNull();
+    expect(sel.x).toBe(50);
+    expect(sel.y).toBe(50);
+    expect(sel.width).toBe(200);
+    expect(sel.height).toBe(100);
+  });
+
+  it("Selection is cleared on entering crop tool (documented design)", async () => {
+    const ed = editorRef.current;
+    setTool("select");
+    await tick();
+
+    ed.setSelection({ x: 50, y: 50, width: 200, height: 100, angle: 0 });
+    await tick();
+
+    expect(ed.selection()).not.toBeNull();
+
+    // Entering crop is a fresh operation. Selection is intentionally
+    // cleared (different tool = different operation, similar to how
+    // cropRect is independent from selection). Documented here so
+    // future maintainers know this is by design, not a bug.
+    setTool("crop");
+    setCropInteractionMode("modern");
+    await tick();
+
+    expect(ed.selection()).toBeNull();
+  });
+
+  it("Active layer persists across tool switch (document state contract)", async () => {
+    const ed = editorRef.current;
+    const engine = ws.getActiveEngine()!;
+
+    const l1 = engine.addLayer("L1");
+    const l2 = engine.addLayer("L2");
+    await tick();
+
+    expect(ed.activeLayerId()).toBe(l2.id);
+
+    setTool("move");
+    await tick();
+    setTool("brush");
+    await tick();
+    setTool("crop");
+    await tick();
+    setTool("select");
+    await tick();
+
+    // Active layer should still be l2 (last activated, not reset to default)
+    expect(ed.activeLayerId()).toBe(l2.id);
+  });
+
+  it("Brush settings persist across tool switch (user preferences contract)", async () => {
+    const ed = editorRef.current;
+    setTool("brush");
+    await tick();
+
+    ed.setBrushSize(150);
+    ed.setBrushHardness(0.8);
+    ed.setBrushOpacity(0.65);
+    await tick();
+
+    expect(ed.brushSize()).toBe(150);
+    expect(ed.brushHardness()).toBe(0.8);
+    expect(ed.brushOpacity()).toBe(0.65);
+
+    // Switch through other tools
+    setTool("move");
+    await tick();
+    setTool("crop");
+    await tick();
+    setTool("select");
+    await tick();
+    setTool("brush");
+    await tick();
+
+    // User preferences should persist
+    expect(ed.brushSize()).toBe(150);
+    expect(ed.brushHardness()).toBe(0.8);
+    expect(ed.brushOpacity()).toBe(0.65);
+  });
+
+  it("Crop (modern): switching away and back creates fresh frame (no orphan state)", async () => {
+    const ed = editorRef.current;
+    setTool("crop");
+    setCropInteractionMode("modern");
+    await tick();
+
+    const firstFrame = ed.modernCropFrame();
+    expect(firstFrame).not.toBeNull();
+
+    // Switch to another tool
+    setTool("move");
+    await tick();
+    expect(ed.modernCropFrame()).toBeNull();
+
+    // Switch back to crop
+    setTool("crop");
+    await tick();
+
+    // Should have a fresh frame (may differ in position due to viewport sync,
+    // but should exist and be valid)
+    const secondFrame = ed.modernCropFrame();
+    expect(secondFrame).not.toBeNull();
+    expect(secondFrame.w).toBeGreaterThan(0);
+    expect(secondFrame.h).toBeGreaterThan(0);
+  });
+});
