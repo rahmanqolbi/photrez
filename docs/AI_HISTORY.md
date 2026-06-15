@@ -1,5 +1,50 @@
 # AI History — Photrez
 
+## [2026-06-14] FEATURE — Test Quality & Speed Overhaul Phase 3 + 4 [COMPLETE]
+
+### Kategori: FEATURE / INFRASTRUCTURE / TEST + DOCS
+
+**Goal:**
+Apply contract test pattern to remaining 4 tools (Phase 3) and enforce tool creation discipline via documentation (Phase 4). Prevent recurring "every new tool passes test but fails in frontend" pattern for future tools.
+
+**Phase 3 Done:**
+1. Added 4 tool switch contract tests di `CanvasViewport.test.tsx` §"Phase 3 Tool Switch Contracts":
+   - Move: round-trip Move → Brush → Move leaves no orphan state
+   - Selection: round-trip select → crop → select leaves no orphan state
+   - Brush: round-trip brush → move → brush leaves no orphan state
+   - Transform: round-trip move → crop → move leaves no orphan layerTransformSession
+2. Verified all 961 frontend tests pass (was 957, +4 new).
+3. Verified `pnpm run build` succeeds.
+
+**Phase 4 Done:**
+1. Added **Definition of Done for a New Tool** section to `AGENTS.md` with:
+   - 9-step code wiring checklist (tool type → keyboard → pointer handler → toolbar → option bar → cursor → undo/redo → status bar → EditorContext)
+   - Test coverage requirements (unit, contract, integration, tool switch round-trip)
+   - Verification pipeline
+   - Anti-pattern self-check (4 pertanyaan sebelum commit)
+2. Added **Tool Creation Recipe (9-12 langkah wiring)** section to `CONVENTIONS.md` with:
+   - Detailed step-by-step recipe dengan code locations
+   - Common bugs table (missed step → symptom → diagnosis)
+   - Tool switch cleanup contract (wajib untuk semua tool)
+   - Cross-reference ke Phase 3 round-trip test pattern
+
+**Files Changed:**
+- `apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx` (Phase 3: +4 tests, +~150 lines)
+- `AGENTS.md` (Phase 4: +~60 lines DoD section)
+- `docs/CONVENTIONS.md` (Phase 4: +~120 lines tool recipe section)
+- `docs/AI_CURRENT_TASK.md` (Phase 3+4 status update)
+
+**Verification:**
+- PASS: 961 frontend tests (was 957, +4 new from Phase 3)
+- PASS: `pnpm run build` (8.96s)
+- Both commits verified via pre-commit pipeline (TS build + frontend tests + Rust tests)
+
+**References:**
+- `docs/plans/2026-06-14-test-overhaul-reference.md` — master pickup doc
+- AI_CURRENT_TASK.md §`[2026-06-14] Photrez Test Quality & Speed Overhaul` — phase tracking
+
+---
+
 ## [2026-06-14] BUG FIX — Move Tool Resize Cursor Drops To Default [COMPLETE]
 
 ### Kategori: BUG FIX / FRONTEND / MOVE TOOL

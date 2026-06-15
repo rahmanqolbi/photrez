@@ -217,3 +217,87 @@ Rules specific to the Move Tool subsystem:
 - **Overlay Alt snap**: Overlay move path is consistent with canvas path — Alt disables snapping (`!e.altKey` guard).
 - **Keyboard nudge** (`Arrow/Shift+Arrow`): bypasses snapping and HUD, commits history only once per non-repeat burst.
 - **Viewport rotation** (`ViewportState.rotation`) exists in type but is not yet supported by Move Tool math. If activated, screen-to-document, cursor, and transform geometry need revision.
+
+---
+
+## 6. Tool Creation Recipe (9-12 langkah wiring)
+
+> **Origin:** Pattern ini di-extract setelah investigasi berulang "every new tool passes test but fails in frontend". Root cause selalu sama: **wiring lupa 1+ langkah**, biasanya step 3 (pointer handler) atau step 5 (option bar).
+> Reference: `docs/plans/2026-06-14-test-overhaul-reference.md` §Phase 2.
+
+### Recipe
+
+```text
+1.  Tool type union
+    → editorState.ts (atau file type pusat)
+
+2.  Keyboard shortcut
+    → useCanvasKeyboard.ts
+    → test: keyboard shortcut terdaftar, tidak conflict dengan tool lain
+
+3.  Pointer handler di dispatcher        ← PALING SERING LUPA
+    → useCanvasPointerTools.ts (atau useCanvasPointerTools dispatcher)
+    → tanpa ini: tool TIDAK respond ke click di canvas
+    → test: click on canvas dengan tool aktif → engine state berubah
+
+4.  Toolbar button
+    → AppTitleBar.tsx atau components/editor/ToolRail.tsx
+    → test: button muncul, clickable, switch activeTool signal
+
+5.  Option bar component                  ← SERING LUPA
+    → components/editor/<Tool>OptionBar.tsx
+    → tampil saat activeTool() === "tool-name"
+    → test: render dengan activeTool(), assert DOM + signals sync
+
+6.  Cursor behavior
+    → CSS atau cursor resolver (cursorResolver.ts)
+    → test: cursor berubah sesuai hover state + drag state
+
+7.  Undo/redo integration                ← SERING LUPA
+    → history.commit(engine.snapshot()) SEBELUM mutation
+    → tanpa ini: undo tidak revert aksi tool
+    → test: trigger aksi, undo, verify state kembali
+
+8.  Status bar integration (optional)
+    → StatusBar.tsx
+    → test: status info update sesuai tool state
+
+9.  EditorContext state (optional)
+    → kalau tool butuh state tambahan, register di EditorContext.tsx
+    → test: state signal reactive, cleanup saat tool switch
+
+10. Tests (wajib sebelum merge)
+    → Unit tests untuk logic
+    → 1 contract test untuk state machine
+    → 1 CanvasViewport integration test untuk real pointer chain
+    → 1 tool switch round-trip test (A→B→A, no orphan state)
+
+11. Docs
+    → docs/AI_HISTORY.md: entry FEATURE atau BUG FIX dengan Root Cause + Fix Rationale
+    → docs/FEATURES.md: status update
+    → docs/AI_CURRENT_TASK.md: status COMPLETE
+
+12. Verification
+    → pnpm --filter photrez-desktop test --run
+    → pnpm run build
+    → tidak ada regression
+```
+
+### Common bugs dari missed step
+
+| Missed step | Symptom | Diagnosis |
+|---|---|---|
+| Step 3 (pointer handler) | "Tool tidak respond ke click" | `useCanvasPointerTools` dispatcher belum diupdate dengan `case "newTool"` |
+| Step 5 (option bar) | "Option bar tidak muncul saat tool aktif" | Tidak ada `<Show when={activeTool() === "newTool"}>` render di shell |
+| Step 6 (cursor) | "Cursor tidak berubah" | Cursor resolver belum diupdate dengan case untuk newTool |
+| Step 7 (history) | "Undo tidak revert aksi tool" | Lupa `history.commit()` sebelum mutate engine state |
+
+### Tool switch cleanup (wajib untuk SEMUA tool)
+
+Saat user switch dari tool A ke tool B, tool A **harus**:
+- Clear hover state (`hoverHandle` → null)
+- Clear drag state (`dragState` → null)
+- Clear session-specific state (e.g., `layerTransformSession`, `modernCropFrame`)
+- Restore default cursor
+
+Test pattern: lihat `CanvasViewport.test.tsx` §"Phase 3 Tool Switch Contracts" untuk 4 contoh test round-trip.

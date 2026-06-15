@@ -33,6 +33,48 @@ Build Photrez according to the locked MVP scope and architecture documents.
 - Relevant docs are updated.
 - Risks and blockers are clearly reported.
 
+## Definition of Done for a New Tool
+
+Sebelum declare tool baru selesai, SEMUA item di bawah harus hijau. Pattern ini didokumentasikan setelah investigasi "every new tool passes test but fails in frontend" (lihat `docs/AI_HISTORY.md` §`[2026-06-14] BUG FIX` + `docs/plans/2026-06-14-test-overhaul-reference.md`).
+
+### Code wiring (9 langkah wajib)
+
+- [ ] Tool type ditambahkan ke union type di `editorState.ts`
+- [ ] Keyboard shortcut di `useCanvasKeyboard.ts`
+- [ ] Pointer handler di `useCanvasPointerTools` dispatcher (**paling sering lupa — tanpa ini tool tidak respond ke click**)
+- [ ] Toolbar button di `AppTitleBar.tsx` atau tool rail
+- [ ] Option bar component (jika ada settings) di `components/editor/`
+- [ ] Cursor behavior di CSS atau cursor resolver
+- [ ] Undo/redo integration via `history.commit()` SEBELUM mutation
+- [ ] Status bar integration (jika ada status info)
+- [ ] Register di `EditorContext` state (jika tool butuh state tambahan)
+
+### Test coverage (wajib untuk tool baru)
+
+- [ ] **Unit tests** untuk logic murni (manager, operations, geometry) — minimum 1 test per public method
+- [ ] **1 contract test** untuk state machine: minimal `idle → <action> → committed → <cleanup>` transisi. Lihat pattern di `CanvasViewport.test.tsx` §"Phase 3 Tool Switch Contracts"
+- [ ] **1 CanvasViewport integration test** dengan real pointer chain (`pointerdown → pointermove → pointerup`) di `CanvasViewport.test.tsx`. Mock `useViewportRenderer`, `useBrushOverlay`, `usePanNavigation` sesuai pattern existing.
+- [ ] Test **tool switch round-trip**: tool A → tool B → tool A, verify no orphan state (signals, engine state, DOM)
+- [ ] Test **existing 957 tests tetap pass** — verify tidak ada regression
+
+### Verification (wajib run semua)
+
+- [ ] `pnpm --filter photrez-desktop test --run` hijau
+- [ ] `pnpm run build` hijau
+- [ ] Tambah 1 entry di `docs/AI_HISTORY.md` dengan Root Cause + Fix Rationale (atau Goal + Done untuk FEATURE)
+- [ ] Update `docs/FEATURES.md` jika tool baru
+- [ ] Update `docs/AI_CURRENT_TASK.md` — status COMPLETE
+
+### Cek "Every new tool fails" anti-pattern
+
+Sebelum commit, tanya:
+1. Apakah tool respond ke click di canvas? (kalau tidak, step 3 wiring lupa)
+2. Apakah option bar muncul saat tool aktif? (kalau tidak, step 5 wiring lupa)
+3. Apakah cursor berubah sesuai tool? (kalau tidak, step 6 wiring lupa)
+4. Apakah undo/redo bekerja untuk aksi tool ini? (kalau tidak, step 7 wiring lupa)
+
+Kalau ada yang jawab "tidak", STOP — fix wiring dulu sebelum lanjut test.
+
 ## Verification Pipeline (MANDATORY)
 
 **Run ALL steps below BEFORE marking any task as COMPLETE.**

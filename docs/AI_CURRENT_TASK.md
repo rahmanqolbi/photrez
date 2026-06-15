@@ -35,6 +35,18 @@ Address the recurring "every new tool passes unit test but fails in frontend" pa
 - **Phase 3:** Replicate contract test pattern to Selection, Brush, Crop, Transform
 - **Phase 4:** Enforce via Definition of Done in `AGENTS.md` + tool creation recipe in `CONVENTIONS.md`
 
+**Phase 2 — COMPLETE:**
+- [x] Move Tool Resize Cursor bug fixed via TDD (3-line fix in `SelectionTransformOverlay.tsx`, 1 new regression test). Committed: fcb264b.
+
+**Phase 3 — COMPLETE:**
+- [x] Added 4 tool switch contract tests in `CanvasViewport.test.tsx` §"Phase 3 Tool Switch Contracts": Move, Selection, Brush, Transform round-trip tests
+- [x] Verified all 961 frontend tests pass (was 957, +4 new)
+- [x] Verified build succeeds
+
+**Phase 4 — COMPLETE:**
+- [x] Added "Definition of Done for a New Tool" section to `AGENTS.md` with 9-step wiring checklist + test coverage + verification + anti-pattern check
+- [x] Added "Tool Creation Recipe (9-12 langkah wiring)" section to `CONVENTIONS.md` with pattern, common bugs table, tool switch cleanup contract
+
 **References:**
 - Q-Print project (D:\Project\aplikasi-cetak-massal) — `vitest.setup.ts` (216 lines) reviewed for mock patterns; ultimately only jest-dom import + DOM reset adopted for Photrez due to jsdom 29 + vite-plugin-solid + Solid reactivity constraints
 - Speed comparison data in `docs/plans/2026-06-14-test-overhaul-reference.md` §1.3
