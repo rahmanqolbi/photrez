@@ -47,6 +47,12 @@ Address the recurring "every new tool passes unit test but fails in frontend" pa
 - [x] Added "Definition of Done for a New Tool" section to `AGENTS.md` with 9-step wiring checklist + test coverage + verification + anti-pattern check
 - [x] Added "Tool Creation Recipe (9-12 langkah wiring)" section to `CONVENTIONS.md` with pattern, common bugs table, tool switch cleanup contract
 
+**Phase 4.5 — Engine ↔ Signal Contract Suite [IN PROGRESS]**
+- [x] Created `apps/desktop/src/components/editor/__tests__/engine-signal-contract.test.tsx`
+- [x] 11 tests covering: initial sync, setActiveLayer, addLayer, deleteLayer, transformLayer, setLayerOpacity, setSelection, setLayerTransformSession, undo (P0-1 regression), switchDocument, history cursor
+- [x] 972/972 frontend tests pass (was 961, +11)
+- [x] `pnpm run build` succeeds
+
 **References:**
 - Q-Print project (D:\Project\aplikasi-cetak-massal) — `vitest.setup.ts` (216 lines) reviewed for mock patterns; ultimately only jest-dom import + DOM reset adopted for Photrez due to jsdom 29 + vite-plugin-solid + Solid reactivity constraints
 - Speed comparison data in `docs/plans/2026-06-14-test-overhaul-reference.md` §1.3

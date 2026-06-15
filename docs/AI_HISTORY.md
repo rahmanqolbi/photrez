@@ -1,5 +1,49 @@
 # AI History — Photrez
 
+## [2026-06-14] FEATURE — Engine ↔ Signal Contract Test Suite [COMPLETE]
+
+### Kategori: FEATURE / INFRASTRUCTURE / TEST
+
+**Goal:**
+Tutup celah P0-1 (signal desync) class bug — class bug paling sering di Photrez per `AI_CURRENT_TASK.md:140-152`. Engine mutation harus selalu propagate ke signal dalam 1 frame.
+
+**Pattern:**
+Untuk setiap test:
+1. Read initial signal value
+2. Mutate engine via workspace (source of truth, bukan via editor setters)
+3. Await tick untuk Solid effect propagation
+4. Assert signal value matches engine state
+
+**Tests Added (11 total):**
+1. Initial workspace sync populates signals correctly (activeDocumentId, layers, activeLayerId, docWidth, docHeight)
+2. `engine.setActiveLayer(id)` → `activeLayerId()` signal updates, layers[0] reflects new top
+3. `engine.addLayer(name)` → `layers()` signal includes new layer, auto-activates it
+4. `engine.deleteLayer(id)` → `layers()` excludes deleted, `activeLayerId` falls back to remaining layer
+5. `engine.transformLayer(id, x, y)` → layer.transform signal updates
+6. `engine.setLayerOpacity(id, n)` → layer.opacity signal updates
+7. `editor.setSelection(rect)` → selection signal reflects state
+8. `editor.setLayerTransformSession(s)` → layerTransformSession signal reflects state
+9. **P0-1 regression test**: `engine.undo()` after delete restores BOTH `activeLayerId` AND `selectedLayerId` signals (the bug class)
+10. `workspace.switchDocument(id)` → `activeDocumentId` signal + engine swap (docWidth/Height follow)
+11. `history.commit()` → `canUndo`/`canRedo` reflect cursor state correctly
+
+**Files Changed:**
+- `apps/desktop/src/components/editor/__tests__/engine-signal-contract.test.tsx` (new, 290 lines)
+
+**Verification:**
+- PASS: 11/11 new tests pass
+- PASS: 972 frontend tests (was 961, +11 new)
+- PASS: `pnpm run build` (14.75s)
+- No regressions, no test removed
+
+**Catches (preventively):**
+- P0-1 selectedLayerId desync after undo/redo
+- Future similar bugs where engine mutation is missed by Solid effect
+- Bugs where workspace events don't propagate to signals (e.g., addDocument without sync)
+- State leak after delete (activeLayerId pointing to deleted layer)
+
+---
+
 ## [2026-06-14] FEATURE — Test Quality & Speed Overhaul Phase 3 + 4 [COMPLETE]
 
 ### Kategori: FEATURE / INFRASTRUCTURE / TEST + DOCS
