@@ -759,8 +759,11 @@ export function CanvasViewport() {
           onPointerCancel={onCanvasPointerCancel}
           onLostPointerCapture={onCanvasLostPointerCapture}
           style={
-            activeTool() === "crop" && cropInteractionMode() === "modern"
+            activeTool() === "crop" &&
+            cropInteractionMode() === "modern" &&
+            !useGPUCameraForModernCrop()
               ? {
+                  // Legacy CSS path: doc-sized canvas with CSS transform
                   position: "absolute",
                   left: "0px",
                   top: "0px",
@@ -772,10 +775,8 @@ export function CanvasViewport() {
                   transition: "none",
                 }
               : {
-                  // Fill the container with the canvas. The drawing buffer
-                  // is sized to the same container via renderer.resizeToViewport,
-                  // so the buffer's aspect ratio matches the CSS box — no
-                  // non-uniform scaling, no stretched cells.
+                  // GPU camera path (modern crop + flag on) OR non-modern-crop:
+                  // viewport-sized canvas, transform handled in VP matrix
                   position: "absolute",
                   inset: "0px",
                   width: "100%",
