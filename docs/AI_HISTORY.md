@@ -1,5 +1,52 @@
 # AI History — Photrez
 
+## [2026-06-15] MIGRATION — Overlay Container to Screen-Space Positioning [COMPLETE]
+
+### Kategori: MIGRATION / FRONTEND / VIEWPORT
+
+**Goal:**
+Remove the last general-path CSS transform wrapper at `CanvasViewport.tsx:740-764`. The wrapper applied viewport pan/zoom to two children (2D brush preview canvas + artboard border) via `transform: translate3d(pan) scale(zoom)`. Migrate to explicit screen-space `left/top/width/height` so viewport positioning has a single mental model in the general path. Phase 1 of 3-phase recovery from the original GPU smooth zoom migration.
+
+**Done:**
+1. Replaced `overlayCanvasStyle` createMemo with `overlayCanvasStyleScreenSpace` — produces screen-space coords (`left/top/width/height` in pixels) with layer transform (`rotate + scale + flip`) preserved as CSS transform on the canvas itself.
+2. Deleted wrapper `<div>` at `CanvasViewport.tsx:740-764`. The 2D brush preview canvas and the artboard border are now sibling elements, both positioned in screen-space.
+3. Added `data-overlay-canvas` and `data-artboard-border` attributes for testability.
+4. Added 1 regression test in `CanvasViewport.test.tsx` §"CanvasViewport Overlay Container (Screen-Space Migration)" verifying:
+   - Artboard border has explicit `left/top/width/height` matching `pan + docSize*zoom` (e.g., pan=(50,50) zoom=2.0 docSize=(800,600) → left=50 top=50 width=1600 height=1200)
+   - No CSS `transform: translate3d(...) scale(...)` wrapper exists
+5. Removed `inset-0` from artboard border's class (replaced by explicit positioning).
+6. Removed `will-change: transform` optimization (no longer applicable — wrapper deleted).
+7. All 982/982 frontend tests pass (was 981, +1 new regression).
+8. Production build succeeds (6.44s).
+9. 19/19 Playwright E2E tests pass.
+
+**Math equivalence:** For uniform zoom + same-origin transforms, the wrapper's `transform: translate3d(pan) scale(zoom)` is mathematically equivalent to explicit `left/top/width/height` (the same translate applied via `left/top`, the same scale applied via `width/height`). The inner layer transform is preserved on the canvas's CSS transform. See spec §6 for derivation.
+
+**Trade-offs:**
+- Lost: `will-change: transform` GPU-accelerated panning on the wrapper. Mitigated by RAF-bounded overlay re-renders and small element size.
+- Gained: 1 mental model for viewport positioning in the general path. New tools only need to know the screen-space pattern.
+
+**Files Changed:**
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` — renamed `overlayCanvasStyle` → `overlayCanvasStyleScreenSpace`; deleted wrapper; added data attributes; converted artboard border to screen-space layout
+- `apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx` — added 1 new describe block + 1 test
+- `docs/AI_CURRENT_TASK.md` — mark task complete
+- `docs/FEATURES.md` — update Viewport section status
+- `docs/decisions/id-decision-log.md` — note Phase 1 of recovery complete
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (982 tests, ~60s)
+- PASS: `pnpm.cmd run build` (tsc + Vite production, 6.44s)
+- PASS: `pnpm.cmd --filter photrez-desktop exec playwright test` (19 E2E tests, 1.1m)
+- Pre-commit pipeline green (each commit)
+
+**References:**
+- Spec: `docs/superpowers/specs/2026-06-15-overlay-container-screen-space-migration-design.md`
+- Plan: `docs/superpowers/plans/2026-06-15-overlay-container-screen-space-migration.md`
+- Original plan: `docs/plans/2026-06-13-gpu-smooth-zoom-transitions-design.md` (SUPERSEDED)
+- Recovery: `docs/AI_HISTORY.md §[2026-06-13] BUG FIX — Viewport Camera Regression Recovery`
+
+---
+
 ## [2026-06-14] FEATURE — Cross-Tool State Interaction Tests [COMPLETE]
 
 ### Kategori: FEATURE / INFRASTRUCTURE / TEST

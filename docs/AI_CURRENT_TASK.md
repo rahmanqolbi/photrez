@@ -4,7 +4,7 @@
 
 ## Current Tasks
 
-### [2026-06-15] Migration — Overlay Container to Screen-Space Positioning [IN PROGRESS]
+### [2026-06-15] Migration — Overlay Container to Screen-Space Positioning [COMPLETE]
 
 **Goal:**
 Remove the last general-path CSS transform wrapper in `CanvasViewport.tsx:740-764`. The wrapper applies viewport pan/zoom to two children (2D brush preview canvas + artboard border). Migrate to explicit screen-space `left/top/width/height` per child, eliminating dual-source-of-truth for viewport positioning in the general path.
@@ -14,18 +14,24 @@ Remove the last general-path CSS transform wrapper in `CanvasViewport.tsx:740-76
 - This wrapper is the only "general path" CSS transform spot left
 - Goal: 1 mental model for viewport positioning → scalable + maintainable for future tools
 
-**Status:** In progress. Design approved by user, spec doc in progress.
+**Status:** COMPLETE 2026-06-15.
 
 **Scope (this phase):**
-- [ ] Spec doc created at `docs/superpowers/specs/2026-06-15-overlay-container-screen-space-migration-design.md`
-- [ ] Plan via `writing-plans` skill
-- [ ] Implementation: replace wrapper in `CanvasViewport.tsx`
-- [ ] 1 regression test in `CanvasViewport.test.tsx`
-- [ ] Verify 981/981 frontend tests pass
-- [ ] `pnpm run build` hijau
-- [ ] Playwright visual check (brush stroke at various zoom)
-- [ ] Update `AI_HISTORY.md` + `FEATURES.md` + `id-decision-log.md`
-- [ ] Mark COMPLETE in `AI_CURRENT_TASK.md`
+- [x] Spec doc created at `docs/superpowers/specs/2026-06-15-overlay-container-screen-space-migration-design.md` (commit `ba9e5f5`)
+- [x] Plan via `writing-plans` skill (commit `7c24e87`)
+- [x] Implementation: replaced wrapper in `CanvasViewport.tsx` (commits `5ccfc25`, `85b28ba`)
+- [x] 1 regression test in `CanvasViewport.test.tsx` (commit `85b28ba`)
+- [x] Verify 982/982 frontend tests pass (was 981, +1 new)
+- [x] `pnpm run build` hijau (6.44s)
+- [x] Playwright E2E check (19/19 pass)
+- [x] Update `FEATURES.md` + `id-decision-log.md`
+- [x] Mark COMPLETE in `AI_CURRENT_TASK.md`
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (982 tests, 60s)
+- PASS: `pnpm.cmd run build` (tsc + Vite production, 6.44s)
+- PASS: `pnpm.cmd --filter photrez-desktop exec playwright test` (19 E2E tests, 1.1m)
+- Pre-commit pipeline green (each commit)
 
 **Out of scope (deferred):**
 - `CropOverlayTooltip.tsx:14` inverse scale — unrelated, separate concern
@@ -34,6 +40,8 @@ Remove the last general-path CSS transform wrapper in `CanvasViewport.tsx:740-76
 - `will-change` GPU promotion — only if perf issue is reported
 
 **References:**
+- `docs/superpowers/specs/2026-06-15-overlay-container-screen-space-migration-design.md` — spec
+- `docs/superpowers/plans/2026-06-15-overlay-container-screen-space-migration.md` — plan
 - `docs/plans/2026-06-13-gpu-smooth-zoom-transitions-design.md` — original GPU migration (SUPERSEDED)
 - `docs/decisions/id-decision-log.md` line 77-78 — recovery decision
 - `docs/AI_HISTORY.md §[2026-06-13] BUG FIX — Viewport Camera Regression Recovery` — recovery pattern

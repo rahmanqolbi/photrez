@@ -190,7 +190,7 @@
 | ✅ DONE      | On-demand rendering (dirty flag system)    |
 | ✅ DONE      | WebGL2 projection-matrix-driven camera viewport with recovered reactive overlay alignment |
 | ✅ DONE      | WebGL final-pass document clipping — transformed layer pixels are clipped to artboard/document bounds |
-| ⚠️ RECOVERY  | GPU-Accelerated smooth zoom transitions (implementation exists, but original full migration plan is superseded; manual UX validation still required before treating it as final polish) |
+| ✅ DONE      | Overlay container migrated to screen-space positioning — last general-path CSS transform wrapper removed; 2D brush preview canvas + artboard border now use explicit `left/top/width/height` for pan/zoom. Phase 1 of 3-phase recovery from the original GPU smooth zoom migration. Modern Crop CSS path and animation smoothness remain as documented future phases. |
 | ✅ DONE      | Pointer-anchored instant scroll wheel zoom (no transition delay, pixel-accurate) |
 | ✅ DONE      | Brush cursor overlay (size preview)        |
 | ✅ DONE      | Handle-aware cursor resolver               |
