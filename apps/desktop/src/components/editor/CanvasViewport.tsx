@@ -751,10 +751,11 @@ export function CanvasViewport() {
             }}
           >
             {/* Overlay canvas — sync 2D brush preview, no createImageBitmap per move */}
-            <canvas ref={setOverlayCanvasRef} style={overlayCanvasStyle()} />
+            <canvas ref={setOverlayCanvasRef} data-overlay-canvas style={overlayCanvasStyle()} />
 
             {/* Artboard border & shadow */}
             <div
+              data-artboard-border
               class="absolute inset-0 pointer-events-none border border-white/10"
               style={{
                 "box-shadow":
