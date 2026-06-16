@@ -1137,3 +1137,32 @@ Standardize the visual design of the interactive Opacity slider in the Propertie
 
 **Next:** Phase 3 — real-app smoke test via `pnpm tauri dev` (user-runnable)
 
+---
+
+## [2026-06-16] BUG FIX — Canvas click+drag didn't reach canvas (SelectionTransformOverlay intercepted)
+
+**Status:** COMPLETE (632a418)
+
+**Root cause:** `SelectionTransformOverlay` move-zone rect had `pointer-events: all` + `e.stopPropagation()` in `handlePointerDown`. Since the overlay sits on top of the canvas with `z-index: 40`, all clicks on selected layers were intercepted. Canvas's `useCanvasLayerDrag` hook never fired.
+
+**User clue:** panning fires `[CanvasViewport] pointerdown` log, but layer click+drag does NOT — confirms the canvas pointerdown fires for some events but not for layer clicks (overlay is the culprit).
+
+**Fix:**
+- `SelectionTransformOverlay.tsx`: move-zone rect → `pointer-events: none`, removed dead `onPointerDown`/`onPointerEnter`/`onPointerLeave`
+- Canvas's `useCanvasLayerDrag` hook is now the source of truth for layer translation in Move tool
+- Handles (resize/rotate) still work via the same overlay
+
+**Test updates (632a418):**
+- 3 SelectionTransformOverlay tests updated to reflect passthrough
+- 2 snap-on-overlay-move tests deleted (no longer applicable)
+- 1 new test added: "move-zone is a click-through passthrough"
+
+**Verification:** 1064/1064 tests pass, build green.
+
+**Real-app smoke test (next, user-runnable):**
+- `pnpm tauri dev`
+- Click+drag layer in canvas (Move tool) → should translate
+- Click+drag from layer to different doc's tab → should copy/move
+- Hold Alt while drag → MOVES (not copy)
+- Resize/rotate handles still work
+

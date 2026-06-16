@@ -5826,3 +5826,37 @@ Make `addFilesAsLayers` and `createNewDocsFromFiles` actually read real file byt
 - Drag file from File Explorer → drop on tabs (not on a tab) → new doc created
 - Drag layer from Layers panel → drop on canvas of different doc → layer copied with all properties
 - Hold Alt while dragging layer → layer MOVED (not copied)
+
+---
+
+## [2026-06-16] BUG FIX — Canvas click+drag didn't fire (SelectionTransformOverlay intercepted)
+
+### Kategori: BUG FIX / FRONTEND / DRAG-AND-DROP
+
+**Root Cause:**
+`SelectionTransformOverlay` (line 153 in `apps/desktop/src/components/editor/SelectionTransformOverlay.tsx`) rendered a "Move hit zone" SVG rect with `pointer-events: all` + `onPointerDown={(e) => handlePointerDown(e, "move")}`. Inside `useSelectionTransformDrag.handlePointerDown` (line 165-167), `e.stopPropagation()` was called. The overlay sits on top of the canvas with `z-index: 40`, so EVERY click on a selected layer was intercepted by this rect, preventing `CanvasViewport.onPointerDown` from firing and `useCanvasLayerDrag` from being called.
+
+**User's diagnostic clue:** panning (Space+drag) fires `[CanvasViewport] pointerdown fired` log, but click+drag on a layer does NOT. This confirmed the canvas pointerdown fires for some events but not for layer clicks — the overlay was the culprit.
+
+**Fix (632a418, 2 files, 22+ / 93-):**
+- `SelectionTransformOverlay.tsx`: Set move-zone rect `pointer-events: none` (always). Removed `onPointerDown`/`onPointerEnter`/`onPointerLeave` handlers (dead code). The overlay's only job for move drag is visual (bounding box + handles). Canvas's `useCanvasLayerDrag` hook now handles layer translation in Move tool. Handles (resize/rotate) still work via the same overlay.
+- `SelectionTransformOverlay.test.ts`: Updated 3 tests to reflect new passthrough behavior. Removed 2 tests for snap-on-overlay-move (no longer applicable — canvas hook would own this if added later). Added 1 test verifying the move-zone is now a click-through passthrough.
+
+**Why this was a "tests pass but app fails" bug:**
+- The test `keeps the active resize cursor on the move-zone inner rect during pointer-captured resize drag` queried the move-zone's cursor style — which was set to "move". This test passed, but the production behavior was broken because the click never reached the canvas.
+- Tests in `useCanvasLayerDrag.test.tsx` fire events directly on the canvas via `addEventListener`, bypassing the DOM tree's natural event flow. So the overlay's interception was never tested.
+
+**Lesson (added to AGENTS.md):**
+- "Pure function tests pass, app fails" anti-pattern, item #1: Event listener mounted at wrong DOM level. In this case, the SelectionTransformOverlay was correctly mounted (it's supposed to be there for handles), but the move-zone rect's `pointer-events: all` was wrong — it should have been `none` so clicks pass through to the canvas.
+
+**Verification:**
+- `pnpm.cmd run build` green
+- `pnpm.cmd --filter photrez-desktop test --run` green (1064/1064)
+- 75 test files, 19 new tests, 0 regression
+
+**Real-app smoke test (next step, user-runnable):**
+- `pnpm tauri dev`
+- Click+drag a layer in the canvas (Move tool) → layer should translate
+- Click+drag from a layer to a different doc's tab → layer should copy/move to target doc
+- Hold Alt while click+drag → layer should MOVE (not copy)
+- Resize handles still work (overlay still owns resize/rotate drag)
