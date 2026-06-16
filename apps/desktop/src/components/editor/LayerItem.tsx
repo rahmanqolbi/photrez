@@ -65,7 +65,6 @@ export function LayerItem(props: LayerItemProps) {
     };
     dt.setData(LAYER_DRAG_MIME, JSON.stringify(payload));
     dt.effectAllowed = e.altKey ? "move" : "copy";
-    console.log("[LayerItem] onLayerDragStart", payload.layerId, payload.sourceName);
     dragController.beginLayerDrag(payload, null);
   };
 
