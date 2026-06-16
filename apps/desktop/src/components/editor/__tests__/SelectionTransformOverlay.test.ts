@@ -139,9 +139,9 @@ describe("Resize pointer-capture fix", () => {
     container.parentNode?.removeChild(container);
   });
 
-  it("keeps the active resize cursor on the move-zone inner rect during pointer-captured resize drag", async () => {
+  it("move-zone is a click-through passthrough (canvas hook handles layer drag)", async () => {
     const ws = new WorkspaceManager();
-    const session = WorkspaceManager.createBlankDocument("cursor-inner", "Cursor Inner", 800, 600);
+    const session = WorkspaceManager.createBlankDocument("passthrough", "Passthrough", 800, 600);
     const mockRenderer = {} as any;
     const mockScheduler = { requestRender: vi.fn() } as any;
     const origSet = SVGElement.prototype.setPointerCapture;
@@ -171,8 +171,21 @@ describe("Resize pointer-capture fix", () => {
     expect(moveRect).not.toBeNull();
     expect(eHandle).not.toBeNull();
 
-    expect(moveRect.style.cursor).toBe("move");
+    // Move zone must NOT capture pointer events — clicks pass through to canvas
+    expect(moveRect.style.pointerEvents).toBe("none");
 
+    moveRect.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 88,
+      bubbles: true,
+      cancelable: true,
+      clientX: 0,
+      clientY: 0,
+    }));
+
+    // No setPointerCapture on move-zone (intentional — canvas handles drag)
+    expect(setSpy).not.toHaveBeenCalled();
+
+    // Resize handle still works
     eHandle.dispatchEvent(new PointerEvent("pointerdown", {
       pointerId: 88,
       bubbles: true,
@@ -182,14 +195,12 @@ describe("Resize pointer-capture fix", () => {
     }));
 
     expect(setSpy).toHaveBeenCalledWith(88);
-    expect(moveRect.style.cursor).toBe("ew-resize");
 
     svg.dispatchEvent(new PointerEvent("pointerup", {
       pointerId: 88,
       bubbles: true,
     }));
 
-    expect(moveRect.style.cursor).toBe("move");
     dispose();
     SVGElement.prototype.setPointerCapture = origSet;
     SVGElement.prototype.releasePointerCapture = origRelease;
@@ -523,87 +534,6 @@ describe("Snap line cleanup", () => {
     restore();
   });
 
-  it("disables snapping when snap toggle is OFF during overlay move drag", () => {
-    const onComputeSnap = vi.fn(() => ({ dx: 5, dy: 5, lines: [{ x1: 100, y1: 0, x2: 100, y2: 1000 }] }));
-    const onSnapClear = vi.fn();
-    const { svg, moveRect, restore } = setup({ onComputeSnap, onSnapClear, moveSnapEnabled: false });
-
-    moveRect.dispatchEvent(
-      new PointerEvent("pointerdown", {
-        pointerId: 25,
-        bubbles: true,
-        cancelable: true,
-        clientX: 100,
-        clientY: 100,
-      }),
-    );
-
-    onComputeSnap.mockClear();
-    onSnapClear.mockClear();
-
-    // Move without Alt — onComputeSnap should NOT fire because snap toggle is OFF
-    svg.dispatchEvent(
-      new PointerEvent("pointermove", {
-        pointerId: 25,
-        bubbles: true,
-        clientX: 120,
-        clientY: 120,
-      }),
-    );
-    expect(onComputeSnap).not.toHaveBeenCalled();
-    expect(onSnapClear).toHaveBeenCalled();
-
-    restore();
-  });
-
-  it("disables snapping when Alt is held during overlay move drag", () => {
-    const onComputeSnap = vi.fn(() => ({ dx: 5, dy: 5, lines: [{ x1: 100, y1: 0, x2: 100, y2: 1000 }] }));
-    const onSnapClear = vi.fn();
-    const { svg, moveRect, restore } = setup({ onComputeSnap, onSnapClear });
-
-    // Start drag on move zone (triggers drag.type = "move")
-    moveRect.dispatchEvent(
-      new PointerEvent("pointerdown", {
-        pointerId: 20,
-        bubbles: true,
-        cancelable: true,
-        clientX: 100,
-        clientY: 100,
-      }),
-    );
-
-    onComputeSnap.mockClear();
-    onSnapClear.mockClear();
-
-    // Move WITHOUT Alt — onComputeSnap should fire
-    svg.dispatchEvent(
-      new PointerEvent("pointermove", {
-        pointerId: 20,
-        bubbles: true,
-        clientX: 120,
-        clientY: 120,
-      }),
-    );
-    expect(onComputeSnap).toHaveBeenCalledTimes(1);
-    onComputeSnap.mockClear();
-    onSnapClear.mockClear();
-
-    // Move WITH Alt — onComputeSnap should NOT fire, onSnapClear should fire
-    svg.dispatchEvent(
-      new PointerEvent("pointermove", {
-        pointerId: 20,
-        bubbles: true,
-        clientX: 140,
-        clientY: 140,
-        altKey: true,
-      }),
-    );
-    expect(onComputeSnap).not.toHaveBeenCalled();
-    expect(onSnapClear).toHaveBeenCalledTimes(1);
-
-    restore();
-  });
-
   it("creates a transform session on resize pointerdown but not on move pointerdown", () => {
     let capturedSession: any = null;
     const TestComponent = () => {
@@ -811,7 +741,7 @@ describe("Space+pan navigation mode", () => {
     restore();
   });
 
-  it("still captures pointer on move rect when isNavigationMode is false", () => {
+  it("does NOT capture pointer on move rect (intentional passthrough to canvas)", () => {
     const { moveRect, setSpy, restore } = setupNavigationTest(false);
 
     moveRect.dispatchEvent(
@@ -824,7 +754,8 @@ describe("Space+pan navigation mode", () => {
       }),
     );
 
-    expect(setSpy).toHaveBeenCalledTimes(1);
+    // Move rect is now a click-through passthrough — clicks go to canvas's useCanvasLayerDrag
+    expect(setSpy).not.toHaveBeenCalled();
     restore();
   });
 

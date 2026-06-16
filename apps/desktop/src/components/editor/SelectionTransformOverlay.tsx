@@ -149,18 +149,16 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
               style={{ "pointer-events": "none" }}
             />
 
-            {/* Move hit zone — rendered before handles so handles are on top */}
+            {/* Move hit zone — pointer-events disabled so clicks pass through to canvas.
+                Canvas's useCanvasLayerDrag handles layer translation in Move tool. */}
             <rect
               x={screenTL().x}
               y={screenTL().y}
               width={screenW()}
               height={screenH()}
               fill="transparent"
-              style={{ "pointer-events": props.isNavigationMode ? "none" : "all", cursor: activeDragCursor() ?? "move" }}
+              style={{ "pointer-events": "none" }}
               data-move
-              onPointerDown={(e) => handlePointerDown(e, "move")}
-              onPointerEnter={() => setHoverHandle("move")}
-              onPointerLeave={() => setHoverHandle(null)}
             />
 
             {/* 8 handles at unrotated edges, in screen coords */}
