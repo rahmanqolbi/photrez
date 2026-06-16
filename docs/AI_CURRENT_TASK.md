@@ -73,6 +73,84 @@ Implement two related drag-drop features for Photrez:
 
 ---
 
+### [2026-06-16] Feature — Cross-Document Drag & Drop (Layer + File) [COMPLETE]
+
+**Goal:**
+Implement two related drag-drop features for Photrez:
+1. **In-app layer drag**: drag a layer from one document's Layers panel to another document (tab/canvas/layers panel). Default = Copy, Alt = Move.
+2. **External file drop**: drag image files from the OS (File Explorer / Finder) into Photrez — as new layer(s) in target doc, or as new document(s) depending on drop zone.
+
+**Sub-features:**
+- Hover-to-switch on document tabs (500ms timer with visual countdown)
+- Multi-file cascade (+24px per layer)
+- Minimal toast notification system for error UX
+
+**Status:** ✅ COMPLETE 2026-06-16. Spec + plan + 13 implementation commits + docs.
+
+**Key Design Decisions (locked):**
+- Q1: Cross-doc layer drag default = **Copy**, Alt = Move
+- Q2: Drop zones = **Tab (hover) + Canvas + Layers panel**; tab-empty / + / outside = new doc for files only
+- Q2a: Hover-to-switch = **500ms** with visual countdown
+- Q3: Drop position = **cursor** (canvas) / **center** (tab, panel)
+- Q4: File drop = **context-sensitive** by drop zone
+- Q5: Multi-layer drag = **single layer only for MVP**
+- Q6: Multi-file cascade = **+24px per layer**
+- Q7: Integration = **Coexist** (pointer events for reorder, HTML5 for cross-doc)
+- Q8: History = **per-doc** (Approach A, not atomic across docs)
+- Architecture: **Tauri 2 `onDragDropEvent` for OS files + HTML5 drag for in-app + reuse existing IPC** (no new commands)
+
+**Scope (this phase):**
+- [x] Brainstorming completed (10 clarifying questions, 3 architectural approaches evaluated)
+- [x] User approved design (Q1–Q8, Q2a, integration approach, per-doc history)
+- [x] Spec written (`docs/superpowers/specs/2026-06-16-cross-doc-drag-drop-design.md`, 823 lines, commit `0cdfe61`)
+- [x] Implementation plan written (`docs/superpowers/plans/2026-06-16-cross-doc-drag-drop.md`, 1839 lines, commit `8ab92de`)
+- [x] T1: dragTypes.ts + 6 tests (commit `639c82f`)
+- [x] T2: Toast.tsx + 5 tests (commit `616c79f`)
+- [x] T3: crossDocLayerOps cascade (commit `8cdd0db`)
+- [x] T4: crossDocLayerOps addLayerFromCrossDoc + 8 tests (commit `bba7c78`)
+- [x] T5: DragController context + 7 tests (commit `982f3dc`)
+- [x] T6: useTauriDragDrop hook (commit `b04e368`)
+- [x] T7: Wire DragController + ToastHost (commit `3e8ec13`)
+- [x] T8: Make LayerItem draggable (commit `bf98376`)
+- [x] T9: DocumentTabsBar drop zone + hover-to-switch (commit `ce8928c`)
+- [x] T10+T11+T13: Canvas/LayersPanel drop zones + CSS (commit `142d14d`, batched)
+- [x] T12: EmptyWorkspace Tauri migration (commit `0348da3`)
+- [x] T14: Engine-signal contract tests (commit `06c9056`)
+- [x] T15: Playwright E2E (commit `f346638`)
+- [x] T16: Full verification pipeline (per-commit + final)
+- [x] T17: Documentation update (AI_HISTORY, FEATURES, AI_CURRENT_TASK)
+
+**Verification:**
+- PASS: `pnpm --filter photrez-desktop test --run` — **1032 tests** (71 files)
+- PASS: `pnpm run build` (~7-22s per commit, 13 commits green)
+- PASS: `cargo test --workspace` — 85/85 Rust tests (no Rust changes)
+- PASS: `pnpm --filter photrez-desktop exec playwright test` — browser-testable subset (full E2E requires Tauri runtime)
+- PASS: Pre-commit pipeline green on every commit
+
+**Files Created (10):**
+- `apps/desktop/src/components/editor/dragTypes.ts`
+- `apps/desktop/src/components/editor/Toast.tsx`
+- `apps/desktop/src/components/editor/crossDocLayerOps.ts`
+- `apps/desktop/src/components/editor/DragController.tsx`
+- `apps/desktop/src/components/editor/useTauriDragDrop.ts`
+- 5 test files
+- `apps/desktop/e2e/cross-doc-drag-drop.spec.ts`
+
+**Files Modified (9):**
+- `LayerItem.tsx`, `LayersPanel.tsx`, `DocumentTabsBar.tsx`, `CanvasViewport.tsx`, `EmptyWorkspace.tsx`
+- `EditorContext.tsx`, `EditorShell.tsx`
+- `engine/workspace.ts` (added `getEngine(id)` + `getHistory(id)` wrappers)
+- `index.css` (drop indicator styles)
+
+**Total: ~1,500 lines new code, ~150 lines modified**
+
+**References:**
+- Spec: `docs/superpowers/specs/2026-06-16-cross-doc-drag-drop-design.md`
+- Plan: `docs/superpowers/plans/2026-06-16-cross-doc-drag-drop.md`
+- AI History: `docs/AI_HISTORY.md §[2026-06-16] FEATURE — Cross-Document Drag & Drop`
+
+---
+
 ### [2026-06-15] Migration — Overlay Container to Screen-Space Positioning [COMPLETE]
 
 **Goal:**

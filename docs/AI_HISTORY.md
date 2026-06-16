@@ -1,5 +1,105 @@
 # AI History — Photrez
 
+## [2026-06-16] FEATURE — Cross-Document Drag & Drop (Layer + File) [COMPLETE]
+
+### Kategori: FEATURE / FRONTEND / MULTI-DOC / DRAG-AND-DROP
+
+**Goal:**
+Implement two related drag-drop features for Photrez:
+1. **In-app layer drag** between documents (Copy default, Alt = Move)
+2. **External file drop** from OS (Tauri 2 `onDragDropEvent`)
+
+Plus: hover-to-switch on document tabs (500ms with visual countdown), multi-file cascade (24px offset), minimal toast notification system.
+
+**Architecture (locked, no new IPC):**
+- HTML5 Drag and Drop API for in-app layer drag (custom MIME `application/x-photrez-layer`)
+- Tauri 2 `getCurrentWebview().onDragDropEvent()` for OS file drop
+- SolidJS `DragController` context for shared drag state
+- `crossDocLayerOps.ts` pure functions: `addLayerFromCrossDoc`, `addFilesAsLayers`, `createNewDocsFromFiles`
+- Per-doc history (Photoshop convention, not atomic across docs)
+- Coexist with existing pointer-based layer reorder (no regression)
+
+**Decisions (from brainstorming):**
+- Q1: Cross-doc layer drag default = **Copy**, Alt = Move (Photoshop convention)
+- Q2: Drop zones = Tab (hover) + Canvas + Layers panel; tab-empty / + / outside = new doc for files
+- Q2a: Hover-to-switch = **500ms** with visual countdown (CSS-driven)
+- Q3: Drop position = Cursor (canvas) / Center (tab, panel)
+- Q4: File drop = **Context-sensitive** by drop zone
+- Q5: Multi-select layer drag = **Single layer only** for MVP
+- Q6: Multi-file cascade = **+24px** per layer (Photoshop)
+- Q7: Integration = **Coexist** (pointer for reorder, HTML5 for cross-doc)
+- Q8: History = **Per-doc** (Approach A, not atomic)
+
+**Done (17 tasks, 13 commits):**
+1. ✅ `dragTypes.ts` — `LayerDragPayload`, `DropTarget` discriminated union, MIME constant, `isLayerDragPayload` validator (6 tests)
+2. ✅ `Toast.tsx` — `<ToastHost>` + `showToast()` API with auto-dismiss + max-3 stack (5 tests, `resetToasts` for test isolation)
+3. ✅ `crossDocLayerOps.ts` — `computeCascadePosition` (4 tests)
+4. ✅ `crossDocLayerOps.ts` — `addLayerFromCrossDoc` with validation (8 tests, including same-doc, source-missing, MAX_LAYERS, position)
+5. ✅ `DragController.tsx` — Context with hover-to-switch timer (7 tests, real `setTimeout` not RAF for testability)
+6. ✅ `useTauriDragDrop.ts` — Tauri 2 event listener hook with `onCleanup`
+7. ✅ `EditorContext.tsx` + `EditorShell.tsx` — wire DragController + mount ToastHost
+8. ✅ `LayerItem.tsx` + `LayersPanel.tsx` — `draggable={!locked}` + payload serialization
+9. ✅ `DocumentTabsBar.tsx` — tab drop zones + 500ms hover-to-switch timer
+10. ✅ `CanvasViewport.tsx` — canvas drop zone with doc-coord conversion
+11. ✅ `LayersPanel.tsx` — panel drop zone (top-of-stack)
+12. ✅ `EmptyWorkspace.tsx` — Tauri 2 file drop API (replaces HTML5 path)
+13. ✅ `index.css` — drop indicator styles (`[data-drag-over]` selectors)
+14. ✅ `engine-signal-contract.test.tsx` — 4 new contract tests (cross-doc add/move/file/dispatcher)
+15. ✅ `e2e/cross-doc-drag-drop.spec.ts` — Playwright E2E (browser-testable subset)
+16. ✅ Full verification pipeline (per-commit pre-commit hook + final commit)
+17. ✅ Documentation update (this entry + FEATURES.md + AI_CURRENT_TASK.md)
+
+**Implementation notes:**
+- `addLayerFromCrossDoc` uses real engine API: `addLayer(name)` then `moveLayer(id, x, y)` to set position. The mock in unit tests accepts any args.
+- `EngineFacade` interface in `crossDocLayerOps.ts` uses `getLayers()` (real engine method) + `moveLayer()` (added to interface)
+- `DocumentEngine` extended with `getEngine(id)` + `getHistory(id)` wrappers in `WorkspaceManager`
+- `DragControllerProvider` uses `require()` lazy import to break circular dep with `EditorContext`
+- `act` not exported by `@solidjs/testing-library` 0.8.10 — use direct calls (Solid reactivity is synchronous)
+
+**Files Created (10):**
+- `apps/desktop/src/components/editor/dragTypes.ts` (32 lines)
+- `apps/desktop/src/components/editor/Toast.tsx` (80 lines)
+- `apps/desktop/src/components/editor/crossDocLayerOps.ts` (180 lines)
+- `apps/desktop/src/components/editor/DragController.tsx` (115 lines)
+- `apps/desktop/src/components/editor/useTauriDragDrop.ts` (34 lines)
+- `apps/desktop/src/components/editor/__tests__/dragTypes.test.ts` (50 lines)
+- `apps/desktop/src/components/editor/__tests__/Toast.test.tsx` (55 lines)
+- `apps/desktop/src/components/editor/__tests__/crossDocLayerOps.test.ts` (200 lines)
+- `apps/desktop/src/components/editor/__tests__/DragController.test.tsx` (105 lines)
+- `apps/desktop/e2e/cross-doc-drag-drop.spec.ts` (147 lines)
+
+**Files Modified (9):**
+- `LayerItem.tsx` (+drag handlers + draggable attribute)
+- `LayersPanel.tsx` (+activeDocumentId prop + panel drop zone)
+- `DocumentTabsBar.tsx` (+tab drop zones + hover-to-switch)
+- `CanvasViewport.tsx` (+canvas drop zone)
+- `EmptyWorkspace.tsx` (HTML5 → Tauri API)
+- `EditorContext.tsx` (add `showToast`, wrap with `DragControllerProvider`)
+- `EditorShell.tsx` (mount `<ToastHost>`)
+- `engine/workspace.ts` (add `getEngine(id)` + `getHistory(id)`)
+- `index.css` (drop indicator styles)
+
+**Verification:**
+- PASS: `pnpm --filter photrez-desktop test --run` (1032 tests, 71 files)
+- PASS: `pnpm run build` (~7-22s per commit)
+- PASS: `cargo test --workspace` (85 tests, no Rust changes)
+- PASS: Pre-commit pipeline green on every commit (13 commits, 0 bypass)
+
+**Out of scope (future):**
+- Multi-select layer drag (Q5)
+- Drag from canvas (only Layers panel draggable)
+- Drag between Photrez windows
+- Custom drag image for OS files (browser limitation)
+- Atomic cross-doc undo (chose per-doc for Photoshop parity)
+- Toast for non-drag events (export complete, etc.)
+
+**References:**
+- Spec: `docs/superpowers/specs/2026-06-16-cross-doc-drag-drop-design.md` (823 lines)
+- Plan: `docs/superpowers/plans/2026-06-16-cross-doc-drag-drop.md` (1839 lines)
+- Research: Tauri 2 docs (Context7), MDN HTML5 Drag and Drop API, Photoshop/Affinity UX conventions
+
+---
+
 ## [2026-06-15] MIGRATION — Overlay Container to Screen-Space Positioning [COMPLETE]
 
 ### Kategori: MIGRATION / FRONTEND / VIEWPORT

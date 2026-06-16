@@ -143,6 +143,19 @@
 
 ---
 
+## 🖱️ Drag & Drop
+
+| Status       | Fitur                                      |
+| ------------ | ------------------------------------------ |
+| ✅ DONE      | Drag layer between documents (Copy default, Alt = Move) |
+| ✅ DONE      | Hover-to-switch document tab (500ms with countdown) |
+| ✅ DONE      | Drop image file from OS (Tauri 2 onDragDropEvent) |
+| ✅ DONE      | Multi-file cascade (24px offset) |
+| ✅ DONE      | Context-sensitive drop zones (tab/canvas/layers-panel/tab-empty/outside) |
+| ✅ DONE      | Minimal toast notification system |
+
+---
+
 ## 📤 Export
 
 | Status       | Fitur                                      |
