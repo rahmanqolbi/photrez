@@ -3,6 +3,7 @@ import { clsx } from "clsx";
 import { Icon } from "./icons";
 import { LayerNode } from "@/engine/types";
 import { LayerThumb } from "./LayerThumb";
+import { LAYER_DRAG_MIME, LayerDragPayload } from "./dragTypes";
 
 interface LayerItemProps {
   layer: LayerNode;
@@ -24,6 +25,7 @@ interface LayerItemProps {
   layersLength: number;
   workspace: any;
   scheduler: any;
+  activeDocumentId: string;
 }
 
 export function LayerItem(props: LayerItemProps) {
@@ -44,9 +46,29 @@ export function LayerItem(props: LayerItemProps) {
     props.setEditingLayerId(null);
   };
 
+  const onLayerDragStart = (e: DragEvent) => {
+    if (props.layer.locked) {
+      e.preventDefault();
+      return;
+    }
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    const payload: LayerDragPayload = {
+      version: 1,
+      sourceDocId: props.activeDocumentId,
+      layerId: props.layer.id,
+      sourceName: props.layer.name,
+      isAltPressed: e.altKey,
+    };
+    dt.setData(LAYER_DRAG_MIME, JSON.stringify(payload));
+    dt.effectAllowed = e.altKey ? "move" : "copy";
+  };
+
   return (
     <div
       data-layer-idx={props.idx}
+      draggable={!props.layer.locked}
+      onDragStart={onLayerDragStart}
       onClick={() => props.onSelect(props.layer.id)}
       onPointerDown={(e) => !props.layer.locked && props.onPointerDragStart(e, props.idx)}
       class={clsx(

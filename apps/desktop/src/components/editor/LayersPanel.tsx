@@ -372,6 +372,7 @@ export function LayersPanel() {
                 layersLength={layers().length}
                 workspace={workspace}
                 scheduler={scheduler}
+                activeDocumentId={activeDocumentId() ?? ""}
               />
             )}
           </For>
