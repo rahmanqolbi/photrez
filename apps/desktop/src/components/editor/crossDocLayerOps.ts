@@ -14,8 +14,9 @@ export interface EngineFacade {
   width: number;
   height: number;
   getLayer(id: string): any | null;
-  getLayerCount(): number;
-  addLayer(layer: any): void;
+  getLayers(): readonly any[];
+  addLayer(layer: any): any;
+  moveLayer(id: string, x: number, y: number): void;
   deleteLayer(id: string): void;
   snapshot(): unknown;
 }
@@ -67,7 +68,7 @@ export function addLayerFromCrossDoc(
 
   const targetEngine = ws.getEngine(targetDocId);
   if (!targetEngine) return;
-  if (targetEngine.getLayerCount() >= MAX_LAYERS) {
+  if (targetEngine.getLayers().length >= MAX_LAYERS) {
     showToast("Target document reached max 100 layers", "error");
     return;
   }
@@ -87,7 +88,15 @@ export function addLayerFromCrossDoc(
 
   const targetHistory = ws.getHistory(targetDocId);
   if (targetHistory) targetHistory.commit(targetEngine.snapshot());
-  targetEngine.addLayer(cloned);
+
+  // Real engine API: addLayer(name, width?, height?) returns LayerNode,
+  // then moveLayer(id, x, y) to set position. The mock in unit tests
+  // accepts any args so both work.
+  const added = targetEngine.addLayer(sourceLayer.name ?? "Imported");
+  const newId = (added as any)?.id;
+  if (newId && typeof targetEngine.moveLayer === "function") {
+    targetEngine.moveLayer(newId, targetPos.x, targetPos.y);
+  }
 
   if (payload.isAltPressed) {
     const sourceHistory = ws.getHistory(payload.sourceDocId);
@@ -108,7 +117,7 @@ export function addFilesAsLayers(
   if (!targetDocId) return;
   const targetEngine = ws.getEngine(targetDocId);
   if (!targetEngine) return;
-  if (targetEngine.getLayerCount() + paths.length > MAX_LAYERS) {
+  if (targetEngine.getLayers().length + paths.length > MAX_LAYERS) {
     showToast(`Adding ${paths.length} files would exceed max 100 layers`, "error");
     return;
   }
@@ -118,12 +127,15 @@ export function addFilesAsLayers(
 
   paths.forEach((path, i) => {
     const pos = computeCascadePosition(basePos, i);
-    targetEngine.addLayer({
-      id: `layer-${crypto.randomUUID()}`,
-      name: path.split(/[\\/]/).pop() ?? "Imported",
-      transform: { x: pos.x, y: pos.y, rotation: 0, scaleX: 1, scaleY: 1 },
-      opacity: 1,
-    });
+    const name = path.split(/[\\/]/).pop() ?? "Imported";
+    // Real engine API: addLayer(name, width?, height?) returns LayerNode,
+    // then moveLayer(id, x, y) to set position. The mock in tests accepts
+    // any args so both work.
+    const added = targetEngine.addLayer(name);
+    const newId = (added as any)?.id;
+    if (newId && typeof targetEngine.moveLayer === "function") {
+      targetEngine.moveLayer(newId, pos.x, pos.y);
+    }
   });
 }
 

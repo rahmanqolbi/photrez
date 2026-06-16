@@ -21,6 +21,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render } from "solid-js/web";
 import { EditorProvider, useEditor } from "../EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
+import { addLayerFromCrossDoc, addFilesAsLayers, createNewDocsFromFiles } from "../crossDocLayerOps";
+import type { LayerDragPayload } from "../dragTypes";
 
 interface CapturedEditor {
   workspace: WorkspaceManager;
@@ -323,5 +325,139 @@ describe("Engine ↔ Signal contract", () => {
     expect(sig).not.toBeNull();
     expect(sig.layerId).toBe(l1.id);
     expect(sig.mode).toBe("resize");
+  });
+});
+
+describe("Cross-doc ops — signal contract", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+  let editorRef: { current: CapturedEditor | null };
+
+  const tick = (ms = 50) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+  beforeEach(async () => {
+    ws = new WorkspaceManager();
+    const sA = WorkspaceManager.createBlankDocument("docA", "DocA", 800, 600);
+    ws.addDocument(sA);
+    const sB = WorkspaceManager.createBlankDocument("docB", "DocB", 1000, 800);
+    ws.addDocument(sB);
+    ws.switchDocument("docA");
+
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    editorRef = { current: null };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+
+    dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer} scheduler={scheduler}>
+          {makeTestConsumer(editorRef)()}
+        </EditorProvider>
+      ),
+      container,
+    );
+    await tick();
+  });
+
+  afterEach(() => {
+    if (dispose) dispose();
+    if (container.parentNode) container.parentNode.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  it("addLayerFromCrossDoc propagates new layer to target doc's layers() signal", async () => {
+    const ed = editorRef.current!;
+    const engineA = ws.getEngine("docA")!;
+    const engineB = ws.getEngine("docB")!;
+    const l1 = engineA.addLayer("L1");
+    await tick();
+    expect(ed.layers().length).toBe(2); // bg + l1
+
+    const payload: LayerDragPayload = {
+      version: 1,
+      sourceDocId: "docA",
+      layerId: l1.id,
+      sourceName: "L1",
+      isAltPressed: false,
+    };
+    // Use target "tab" with explicit docB so we don't conflict with active doc
+    addLayerFromCrossDoc(payload, { type: "tab", docId: "docB" }, { x: 100, y: 100 }, ws as any);
+    await tick();
+
+    // Switch to docB to observe its signal
+    ws.switchDocument("docB");
+    await tick();
+    expect(ed.layers().length).toBe(2); // bg + cloned L1
+    expect(ed.layers().some((l) => l.name === "L1")).toBe(true);
+    // Engine B should have 2 layers too
+    expect(engineB.getLayers().length).toBe(2);
+    // Engine A unchanged
+    expect(engineA.getLayers().length).toBe(2);
+  });
+
+  it("addLayerFromCrossDoc (Alt+Move) removes source layer via signal", async () => {
+    const ed = editorRef.current!;
+    const engineA = ws.getEngine("docA")!;
+    const engineB = ws.getEngine("docB")!;
+    const l1 = engineA.addLayer("L1");
+    await tick();
+    expect(ed.layers().length).toBe(2);
+    expect(engineA.getLayers().length).toBe(2);
+
+    const payload: LayerDragPayload = {
+      version: 1,
+      sourceDocId: "docA",
+      layerId: l1.id,
+      sourceName: "L1",
+      isAltPressed: true,
+    };
+    addLayerFromCrossDoc(payload, { type: "tab", docId: "docB" }, { x: 0, y: 0 }, ws as any);
+    await tick();
+
+    // Source doc should now have just bg
+    expect(engineA.getLayers().length).toBe(1);
+    // Target should have bg + cloned L1
+    expect(engineB.getLayers().length).toBe(2);
+    // Active signal still reflects docA (active didn't change)
+    expect(ed.activeDocumentId()).toBe("docA");
+    expect(ed.layers().length).toBe(1);
+  });
+
+  it("addFilesAsLayers updates active doc's layers() signal (multi-file batch)", async () => {
+    const ed = editorRef.current!;
+    expect(ed.layers().length).toBe(1); // bg
+
+    addFilesAsLayers(
+      ["/a.png", "/b.jpg", "/c.tiff"],
+      { type: "canvas" },
+      { x: 0, y: 0 },
+      ws as any
+    );
+    await tick();
+
+    expect(ed.layers().length).toBe(4); // bg + 3 new
+    const names = ed.layers().map((l) => l.name);
+    expect(names).toContain("a.png");
+    expect(names).toContain("b.jpg");
+    expect(names).toContain("c.tiff");
+  });
+
+  it("createNewDocsFromFiles is a dispatcher (no signal change without Tauri read)", async () => {
+    const ed = editorRef.current!;
+    const initialDocs = ws.getDocumentCount();
+
+    // createNewDocsFromFiles alone doesn't add docs (it's a guard/dispatcher)
+    // The UI layer is responsible for the actual Tauri read + addDocument call.
+    createNewDocsFromFiles(["/x.png", "/y.png"], ws as any);
+    await tick();
+
+    // No docs added because the function just guards; UI layer adds them
+    expect(ws.getDocumentCount()).toBe(initialDocs);
+    // No signal change either
+    expect(ed.activeDocumentId()).toBe("docA");
   });
 });

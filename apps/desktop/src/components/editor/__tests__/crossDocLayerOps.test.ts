@@ -27,18 +27,44 @@ function makeEngine(opts: { id: string; layerCount?: number; width?: number; hei
   const width = opts.width ?? 800;
   const height = opts.height ?? 600;
   const layerCount = opts.layerCount ?? 3;
+  const layerArr: any[] = Array.from({ length: layerCount }, (_, i) => ({
+    id: `layer-${i}`,
+    name: `Layer${i}`,
+    width: 200,
+    height: 150,
+    transform: { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 },
+    opacity: 1,
+  }));
+  let newLayerCounter = 0;
   return {
     id,
     width,
     height,
     getLayer: vi.fn((lid: string) =>
-      lid === "layer-1"
-        ? { id: "layer-1", name: "Background", width: 200, height: 150, transform: { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 }, opacity: 1 }
-        : null
+      layerArr.find((l) => l.id === lid) ?? null
     ),
-    getLayerCount: vi.fn(() => layerCount),
-    addLayer: vi.fn(),
-    deleteLayer: vi.fn(),
+    getLayers: vi.fn(() => layerArr),
+    getLayerCount: vi.fn(() => layerArr.length),
+    addLayer: vi.fn((name: string) => {
+      const newLayer = {
+        id: `new-${++newLayerCounter}`,
+        name: typeof name === "string" ? name : "Imported",
+        width: 200,
+        height: 150,
+        transform: { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 },
+        opacity: 1,
+      };
+      layerArr.push(newLayer);
+      return newLayer;
+    }),
+    moveLayer: vi.fn((lid: string, x: number, y: number) => {
+      const l = layerArr.find((layer) => layer.id === lid);
+      if (l) l.transform = { ...l.transform, x, y };
+    }),
+    deleteLayer: vi.fn((lid: string) => {
+      const idx = layerArr.findIndex((l) => l.id === lid);
+      if (idx >= 0) layerArr.splice(idx, 1);
+    }),
     snapshot: vi.fn(() => ({})),
   };
 }
@@ -137,9 +163,10 @@ describe("addLayerFromCrossDoc — position", () => {
     const targetEngine = makeEngine({ id: "doc-B" });
     const ws = makeWorkspace({ "doc-A": sourceEngine, "doc-B": targetEngine });
     addLayerFromCrossDoc(basePayload, { type: "canvas" }, { x: 333, y: 444 }, ws as any);
-    const added = targetEngine.addLayer.mock.calls[0][0];
-    expect(added.transform.x).toBe(333);
-    expect(added.transform.y).toBe(444);
+    // moveLayer called with the cursor position
+    const moveArgs = targetEngine.moveLayer.mock.calls[0];
+    expect(moveArgs[1]).toBe(333);
+    expect(moveArgs[2]).toBe(444);
   });
 
   it("uses doc center when target is tab", () => {
@@ -147,9 +174,9 @@ describe("addLayerFromCrossDoc — position", () => {
     const targetEngine = makeEngine({ id: "doc-B", width: 800, height: 600 });
     const ws = makeWorkspace({ "doc-A": sourceEngine, "doc-B": targetEngine });
     addLayerFromCrossDoc(basePayload, { type: "tab", docId: "doc-B" }, { x: 0, y: 0 }, ws as any);
-    const added = targetEngine.addLayer.mock.calls[0][0];
-    expect(added.transform.x).toBe(300);
-    expect(added.transform.y).toBe(225);
+    const moveArgs = targetEngine.moveLayer.mock.calls[0];
+    expect(moveArgs[1]).toBe(300);
+    expect(moveArgs[2]).toBe(225);
   });
 
   it("uses doc center when target is layers-panel", () => {
@@ -157,8 +184,8 @@ describe("addLayerFromCrossDoc — position", () => {
     const targetEngine = makeEngine({ id: "doc-B", width: 1000, height: 800 });
     const ws = makeWorkspace({ "doc-A": sourceEngine, "doc-B": targetEngine });
     addLayerFromCrossDoc(basePayload, { type: "layers-panel" }, { x: 0, y: 0 }, ws as any);
-    const added = targetEngine.addLayer.mock.calls[0][0];
-    expect(added.transform.x).toBe(400);
-    expect(added.transform.y).toBe(325);
+    const moveArgs = targetEngine.moveLayer.mock.calls[0];
+    expect(moveArgs[1]).toBe(400);
+    expect(moveArgs[2]).toBe(325);
   });
 });
