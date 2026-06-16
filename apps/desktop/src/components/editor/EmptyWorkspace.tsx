@@ -1,6 +1,8 @@
 import { Icon } from "./icons";
 import { useEditor } from "./EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
+import { useTauriDragDrop } from "./useTauriDragDrop";
+import { createNewDocsFromFiles } from "./crossDocLayerOps";
 
 export function EmptyWorkspace() {
   const { openImage, workspace } = useEditor();
@@ -23,39 +25,14 @@ export function EmptyWorkspace() {
     workspace.addDocument(session);
   };
 
-  const handleDragOver = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = async (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (e.dataTransfer && e.dataTransfer.files.length > 0) {
-      const files = Array.from(e.dataTransfer.files);
-      for (const file of files) {
-        if (!file.type.startsWith("image/")) continue;
-        if (workspace.isFull()) break;
-
-        try {
-          const bitmap = await createImageBitmap(file);
-          const id = `doc-${crypto.randomUUID()}`;
-          const session = WorkspaceManager.createDocumentFromImage(id, file.name, bitmap);
-          workspace.addDocument(session);
-        } catch (err) {
-          console.error("Failed to load dropped image:", err);
-        }
-      }
-    }
-  };
+  useTauriDragDrop({
+    onDrop: (paths) => {
+      createNewDocsFromFiles(paths, workspace as unknown as Parameters<typeof createNewDocsFromFiles>[1]);
+    },
+  });
 
   return (
-    <div
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
-      class="flex flex-1 items-center justify-center bg-editor-canvas p-6"
-    >
+    <div class="flex flex-1 items-center justify-center bg-editor-canvas p-6">
       <div class="flex w-full max-w-[480px] flex-col items-center justify-center rounded-[8px] border border-editor-divider bg-editor-panel p-10 text-center shadow-[0_2px_12px_rgba(0,0,0,0.15)]">
         <Icon name="image-plus" class="mb-4 size-12 text-editor-text-dim opacity-50" strokeWidth={1.5} />
         <h3 class="mb-2 text-[15px] font-semibold text-editor-text">No image open</h3>
