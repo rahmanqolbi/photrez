@@ -1,9 +1,11 @@
 import { createSignal } from "solid-js";
 import { useEditor } from "./EditorContext";
+import { useDragController } from "./DragController";
 import { cancelLayerTransformSession } from "./transformSession";
 
 export function useLayerDragReorder() {
   const { workspace, scheduler, layerTransformSession, setLayerTransformSession } = useEditor();
+  const dragController = useDragController();
 
   const cancelActiveTransformSession = () => {
     const engine = workspace.getActiveEngine();
@@ -29,11 +31,24 @@ export function useLayerDragReorder() {
     const target = e.target as HTMLElement;
     if (target.closest("button") || target.closest("input") || target.closest("select")) return;
 
+    // If HTML5 cross-doc drag is already active, don't interfere. This was
+    // the root cause of dragstart not firing: the in-panel pointermove
+    // listener was running on every move and triggering Solid re-renders
+    // that cancelled the HTML5 drag before it could start.
+    if (dragController.state().dragKind !== null) return;
+
     dragStartY = e.clientY;
     dragSourceIndex = index;
     dragActive = false;
 
     const onPointerMove = (ev: PointerEvent) => {
+      // If HTML5 drag started in the meantime, abandon in-panel reorder.
+      if (dragController.state().dragKind !== null) {
+        dragActive = false;
+        document.removeEventListener("pointermove", onPointerMove);
+        document.removeEventListener("pointerup", onPointerUp);
+        return;
+      }
       // Dead-zone: require 5px movement before starting drag
       if (!dragActive && Math.abs(ev.clientY - dragStartY) < 5) return;
 
@@ -70,6 +85,16 @@ export function useLayerDragReorder() {
     const onPointerUp = () => {
       document.removeEventListener("pointermove", onPointerMove);
       document.removeEventListener("pointerup", onPointerUp);
+
+      // If HTML5 drag took over, don't do in-panel reorder
+      if (dragController.state().dragKind !== null) {
+        dragActive = false;
+        dragSourceIndex = null;
+        setDraggedIndex(null);
+        setDragOverIndex(null);
+        setDropPosition(null);
+        return;
+      }
 
       if (dragActive && dragSourceIndex !== null) {
         const toIdx = dragOverIndex();
