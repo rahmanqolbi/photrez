@@ -15,6 +15,8 @@ import {
 import { setupWorkspaceSync } from "./workspaceSync";
 import { openImage } from "./editorOpenImage";
 import { ViewportCamera } from "../../viewport/viewportCamera";
+import { DragControllerProvider } from "./DragController";
+import { showToast as showToastImpl } from "./Toast";
 
 
 
@@ -162,6 +164,9 @@ export interface EditorContextValue {
   // Feature flag: GPU camera image transform for Modern Crop
   useGPUCameraForModernCrop: Accessor<boolean>;
   setUseGPUCameraForModernCrop: Setter<boolean>;
+
+  // Toast notifications
+  showToast: (message: string, severity?: "info" | "warn" | "error") => void;
 }
 
 
@@ -306,6 +311,7 @@ export function EditorProvider(props: {
     syncViewport,
     useGPUCameraForModernCrop,
     setUseGPUCameraForModernCrop,
+    showToast: (message, severity = "info") => showToastImpl(message, severity),
   };
 
   // Expose editor on window for E2E test introspection (Playwright).
@@ -317,7 +323,9 @@ export function EditorProvider(props: {
 
   return (
     <EditorContext.Provider value={value}>
-      {props.children}
+      <DragControllerProvider>
+        {props.children}
+      </DragControllerProvider>
     </EditorContext.Provider>
   );
 }
