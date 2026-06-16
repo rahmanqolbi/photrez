@@ -168,14 +168,12 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
       console.log("[useCanvasLayerDrag] abort: not primary button");
       return;
     }
-    // Ignore if the click was on a transform handle (let useSelectionTransformDrag handle it)
+    // Ignore if the click was on a transform handle or rotate path
+    // (useSelectionTransformDrag handles those and stops propagation, but
+    // guard defensively in case any future SVG element forgets to)
     const target = e.target as HTMLElement;
-    if (target.closest("[data-transform-handle]")) {
-      console.log("[useCanvasLayerDrag] abort: transform handle");
-      return;
-    }
-    if (target.closest("svg")) {
-      console.log("[useCanvasLayerDrag] abort: svg element");
+    if (target.closest("[data-handle], [data-overlay-svg] [path]")) {
+      console.log("[useCanvasLayerDrag] abort: handle/rotate element");
       return;
     }
 
