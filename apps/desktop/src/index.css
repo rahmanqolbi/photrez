@@ -615,6 +615,28 @@ grid-template-columns: 280px 240px;
   background: rgb(225 90 23 / 8%);
 }
 
+/* Hover-to-switch progress bar — fills from 0 to 100% over 500ms while
+   cursor hovers over a different tab, then switchDocument fires. */
+[data-document-tab][data-hover-tab-progress="1"] {
+  position: relative;
+}
+[data-document-tab][data-hover-tab-progress="1"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--color-editor-accent, #E15A17);
+  transform-origin: left;
+  animation: hoverTabProgress 500ms linear forwards;
+  pointer-events: none;
+}
+@keyframes hoverTabProgress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
 [data-canvas-drop-zone][data-drag-over="canvas"] {
   outline: 2px dashed var(--color-editor-accent, #E15A17);
   outline-offset: -4px;
