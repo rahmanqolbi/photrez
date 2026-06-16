@@ -1,5 +1,6 @@
 import { createContext, useContext, createSignal, ParentProps, Show } from "solid-js";
 import type { LayerDragPayload, DropTarget } from "./dragTypes";
+import { useEditor } from "./EditorContext";
 
 const HOVER_TAB_DURATION_MS = 500;
 
@@ -33,9 +34,15 @@ const DragControllerContext = createContext<DragController>();
 export function DragControllerProvider(props: ParentProps<{ workspaceOverride?: WorkspaceLike }>) {
   const workspace = (): WorkspaceLike => {
     if (props.workspaceOverride) return props.workspaceOverride;
-    // Lazy import to avoid circular dependency in test contexts
-    const editor = requireEditor();
-    return editor.workspace as unknown as WorkspaceLike;
+    // Lazy access of useEditor() — this is called only from event handlers
+    // (startTabHover's setTimeout callback), by which time the EditorContext
+    // module is fully initialized. The static import above is safe because
+    // we only call useEditor() inside a function body, not at module top
+    // level, so the circular import between DragController ↔ EditorContext
+    // resolves cleanly (this was previously done via `require()` which
+    // Vite mis-transformed to an async dynamic import, breaking the sync
+    // workspace() call).
+    return useEditor().workspace as unknown as WorkspaceLike;
   };
 
   const [state, setState] = createSignal<DragState>({
@@ -115,9 +122,3 @@ export function useDragController(): DragController {
   return ctx;
 }
 
-function requireEditor(): { workspace: unknown } {
-  // Dynamic import to break circular dep: DragController <-> EditorContext
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require("./EditorContext");
-  return mod.useEditor();
-}
