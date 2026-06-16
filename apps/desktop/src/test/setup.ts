@@ -43,11 +43,17 @@
 //     // NO sequence.concurrent: true — breaks 67 tests
 //   }
 
-import { beforeEach, afterEach } from 'vitest';
+import { beforeEach, afterEach, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 
 beforeEach(() => {
   document.body.innerHTML = '';
+  // jsdom 29 does not implement elementFromPoint — useCanvasLayerDrag relies
+  // on it for tab hover detection during canvas drag. Default to null so
+  // per-test mocks can override.
+  if (typeof document.elementFromPoint !== "function") {
+    (document as any).elementFromPoint = vi.fn().mockReturnValue(null);
+  }
 });
 
 afterEach(() => {

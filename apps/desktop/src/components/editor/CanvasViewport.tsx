@@ -10,6 +10,7 @@ import { useBrushOverlay } from "./useBrushOverlay";
 import { usePanNavigation } from "./usePanNavigation";
 import { useViewportRenderer } from "./useViewportRenderer";
 import { useCanvasPointerTools } from "./useCanvasPointerTools";
+import { useCanvasLayerDrag } from "./useCanvasLayerDrag";
 import { useCanvasDerivedState } from "./useCanvasDerivedState";
 import { useDragController } from "./DragController";
 import { addLayerFromCrossDoc, addFilesAsLayers } from "./crossDocLayerOps";
@@ -341,6 +342,8 @@ export function CanvasViewport() {
     cropSnapTargets: () => cropSnapTargets(),
     moveSnapEnabled: () => moveSnapEnabled(),
   });
+
+  const canvasLayerDrag = useCanvasLayerDrag();
 
   const { cropSnapTargets } = useCanvasDerivedState({
     getCanvasContainerRef: () => canvasContainerRef,
@@ -715,7 +718,9 @@ export function CanvasViewport() {
       }}
       style={{
         cursor:
-          activeTool() === "crop" &&
+          activeTool() === "move"
+            ? "grab"
+            : activeTool() === "crop" &&
           cropInteractionMode() === "modern" &&
           !modernCropFrame()
             ? "crosshair"
@@ -729,10 +734,14 @@ export function CanvasViewport() {
           onViewportPointerDown(e);
           return;
         }
-        handlePasteboardPointerDown(e);
+        // Try canvas layer drag first (click+drag in canvas to move/drop on tab)
+        canvasLayerDrag.handlePointerDown(e);
         if (!e.defaultPrevented) {
-          handleMoveAutoSelect(e);
-          onViewportPointerDown(e);
+          handlePasteboardPointerDown(e);
+          if (!e.defaultPrevented) {
+            handleMoveAutoSelect(e);
+            onViewportPointerDown(e);
+          }
         }
       }}
       onPointerMove={(e) => {
