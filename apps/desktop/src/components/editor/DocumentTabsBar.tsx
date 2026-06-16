@@ -5,7 +5,7 @@ import { useEditor } from "./EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
 import { cancelLayerTransformSession } from "./transformSession";
 import { useDragController } from "./DragController";
-import { addFilesAsLayers, createNewDocsFromFiles } from "./crossDocLayerOps";
+import { addFilesAsLayers, addLayerFromCrossDoc, createNewDocsFromFiles } from "./crossDocLayerOps";
 
 export function DocumentTabsBar() {
   const { workspace, documents, activeDocumentId, renderer, scheduler, layerTransformSession, setLayerTransformSession } = useEditor();
@@ -71,7 +71,18 @@ export function DocumentTabsBar() {
     e.preventDefault();
     drag.cancelTabHover();
     const state = drag.state();
-    if (state.dragKind === "file" && state.filePaths) {
+    if (state.dragKind === "layer" && state.payload) {
+      const engine = workspace.getEngine(tabId);
+      if (engine) {
+        addLayerFromCrossDoc(
+          state.payload,
+          { type: "tab", docId: tabId },
+          { x: engine.getWidth() / 2, y: engine.getHeight() / 2 },
+          workspace as unknown as Parameters<typeof addLayerFromCrossDoc>[3]
+        );
+        scheduler.requestRender();
+      }
+    } else if (state.dragKind === "file" && state.filePaths) {
       const engine = workspace.getEngine(tabId);
       if (engine) {
         const created = await addFilesAsLayers(

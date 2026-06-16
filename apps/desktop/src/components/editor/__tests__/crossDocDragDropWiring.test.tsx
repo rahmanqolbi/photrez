@@ -20,6 +20,7 @@ import { EditorProvider, useEditor } from "../EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
 import { GlobalDragDropHost } from "../GlobalDragDropHost";
 import { LayerItem } from "../LayerItem";
+import { DocumentTabsBar } from "../DocumentTabsBar";
 import { DragControllerProvider, useDragController } from "../DragController";
 import { findDropZoneAtPoint, dispatchTauriFileDrop } from "../crossDocDropDispatch";
 import { resetToasts } from "../Toast";
@@ -420,5 +421,232 @@ describe("LayerItem wiring (in-app layer drag)", () => {
     // so the onDragStart should be a no-op even if dispatched manually.
     fireDragStart(layerEl);
     expect(probeRef.current!.state().dragKind).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+//  DocumentTabsBar wiring: handleTabDrop must handle BOTH file drag AND
+//  layer drag. The previous code only handled file drag → layer drop on
+//  tab was a silent no-op even though state.dragKind === "layer".
+// ─────────────────────────────────────────────────────────────────────────
+
+describe("DocumentTabsBar wiring (tab drop with layer drag)", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+  let probeRef: { current: ReturnType<typeof useDragController> | null };
+
+  function renderTabs() {
+    ws = new WorkspaceManager();
+    const a = WorkspaceManager.createBlankDocument("doc-a", "A", 800, 600);
+    const b = WorkspaceManager.createBlankDocument("doc-b", "B", 800, 600);
+    ws.addDocument(a);
+    ws.addDocument(b);
+    ws.switchDocument("doc-a");
+    // Add a layer to doc-a so we have something to drag
+    const dragMeLayer = a.engine.addLayer("Drag Me");
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    probeRef = { current: null };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    const Probe = () => {
+      probeRef!.current = useDragController();
+      return null;
+    };
+    dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer} scheduler={scheduler}>
+          <DocumentTabsBar />
+          <Probe />
+        </EditorProvider>
+      ),
+      container,
+    );
+    return { dragMeLayerId: dragMeLayer.id };
+  }
+
+  const tick = (ms = 50) => new Promise<void>((r) => setTimeout(r, ms));
+
+  function fireDrop(tabEl: Element) {
+    const dt = { getData: vi.fn(), setData: vi.fn() } as any;
+    const evt = new Event("drop", { bubbles: true, cancelable: true }) as any;
+    evt.dataTransfer = dt;
+    tabEl.dispatchEvent(evt);
+  }
+
+  it("drop on tab with layer state copies layer to target doc (the missing wiring)", async () => {
+    const { dragMeLayerId } = renderTabs();
+    await tick();
+
+    probeRef.current!.beginLayerDrag(
+      {
+        version: 1,
+        sourceDocId: "doc-a",
+        layerId: dragMeLayerId,
+        sourceName: "Drag Me",
+        isAltPressed: false,
+      },
+      null,
+    );
+
+    const tabEl = container.querySelector('[data-document-tab="doc-b"]') as HTMLElement;
+    expect(tabEl).not.toBeNull();
+    fireDrop(tabEl);
+    await tick();
+
+    // The target doc should now have a new layer (bg + 1 copied layer = 2)
+    const targetEngine = ws.getEngine("doc-b")!;
+    expect(targetEngine.getLayers().length).toBe(2);
+    // Source unchanged (default = copy, not move)
+    expect(ws.getEngine("doc-a")!.getLayers().length).toBe(2);
+    // The new layer is inserted above the bg (active layer); find by name to be
+    // position-independent.
+    const copied = targetEngine.getLayers().find(l => l.name === "Drag Me");
+    expect(copied).toBeDefined();
+  });
+
+  it("drop on tab with Alt+drag MOVES layer from source to target", async () => {
+    const { dragMeLayerId } = renderTabs();
+    await tick();
+
+    probeRef.current!.beginLayerDrag(
+      {
+        version: 1,
+        sourceDocId: "doc-a",
+        layerId: dragMeLayerId,
+        sourceName: "Drag Me",
+        isAltPressed: true,
+      },
+      null,
+    );
+
+    const tabEl = container.querySelector('[data-document-tab="doc-b"]') as HTMLElement;
+    fireDrop(tabEl);
+    await tick();
+
+    // Source loses the layer (move)
+    expect(ws.getEngine("doc-a")!.getLayers().length).toBe(1);
+    // Target gains it (find by name to be position-independent)
+    expect(ws.getEngine("doc-b")!.getLayers().length).toBe(2);
+    expect(ws.getEngine("doc-b")!.getLayers().some(l => l.name === "Drag Me")).toBe(true);
+  });
+
+  it("drop on same-source tab is a no-op (same-doc drag prevented)", async () => {
+    const { dragMeLayerId } = renderTabs();
+    await tick();
+
+    probeRef.current!.beginLayerDrag(
+      {
+        version: 1,
+        sourceDocId: "doc-a",
+        layerId: dragMeLayerId,
+        sourceName: "Drag Me",
+        isAltPressed: false,
+      },
+      null,
+    );
+
+    const sameTabEl = container.querySelector('[data-document-tab="doc-a"]') as HTMLElement;
+    fireDrop(sameTabEl);
+    await tick();
+
+    // Both should be unchanged
+    expect(ws.getEngine("doc-a")!.getLayers().length).toBe(2);
+    expect(ws.getEngine("doc-b")!.getLayers().length).toBe(1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+//  Hover-to-switch: dragover on a tab for 500ms must switch the active
+//  document. This is the feature: "pas di drag ke tab maka akan terbuka
+//  document yang satunya".
+// ─────────────────────────────────────────────────────────────────────────
+
+describe("DocumentTabsBar wiring (hover-to-switch)", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+  let probeRef: { current: any };
+
+  function renderTabs() {
+    ws = new WorkspaceManager();
+    const a = WorkspaceManager.createBlankDocument("doc-a", "A", 800, 600);
+    const b = WorkspaceManager.createBlankDocument("doc-b", "B", 800, 600);
+    ws.addDocument(a);
+    ws.addDocument(b);
+    ws.switchDocument("doc-a");
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    probeRef = { current: null };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    const Probe = () => {
+      probeRef.current = { drag: useDragController(), editor: useEditor() };
+      return null;
+    };
+    dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer} scheduler={scheduler}>
+          <DocumentTabsBar />
+          <Probe />
+        </EditorProvider>
+      ),
+      container,
+    );
+  }
+
+  function fireDragOver(tabEl: Element) {
+    const dt = { types: ["application/x-photrez-layer"], setData: vi.fn() } as any;
+    const evt = new Event("dragover", { bubbles: true, cancelable: true }) as any;
+    evt.dataTransfer = dt;
+    tabEl.dispatchEvent(evt);
+  }
+
+  it("dragover on a different tab sets dropTarget to that tab", async () => {
+    renderTabs();
+    const tabEl = container.querySelector('[data-document-tab="doc-b"]') as HTMLElement;
+    fireDragOver(tabEl);
+    const dropTarget = probeRef.current.drag.state().dropTarget;
+    expect(dropTarget).toEqual({ type: "tab", docId: "doc-b" });
+  });
+
+  it("hovering over a different tab sets hoverTabId (timer-driven switch is unit-tested in DragController.test.tsx)", async () => {
+    renderTabs();
+    expect(ws.getActiveDocumentId()).toBe("doc-a");
+
+    const tabEl = container.querySelector('[data-document-tab="doc-b"]') as HTMLElement;
+    fireDragOver(tabEl);
+    expect(probeRef.current.drag.state().hoverTabId).toBe("doc-b");
+    // The 500ms timer is started inside DragController.startTabHover; here we
+    // only verify the state is set correctly so the real-app switch WILL fire
+    // (verified separately in DragController.test.tsx with workspaceOverride).
+  });
+
+  it("dragleave on tab cancels the hover-to-switch timer", async () => {
+    vi.useFakeTimers();
+    try {
+      renderTabs();
+      const tabEl = container.querySelector('[data-document-tab="doc-b"]') as HTMLElement;
+      fireDragOver(tabEl);
+      expect(probeRef.current.drag.state().hoverTabId).toBe("doc-b");
+
+      // Simulate leaving the tab — no relatedTarget means we go off the tab
+      const leaveEvt = new Event("dragleave", { bubbles: true, cancelable: true }) as any;
+      leaveEvt.relatedTarget = null;
+      Object.defineProperty(leaveEvt, "currentTarget", { value: tabEl });
+      tabEl.dispatchEvent(leaveEvt);
+
+      expect(probeRef.current.drag.state().hoverTabId).toBeNull();
+
+      vi.advanceTimersByTime(500);
+      expect(ws.getActiveDocumentId()).toBe("doc-a");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
