@@ -75,27 +75,37 @@ export function addLayerFromCrossDoc(
 
   const targetPos: Point = target && target.type === "canvas"
     ? cursorPos
-    : {
-        x: Math.max(0, (targetEngine.width - sourceLayer.width) / 2),
-        y: Math.max(0, (targetEngine.height - sourceLayer.height) / 2),
-      };
-
-  const cloned = {
-    ...sourceLayer,
-    id: `layer-${crypto.randomUUID()}`,
-    transform: { ...sourceLayer.transform, x: targetPos.x, y: targetPos.y },
-  };
+    : (() => {
+        // Real DocumentEngine exposes getWidth/getHeight; mock engine
+        // exposes .width/.height. Use as any to handle both.
+        const e = targetEngine as any;
+        const tw = typeof e.getWidth === "function" ? e.getWidth() : (e.width ?? 0);
+        const th = typeof e.getHeight === "function" ? e.getHeight() : (e.height ?? 0);
+        return {
+          x: Math.max(0, (tw - (sourceLayer.width ?? 0)) / 2),
+          y: Math.max(0, (th - (sourceLayer.height ?? 0)) / 2),
+        };
+      })();
 
   const targetHistory = ws.getHistory(targetDocId);
   if (targetHistory) targetHistory.commit(targetEngine.snapshot());
 
-  // Real engine API: addLayer(name, width?, height?) returns LayerNode,
-  // then moveLayer(id, x, y) to set position. The mock in unit tests
-  // accepts any args so both work.
-  const added = targetEngine.addLayer(sourceLayer.name ?? "Imported");
-  const newId = (added as any)?.id;
-  if (newId && typeof targetEngine.moveLayer === "function") {
-    targetEngine.moveLayer(newId, targetPos.x, targetPos.y);
+  // Real engine API: addLayer(name, width?, height?) returns LayerNode.
+  // EngineFacade declares single-arg addLayer(layer: any) — pass 3 args
+  // at runtime; real engine picks up name + optional w/h, mock ignores extras.
+  const e = targetEngine as any;
+  const added = e.addLayer(sourceLayer.name ?? "Imported", sourceLayer.width, sourceLayer.height);
+  const newId = added?.id;
+  if (newId) {
+    if (typeof e.transformLayer === "function") {
+      e.transformLayer(newId, { ...sourceLayer.transform, x: targetPos.x, y: targetPos.y });
+    } else if (typeof e.moveLayer === "function") {
+      e.moveLayer(newId, targetPos.x, targetPos.y);
+    }
+    if (typeof e.setLayerOpacity === "function") e.setLayerOpacity(newId, sourceLayer.opacity ?? 1);
+    if (typeof e.setLayerBlendMode === "function") e.setLayerBlendMode(newId, sourceLayer.blendMode ?? "normal");
+    if (typeof e.setLayerVisibility === "function") e.setLayerVisibility(newId, sourceLayer.visible ?? true);
+    if (typeof e.setLayerLocked === "function") e.setLayerLocked(newId, sourceLayer.locked ?? false);
   }
 
   if (payload.isAltPressed) {
@@ -128,13 +138,13 @@ export function addFilesAsLayers(
   paths.forEach((path, i) => {
     const pos = computeCascadePosition(basePos, i);
     const name = path.split(/[\\/]/).pop() ?? "Imported";
-    // Real engine API: addLayer(name, width?, height?) returns LayerNode,
-    // then moveLayer(id, x, y) to set position. The mock in tests accepts
-    // any args so both work.
-    const added = targetEngine.addLayer(name);
-    const newId = (added as any)?.id;
-    if (newId && typeof targetEngine.moveLayer === "function") {
-      targetEngine.moveLayer(newId, pos.x, pos.y);
+    // Phase 2 TODO: read file via Tauri open_images IPC and call
+    // setLayerImageBitmap. For now the layer is created empty.
+    const e = targetEngine as any;
+    const added = e.addLayer(name);
+    const newId = added?.id;
+    if (newId && typeof e.moveLayer === "function") {
+      e.moveLayer(newId, pos.x, pos.y);
     }
   });
 }

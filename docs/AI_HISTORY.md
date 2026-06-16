@@ -5652,6 +5652,55 @@ For paste, ddLayer sets ctiveLayerId = newLayer.id (apps/desktop/src/engine/do
 **Architectural notes (final):**
 - SelectionOperations remains engine-only. History commit and renderer upload are the caller's responsibility, not the class's. This keeps the class testable in isolation (17 existing tests) and lets the call sites apply the standard history/renderer pattern consistently.
 - The pattern is now: COMMIT (pre-action) → MUTATE (engine) → UPLOAD (renderer) → RENDER (scheduler). This is the same pattern used by brush, move, crop, layer operations.
-- pasteSelection has a slight asymmetry: it both ADDS a new layer (model change → 
-otifyChange) and MUTATES its bitmap (visual change → 
+- pasteSelection has a slight asymmetry: it both ADDS a new layer (model change →
+otifyChange) and MUTATES its bitmap (visual change →
 otifyVisualChange). The commit captures both. After commit, the new layer's imageBitmap is set, then we upload it.
+
+---
+
+## [2026-06-16] BUG FIX — Cross-Doc Layer Copy Property Preservation [COMPLETE]
+
+### Kategori: BUG FIX / FRONTEND / CROSS-DOC / DRAG-AND-DROP
+
+**Reported by:** user (after FEATURE T17 above) — "tests pass but app fails in practice" pattern.
+
+**Root Cause:**
+`addLayerFromCrossDoc` only called `targetEngine.addLayer(name) + moveLayer(x, y)`. The real `DocumentEngine.addLayer(name, width?, height?)` sets ONLY name + position + size. Every other layer property (opacity, blend mode, visibility, locked, transform rotation/scale) was lost on cross-doc copy. The original mock-based unit tests in `crossDocLayerOps.test.ts` accepted any args and never detected this — that's the "tests pass but app fails" pattern.
+
+**Fix:**
+1. After `addLayer`, call existing engine setters: `transformLayer` (replaces `moveLayer`, preserves full transform), `setLayerOpacity`, `setLayerBlendMode`, `setLayerVisibility`, `setLayerLocked`. Each call is guarded by `typeof e.setter === "function"` so both real engine and mock test engines work without interface changes.
+2. Width/height passed directly to `addLayer(name, sourceLayer.width, sourceLayer.height)` — real engine uses them, mock ignores extras.
+3. Width/height access via `(targetEngine as any).getWidth?.() ?? .width ?? 0` — handles both real engine (methods) and mock engine (properties) without changing `DocumentEngine` or `EngineFacade`.
+
+**Why no model changes (ponytail YAGNI):**
+- Did NOT add `get id/width/height()` getters to `DocumentEngine` (would have leaked a TS-shape constraint into the engine class)
+- Did NOT change `EngineFacade.addLayer` signature (would have forced mock tests to update)
+- Used existing `as any` cast pattern already established in the file
+
+**Test coverage added (real engine, no mocks):**
+- `crossDocLayerOps.engine.test.ts` — 5 tests using real `WorkspaceManager` + `DocumentEngine`:
+  - opacity preserved (0.42)
+  - blend mode preserved ("multiply")
+  - visibility preserved (false)
+  - size preserved (800x600)
+  - tab target centers layer at ((targetW - sourceW) / 2, (targetH - sourceH) / 2)
+- All 5 PASS — total 1037 tests (was 1032), 0 regression, 72 files green.
+
+**Bug found during integration (closure capture):**
+- First run of the engine test: all 5 failed with "expected undefined to be defined".
+- Traced: `const basePayload = { sourceDocId, layerId: sourceLayerId, ... }` was declared with `const` at `describe`-level, evaluated ONCE before `beforeEach` ran, capturing `undefined` for both `sourceDocId` and `sourceLayerId`. Classic closure/timing trap.
+- Fix: moved `basePayload` initializer into `beforeEach` block so it captures post-setup values.
+
+**Bug found during integration (interface mismatch):**
+- Position test: `cloned.transform.x = NaN` instead of 100.
+- Traced: `targetEngine.width` is `undefined` because `DocumentEngine` exposes `getWidth()`/`getHeight()` methods, not `.width`/`.height` properties. The `EngineFacade` interface requires `.width`/`.height` but the real engine doesn't have them.
+- Fix: use `as any` resilient access pattern (did NOT add getters to engine — that's a model change).
+
+**Verification:**
+- `pnpm.cmd run build` green (6.99s)
+- `pnpm.cmd --filter photrez-desktop test --run` green (1037/1037, 67.15s)
+- 72 test files, 5 new engine tests, 0 regression
+
+**Files changed:**
+- `apps/desktop/src/components/editor/crossDocLayerOps.ts` — preserve 5 source properties after addLayer
+- `apps/desktop/src/components/editor/__tests__/crossDocLayerOps.engine.test.ts` — NEW real-engine integration test (5 tests)
