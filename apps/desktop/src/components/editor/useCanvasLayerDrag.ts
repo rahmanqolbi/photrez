@@ -97,11 +97,14 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
 
     document.removeEventListener("pointermove", onPointerMove);
     document.removeEventListener("pointerup", onPointerUp);
+    document.removeEventListener("pointercancel", onPointerCancel);
 
     const dropTarget = dragController.state().dropTarget;
     const src = activeDocumentId();
+    console.log("[useCanvasLayerDrag] pointerup", { dropTarget, src, layerId: d.layerId });
 
     if (dropTarget && dropTarget.type === "tab" && dropTarget.docId !== src) {
+      // Cross-doc copy logic (unchanged) ...
       const engine = workspace.getEngine(src!);
       const sourceLayer = engine?.getLayer(d.layerId);
       if (sourceLayer && engine) {
@@ -120,7 +123,6 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
         scheduler.requestRender();
       }
     } else if (dropTarget && dropTarget.type === "tab" && dropTarget.docId === src) {
-      // Dropped on the same source tab: revert the in-place move
       const engine = workspace.getEngine(src!);
       if (engine) {
         engine.transformLayer(d.layerId, {
@@ -130,7 +132,6 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
         scheduler.requestRender();
       }
     }
-    // Else: layer is already at the new position in the current doc.
 
     dragController.setDropTarget(null);
     setDrag(null);
@@ -158,20 +159,31 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
   }
 
   function handlePointerDown(e: PointerEvent) {
-    if (activeTool() !== "move") return;
-    if (e.button !== 0) return;
+    console.log("[useCanvasLayerDrag] pointerdown", { tool: activeTool(), button: e.button, target: (e.target as HTMLElement)?.tagName });
+    if (activeTool() !== "move") {
+      console.log("[useCanvasLayerDrag] abort: not move tool");
+      return;
+    }
+    if (e.button !== 0) {
+      console.log("[useCanvasLayerDrag] abort: not primary button");
+      return;
+    }
     // Ignore if the click was on a transform handle (let useSelectionTransformDrag handle it)
     const target = e.target as HTMLElement;
-    if (target.closest("[data-transform-handle]")) return;
-    // Ignore if the click is on the SVG overlay (transform handles)
-    if (target.closest("svg")) return;
-    // Ignore if a layer transform session is active (useSelectionTransformDrag)
-    // — checked via the absence of the handle selector above.
+    if (target.closest("[data-transform-handle]")) {
+      console.log("[useCanvasLayerDrag] abort: transform handle");
+      return;
+    }
+    if (target.closest("svg")) {
+      console.log("[useCanvasLayerDrag] abort: svg element");
+      return;
+    }
 
     const container = e.currentTarget as HTMLElement;
     const rect = container.getBoundingClientRect();
     const docPos = camera.screenToDocument(e.clientX - rect.left, e.clientY - rect.top);
     const layer = findLayerAt(docPos.x, docPos.y);
+    console.log("[useCanvasLayerDrag] hit test", { docPos, layer: layer?.name });
     if (!layer) return;
 
     setDrag({
