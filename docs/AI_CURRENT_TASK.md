@@ -1072,6 +1072,43 @@ Standardize the visual design of the interactive Opacity slider in the Propertie
 
 ---
 
+### [2026-06-16] BUG FIX — Cross-Doc Drag-Drop Wiring [COMPLETE]
+
+**Goal:** Close the "feature doesn't work in real app" gap. Previous Phase 1 + Phase 2 commits only fixed pure functions; wiring from real user input to those functions was missing in 3 places.
+
+**Fixed 3 wiring bugs:**
+1. **OS file drop listener scoped to EmptyWorkspace** — `useTauriDragDrop` unmounted when docs exist → no listener
+2. **`dragController.beginLayerDrag` never called from production** — `state.dragKind` always `null` → drop zones no-op
+3. **OS file drop is Tauri webview event, not HTML5** — drop zones' HTML5 onDrop never fires for OS files
+
+**Fix:**
+- New `GlobalDragDropHost` mounted in `EditorShell` (always alive) subscribes to Tauri `onDragDropEvent` and dispatches to `addFilesAsLayers` / `createNewDocsFromFiles` based on zone resolved via `elementFromPoint` + `data-drop-zone` walk
+- New `crossDocDropDispatch.ts` with pure functions: `findDropZoneAtPoint` + `dispatchTauriFileDrop`
+- `LayerItem.onDragStart` calls `dragController.beginLayerDrag` + new `onDragEnd` → `endDrag`
+- Added `data-tab-bar-empty` zone marker to `DocumentTabsBar`
+- Removed `useTauriDragDrop` from `EmptyWorkspace` (now globally handled)
+- `AGENTS.md` updated: "Definition of Done for any New Feature" + anti-pattern docs
+
+**New wiring tests (16):**
+- 6 × `findDropZoneAtPoint` (zone resolution)
+- 6 × `GlobalDragDropHost` integration (Tauri drop on canvas/panel/tab/tab-empty/outside + subscribe verification)
+- 4 × `LayerItem` integration (onDragStart → state, Alt key, onDragEnd cleanup, locked layer no-op)
+
+**Why previous verification missed this:**
+- Unit tests for pure functions passed (9 in `crossDocLayerOps.test.ts`)
+- 5 new real-engine integration tests in 1a4df1e
+- But NO test verified wiring from real user input to the pure functions
+- `engine-signal-contract.test.tsx` bypassed wiring by calling `addFilesAsLayers` directly
+
+**Verification:**
+- PASS: `pnpm run build` (38.52s)
+- PASS: `pnpm --filter photrez-desktop test --run` (1053/1053, 83.90s)
+- 73 test files (was 72), 16 new tests, 0 regression
+
+**Next:** Real-app smoke test via `pnpm tauri dev` (user-runnable) — drag file from OS, drag layer between docs, hold Alt for move.
+
+---
+
 ### [2026-06-16] BUG FIX — Cross-Doc Layer Copy Property Preservation + Async File Drop [COMPLETE]
 
 **Goal:** Close two "tests pass but app fails" bugs in cross-doc drag-drop:

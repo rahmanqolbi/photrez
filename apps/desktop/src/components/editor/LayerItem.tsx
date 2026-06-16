@@ -4,6 +4,7 @@ import { Icon } from "./icons";
 import { LayerNode } from "@/engine/types";
 import { LayerThumb } from "./LayerThumb";
 import { LAYER_DRAG_MIME, LayerDragPayload } from "./dragTypes";
+import { useDragController } from "./DragController";
 
 interface LayerItemProps {
   layer: LayerNode;
@@ -29,6 +30,8 @@ interface LayerItemProps {
 }
 
 export function LayerItem(props: LayerItemProps) {
+  const dragController = useDragController();
+
   const commitRename = () => {
     const nextName = props.editName.trim();
     if (!nextName || nextName === props.layer.name) {
@@ -62,6 +65,11 @@ export function LayerItem(props: LayerItemProps) {
     };
     dt.setData(LAYER_DRAG_MIME, JSON.stringify(payload));
     dt.effectAllowed = e.altKey ? "move" : "copy";
+    dragController.beginLayerDrag(payload, null);
+  };
+
+  const onLayerDragEnd = () => {
+    dragController.endDrag();
   };
 
   return (
@@ -69,6 +77,7 @@ export function LayerItem(props: LayerItemProps) {
       data-layer-idx={props.idx}
       draggable={!props.layer.locked}
       onDragStart={onLayerDragStart}
+      onDragEnd={onLayerDragEnd}
       onClick={() => props.onSelect(props.layer.id)}
       onPointerDown={(e) => !props.layer.locked && props.onPointerDragStart(e, props.idx)}
       class={clsx(

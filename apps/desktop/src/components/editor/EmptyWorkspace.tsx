@@ -1,11 +1,9 @@
 import { Icon } from "./icons";
 import { useEditor } from "./EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
-import { useTauriDragDrop } from "./useTauriDragDrop";
-import { createNewDocsFromFiles } from "./crossDocLayerOps";
 
 export function EmptyWorkspace() {
-  const { openImage, workspace, renderer, scheduler } = useEditor();
+  const { openImage, workspace } = useEditor();
 
   const handleNewCanvas = () => {
     const widthStr = prompt("Enter canvas width (pixels):", "1920");
@@ -24,16 +22,6 @@ export function EmptyWorkspace() {
     const session = WorkspaceManager.createBlankDocument(id, "Untitled Canvas", width, height);
     workspace.addDocument(session);
   };
-
-  useTauriDragDrop({
-    onDrop: async (paths) => {
-      const created = await createNewDocsFromFiles(paths, workspace as unknown as Parameters<typeof createNewDocsFromFiles>[1]);
-      for (const { backgroundLayerId, bitmap } of created) {
-        renderer.uploadImage(backgroundLayerId, bitmap);
-      }
-      if (created.length) scheduler.requestRender();
-    },
-  });
 
   return (
     <div class="flex flex-1 items-center justify-center bg-editor-canvas p-6">
@@ -80,4 +68,3 @@ export function EmptyWorkspace() {
     </div>
   );
 }
-

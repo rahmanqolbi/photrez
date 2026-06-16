@@ -116,6 +116,7 @@ export function DocumentTabsBar() {
   return (
     <div
       class="flex h-[44px] shrink-0 items-stretch overflow-x-auto border-b border-editor-divider bg-editor-topbar"
+      data-tab-bar-empty
       onDragOver={handleTabBarDragOver}
       onDrop={handleTabBarDrop}
     >

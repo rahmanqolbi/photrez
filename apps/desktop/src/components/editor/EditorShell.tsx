@@ -11,6 +11,7 @@ import { EmptyWorkspace } from "./EmptyWorkspace";
 import { ResizeCanvasModal } from "./ResizeCanvasModal";
 import { ExportDialog } from "./ExportDialog";
 import { ToastHost } from "./Toast";
+import { GlobalDragDropHost } from "./GlobalDragDropHost";
 
 // Core singletons import
 import { WorkspaceManager } from "@/engine/workspace";
@@ -100,6 +101,7 @@ export function EditorShell() {
 
   return (
     <EditorProvider workspace={workspace} renderer={renderer} scheduler={scheduler} camera={camera}>
+      <GlobalDragDropHost />
       <EditorLayout
         rightDockOpen={rightDockOpen()}
         toggleRightDock={toggleRightDock}

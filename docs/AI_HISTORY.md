@@ -5752,3 +5752,77 @@ Make `addFilesAsLayers` and `createNewDocsFromFiles` actually read real file byt
 - `apps/desktop/src/components/editor/DocumentTabsBar.tsx` — await + upload bitmaps
 - `apps/desktop/src/components/editor/EmptyWorkspace.tsx` — await + upload bitmaps + fix missing destructure
 - `apps/desktop/src/components/editor/__tests__/engine-signal-contract.test.tsx` — mock file I/O + async test + fix active doc assertion
+
+---
+
+## [2026-06-16] BUG FIX — Cross-Doc Drag-Drop Wiring [COMPLETE]
+
+### Kategori: BUG FIX / FRONTEND / CROSS-DOC / DRAG-AND-DROP
+
+**Reported by:** user — "fitur ini bisa ngebuat saya dapat drag layer ke dokumen lain atau dari file luar ke dokumen, tapi sama sekali enggak bisa, kayak nggak ada bedanya sebelum penambahan fitur". Honest feedback: the user was 100% right. Previous Phase 1 + Phase 2 commits (1a4df1e, b8617e5) only fixed the pure functions; the **wiring** from real user input to those functions was missing in 3 places, so the entire feature was a silent no-op in the real app.
+
+**Root Causes (3 wiring bugs):**
+
+1. **OS file drop listener scoped to `EmptyWorkspace` only**
+   - `useTauriDragDrop` was mounted only in `EmptyWorkspace.tsx` via `onMount`
+   - When workspace is non-empty, `EmptyWorkspace` unmounts → `onCleanup` calls `unlisten()` → Tauri OS file drop listener is gone
+   - Result: dragging files from File Explorer into Photrez with documents open = nothing happens
+   - **Fix**: Created `GlobalDragDropHost` mounted once in `EditorShell` (always alive). Subscribes to Tauri `onDragDropEvent` globally, dispatches to `addFilesAsLayers` / `createNewDocsFromFiles` based on drop zone resolved via `document.elementFromPoint` + `data-drop-zone` attribute walk
+
+2. **`dragController.beginLayerDrag` never called from production**
+   - DragController had `beginLayerDrag` and `beginFileDrag` methods (covered by unit tests)
+   - But production code never called them — `state.dragKind` always `null` in real app
+   - Drop zones' HTML5 `onDrop` checked `state.dragKind === "layer"` and found `null` → silent no-op
+   - Result: in-app layer drag from LayersPanel to Canvas/Tab = nothing happens
+   - **Fix**: `LayerItem.onDragStart` now calls `dragController.beginLayerDrag(payload, null)` after setting the MIME. Also added `onDragEnd` → `dragController.endDrag()` to prevent orphan state
+
+3. **OS file drop path is a Tauri webview event, not HTML5**
+   - Tauri 2 intercepts OS file drop at the webview level and fires `onDragDropEvent`
+   - HTML5 `onDrop` handlers on drop zones never fire for OS files
+   - Previous design assumed HTML5 events would work, but the production reality is that ONLY the Tauri callback can see OS file paths
+   - **Fix**: `GlobalDragDropHost` is the single source for OS file drop dispatch. Drop zones' HTML5 handlers are for in-app layer drag only
+
+**New files:**
+- `apps/desktop/src/components/editor/GlobalDragDropHost.tsx` — SolidJS component, subscribes to Tauri `onDragDropEvent`, dispatches via `findDropZoneAtPoint` + `dispatchTauriFileDrop`
+- `apps/desktop/src/components/editor/crossDocDropDispatch.ts` — pure functions: `findDropZoneAtPoint(x, y)` (zone resolution by data-attribute walk) + `dispatchTauriFileDrop(paths, position, deps)` (calls `addFilesAsLayers` or `createNewDocsFromFiles` based on zone)
+
+**Files modified:**
+- `EditorShell.tsx` — added `<GlobalDragDropHost />` inside `EditorProvider` (mounts globally)
+- `LayerItem.tsx` — `onDragStart` calls `dragController.beginLayerDrag`; added `onDragEnd` → `endDrag`
+- `DocumentTabsBar.tsx` — added `data-tab-bar-empty` to tab bar container (zone marker)
+- `EmptyWorkspace.tsx` — removed `useTauriDragDrop` + `createNewDocsFromFiles` import/call (now handled by `GlobalDragDropHost`)
+- `AGENTS.md` — added "Definition of Done for any New Feature" section + anti-pattern docs
+
+**Why this was missed by previous verification:**
+- 1032 unit tests passed, including `crossDocLayerOps.test.ts` (9 tests on the pure function)
+- 5 new real-engine integration tests added in 1a4df1e
+- But NO test verified the **wiring** from real user input to the pure functions
+- `engine-signal-contract.test.tsx` tested `addFilesAsLayers` directly with a manual state setup — bypassed the wiring
+
+**New wiring tests (`crossDocDragDropWiring.test.tsx`, 16 tests):**
+- 6 × `findDropZoneAtPoint` (zone resolution by data attribute)
+- 6 × `GlobalDragDropHost` integration (Tauri OS drop → addFilesAsLayers/createNewDocsFromFiles on each zone)
+- 4 × `LayerItem` integration (onDragStart → dragController state, Alt key, onDragEnd cleanup, locked layer no-op)
+
+**Why the Tauri mock works for tests:**
+- Uses `vi.hoisted` to share state between the `vi.mock` factory (hoisted to top of file) and the test bodies
+- `getCurrentWebview().onDragDropEvent(cb)` captures the callback in `tauriState.capturedCallback`
+- Tests fire the callback synchronously to simulate OS file drop
+
+**Why the integration test pattern works:**
+- `findDropZoneAtPoint` is tested as a pure function (mock `document.elementFromPoint`)
+- `GlobalDragDropHost` is tested by rendering it inside `EditorProvider` + `DragControllerProvider`, triggering the captured Tauri callback, asserting engine state changes
+
+**Verification:**
+- `pnpm.cmd run build` green (38.52s)
+- `pnpm.cmd --filter photrez-desktop test --run` green (1053/1053, 83.90s)
+- 73 test files (was 72, +1 new file), 16 new tests, 0 regression
+- All 5 OS file drop paths (canvas, layers-panel, tab, tab-empty, outside) verified end-to-end
+- In-app layer drag wiring verified (onDragStart sets state, onDragEnd clears state)
+
+**Real-app smoke test (next step, user-runnable):**
+- `pnpm tauri dev`
+- Drag file from File Explorer → drop on canvas → layer should appear with image
+- Drag file from File Explorer → drop on tabs (not on a tab) → new doc created
+- Drag layer from Layers panel → drop on canvas of different doc → layer copied with all properties
+- Hold Alt while dragging layer → layer MOVED (not copied)
