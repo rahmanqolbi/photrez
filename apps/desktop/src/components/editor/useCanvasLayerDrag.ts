@@ -179,9 +179,17 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
 
     const container = e.currentTarget as HTMLElement;
     const rect = container.getBoundingClientRect();
-    const docPos = camera.screenToDocument(e.clientX - rect.left, e.clientY - rect.top);
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const docPos = camera.screenToDocument(screenX, screenY);
     const layer = findLayerAt(docPos.x, docPos.y);
-    console.log("[useCanvasLayerDrag] hit test", { docPos, layer: layer?.name });
+    console.log("[useCanvasLayerDrag] hit test", {
+      clientX: e.clientX, clientY: e.clientY,
+      rectLeft: rect.left, rectTop: rect.top,
+      screenX, screenY,
+      docPosX: docPos?.x, docPosY: docPos?.y,
+      layer: layer?.name,
+    });
     if (!layer) return;
 
     setDrag({
