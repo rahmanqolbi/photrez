@@ -4,6 +4,75 @@
 
 ## Current Tasks
 
+### [2026-06-16] Feature — Cross-Document Drag & Drop (Layer + File) [IN PROGRESS]
+
+**Goal:**
+Implement two related drag-drop features for Photrez:
+1. **In-app layer drag**: drag a layer from one document's Layers panel to another document (tab/canvas/layers panel). Default = Copy, Alt = Move.
+2. **External file drop**: drag image files from the OS (File Explorer / Finder) into Photrez — as new layer(s) in target doc, or as new document(s) depending on drop zone.
+
+**Sub-features:**
+- Hover-to-switch on document tabs (500ms timer with visual countdown)
+- Multi-file cascade (+24px per layer)
+- Minimal toast notification system for error UX
+
+**Status:** Design phase. Spec at `docs/superpowers/specs/2026-06-16-cross-doc-drag-drop-design.md` (pending review).
+
+**Scope (this phase):**
+- [x] Brainstorming completed (10 clarifying questions, 3 architectural approaches evaluated)
+- [x] User approved design (Q1: Copy+Alt=Move, Q2: Multi-zone drop targets, Q2a: 500ms hover-to-switch, Q3: cursor position, Q4: context-sensitive file drop, Q5: single layer only MVP, Q6: 24px cascade, Q7: A Coexist integration strategy, Q8: per-doc history approach A)
+- [x] Spec draft written
+- [ ] User reviews spec
+- [ ] Invoke writing-plans skill
+- [ ] Implementation + tests
+- [ ] Verification pipeline green
+
+**Key Design Decisions (locked):**
+- Q1: Cross-doc layer drag default = **Copy**, Alt = Move
+- Q2: Drop zones = **Tab (hover) + Canvas + Layers panel**; tab-empty / + / outside = new doc for files only
+- Q2a: Hover-to-switch = **500ms** with visual countdown
+- Q3: Drop position = **cursor** (canvas/tab) / **top of stack** (panel) / **center** (tab after switch)
+- Q4: File drop = **context-sensitive** (new doc vs new layer based on zone)
+- Q5: Multi-layer drag = **single layer only for MVP**
+- Q6: Multi-file cascade = **+24px per layer**
+- Q7: Integration strategy = **Coexist** (pointer events for reorder, HTML5 drag for cross-doc)
+- Q8: History = **per-doc** (Approach A, not atomic across docs)
+- Architecture: **Tauri 2 `onDragDropEvent` for OS files + HTML5 drag for in-app + reuse existing IPC** (no new commands)
+
+**Files to Create (new):**
+- `apps/desktop/src/components/editor/DragController.tsx` (SolidJS context)
+- `apps/desktop/src/components/editor/crossDocLayerOps.ts` (pure logic)
+- `apps/desktop/src/components/editor/dragTypes.ts` (shared types + MIME constant)
+- `apps/desktop/src/components/editor/Toast.tsx` + `ToastHost` (minimal notification)
+- `apps/desktop/src/components/editor/useTauriDragDrop.ts` (Tauri listener hook)
+- Test files: `crossDocLayerOps.test.ts`, `DragController.test.tsx`, `Toast.test.tsx`
+- `apps/desktop/e2e/cross-doc-drag-drop.spec.ts`
+
+**Files to Modify:**
+- `LayerItem.tsx` (add `draggable` + drag handlers + ghost element)
+- `DocumentTabsBar.tsx` (drop zone + hover-to-switch timer + indicator)
+- `CanvasViewport.tsx` (canvas drop zone wrapper)
+- `LayersPanel.tsx` (panel-level drop zone)
+- `EmptyWorkspace.tsx` (replace HTML5 drop with Tauri API)
+- `EditorContext.tsx` (provide DragController + showToast + wire useTauriDragDrop)
+- `EditorShell.tsx` (mount ToastHost)
+- `index.css` (drop indicator styles)
+
+**No Changes:**
+- Rust code (no new IPC commands, no Rust changes)
+- Existing IPC commands (`open_images`, `add_layer`, `delete_layer`, etc.)
+- Existing reorder logic (pointer events preserved)
+- Existing history system (per-doc, no atomic cross-doc)
+- `tauri.conf.json` (Tauri 2 default `dragDropEnabled: true` works for our use case)
+
+**References:**
+- Spec: `docs/superpowers/specs/2026-06-16-cross-doc-drag-drop-design.md` (pending review)
+- Plan: TBD via writing-plans skill
+- Brainstorming: 10 questions in conversation
+- Research sources: Tauri 2 docs (Context7), MDN HTML5 Drag and Drop API, Photoshop/Affinity UX conventions
+
+---
+
 ### [2026-06-15] Migration — Overlay Container to Screen-Space Positioning [COMPLETE]
 
 **Goal:**
