@@ -1,6 +1,8 @@
 import type { LayerDragPayload, DropTarget } from "./dragTypes";
 import { showToast } from "./Toast";
 import { MAX_LAYERS } from "@/engine/types";
+import { readFileBytes } from "@/tauri/native";
+import { WorkspaceManager } from "@/engine/workspace";
 
 export const CASCADE_OFFSET_PX = 24;
 
@@ -32,6 +34,18 @@ export interface WorkspaceFacade {
   isFull(): boolean;
 }
 
+export interface CreatedLayer {
+  docId: string;
+  layerId: string;
+  bitmap: ImageBitmap;
+}
+
+export interface CreatedDoc {
+  docId: string;
+  backgroundLayerId: string;
+  bitmap: ImageBitmap;
+}
+
 export function computeCascadePosition(base: Point, index: number): Point {
   return {
     x: base.x + index * CASCADE_OFFSET_PX,
@@ -42,6 +56,11 @@ export function computeCascadePosition(base: Point, index: number): Point {
 function resolveTargetDocId(target: DropTarget, ws: WorkspaceFacade): string | null {
   if (target && target.type === "tab" && target.docId) return target.docId;
   return ws.getActiveDocumentId();
+}
+
+async function fileToBitmap(path: string): Promise<ImageBitmap> {
+  const bytes = await readFileBytes(path);
+  return await createImageBitmap(new Blob([bytes as any]));
 }
 
 export function addLayerFromCrossDoc(
@@ -115,48 +134,72 @@ export function addLayerFromCrossDoc(
   }
 }
 
-export function addFilesAsLayers(
+export async function addFilesAsLayers(
   paths: string[],
   target: DropTarget,
   basePos: Point,
   ws: WorkspaceFacade
-): void {
+): Promise<CreatedLayer[]> {
   const targetDocId = target && target.type === "tab" && target.docId
     ? target.docId
     : ws.getActiveDocumentId();
-  if (!targetDocId) return;
+  if (!targetDocId) return [];
   const targetEngine = ws.getEngine(targetDocId);
-  if (!targetEngine) return;
+  if (!targetEngine) return [];
   if (targetEngine.getLayers().length + paths.length > MAX_LAYERS) {
     showToast(`Adding ${paths.length} files would exceed max 100 layers`, "error");
-    return;
+    return [];
   }
 
   const targetHistory = ws.getHistory(targetDocId);
   if (targetHistory) targetHistory.commit(targetEngine.snapshot());
 
-  paths.forEach((path, i) => {
+  const e = targetEngine as any;
+  const created: CreatedLayer[] = [];
+  for (let i = 0; i < paths.length; i++) {
+    const path = paths[i];
     const pos = computeCascadePosition(basePos, i);
     const name = path.split(/[\\/]/).pop() ?? "Imported";
-    // Phase 2 TODO: read file via Tauri open_images IPC and call
-    // setLayerImageBitmap. For now the layer is created empty.
-    const e = targetEngine as any;
     const added = e.addLayer(name);
     const newId = added?.id;
-    if (newId && typeof e.moveLayer === "function") {
-      e.moveLayer(newId, pos.x, pos.y);
+    if (!newId) continue;
+    if (typeof e.moveLayer === "function") e.moveLayer(newId, pos.x, pos.y);
+    try {
+      const bitmap = await fileToBitmap(path);
+      if (typeof e.setLayerImageBitmap === "function") {
+        e.setLayerImageBitmap(newId, bitmap);
+        created.push({ docId: targetDocId, layerId: newId, bitmap });
+      }
+    } catch (err) {
+      showToast(`Failed to load ${name}: ${err}`, "error");
     }
-  });
+  }
+  return created;
 }
 
-export function createNewDocsFromFiles(
+export async function createNewDocsFromFiles(
   paths: string[],
   ws: WorkspaceFacade
-): void {
+): Promise<CreatedDoc[]> {
   if (ws.isFull()) {
     showToast("Workspace full — close a document first (max 16)", "error");
-    return;
+    return [];
   }
-  // Dispatcher only — UI layer is responsible for the actual
-  // Tauri file read + workspace.addDocument() call per path.
+  const w = ws as any;
+  const created: CreatedDoc[] = [];
+  for (const path of paths) {
+    if (w.isFull()) break;
+    const name = path.split(/[\\/]/).pop() || "Image";
+    try {
+      const bitmap = await fileToBitmap(path);
+      const id = `doc-${crypto.randomUUID()}`;
+      const session = WorkspaceManager.createDocumentFromImage(id, name, bitmap);
+      w.addDocument(session);
+      const bgLayerId = session.engine.getLayers()[0].id;
+      created.push({ docId: id, backgroundLayerId: bgLayerId, bitmap });
+    } catch (err) {
+      showToast(`Failed to load ${name}: ${err}`, "error");
+    }
+  }
+  return created;
 }

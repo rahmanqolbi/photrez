@@ -8,7 +8,7 @@ import { useDragController } from "./DragController";
 import { addFilesAsLayers, createNewDocsFromFiles } from "./crossDocLayerOps";
 
 export function DocumentTabsBar() {
-  const { workspace, documents, activeDocumentId, scheduler, layerTransformSession, setLayerTransformSession } = useEditor();
+  const { workspace, documents, activeDocumentId, renderer, scheduler, layerTransformSession, setLayerTransformSession } = useEditor();
   const drag = useDragController();
 
   const cancelActiveTransformSession = () => {
@@ -67,19 +67,23 @@ export function DocumentTabsBar() {
     }
   };
 
-  const handleTabDrop = (e: DragEvent, tabId: string) => {
+  const handleTabDrop = async (e: DragEvent, tabId: string) => {
     e.preventDefault();
     drag.cancelTabHover();
     const state = drag.state();
     if (state.dragKind === "file" && state.filePaths) {
       const engine = workspace.getEngine(tabId);
       if (engine) {
-        addFilesAsLayers(
+        const created = await addFilesAsLayers(
           state.filePaths,
           { type: "tab", docId: tabId },
           { x: engine.getWidth() / 2, y: engine.getHeight() / 2 },
           workspace as unknown as Parameters<typeof addFilesAsLayers>[3]
         );
+        for (const { layerId, bitmap } of created) {
+          renderer.uploadImage(layerId, bitmap);
+        }
+        if (created.length) scheduler.requestRender();
       }
     }
     drag.endDrag();
@@ -93,14 +97,18 @@ export function DocumentTabsBar() {
     drag.cancelTabHover();
   };
 
-  const handleTabBarDrop = (e: DragEvent) => {
+  const handleTabBarDrop = async (e: DragEvent) => {
     e.preventDefault();
     const state = drag.state();
     if (state.dragKind === "file" && state.filePaths) {
-      createNewDocsFromFiles(
+      const created = await createNewDocsFromFiles(
         state.filePaths,
         workspace as unknown as Parameters<typeof createNewDocsFromFiles>[1]
       );
+      for (const { backgroundLayerId, bitmap } of created) {
+        renderer.uploadImage(backgroundLayerId, bitmap);
+      }
+      if (created.length) scheduler.requestRender();
     }
     drag.endDrag();
   };

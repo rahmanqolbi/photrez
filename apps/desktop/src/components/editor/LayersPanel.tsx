@@ -356,13 +356,17 @@ export function LayersPanel() {
             dragController.setDropTarget(null);
           }
         }}
-        onDrop={(e) => {
+        onDrop={async (e) => {
           e.preventDefault();
           const state = dragController.state();
           if (state.dragKind === "layer" && state.payload) {
             addLayerFromCrossDoc(state.payload, { type: "layers-panel" }, { x: 0, y: 0 }, workspace as unknown as Parameters<typeof addLayerFromCrossDoc>[3]);
           } else if (state.dragKind === "file" && state.filePaths) {
-            addFilesAsLayers(state.filePaths, { type: "layers-panel" }, { x: 0, y: 0 }, workspace as unknown as Parameters<typeof addFilesAsLayers>[3]);
+            const created = await addFilesAsLayers(state.filePaths, { type: "layers-panel" }, { x: 0, y: 0 }, workspace as unknown as Parameters<typeof addFilesAsLayers>[3]);
+            for (const { layerId, bitmap } of created) {
+              renderer.uploadImage(layerId, bitmap);
+            }
+            if (created.length) scheduler.requestRender();
           }
           dragController.endDrag();
         }}

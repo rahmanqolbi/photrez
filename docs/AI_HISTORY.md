@@ -5704,3 +5704,51 @@ otifyVisualChange). The commit captures both. After commit, the new layer's imag
 **Files changed:**
 - `apps/desktop/src/components/editor/crossDocLayerOps.ts` — preserve 5 source properties after addLayer
 - `apps/desktop/src/components/editor/__tests__/crossDocLayerOps.engine.test.ts` — NEW real-engine integration test (5 tests)
+
+---
+
+## [2026-06-16] FEATURE — Async File Drop Migration [COMPLETE]
+
+### Kategori: FEATURE / FRONTEND / CROSS-DOC / DRAG-AND-DROP
+
+**Goal:**
+Make `addFilesAsLayers` and `createNewDocsFromFiles` actually read real file bytes and create `ImageBitmap` objects, instead of being stubs that only pass filenames. This closes the second "tests pass but app fails" gap: file drops were a no-op in the real app.
+
+**What changed:**
+1. Both functions marked `async`.
+2. Read file bytes via existing `readFileBytes(path)` from `@/tauri/native`.
+3. Create `ImageBitmap` via browser stdlib `createImageBitmap(new Blob([bytes])).
+4. Return `CreatedLayer[]` / `CreatedDoc[]` arrays — each entry includes `{ docId, layerId, bitmap }` so callers can upload bitmaps to the renderer.
+5. All 4 callers updated:
+   - `CanvasViewport.tsx` — `await addFilesAsLayers`, loop `renderer.uploadImage(id, bitmap)`, `scheduler.requestRender()`
+   - `LayersPanel.tsx` — same pattern
+   - `DocumentTabsBar.tsx` — handles both `addFilesAsLayers` and `createNewDocsFromFiles` branches; uploads bitmaps for layers
+   - `EmptyWorkspace.tsx` — `await createNewDocsFromFiles`, uploads bitmaps per doc
+
+**Why `async` + `ImageBitmap` (ponytail YAGNI):**
+- `readFileBytes` returns `Promise<Uint8Array>` — async required.
+- `createImageBitmap` is the stdlib browser API for creating GPU-compatible images — no library needed.
+- Callers need `bitmap` to call `renderer.uploadImage(id, bitmap)` — no need for an abstraction layer; just return it.
+
+**Tests updated:**
+- `engine-signal-contract.test.tsx` —
+  - Mocked `@/tauri/native` to provide `readFileBytes` returning a dummy `Uint8Array`
+  - Polyfilled `globalThis.createImageBitmap` for jsdom
+  - Updated `addFilesAsLayers` test to await result and check layers added
+  - Updated `createNewDocsFromFiles` test to await result, check docs created, and fix assertion about active doc switching (WorkspaceManager.addDocument implicitly switches active doc)
+
+**Bug found during testing:**
+- `EmptyWorkspace.tsx` referenced `scheduler` and `renderer` without destructuring them from `useEditor()`. Fixed by adding to destructure.
+
+**Verification:**
+- `pnpm.cmd run build` green (6.79s)
+- `pnpm.cmd --filter photrez-desktop test --run` green (1037/1037, 65.45s)
+- 72 test files, 0 regression
+
+**Files changed:**
+- `apps/desktop/src/components/editor/crossDocLayerOps.ts` — async rewrite (file read + bitmap creation)
+- `apps/desktop/src/components/editor/CanvasViewport.tsx` — await + upload bitmaps
+- `apps/desktop/src/components/editor/LayersPanel.tsx` — await + upload bitmaps
+- `apps/desktop/src/components/editor/DocumentTabsBar.tsx` — await + upload bitmaps
+- `apps/desktop/src/components/editor/EmptyWorkspace.tsx` — await + upload bitmaps + fix missing destructure
+- `apps/desktop/src/components/editor/__tests__/engine-signal-contract.test.tsx` — mock file I/O + async test + fix active doc assertion

@@ -5,7 +5,7 @@ import { useTauriDragDrop } from "./useTauriDragDrop";
 import { createNewDocsFromFiles } from "./crossDocLayerOps";
 
 export function EmptyWorkspace() {
-  const { openImage, workspace } = useEditor();
+  const { openImage, workspace, renderer, scheduler } = useEditor();
 
   const handleNewCanvas = () => {
     const widthStr = prompt("Enter canvas width (pixels):", "1920");
@@ -26,8 +26,12 @@ export function EmptyWorkspace() {
   };
 
   useTauriDragDrop({
-    onDrop: (paths) => {
-      createNewDocsFromFiles(paths, workspace as unknown as Parameters<typeof createNewDocsFromFiles>[1]);
+    onDrop: async (paths) => {
+      const created = await createNewDocsFromFiles(paths, workspace as unknown as Parameters<typeof createNewDocsFromFiles>[1]);
+      for (const { backgroundLayerId, bitmap } of created) {
+        renderer.uploadImage(backgroundLayerId, bitmap);
+      }
+      if (created.length) scheduler.requestRender();
     },
   });
 

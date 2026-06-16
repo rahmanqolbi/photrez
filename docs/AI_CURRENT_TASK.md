@@ -1070,3 +1070,33 @@ Standardize the visual design of the interactive Opacity slider in the Propertie
 - PASS: `pnpm --filter photrez-desktop test --run` (all 837 tests passed)
 - PASS: `pnpm run build` (tsc + Vite production build successfully compiled)
 
+---
+
+### [2026-06-16] BUG FIX — Cross-Doc Layer Copy Property Preservation + Async File Drop [COMPLETE]
+
+**Goal:** Close two "tests pass but app fails" bugs in cross-doc drag-drop:
+1. Layer properties (opacity, blend mode, visibility, locked, rotation/scale) lost on cross-doc copy
+2. File drops were no-op (didn't read file bytes or create bitmaps)
+
+**Phase 1 — Layer property preservation (commit `1a4df1e`):**
+- `addLayerFromCrossDoc` calls `transformLayer`, `setLayerOpacity`, `setLayerBlendMode`, `setLayerVisibility`, `setLayerLocked` after `addLayer`
+- 5 new real-engine integration tests (`crossDocLayerOps.engine.test.ts`)
+- Uses existing `as any` pattern (ponytail YAGNI: no model changes to `DocumentEngine`)
+
+**Phase 2 — Async file drop (this commit):**
+- `addFilesAsLayers` and `createNewDocsFromFiles` now `async`: read via `readFileBytes` → `createImageBitmap` → add to workspace
+- Return `CreatedLayer[]`/`CreatedDoc[]` arrays with bitmaps for renderer upload
+- All 4 callers updated: `CanvasViewport`, `LayersPanel`, `DocumentTabsBar`, `EmptyWorkspace`
+- `engine-signal-contract.test.tsx` updated: mock file I/O + polyfill `createImageBitmap` for jsdom
+
+**Verification:**
+- PASS: `pnpm run build` (6.79s)
+- PASS: `pnpm --filter photrez-desktop test --run` (1037/1037, 65.45s)
+- 72 files, 0 regression
+
+**Files changed (6):**
+- `crossDocLayerOps.ts`, `CanvasViewport.tsx`, `LayersPanel.tsx`, `DocumentTabsBar.tsx`, `EmptyWorkspace.tsx`
+- `engine-signal-contract.test.tsx`
+
+**Next:** Phase 3 — real-app smoke test via `pnpm tauri dev` (user-runnable)
+

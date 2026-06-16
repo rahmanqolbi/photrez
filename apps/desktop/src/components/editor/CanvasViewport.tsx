@@ -697,7 +697,7 @@ export function CanvasViewport() {
           dragController.setDropTarget(null);
         }
       }}
-      onDrop={(e) => {
+      onDrop={async (e) => {
         e.preventDefault();
         const state = dragController.state();
         if (state.dragKind === "layer" && state.payload) {
@@ -705,7 +705,11 @@ export function CanvasViewport() {
           addLayerFromCrossDoc(state.payload, { type: "canvas" }, docPos, workspace as unknown as Parameters<typeof addLayerFromCrossDoc>[3]);
         } else if (state.dragKind === "file" && state.filePaths) {
           const docPos = camera.screenToDocument(e.clientX, e.clientY);
-          addFilesAsLayers(state.filePaths, { type: "canvas" }, docPos, workspace as unknown as Parameters<typeof addFilesAsLayers>[3]);
+          const created = await addFilesAsLayers(state.filePaths, { type: "canvas" }, docPos, workspace as unknown as Parameters<typeof addFilesAsLayers>[3]);
+          for (const { layerId, bitmap } of created) {
+            renderer.uploadImage(layerId, bitmap);
+          }
+          if (created.length) scheduler.requestRender();
         }
         dragController.endDrag();
       }}

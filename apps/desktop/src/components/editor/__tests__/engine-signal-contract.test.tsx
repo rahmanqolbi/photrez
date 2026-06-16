@@ -24,6 +24,16 @@ import { WorkspaceManager } from "@/engine/workspace";
 import { addLayerFromCrossDoc, addFilesAsLayers, createNewDocsFromFiles } from "../crossDocLayerOps";
 import type { LayerDragPayload } from "../dragTypes";
 
+// ponytail: provide createImageBitmap for jsdom (no browser API)
+// ponytail: mock readFileBytes to avoid actual Tauri IPC in tests
+vi.mock("@/tauri/native", () => ({
+  readFileBytes: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
+}));
+
+beforeEach(() => {
+  globalThis.createImageBitmap = vi.fn().mockResolvedValue({ width: 100, height: 100 } as ImageBitmap);
+});
+
 interface CapturedEditor {
   workspace: WorkspaceManager;
   activeDocumentId: () => string | null;
@@ -431,7 +441,7 @@ describe("Cross-doc ops — signal contract", () => {
     const ed = editorRef.current!;
     expect(ed.layers().length).toBe(1); // bg
 
-    addFilesAsLayers(
+    await addFilesAsLayers(
       ["/a.png", "/b.jpg", "/c.tiff"],
       { type: "canvas" },
       { x: 0, y: 0 },
@@ -446,18 +456,18 @@ describe("Cross-doc ops — signal contract", () => {
     expect(names).toContain("c.tiff");
   });
 
-  it("createNewDocsFromFiles is a dispatcher (no signal change without Tauri read)", async () => {
+  it("createNewDocsFromFiles creates new documents from file paths", async () => {
     const ed = editorRef.current!;
     const initialDocs = ws.getDocumentCount();
 
-    // createNewDocsFromFiles alone doesn't add docs (it's a guard/dispatcher)
-    // The UI layer is responsible for the actual Tauri read + addDocument call.
-    createNewDocsFromFiles(["/x.png", "/y.png"], ws as any);
-    await tick();
+    const created = await createNewDocsFromFiles(["/x.png", "/y.png"], ws as any);
 
-    // No docs added because the function just guards; UI layer adds them
-    expect(ws.getDocumentCount()).toBe(initialDocs);
-    // No signal change either
-    expect(ed.activeDocumentId()).toBe("docA");
+    // Documents are now created from file data
+    expect(ws.getDocumentCount()).toBe(initialDocs + 2);
+    expect(created.length).toBe(2);
+    expect(created[0].bitmap).toBeDefined();
+    expect(created[1].bitmap).toBeDefined();
+    // Active doc switches to the last added document (WorkspaceManager.addDocument behavior)
+    expect(ed.activeDocumentId()).not.toBe("docA");
   });
 });
