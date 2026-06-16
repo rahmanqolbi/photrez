@@ -90,6 +90,14 @@ export class WorkspaceManager {
     return this.sessions.get(id) || null;
   }
 
+  getEngine(id: DocumentId): DocumentEngine | null {
+    return this.getSession(id)?.engine ?? null;
+  }
+
+  getHistory(id: DocumentId): CommandHistory | null {
+    return this.getSession(id)?.history ?? null;
+  }
+
   getDocumentCount(): number {
     return this.sessions.size;
   }

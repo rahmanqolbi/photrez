@@ -95,3 +95,46 @@ export function addLayerFromCrossDoc(
     sourceEngine.deleteLayer(payload.layerId);
   }
 }
+
+export function addFilesAsLayers(
+  paths: string[],
+  target: DropTarget,
+  basePos: Point,
+  ws: WorkspaceFacade
+): void {
+  const targetDocId = target && target.type === "tab" && target.docId
+    ? target.docId
+    : ws.getActiveDocumentId();
+  if (!targetDocId) return;
+  const targetEngine = ws.getEngine(targetDocId);
+  if (!targetEngine) return;
+  if (targetEngine.getLayerCount() + paths.length > MAX_LAYERS) {
+    showToast(`Adding ${paths.length} files would exceed max 100 layers`, "error");
+    return;
+  }
+
+  const targetHistory = ws.getHistory(targetDocId);
+  if (targetHistory) targetHistory.commit(targetEngine.snapshot());
+
+  paths.forEach((path, i) => {
+    const pos = computeCascadePosition(basePos, i);
+    targetEngine.addLayer({
+      id: `layer-${crypto.randomUUID()}`,
+      name: path.split(/[\\/]/).pop() ?? "Imported",
+      transform: { x: pos.x, y: pos.y, rotation: 0, scaleX: 1, scaleY: 1 },
+      opacity: 1,
+    });
+  });
+}
+
+export function createNewDocsFromFiles(
+  paths: string[],
+  ws: WorkspaceFacade
+): void {
+  if (ws.isFull()) {
+    showToast("Workspace full — close a document first (max 16)", "error");
+    return;
+  }
+  // Dispatcher only — UI layer is responsible for the actual
+  // Tauri file read + workspace.addDocument() call per path.
+}

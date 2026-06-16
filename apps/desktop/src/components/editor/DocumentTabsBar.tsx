@@ -4,9 +4,12 @@ import { Icon } from "./icons";
 import { useEditor } from "./EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
 import { cancelLayerTransformSession } from "./transformSession";
+import { useDragController } from "./DragController";
+import { addFilesAsLayers, createNewDocsFromFiles } from "./crossDocLayerOps";
 
 export function DocumentTabsBar() {
   const { workspace, documents, activeDocumentId, scheduler, layerTransformSession, setLayerTransformSession } = useEditor();
+  const drag = useDragController();
 
   const cancelActiveTransformSession = () => {
     const engine = workspace.getActiveEngine();
@@ -44,16 +47,90 @@ export function DocumentTabsBar() {
     scheduler.requestRender();
   };
 
+  const handleTabDragOver = (e: DragEvent, tabId: string) => {
+    e.preventDefault();
+    drag.setDropTarget({ type: "tab", docId: tabId });
+    if (activeDocumentId() !== tabId) {
+      drag.startTabHover(tabId);
+    } else {
+      drag.cancelTabHover();
+    }
+  };
+
+  const handleTabDragLeave = (e: DragEvent, tabId: string) => {
+    const target = e.currentTarget;
+    if (target && target instanceof Element && target.contains(e.relatedTarget as Node)) return;
+    drag.cancelTabHover();
+    const current = drag.state().dropTarget;
+    if (current && current.type === "tab" && current.docId === tabId) {
+      drag.setDropTarget(null);
+    }
+  };
+
+  const handleTabDrop = (e: DragEvent, tabId: string) => {
+    e.preventDefault();
+    drag.cancelTabHover();
+    const state = drag.state();
+    if (state.dragKind === "file" && state.filePaths) {
+      const engine = workspace.getEngine(tabId);
+      if (engine) {
+        addFilesAsLayers(
+          state.filePaths,
+          { type: "tab", docId: tabId },
+          { x: engine.getWidth() / 2, y: engine.getHeight() / 2 },
+          workspace as unknown as Parameters<typeof addFilesAsLayers>[3]
+        );
+      }
+    }
+    drag.endDrag();
+  };
+
+  const handleTabBarDragOver = (e: DragEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (target && target.closest("[data-document-tab]")) return;
+    e.preventDefault();
+    drag.setDropTarget({ type: "tab-empty" });
+    drag.cancelTabHover();
+  };
+
+  const handleTabBarDrop = (e: DragEvent) => {
+    e.preventDefault();
+    const state = drag.state();
+    if (state.dragKind === "file" && state.filePaths) {
+      createNewDocsFromFiles(
+        state.filePaths,
+        workspace as unknown as Parameters<typeof createNewDocsFromFiles>[1]
+      );
+    }
+    drag.endDrag();
+  };
+
   return (
-    <div class="flex h-[44px] shrink-0 items-stretch overflow-x-auto border-b border-editor-divider bg-editor-topbar">
+    <div
+      class="flex h-[44px] shrink-0 items-stretch overflow-x-auto border-b border-editor-divider bg-editor-topbar"
+      onDragOver={handleTabBarDragOver}
+      onDrop={handleTabBarDrop}
+    >
       <For each={documents()}>
         {(tab) => {
+          const isDragOver = () => {
+            const dt = drag.state().dropTarget;
+            return dt !== null && dt.type === "tab" && dt.docId === tab.id;
+          };
+          const isHovering = () => drag.state().hoverTabId === tab.id;
           return (
             <div
+              data-document-tab={tab.id}
+              data-drag-over={isDragOver() ? "tab" : null}
+              data-hover-tab-progress={isHovering() ? "1" : null}
               onClick={() => handleSwitchTab(tab.id)}
+              onDragOver={(e) => handleTabDragOver(e, tab.id)}
+              onDragLeave={(e) => handleTabDragLeave(e, tab.id)}
+              onDrop={(e) => handleTabDrop(e, tab.id)}
               class={clsx(
                 "group relative flex shrink-0 items-center gap-3 border-r border-editor-divider pl-4 pr-3 cursor-pointer",
                 activeDocumentId() === tab.id ? "bg-editor-bg" : "bg-editor-topbar hover:bg-editor-topbar-hover",
+                isDragOver() && "outline outline-2 outline-editor-accent"
               )}
             >
               <span
