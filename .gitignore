@@ -76,3 +76,6 @@ photrez-solid-tailwind/
 # Git Worktrees (isolated workspaces)
 .worktrees/
 worktrees/
+
+# Local AI agent tools (vendor — clone manually, see AGENTS.md)
+.tools/

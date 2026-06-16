@@ -101,6 +101,39 @@ pnpm.cmd tauri dev                      # Verify app compiles AND launches
 
 **Do NOT skip any step.** If one fails, FIX before claiming DONE.
 
+## AI Agent Plugins
+
+This project uses AI agent plugins to enforce coding standards. Plugins are vendored locally (not committed to repo) and referenced in `opencode.json`.
+
+### Ponytail (Lazy Senior Dev Mode)
+
+Ponytail is a prompt-engineering ruleset that enforces YAGNI + stdlib-first thinking. Its core principle: **"The best code is the code you never wrote."** This directly addresses the "tests pass but app fails" pattern — over-engineered custom code often has subtle bugs that mocks don't catch.
+
+**Install (one-time, after fresh clone):**
+```bash
+git clone --depth 1 https://github.com/DietrichGebert/ponytail.git .tools/ponytail
+```
+
+(vendored locally, `.tools/` is gitignored — see `.gitignore`)
+
+**Loaded via:** `opencode.json` plugin array: `"./.tools/ponytail/.opencode/plugins/ponytail.mjs"`
+
+**Ladder (applied before any code):**
+1. Does this need to exist? → no: skip it (YAGNI)
+2. Stdlib does it? → use it
+3. Native platform feature? → use it
+4. Already-installed dependency? → use it
+5. Can this be one line? → one line
+6. Only then: write the minimum code that works
+
+**Not lazy about:** input validation at trust boundaries, error handling that prevents data loss, security, accessibility, anything explicitly requested.
+
+**Commands available in chat:** `/ponytail lite | full | ultra | off`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`
+
+### Superpowers (Workflow Skills)
+
+Already configured in `opencode.json`. Provides process skills (brainstorming, writing-plans, subagent-driven-development, test-driven-development, etc.). Loaded on-demand based on task.
+
 Notes:
 - `cargo check -p photrez-desktop` will fail due to pre-existing `windres` toolchain issue.
 - Use `pnpm.cmd tauri dev` (or `cargo run`) to verify binary compile â€” bypasses windres.

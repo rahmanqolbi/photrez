@@ -47,5 +47,8 @@
       }
     }
   },
-  "plugin": ["superpowers@git+https://github.com/obra/superpowers.git"]
+  "plugin": [
+    "superpowers@git+https://github.com/obra/superpowers.git",
+    "./.tools/ponytail/.opencode/plugins/ponytail.mjs"
+  ]
 }
