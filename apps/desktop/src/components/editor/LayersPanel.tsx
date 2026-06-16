@@ -3,6 +3,8 @@ import { clsx } from "clsx";
 import fjord from "@/assets/fjord.jpg";
 import { Icon } from "./icons";
 import { useEditor } from "./EditorContext";
+import { useDragController } from "./DragController";
+import { addLayerFromCrossDoc, addFilesAsLayers } from "./crossDocLayerOps";
 import { LayerNode } from "@/engine/types";
 import type { DocumentModel } from "@/engine/types";
 import { Navigator } from "./Navigator";
@@ -27,6 +29,8 @@ export function LayersPanel() {
     layerTransformSession,
     setLayerTransformSession
   } = useEditor();
+
+  const dragController = useDragController();
 
   const [showOpacitySlider, setShowOpacitySlider] = createSignal(false);
   const [opacityHistorySnapshot, setOpacityHistorySnapshot] = createSignal<DocumentModel | null>(null);
@@ -335,7 +339,35 @@ export function LayersPanel() {
       </div>
 
       {/* Dynamic Layer Stack List */}
-      <div ref={setLayerListRef} class="flex-1 overflow-y-auto border-y border-editor-divider touch-auto">
+      <div
+        ref={setLayerListRef}
+        data-layers-panel-drop-zone
+        data-drag-over={dragController.state().dropTarget?.type === "layers-panel" ? "layers-panel" : null}
+        onDragOver={(e) => {
+          if (dragController.state().dragKind === null) return;
+          e.preventDefault();
+          dragController.setDropTarget({ type: "layers-panel" });
+          dragController.cancelTabHover();
+        }}
+        onDragLeave={(e) => {
+          const target = e.currentTarget;
+          if (target && target instanceof Element && target.contains(e.relatedTarget as Node)) return;
+          if (dragController.state().dropTarget?.type === "layers-panel") {
+            dragController.setDropTarget(null);
+          }
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          const state = dragController.state();
+          if (state.dragKind === "layer" && state.payload) {
+            addLayerFromCrossDoc(state.payload, { type: "layers-panel" }, { x: 0, y: 0 }, workspace as unknown as Parameters<typeof addLayerFromCrossDoc>[3]);
+          } else if (state.dragKind === "file" && state.filePaths) {
+            addFilesAsLayers(state.filePaths, { type: "layers-panel" }, { x: 0, y: 0 }, workspace as unknown as Parameters<typeof addFilesAsLayers>[3]);
+          }
+          dragController.endDrag();
+        }}
+        class="flex-1 overflow-y-auto border-y border-editor-divider touch-auto"
+      >
         <Show
           when={activeDocumentId()}
           fallback={

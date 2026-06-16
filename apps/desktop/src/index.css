@@ -607,3 +607,20 @@ grid-template-columns: 280px 240px;
 --color-text-muted: #7f858c
 --color-accent: #E15A17
 */
+
+/* Cross-document drag & drop indicators */
+[data-document-tab][data-drag-over="tab"] {
+  outline: 2px solid var(--color-editor-accent, #E15A17);
+  outline-offset: -2px;
+  background: rgb(225 90 23 / 8%);
+}
+
+[data-canvas-drop-zone][data-drag-over="canvas"] {
+  outline: 2px dashed var(--color-editor-accent, #E15A17);
+  outline-offset: -4px;
+  background: rgb(225 90 23 / 3%);
+}
+
+[data-layers-panel-drop-zone][data-drag-over="layers-panel"] {
+  background: rgb(225 90 23 / 6%);
+}

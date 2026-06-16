@@ -11,6 +11,9 @@ import { usePanNavigation } from "./usePanNavigation";
 import { useViewportRenderer } from "./useViewportRenderer";
 import { useCanvasPointerTools } from "./useCanvasPointerTools";
 import { useCanvasDerivedState } from "./useCanvasDerivedState";
+import { useDragController } from "./DragController";
+import { addLayerFromCrossDoc, addFilesAsLayers } from "./crossDocLayerOps";
+import { ViewportCamera } from "@/viewport/viewportCamera";
 import { SelectionTransformOverlay } from "./SelectionTransformOverlay";
 import { HoverHighlight } from "./HoverHighlight";
 import { SmartGuides } from "./SmartGuides";
@@ -671,12 +674,41 @@ export function CanvasViewport() {
     }
   };
 
+  const dragController = useDragController();
+
   return (
     <div
       ref={canvasContainerRef}
       id="canvas-container"
       data-viewport-container
+      data-canvas-drop-zone
+      data-drag-over={dragController.state().dropTarget?.type === "canvas" ? "canvas" : null}
       class="flex-1 relative overflow-hidden bg-editor-canvas"
+      onDragOver={(e) => {
+        if (dragController.state().dragKind === null) return;
+        e.preventDefault();
+        dragController.setDropTarget({ type: "canvas" });
+        dragController.cancelTabHover();
+      }}
+      onDragLeave={(e) => {
+        const target = e.currentTarget;
+        if (target && target instanceof Element && target.contains(e.relatedTarget as Node)) return;
+        if (dragController.state().dropTarget?.type === "canvas") {
+          dragController.setDropTarget(null);
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const state = dragController.state();
+        if (state.dragKind === "layer" && state.payload) {
+          const docPos = camera.screenToDocument(e.clientX, e.clientY);
+          addLayerFromCrossDoc(state.payload, { type: "canvas" }, docPos, workspace as unknown as Parameters<typeof addLayerFromCrossDoc>[3]);
+        } else if (state.dragKind === "file" && state.filePaths) {
+          const docPos = camera.screenToDocument(e.clientX, e.clientY);
+          addFilesAsLayers(state.filePaths, { type: "canvas" }, docPos, workspace as unknown as Parameters<typeof addFilesAsLayers>[3]);
+        }
+        dragController.endDrag();
+      }}
       style={{
         cursor:
           activeTool() === "crop" &&
