@@ -18,6 +18,16 @@ export interface CanvasLayerDragApi {
   isDragging: () => boolean;
 }
 
+interface CanvasLayerDragSession {
+  layerId: string;
+  startDocX: number;
+  startDocY: number;
+  startTransformX: number;
+  startTransformY: number;
+  rect: { left: number; top: number };
+  originalSnapshot: unknown;
+}
+
 /**
  * Canvas layer drag gesture: click+drag in the canvas (Move tool) to
  * translate a layer. If released over a different document's tab, copies
@@ -115,8 +125,8 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
     const src = activeDocumentId();
     console.log("[useCanvasLayerDrag] pointerup", { dropTarget, src, layerId: d.layerId });
 
+    let crossDocAdded = false;
     if (dropTarget && dropTarget.type === "tab" && dropTarget.docId !== src) {
-      // Cross-doc copy logic (unchanged) ...
       const engine = workspace.getEngine(src!);
       const sourceLayer = engine?.getLayer(d.layerId);
       if (sourceLayer && engine) {
@@ -132,9 +142,13 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
           { x: sourceLayer.transform.x, y: sourceLayer.transform.y },
           workspace as unknown as Parameters<typeof addLayerFromCrossDoc>[3],
         );
+        // Switch to the target tab so the user sees the result of their drop.
+        workspace.switchDocument(dropTarget.docId);
+        crossDocAdded = true;
         scheduler.requestRender();
       }
     } else if (dropTarget && dropTarget.type === "tab" && dropTarget.docId === src) {
+      // Dropped on the same doc's tab — revert position (treat as cancel)
       const engine = workspace.getEngine(src!);
       if (engine) {
         engine.transformLayer(d.layerId, {
@@ -142,6 +156,26 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
           y: d.startTransformY,
         });
         scheduler.requestRender();
+      }
+    }
+
+    // Commit history so the user can undo the drag. For cross-doc drops we
+    // commit the *original* snapshot of the source doc so undo reverts the
+    // position change. The cross-doc add itself is its own action tracked
+    // in the target doc's history.
+    if (src) {
+      const engine = workspace.getEngine(src);
+      const history = workspace.getActiveHistory();
+      if (engine && history) {
+        // Only commit if the position actually changed (or cross-doc happened)
+        const currentLayer = engine.getLayer(d.layerId);
+        const positionChanged =
+          currentLayer &&
+          (currentLayer.transform.x !== d.startTransformX ||
+            currentLayer.transform.y !== d.startTransformY);
+        if (positionChanged || crossDocAdded) {
+          history.commit(engine.snapshot());
+        }
       }
     }
 
