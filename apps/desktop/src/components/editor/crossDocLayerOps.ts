@@ -68,28 +68,28 @@ export function addLayerFromCrossDoc(
   target: DropTarget,
   cursorPos: Point,
   ws: WorkspaceFacade
-): void {
+): { newLayerId: string | null } {
   const targetDocId = resolveTargetDocId(target, ws);
-  if (!targetDocId) return;
+  if (!targetDocId) return { newLayerId: null };
 
-  if (payload.sourceDocId === targetDocId) return;
+  if (payload.sourceDocId === targetDocId) return { newLayerId: null };
 
   const sourceEngine = ws.getEngine(payload.sourceDocId);
   if (!sourceEngine) {
     showToast("Source document was closed. Drop cancelled.", "error");
-    return;
+    return { newLayerId: null };
   }
   const sourceLayer = sourceEngine.getLayer(payload.layerId);
   if (!sourceLayer) {
     showToast("Layer was deleted. Drop cancelled.", "error");
-    return;
+    return { newLayerId: null };
   }
 
   const targetEngine = ws.getEngine(targetDocId);
-  if (!targetEngine) return;
+  if (!targetEngine) return { newLayerId: null };
   if (targetEngine.getLayers().length >= MAX_LAYERS) {
     showToast("Target document reached max 100 layers", "error");
-    return;
+    return { newLayerId: null };
   }
 
   // Drop position: use cursor position for canvas + tab drops (the user
@@ -140,6 +140,7 @@ export function addLayerFromCrossDoc(
     if (sourceHistory) sourceHistory.commit(sourceEngine.snapshot());
     sourceEngine.deleteLayer(payload.layerId);
   }
+  return { newLayerId: newId ?? null };
 }
 
 export async function addFilesAsLayers(

@@ -189,3 +189,49 @@ describe("addLayerFromCrossDoc — position", () => {
     expect(moveArgs[2]).toBe(325);
   });
 });
+
+describe("addLayerFromCrossDoc — return value", () => {
+  beforeEach(() => {
+    mockShowToast.mockClear();
+    resetToasts();
+  });
+
+  it("returns the new layer id on success (hook needs it to upload bitmap)", () => {
+    const sourceEngine = makeEngine({ id: "doc-A" });
+    const targetEngine = makeEngine({ id: "doc-B" });
+    const ws = makeWorkspace({ "doc-A": sourceEngine, "doc-B": targetEngine });
+
+    const result = addLayerFromCrossDoc(
+      basePayload,
+      { type: "tab", docId: "doc-B" },
+      { x: 100, y: 100 },
+      ws as any
+    );
+
+    expect(result.newLayerId).toBeTruthy();
+    expect(result.newLayerId).toBe("new-1");
+  });
+
+  it("returns null newLayerId when source doc missing", () => {
+    const ws = makeWorkspace({});
+    const result = addLayerFromCrossDoc(
+      basePayload,
+      { type: "canvas" },
+      { x: 0, y: 0 },
+      ws as any
+    );
+    expect(result.newLayerId).toBeNull();
+  });
+
+  it("returns null newLayerId on same-doc drop", () => {
+    const engine = makeEngine({ id: "doc-A" });
+    const ws = makeWorkspace({ "doc-A": engine });
+    const result = addLayerFromCrossDoc(
+      basePayload,
+      { type: "canvas" },
+      { x: 0, y: 0 },
+      ws as any
+    );
+    expect(result.newLayerId).toBeNull();
+  });
+});

@@ -90,4 +90,45 @@ describe("DragController", () => {
     vi.advanceTimersByTime(500);
     expect(switchDocument).not.toHaveBeenCalled();
   });
+
+  it("startTabHover does NOT reset timer when re-called with same tab (user keeps moving)", () => {
+    const switchDocument = vi.fn();
+    const { result } = renderHook(() => useDragController(), {
+      wrapper: (props: any) => (
+        <DragControllerProvider workspaceOverride={{ switchDocument } as any} {...props} />
+      ),
+    });
+    // First hover starts the timer.
+    result.startTabHover("doc-B");
+    vi.advanceTimersByTime(300);
+    // Re-hovering the same tab (e.g., a pointermove during drag) must
+    // NOT reset the timer — otherwise the user can never hold still
+    // long enough for the switch to fire.
+    result.startTabHover("doc-B");
+    vi.advanceTimersByTime(300);
+    // Total elapsed: 600ms, but the timer was started once at t=0 and
+    // should fire at t=500. So we expect exactly one switch at ~500ms.
+    expect(switchDocument).toHaveBeenCalledTimes(1);
+    expect(switchDocument).toHaveBeenCalledWith("doc-B");
+  });
+
+  it("startTabHover DOES reset timer when called with a different tab", () => {
+    const switchDocument = vi.fn();
+    const { result } = renderHook(() => useDragController(), {
+      wrapper: (props: any) => (
+        <DragControllerProvider workspaceOverride={{ switchDocument } as any} {...props} />
+      ),
+    });
+    result.startTabHover("doc-B");
+    vi.advanceTimersByTime(300);
+    // Different tab — restart the countdown.
+    result.startTabHover("doc-C");
+    vi.advanceTimersByTime(300);
+    // Original timer (doc-B at t=500) was cancelled; new timer (doc-C)
+    // fires at t=600 (300+300). So no switch yet.
+    expect(switchDocument).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(200);
+    // Now we're at t=800, doc-C timer (started at t=300) has fired.
+    expect(switchDocument).toHaveBeenCalledWith("doc-C");
+  });
 });

@@ -96,6 +96,14 @@ export function DragControllerProvider(props: ParentProps<{ workspaceOverride?: 
       setState((s) => ({ ...s, dropTarget: target }));
     },
     startTabHover(tabId) {
+      // Don't reset the timer if it's the same tab — the user is already
+      // mid-hover and the countdown should keep ticking. Without this,
+      // every pointermove (every pixel) cancels + restarts the 500ms
+      // timer, so the user can never hold still long enough for it to
+      // fire (and the visual countdown progress bar keeps resetting).
+      if (state().hoverTabId === tabId && hoverTabTimerId !== null) {
+        return;
+      }
       cancelTabHoverInternal();
       setState((s) => ({ ...s, hoverTabId: tabId }));
       hoverTabTimerId = setTimeout(() => {
