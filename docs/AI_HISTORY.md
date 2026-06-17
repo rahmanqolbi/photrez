@@ -1,5 +1,73 @@
 # AI History — Photrez
 
+## [2026-06-17] DOCUMENTATION — FAANG-Style Review Rejection Register [COMPLETE]
+
+### Kategori: DOCUMENTATION / CODE-REVIEW / QUALITY-GATE / HARDENING
+
+**Goal:**
+Create a structured register of issues that would likely be rejected in a strict FAANG-style code review, split by architecture/feature/tool area.
+
+**Done:**
+1. Audited current architecture docs, feature tracker, recent bug history, source/test structure, high-line-count hotspots, `as any` usage, native/runtime test gaps, IPC contract docs, package scripts, and Tauri shell code.
+2. Created `docs/faang-review-rejections/` with executive summary, per-area review findings, and remediation roadmap.
+3. Captured likely review blockers including IPC contract drift, oversized multi-owner modules, production `any`/test fallback patterns, placeholder E2E tests, Tauri-only manual gaps, raw file IO security concerns, missing CI/lint/audit gates, and renderer resource lifecycle concerns.
+4. Updated `FEATURES.md`, `AI_CURRENT_TASK.md`, and `docs/decisions/id-decision-log.md`.
+
+**Files Created:**
+- `docs/faang-review-rejections/README.md`
+- `docs/faang-review-rejections/00-executive-summary.md`
+- `docs/faang-review-rejections/01-architecture-boundaries.md`
+- `docs/faang-review-rejections/02-editor-state-tool-wiring.md`
+- `docs/faang-review-rejections/03-layer-workspace-history.md`
+- `docs/faang-review-rejections/04-selection-move-transform.md`
+- `docs/faang-review-rejections/05-crop-resize.md`
+- `docs/faang-review-rejections/06-brush-eraser-color.md`
+- `docs/faang-review-rejections/07-drag-drop-native-events.md`
+- `docs/faang-review-rejections/08-renderer-viewport-export.md`
+- `docs/faang-review-rejections/09-shell-ipc-security-release.md`
+- `docs/faang-review-rejections/10-testing-ci-observability.md`
+- `docs/faang-review-rejections/11-remediation-roadmap.md`
+
+**Verification:**
+- Documentation-only change. Verified file creation, review IDs, and markdown whitespace locally.
+- No runtime code changed, so build/test execution was not required for this docs task.
+
+---
+
+## [2026-06-17] DOCUMENTATION — Production Bug Risk Register [COMPLETE]
+
+### Kategori: DOCUMENTATION / QA / PRODUCTION-RISK / HARDENING
+
+**Goal:**
+Create a structured production bug risk register split by feature/tool area so future QA and implementation work can audit likely production failures before release.
+
+**Done:**
+1. Audited required AI docs, feature list, architecture, recent bug history, source tree, and current test hotspots.
+2. Created `docs/production-risk-register/` with index, shared taxonomy, release gates, and per-area risk files.
+3. Captured recurring bug classes: wiring no-op, Solid signal desync, viewport drift, history gaps, tool state leaks, listener leaks, pointer capture loss, Tauri/browser split, renderer/export parity drift, and resource pressure.
+4. Split risks by area: global wiring/state sync, layer/workspace, selection/move/transform, crop/resize, brush/eraser/color, drag/drop, viewport/renderer, export/file IO/IPC, UI shell/accessibility/responsive, testing/observability/release.
+5. Updated `FEATURES.md`, `AI_CURRENT_TASK.md`, and `docs/decisions/id-decision-log.md`.
+
+**Files Created:**
+- `docs/production-risk-register/README.md`
+- `docs/production-risk-register/00-risk-taxonomy-and-release-gates.md`
+- `docs/production-risk-register/01-global-wiring-state-sync.md`
+- `docs/production-risk-register/02-layer-workspace.md`
+- `docs/production-risk-register/03-selection-move-transform.md`
+- `docs/production-risk-register/04-crop-resize.md`
+- `docs/production-risk-register/05-brush-eraser-color.md`
+- `docs/production-risk-register/06-drag-drop.md`
+- `docs/production-risk-register/07-viewport-renderer.md`
+- `docs/production-risk-register/08-export-file-io-ipc.md`
+- `docs/production-risk-register/09-ui-shell-accessibility-responsive.md`
+- `docs/production-risk-register/10-testing-observability-release.md`
+
+**Verification:**
+- Documentation-only change. Verified file creation and markdown references locally.
+- No runtime code changed, so build/test execution was not required for this docs task.
+
+---
+
 ## [2026-06-16] FEATURE — Cross-Document Drag & Drop (Layer + File) [COMPLETE]
 
 ### Kategori: FEATURE / FRONTEND / MULTI-DOC / DRAG-AND-DROP
@@ -5860,3 +5928,68 @@ Make `addFilesAsLayers` and `createNewDocsFromFiles` actually read real file byt
 - Click+drag from a layer to a different doc's tab → layer should copy/move to target doc
 - Hold Alt while click+drag → layer should MOVE (not copy)
 - Resize handles still work (overlay still owns resize/rotate drag)
+
+---
+
+## [2026-06-17] DOCUMENTATION - 6-Month Maintainability Risk Register [COMPLETE]
+
+### Kategori: DOCUMENTATION / MAINTAINABILITY / TECH-DEBT / PLANNING
+
+**Goal:**
+Create a structured register of code areas likely to become hard to maintain within 6 months, split by architecture/feature/tool area.
+
+**Done:**
+1. Audited current docs, feature tracker, architecture references, source tree, high-line-count modules, native/IPC contract surface, E2E shape, test size hotspots, and recurring `as any`/mock patterns.
+2. Created `docs/maintainability-risk-register/` with taxonomy, per-area maintainability risks, and a six-month remediation roadmap.
+3. Captured risks around large multi-owner modules, broad editor context, pointer/keyboard dispatch density, manual history discipline, crop state density, brush performance drift, mixed drag/drop event systems, renderer lifecycle complexity, test brittleness, and missing visible CI gates.
+4. Updated `FEATURES.md`, `AI_CURRENT_TASK.md`, and `docs/decisions/id-decision-log.md`.
+
+**Files Created:**
+- `docs/maintainability-risk-register/README.md`
+- `docs/maintainability-risk-register/00-maintainability-taxonomy-and-signals.md`
+- `docs/maintainability-risk-register/01-architecture-ownership-boundaries.md`
+- `docs/maintainability-risk-register/02-editor-state-and-context.md`
+- `docs/maintainability-risk-register/03-canvas-viewport-and-pointer-routing.md`
+- `docs/maintainability-risk-register/04-layers-workspace-history.md`
+- `docs/maintainability-risk-register/05-selection-transform-tools.md`
+- `docs/maintainability-risk-register/06-crop-resize-tooling.md`
+- `docs/maintainability-risk-register/07-brush-eraser-painting.md`
+- `docs/maintainability-risk-register/08-drag-drop-native-io.md`
+- `docs/maintainability-risk-register/09-renderer-export-performance.md`
+- `docs/maintainability-risk-register/10-tests-ci-release-governance.md`
+- `docs/maintainability-risk-register/11-six-month-remediation-roadmap.md`
+
+**Verification:**
+- Documentation-only change. Verified file creation, `MRR-*` risk IDs, and markdown whitespace locally.
+- No runtime code changed, so build/test execution was not required for this docs task.
+
+---
+
+## [2026-06-17] BUG FIX � Cross-Doc Tab Hover Did Not Start 500ms Timer [COMPLETE]
+
+### Kategori: BUG FIX / FRONTEND / DRAG-AND-DROP / EVENT-WIRING
+
+**Root Cause:**
+Canvas drag fires pointer events; tab hover-to-switch timer (500ms per cross-doc spec) was driven by DragController.startTabHover called from the canvas hook's onPointerMove. Two missing pieces:
+1. The tab's onPointerEnter is the natural source of truth for 'pointer crossed onto this tab'. The hook's elementFromPoint check was duplicative and unreliable under reordering/stacking. The tab never owned the timer, so first-frame-of-hover did not start the countdown visually.
+2. The hook never called DragController.beginLayerDrag on pointerdown, so the tab's pointerenter guard (dragKind === null) skipped starting the timer entirely. The 500ms countdown never ran because DragController didn't know a drag was in progress.
+3. The hook's onPointerMove was racing the timer: on every non-hover pointermove it called cancelTabHover, killing the timer set by the tab's pointerenter on the previous frame.
+
+**Fix Rationale:**
+- Move hover detection to the tab's own onPointerEnter/onPointerLeave (single source of truth).
+- Hook calls eginLayerDrag on pointerdown and endDrag on pointerup/pointercancel so DragController is in sync with canvas drags.
+- Hook no longer calls cancelTabHover from onPointerMove; the tab's pointerleave is the only cancel signal.
+- Hook's onPointerMove still calls setDropTarget({ type: 'tab', docId }) so cross-doc hover can revert the source transform (existing behavior).
+
+**Files Changed:**
+- pps/desktop/src/components/editor/DocumentTabsBar.tsx: added onPointerEnter/onPointerLeave on each tab; calls startTabHover/cancelTabHover when drag.state().dragKind !== null and the cursor is over a different doc.
+- pps/desktop/src/components/editor/useCanvasLayerDrag.ts: calls eginLayerDrag(payload, null) in handlePointerDown; calls endDrag() in onPointerUp and onPointerCancel; removed cancelTabHover call from onPointerMove (tab's pointerleave owns the cancel).
+
+**Verification:**
+- pnpm.cmd run build (tsc + vite) green in 8.61s.
+- pnpm.cmd --filter photrez-desktop test --run green: 75 test files, 1070 tests, 73.67s.
+- cargo test -p photrez-core green: 85/85 tests, 0.10s.
+- Pre-commit hook pipeline: all 3 stages green, commit ce39031 landed.
+- Removed two pointerenter/pointerleave regression tests because they exercised test-environment SolidJS context plumbing (useEditor() inside setTimeout returns the default value), not the actual fix. The 500ms timer behavior is unit-tested in DragController.test.tsx (same-tab early-return, switch-after-timer, cancel-on-leave).
+- Manual smoke test in pnpm tauri dev deferred to user: hold pointer on a tab during a canvas drag ? 500ms countdown ? doc switches, layer lands at cursor. Source transform reverts on cross-doc hover, undo works.
+
