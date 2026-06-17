@@ -177,6 +177,27 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
     if (activeTool() !== "move") return;
     if (e.button !== 0) return;
 
+    // Dump all layers ONCE per session for diagnosis (flag below resets on first
+    // successful drag so the log only fires once).
+    if (!(window as any).__photrez_dumped_layers) {
+      (window as any).__photrez_dumped_layers = true;
+      const eng = workspace.getActiveEngine();
+      const ls = eng?.getLayers() ?? [];
+      console.log(
+        `[useCanvasLayerDrag] LAYER DUMP count=${ls.length}`,
+      );
+      for (const l of ls) {
+        console.log(
+          `  ${l.name} id=${l.id} ` +
+          `pos=(${l.transform.x},${l.transform.y}) ` +
+          `size=(${l.width}x${l.height}) ` +
+          `scale=(${l.transform.scaleX},${l.transform.scaleY}) ` +
+          `rot=${l.transform.rotation} ` +
+          `locked=${l.locked} vis=${l.visible}`,
+        );
+      }
+    }
+
     // Ignore if the click was on a transform handle or rotate path
     // (useSelectionTransformDrag handles those and stops propagation, but
     // guard defensively in case any future SVG element forgets to)
