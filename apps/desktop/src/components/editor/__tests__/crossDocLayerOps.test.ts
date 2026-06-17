@@ -169,14 +169,14 @@ describe("addLayerFromCrossDoc — position", () => {
     expect(moveArgs[2]).toBe(444);
   });
 
-  it("uses doc center when target is tab", () => {
+  it("uses cursor pos when target is tab (Photoshop-like: user aims the landing position)", () => {
     const sourceEngine = makeEngine({ id: "doc-A" });
     const targetEngine = makeEngine({ id: "doc-B", width: 800, height: 600 });
     const ws = makeWorkspace({ "doc-A": sourceEngine, "doc-B": targetEngine });
-    addLayerFromCrossDoc(basePayload, { type: "tab", docId: "doc-B" }, { x: 0, y: 0 }, ws as any);
+    addLayerFromCrossDoc(basePayload, { type: "tab", docId: "doc-B" }, { x: 123, y: 456 }, ws as any);
     const moveArgs = targetEngine.moveLayer.mock.calls[0];
-    expect(moveArgs[1]).toBe(300);
-    expect(moveArgs[2]).toBe(225);
+    expect(moveArgs[1]).toBe(123);
+    expect(moveArgs[2]).toBe(456);
   });
 
   it("uses doc center when target is layers-panel", () => {

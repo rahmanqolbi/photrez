@@ -140,13 +140,24 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
     }
   });
 
-  // Reactive per-document setup (fitToScreen, renderer resize, layer upload)
+  // Track which documents have been "opened" (fit-to-screen'd) so we
+  // don't reset the camera on every tab switch. Without this, every
+  // cross-doc drop would shrink the doc to fit (background looks
+  // smaller with padding around it) and the user's cursor-positioned
+  // layer lands off-screen.
+  const seenDocs = new Set<string>();
+
+  // Reactive per-document setup: upload layers, render, and fit-to-screen
+  // only the first time we see a doc. Subsequent switches just re-render.
   createEffect(() => {
     const id = activeDocumentId();
     if (!id) return;
 
     const engine = workspace.getActiveEngine();
     if (!engine) return;
+
+    const isFirstTime = !seenDocs.has(id);
+    seenDocs.add(id);
 
     try {
       const overlayCanvas = params.getOverlayCanvasRef();
@@ -163,7 +174,11 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
         }
       }
 
-      fitToScreenAndRender();
+      if (isFirstTime) {
+        fitToScreenAndRender();
+      } else {
+        scheduler.requestRender();
+      }
     } catch (err) {
       console.error("Viewport sync failed:", err);
     }

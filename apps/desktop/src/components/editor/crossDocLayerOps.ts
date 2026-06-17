@@ -92,19 +92,21 @@ export function addLayerFromCrossDoc(
     return;
   }
 
-  const targetPos: Point = target && target.type === "canvas"
-    ? cursorPos
-    : (() => {
-        // Real DocumentEngine exposes getWidth/getHeight; mock engine
-        // exposes .width/.height. Use as any to handle both.
-        const e = targetEngine as any;
-        const tw = typeof e.getWidth === "function" ? e.getWidth() : (e.width ?? 0);
-        const th = typeof e.getHeight === "function" ? e.getHeight() : (e.height ?? 0);
-        return {
-          x: Math.max(0, (tw - (sourceLayer.width ?? 0)) / 2),
-          y: Math.max(0, (th - (sourceLayer.height ?? 0)) / 2),
-        };
-      })();
+  // Drop position: use cursor position for canvas + tab drops (the user
+  // explicitly aimed there). For other targets (e.g. layers-panel) where
+  // the cursor is outside the canvas, fall back to doc-center.
+  const targetPos: Point =
+    target && (target.type === "canvas" || target.type === "tab")
+      ? cursorPos
+      : (() => {
+          const e = targetEngine as any;
+          const tw = typeof e.getWidth === "function" ? e.getWidth() : (e.width ?? 0);
+          const th = typeof e.getHeight === "function" ? e.getHeight() : (e.height ?? 0);
+          return {
+            x: Math.max(0, (tw - (sourceLayer.width ?? 0)) / 2),
+            y: Math.max(0, (th - (sourceLayer.height ?? 0)) / 2),
+          };
+        })();
 
   const targetHistory = ws.getHistory(targetDocId);
   if (targetHistory) targetHistory.commit(targetEngine.snapshot());
@@ -125,6 +127,12 @@ export function addLayerFromCrossDoc(
     if (typeof e.setLayerBlendMode === "function") e.setLayerBlendMode(newId, sourceLayer.blendMode ?? "normal");
     if (typeof e.setLayerVisibility === "function") e.setLayerVisibility(newId, sourceLayer.visible ?? true);
     if (typeof e.setLayerLocked === "function") e.setLayerLocked(newId, sourceLayer.locked ?? false);
+    // Transfer the source bitmap so the new layer isn't empty.
+    // Without this, the new layer is created with the right name and
+    // size but no image data — exactly the "empty layer" symptom.
+    if (sourceLayer.imageBitmap && typeof e.setLayerImageBitmap === "function") {
+      e.setLayerImageBitmap(newId, sourceLayer.imageBitmap);
+    }
   }
 
   if (payload.isAltPressed) {

@@ -137,19 +137,38 @@ describe("addLayerFromCrossDoc — real engine integration", () => {
     expect(cloned.height).toBe(600);
   });
 
-  it("places layer at target center for tab drop", () => {
+  it("places layer at cursor pos for tab drop (Photoshop-like: user aims the landing position)", () => {
     addLayerFromCrossDoc(
       basePayload,
       { type: "tab", docId: targetDocId },
-      { x: 200, y: 150 },
+      { x: 333, y: 444 },
       ws as unknown as WorkspaceFacade
     );
 
     const targetEngine = ws.getEngine(targetDocId)!;
     const cloned = targetEngine.getLayers().find((l) => l.name === "MyLogo")!;
-    // tab target centers: (targetW - sourceW) / 2, (targetH - sourceH) / 2
-    // targetDoc = 1000x800, source layer inherits docA = 800x600
-    expect(cloned.transform.x).toBe(100);
-    expect(cloned.transform.y).toBe(100);
+    expect(cloned.transform.x).toBe(333);
+    expect(cloned.transform.y).toBe(444);
+  });
+
+  it("transfers source layer's bitmap to the cloned layer (regression: empty-layer bug)", () => {
+    // User-reported bug: cross-doc copy created a layer with the right
+    // name and size, but no bitmap — the new layer looked empty. The
+    // addLayerFromCrossDoc path forgot to call setLayerImageBitmap.
+    const sourceEngine = ws.getEngine(sourceDocId)!;
+    const fakeBitmap = { width: 200, height: 150, __tag: "source-bitmap" } as unknown as ImageBitmap;
+    sourceEngine.setLayerImageBitmap(sourceLayerId, fakeBitmap);
+
+    addLayerFromCrossDoc(
+      basePayload,
+      { type: "tab", docId: targetDocId },
+      { x: 0, y: 0 },
+      ws as unknown as WorkspaceFacade
+    );
+
+    const targetEngine = ws.getEngine(targetDocId)!;
+    const cloned = targetEngine.getLayers().find((l) => l.name === "MyLogo")!;
+    expect(cloned).toBeDefined();
+    expect(cloned.imageBitmap).toBe(fakeBitmap);
   });
 });
