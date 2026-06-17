@@ -217,6 +217,30 @@ describe("encodeComposite", () => {
     expect(capturedBlobOptions.quality).toBe(0.75);
   });
 
+  it("returns encoded bytes with the requested format signature", async () => {
+    const signatures: Record<string, number[]> = {
+      "image/png": [0x89, 0x50, 0x4e, 0x47],
+      "image/jpeg": [0xff, 0xd8, 0xff, 0xe0],
+      "image/webp": [0x52, 0x49, 0x46, 0x46],
+    };
+    vi.stubGlobal("OffscreenCanvas", vi.fn(function (this: any, w: number, h: number) {
+      this.width = w;
+      this.height = h;
+      this.getContext = () => createOffscreenCtxMock();
+      this.convertToBlob = vi.fn((opts: any) => {
+        const signature = signatures[opts.type] ?? [];
+        return Promise.resolve(new Blob([new Uint8Array(signature)]));
+      });
+    }));
+
+    const { encodeComposite } = await import("../exportDocument");
+    const engine = makeMockEngine([]);
+
+    expect(Array.from((await encodeComposite(engine, "png", 100)).slice(0, 4))).toEqual(signatures["image/png"]);
+    expect(Array.from((await encodeComposite(engine, "jpeg", 85)).slice(0, 4))).toEqual(signatures["image/jpeg"]);
+    expect(Array.from((await encodeComposite(engine, "webp", 75)).slice(0, 4))).toEqual(signatures["image/webp"]);
+  });
+
   it("document dimensions match output canvas size", async () => {
     let capturedW = 0;
     let capturedH = 0;
@@ -273,5 +297,16 @@ describe("exportActiveDocument", () => {
     expect(mockShowSaveDialog).toHaveBeenCalled();
     expect(mockWriteFileBytes).toHaveBeenCalled();
     expect(result).toBe("/tmp/test.png");
+  });
+
+  it("does not write bytes when the save dialog is cancelled", async () => {
+    mockShowSaveDialog.mockResolvedValueOnce(null);
+    const { exportActiveDocument } = await import("../exportDocument");
+    const engine = makeMockEngine([]);
+
+    const result = await exportActiveDocument(engine, "MyImage.png", "png", 100);
+
+    expect(result).toBeNull();
+    expect(mockWriteFileBytes).not.toHaveBeenCalled();
   });
 });

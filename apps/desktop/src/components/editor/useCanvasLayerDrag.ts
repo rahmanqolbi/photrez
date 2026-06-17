@@ -76,45 +76,30 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
   function onPointerMove(e: PointerEvent) {
     const d = drag();
     if (!d) return;
-    const engine = workspace.getActiveEngine();
-    if (!engine) return;
-    const layer = engine.getLayer(d.layerId);
-    if (!layer) return;
 
-    // Check for cross-doc tab hover FIRST. A cross-doc drag is a copy
-    // operation — the source layer must stay in place while the user
-    // aims the cursor at the target tab.
+    // Check for tab hover FIRST. A tab hover is a drop-target action, not
+    // a canvas move action, so pause at the current visual position while
+    // the user aims at a tab or waits for hover-to-switch.
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const tabEl = el?.closest("[data-document-tab]") as HTMLElement | null;
     const tabId = tabEl?.getAttribute("data-document-tab") ?? null;
     const currentActive = activeDocumentId();
-    const isCrossDocHover = !!(tabId && tabId !== currentActive);
 
-    if (isCrossDocHover) {
-      // Cross-doc drag is a copy: revert the source layer to its original
-      // position so the source is unchanged on drop. This handles the
-      // case where the user dragged through the source doc first (the
-      // source moved), then crossed to another tab.
-      const sourceEngine = workspace.getEngine(d.sourceDocId);
-      if (sourceEngine) {
-        const sourceLayer = sourceEngine.getLayer(d.layerId);
-        if (
-          sourceLayer &&
-          (sourceLayer.transform.x !== d.startTransformX ||
-            sourceLayer.transform.y !== d.startTransformY)
-        ) {
-          sourceEngine.transformLayer(d.layerId, {
-            x: d.startTransformX,
-            y: d.startTransformY,
-          });
-          scheduler.requestRender();
-        }
-      }
+    if (tabId) {
       dragController.setDropTarget({ type: "tab", docId: tabId });
-      dragController.startTabHover(tabId);
+      if (tabId !== currentActive) {
+        dragController.startTabHover(tabId);
+      } else {
+        dragController.cancelTabHover();
+      }
       opts.onSnapLinesChange?.([]);
       return;
     }
+
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+    const layer = engine.getLayer(d.layerId);
+    if (!layer) return;
 
     // Same-doc (or no tab): mutate the source layer with snap.
     const docPos = camera.screenToDocument(
@@ -242,6 +227,12 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
           workspace as unknown as Parameters<typeof addLayerFromCrossDoc>[3],
         );
         crossDocAdded = true;
+        if (!e.altKey) {
+          sourceEngine.transformLayer(d.layerId, {
+            x: d.startTransformX,
+            y: d.startTransformY,
+          });
+        }
         // Explicitly upload the new layer's bitmap to the renderer.
         // The createEffect on activeDocumentId change handles first-time
         // docs, but for already-seen docs the effect doesn't re-run

@@ -4,6 +4,74 @@
 
 ## Current Tasks
 
+### [2026-06-17] Bug Fix - Cross-Doc Drag Tab Hover Snap-Back [COMPLETE]
+
+**Goal:**
+Prevent the source layer from visually snapping back to its original/center position while the pointer is hovering over a document tab during canvas layer drag.
+
+**Scope:**
+- [x] Read required AI docs and project instructions
+- [x] Adjust tab-hover drag behavior so movement pauses without immediate visual restore
+- [x] Preserve final source restoration on cancel/cross-doc copy
+- [x] Add regression coverage for no snap-back during tab hover
+- [x] Run targeted verification
+- [x] Update AI_HISTORY.md and FEATURES.md if needed
+
+**Notes:**
+- User-visible symptom: source layer moves during drag, then snaps back to center/original for a fraction of a second while pointer is over the tab before switch completes.
+- Desired behavior: when pointer reaches a tab, freeze the source layer at the last dragged visual position; do cleanup/restoration only on cancel or completed cross-doc copy/move.
+- Fix: tab hover no longer restores source transform immediately. Cross-doc copy restores the source after the drop commit; pointer cancel still restores the source.
+- Verification: `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/useCanvasLayerDrag.test.tsx` PASS; `pnpm.cmd --filter photrez-desktop exec playwright test e2e/cross-doc-drag-drop.spec.ts` PASS; `pnpm.cmd --filter photrez-desktop test --run` PASS (77 files / 1078 tests); `pnpm.cmd run build` PASS.
+
+---
+
+### [2026-06-17] Bug Fix - Cross-Doc Drag Visual Jump on Tab Hover [COMPLETE]
+
+**Goal:**
+Fix the visual jump where dragging a layer toward a document tab also moves the layer on the canvas before the hover-to-switch tab action completes.
+
+**Scope:**
+- [x] Read required AI docs and project instructions
+- [x] Inspect Move Tool / canvas drag / cross-doc drag overlap
+- [x] Patch the smallest production path that prevents canvas transform mutation while hovering tabs
+- [x] Add regression coverage for tab-hover drag not moving the source layer
+- [x] Run targeted and required verification
+- [x] Update AI_HISTORY.md and FEATURES.md if needed
+
+**Notes:**
+- User-visible symptom: while pointer is over the tab strip during layer drag, the selected layer briefly shifts position on the source canvas.
+- Ponytail constraint: reuse existing drag/tab hover path; do not add another drag subsystem.
+- Root cause: `useCanvasLayerDrag` treated a tab hover as “not cross-doc” when the hovered tab was already active, including after hover-to-switch made the target tab active, so pointer coordinates from the tab strip were converted into canvas movement.
+- Fix: any document tab hover is now treated as a drop-target zone that restores/freezes the source layer transform and only starts the 500ms hover timer when the tab differs from the current active document.
+- Verification: `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/useCanvasLayerDrag.test.tsx` PASS; `pnpm.cmd --filter photrez-desktop exec playwright test e2e/cross-doc-drag-drop.spec.ts` PASS; `pnpm.cmd --filter photrez-desktop test --run` PASS (77 files / 1078 tests); `pnpm.cmd run build` PASS.
+
+---
+
+### [2026-06-17] Production Risk Register Execution [COMPLETE]
+
+**Goal:**
+Execute the urgent production-risk-register hardening pass directly, starting from P0 release-blocking risks and continuing into the highest-impact P1 gaps that have concrete evidence in the current codebase.
+
+**Scope:**
+- [x] Read required AI docs and local instructions
+- [x] Read `docs/production-risk-register/` taxonomy and severity model
+- [x] Audit current tests/code against P0/P1 risks
+- [x] Patch confirmed gaps with minimal Ponytail changes
+- [x] Add wiring/contract/integration tests for changed paths
+- [x] Run mandatory verification gates
+- [x] Update `AI_HISTORY.md`, `FEATURES.md`, and decisions if needed
+
+**Execution rule:**
+- Treat `production-risk-register` as a risk checklist, not a rewrite mandate.
+- Fix confirmed production-risk gaps in priority order; do not invent a new architecture when an existing guard/test can close the risk.
+
+**Done:**
+- Added `docs/production-risk-register/2026-06-17-execution-audit.md` with closed-risk evidence and release-only native smoke note.
+- Hardened layer reorder, cross-doc drag/drop E2E, export format/cancel behavior, production debug exposure, and non-Tauri browser drag/drop subscription behavior.
+- Verification: `pnpm.cmd --filter photrez-desktop test --run` PASS (77 files / 1078 tests), `pnpm.cmd run build` PASS, `cargo test -p photrez-core` PASS (85 tests), `cargo test --workspace` PASS (92 Rust tests), `pnpm.cmd --filter photrez-desktop exec playwright test` PASS (21 tests), `pnpm.cmd run verify` PASS.
+
+---
+
 ### [2026-06-17] Bug Fix - Cross-Doc Layer Drag Tab Hover [COMPLETE]
 
 **Goal:**

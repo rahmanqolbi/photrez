@@ -201,15 +201,18 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
     }
   });
 
-  it("hovering a document tab during canvas layer drag switches after 500ms", () => {
+  it("hovering a document tab during canvas layer drag freezes the current visual position until cleanup", () => {
     vi.useFakeTimers();
     const ctx = setupWithTwoDocs();
     const tabEl = document.createElement("div");
     const originalElementFromPoint = (document as any).elementFromPoint;
     try {
+      const sourceLayer = ctx.ws.getEngine("doc-a")!.getLayers().find((l) => l.name === "Draggable")!;
       tabEl.setAttribute("data-document-tab", "doc-b");
       document.body.appendChild(tabEl);
-      (document as any).elementFromPoint = vi.fn().mockReturnValue(tabEl);
+      (document as any).elementFromPoint = vi.fn()
+        .mockReturnValueOnce(null)
+        .mockReturnValue(tabEl);
 
       ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
         bubbles: true,
@@ -225,10 +228,23 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
         clientX: 20,
         clientY: 20,
       }));
+      expect(sourceLayer.transform.x).toBe(-30);
+      expect(sourceLayer.transform.y).toBe(-30);
+
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true,
+        button: 0,
+        clientX: 20,
+        clientY: 20,
+      }));
 
       expect(ctx.ws.getActiveDocumentId()).toBe("doc-a");
+      expect(sourceLayer.transform.x).toBe(-30);
+      expect(sourceLayer.transform.y).toBe(-30);
       vi.advanceTimersByTime(500);
       expect(ctx.ws.getActiveDocumentId()).toBe("doc-b");
+      expect(sourceLayer.transform.x).toBe(-30);
+      expect(sourceLayer.transform.y).toBe(-30);
 
       document.dispatchEvent(new PointerEvent("pointercancel", {
         bubbles: true,
@@ -236,6 +252,8 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
         clientX: 20,
         clientY: 20,
       }));
+      expect(sourceLayer.transform.x).toBe(100);
+      expect(sourceLayer.transform.y).toBe(100);
     } finally {
       if (originalElementFromPoint) {
         (document as any).elementFromPoint = originalElementFromPoint;

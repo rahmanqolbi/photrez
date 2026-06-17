@@ -83,9 +83,6 @@ describe("ResizeCanvasModal", () => {
     const { container, dispose } = renderModal(true);
     const lockBtn = container.querySelector("button[title]");
     expect(lockBtn).toBeTruthy();
-    const icon = lockBtn!.querySelector("svg");
-    const linkIcon = icon?.querySelector("[d*='M10']"); // link icon path
-    // Just verify button exists with title
     expect(lockBtn!.getAttribute("title")).toBe("Lock aspect ratio");
     dispose();
   });

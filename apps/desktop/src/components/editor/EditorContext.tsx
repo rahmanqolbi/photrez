@@ -172,6 +172,16 @@ export interface EditorContextValue {
 
 const EditorContext = createContext<EditorContextValue>();
 
+interface EditorDebugEnv {
+  DEV?: boolean;
+  MODE?: string;
+  VITE_PHOTREZ_DEBUG_EDITOR?: string;
+}
+
+export function shouldExposeEditorDebugHandle(env: EditorDebugEnv = import.meta.env): boolean {
+  return env.DEV === true || env.MODE === "test" || env.VITE_PHOTREZ_DEBUG_EDITOR === "1";
+}
+
 // Module-level signal so render callbacks outside the provider
 // (e.g., EditorShell's RenderScheduler) can read the same flag.
 const [useGPUCameraForModernCrop, setUseGPUCameraForModernCrop] = createSignal(true);
@@ -314,9 +324,8 @@ export function EditorProvider(props: {
     showToast: (message, severity = "info") => showToastImpl(message, severity),
   };
 
-  // Expose editor on window for E2E test introspection (Playwright).
-  // Safe — only useful in dev/test where window is available.
-  if (typeof window !== "undefined") {
+  // Expose editor on window only in dev/test builds for E2E introspection.
+  if (typeof window !== "undefined" && shouldExposeEditorDebugHandle()) {
     (window as unknown as { __photrezEditor: EditorContextValue }).__photrezEditor =
       value;
   }

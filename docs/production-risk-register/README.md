@@ -30,6 +30,7 @@ Use this folder before shipping, before adding a new tool, and during bug triage
 | `08-export-file-io-ipc.md` | Export, native file IO, Tauri IPC contract |
 | `09-ui-shell-accessibility-responsive.md` | Shell UI, menus, dialogs, responsive/a11y |
 | `10-testing-observability-release.md` | Test gaps, release gates, observability |
+| `2026-06-17-execution-audit.md` | Executed hardening pass, closed risks, and verification evidence |
 
 ## Fast Release Scan
 
@@ -42,4 +43,3 @@ Before declaring a feature production-ready:
 5. Verify undo/redo for every mutating action.
 6. Verify viewport states: fit, zoom, pan, HiDPI, and active tool overlay alignment.
 7. Verify no listener is mounted only inside a component that can unmount before the user triggers the event.
-

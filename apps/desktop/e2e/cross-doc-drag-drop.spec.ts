@@ -8,30 +8,34 @@
 //
 // Tests:
 //  1. Layer drag from one doc to another (HTML5 drag in webview)
-//  2. Hover tab 500ms → auto-switch + layer added
-//  3. Drop on tab-empty area → new doc(s) created
-//  4. Drop on invalid zone (tool rail) → no-op
-//  5. Multi-file cascade (simulated)
+//  2. Hover tab 500ms → auto-switch
+//  3. Drop on invalid zone (tool rail) → no-op
 
-import { expect, test, Page, Locator } from "@playwright/test";
+import { expect, test, Dialog, Page } from "@playwright/test";
 
 async function createBlankCanvas(page: Page, width = "800", height = "600") {
+  const newCanvasButton = page.getByRole("button", { name: "New Canvas" });
+  if (!(await newCanvasButton.isVisible().catch(() => false))) {
+    await page.getByRole("button", { name: "New document" }).click();
+    await page.waitForTimeout(100);
+    return;
+  }
+
   const promptValues = [width, height];
-  page.on("dialog", async (dialog) => {
+  const dialogHandler = async (dialog: Dialog) => {
     await dialog.accept(promptValues.shift() ?? height);
-  });
-  await page.getByRole("button", { name: "New Canvas" }).click();
-  await page.waitForTimeout(100);
+  };
+  page.on("dialog", dialogHandler);
+  try {
+    await newCanvasButton.click();
+    await page.waitForTimeout(100);
+  } finally {
+    page.off("dialog", dialogHandler);
+  }
 }
 
 async function getLayerCount(page: Page): Promise<number> {
   return page.locator("[data-layer-idx]").count();
-}
-
-async function getActiveLayerName(page: Page): Promise<string | null> {
-  const active = page.locator("[data-layer-idx]").first();
-  if ((await active.count()) === 0) return null;
-  return (await active.textContent())?.trim() ?? null;
 }
 
 async function simulateLayerDrag(
@@ -40,8 +44,8 @@ async function simulateLayerDrag(
   targetSelector: string,
   options: { altKey?: boolean } = {}
 ) {
-  const source = page.locator(sourceSelector);
-  const target = page.locator(targetSelector);
+  const source = page.locator(sourceSelector).first();
+  const target = page.locator(targetSelector).first();
   await source.hover();
   await page.mouse.down();
   await target.hover();
@@ -107,41 +111,49 @@ test.describe("Cross-doc drag and drop (browser)", () => {
     await page.goto("/");
   });
 
-  test("hover tab 500ms switches to that doc", async ({ page }) => {
+  test("hover tab 500ms during layer drag switches to that doc", async ({ page }) => {
     await createBlankCanvas(page, "800", "600");
     await createBlankCanvas(page, "1000", "800");
     // Should have 2 tabs, second is active
     const tabs = page.locator("[data-document-tab]");
     await expect(tabs).toHaveCount(2);
 
-    // Hover on the first tab for 500ms
+    const layerItem = page.locator("[data-layer-idx]").first();
     const firstTab = tabs.first();
-    await firstTab.hover();
+    await page.evaluate(() => {
+      const sourceEl = document.querySelector("[data-layer-idx]") as HTMLElement;
+      const targetEl = document.querySelector("[data-document-tab]") as HTMLElement;
+      if (!sourceEl || !targetEl) throw new Error("Layer item or target tab not found");
+      const dataTransfer = new DataTransfer();
+      sourceEl.dispatchEvent(new DragEvent("dragstart", {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      }));
+      targetEl.dispatchEvent(new DragEvent("dragover", {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer,
+      }));
+    });
     await page.waitForTimeout(600);
 
     // First tab should now be active (bottom border accent visible)
     const firstTabClass = await firstTab.getAttribute("class");
     expect(firstTabClass).toContain("bg-editor-bg");
+    await layerItem.dispatchEvent("dragend");
   });
 
   test("drop on tool rail is no-op for layer drag", async ({ page }) => {
     await createBlankCanvas(page);
     await createBlankCanvas(page);
 
-    // Layer item + tool rail as drop target
-    const layerItem = page.locator("[data-layer-idx]").first();
-    const toolRail = page.locator("aside, [class*='tool']").first();
+    const beforeLayerCount = await getLayerCount(page);
+    const beforeTabCount = await page.locator("[data-document-tab]").count();
 
-    // Simulate drag (won't actually fire HTML5 drag for tool rail, just verify no error)
-    // We can't easily test "no-op" without real drag events
-    expect(await layerItem.count()).toBeGreaterThan(0);
-  });
+    await simulateLayerDrag(page, "[data-layer-idx]", "aside");
 
-  test("multi-file cascade positions", async ({ page }) => {
-    // This test documents the expected cascade behavior. The actual
-    // file drop requires Tauri runtime — see T12 EmptyWorkspace.
-    //
-    // Verified by unit test: crossDocLayerOps.test.ts (CASCADE_OFFSET_PX = 24).
-    expect(24).toBe(24);
+    await expect(page.locator("[data-document-tab]")).toHaveCount(beforeTabCount);
+    expect(await getLayerCount(page)).toBe(beforeLayerCount);
   });
 });

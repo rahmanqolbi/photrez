@@ -1,5 +1,84 @@
 # AI History — Photrez
 
+## [2026-06-17] BUG FIX - Cross-Doc Drag Tab Hover Snap-Back [COMPLETE]
+
+### Kategori: BUG FIX / FRONTEND / DRAG-DROP / MOVE TOOL
+
+**Root Cause:**
+The previous tab-hover guard restored the source layer to its pointerdown transform as soon as the pointer entered a document tab. That kept the final source data correct, but it created the user-visible snap-back: after the layer had visually moved during the drag, it jumped back to the original/center position for a fraction of a second before hover-to-switch completed.
+
+**Fix Rationale:**
+Hovering a document tab should pause canvas movement, not immediately restore the source layer. The source should stay at the last dragged visual position during the hover wait, then restore only when the drag is cancelled or a cross-document copy finishes. Alt-move keeps the existing delete-source behavior.
+
+**Done:**
+1. Removed immediate source transform restore from the `useCanvasLayerDrag` tab-hover branch.
+2. Restored the source layer after cross-document copy commits, while preserving Alt-move source deletion.
+3. Updated `useCanvasLayerDrag.test.tsx` to simulate drag movement first, then tab hover, and assert no snap-back before or after the 500ms switch; cancel still restores the source.
+4. Updated `AI_CURRENT_TASK.md` and `FEATURES.md`.
+
+**Verification:**
+- `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/useCanvasLayerDrag.test.tsx` - PASS.
+- `pnpm.cmd --filter photrez-desktop exec playwright test e2e/cross-doc-drag-drop.spec.ts` - PASS.
+- `pnpm.cmd --filter photrez-desktop test --run` - PASS (77 files / 1078 tests).
+- `pnpm.cmd run build` - PASS.
+
+---
+## [2026-06-17] BUG FIX - Cross-Doc Drag Visual Jump on Tab Hover [COMPLETE]
+
+### Kategori: BUG FIX / FRONTEND / DRAG-DROP / MOVE TOOL
+
+**Root Cause:**
+`useCanvasLayerDrag` only treated a hovered tab as cross-document when the hovered tab differed from the current active document. While dragging a canvas layer toward a document tab, the hovered tab can be the active tab already, or can become active after the 500ms hover-to-switch timer fires. In that state the hook fell back to the normal canvas-move path and converted tab-strip pointer coordinates into document coordinates, briefly moving the source layer visually before or during tab switching.
+
+**Fix Rationale:**
+A document tab is a drop-target zone, not a canvas movement zone. The smallest fix is to handle any `[data-document-tab]` hover before canvas movement: restore/freeze the source layer at its pointerdown transform, set the tab drop target, and only start the hover timer when the hovered tab is different from the current active document.
+
+**Done:**
+1. Updated `useCanvasLayerDrag` so all document-tab hovers stop canvas transform mutation during layer drag.
+2. Preserved the existing `DragController` hover-to-switch path; no new drag subsystem added.
+3. Extended `useCanvasLayerDrag.test.tsx` to assert the source layer remains at its original transform while pointer is over a target tab before and after the 500ms switch.
+4. Updated `AI_CURRENT_TASK.md` and `FEATURES.md`.
+
+**Verification:**
+- `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/useCanvasLayerDrag.test.tsx` - PASS.
+- `pnpm.cmd --filter photrez-desktop exec playwright test e2e/cross-doc-drag-drop.spec.ts` - PASS.
+- `pnpm.cmd --filter photrez-desktop test --run` - PASS (77 files / 1078 tests).
+- `pnpm.cmd run build` - PASS.
+
+---
+
+## [2026-06-17] HARDENING - Production Risk Register Execution [COMPLETE]
+
+### Kategori: HARDENING / QA / DRAG-DROP / EXPORT / RELEASE-GATE
+
+**Goal:**
+Execute the urgent `docs/production-risk-register/` pass directly against confirmed P0/P1 production-risk gaps, using Ponytail constraints: reuse existing mechanisms, patch only concrete gaps, and add wiring/contract evidence.
+
+**Root Cause / Risk Rationale:**
+The production-risk-register identified several "tests pass but app fails" classes: layer reorder index mismatch, drag/drop E2E placeholders, export bytes/cancel gaps, production debug-surface exposure, missing root verification command, and browser-mode Tauri subscription noise. These were small but release-relevant gaps around core workflows.
+
+**Done:**
+1. Added `docs/production-risk-register/2026-06-17-execution-audit.md` with closed-risk evidence and the remaining native Tauri release-smoke note.
+2. Added layer reorder hook tests for top-first UI rows vs internal engine order.
+3. Hardened cross-document drag/drop browser E2E: 500ms tab hover during active layer drag now asserts tab activation, and invalid tool-rail drop asserts no mutation.
+4. Added export tests for PNG/JPEG/WebP byte signatures and save-dialog cancel no-write behavior.
+5. Guarded `window.__photrezEditor` so it is exposed only in dev/test/explicit debug builds.
+6. Guarded Tauri OS drag-drop subscription in non-Tauri browser runtime while preserving Vitest Tauri mocks.
+7. Added root `pnpm run verify` script for local hardening gates.
+
+**Verification:**
+- `pnpm.cmd --filter photrez-desktop test --run` - PASS (77 files / 1078 tests).
+- `pnpm.cmd run build` - PASS.
+- `cargo test -p photrez-core` - PASS (85 tests).
+- `cargo test --workspace` - PASS (92 Rust tests total).
+- `pnpm.cmd --filter photrez-desktop exec playwright test` - PASS (21 tests).
+- `pnpm.cmd run verify` - PASS.
+
+**Release Note:**
+`PBR-TEST-002` remains a release-candidate smoke requirement for Tauri runtime behavior: app launch, OS file drop, native export dialog/file write, and close.
+
+---
+
 ## [2026-06-17] DOCUMENTATION — FAANG-Style Review Rejection Register [COMPLETE]
 
 ### Kategori: DOCUMENTATION / CODE-REVIEW / QUALITY-GATE / HARDENING

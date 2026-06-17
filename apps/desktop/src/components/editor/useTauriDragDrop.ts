@@ -1,5 +1,6 @@
 import { onMount, onCleanup } from "solid-js";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { isTauriRuntime } from "../../lib/desktop";
 
 export interface TauriDragDropCallbacks {
   onOver?: (position: { x: number; y: number }) => void;
@@ -11,6 +12,8 @@ export function useTauriDragDrop(callbacks: TauriDragDropCallbacks) {
   let unlisten: (() => void) | null = null;
 
   onMount(async () => {
+    if (!isTauriRuntime() && import.meta.env.MODE !== "test") return;
+
     try {
       const webview = getCurrentWebview();
       unlisten = await webview.onDragDropEvent((event) => {

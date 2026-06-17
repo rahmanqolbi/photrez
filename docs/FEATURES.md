@@ -149,6 +149,7 @@
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Drag layer between documents (Copy default, Alt = Move) |
 | ✅ DONE      | Hover-to-switch document tab (500ms with countdown) |
+| ✅ DONE      | Canvas layer drag to document tab freezes at the last dragged visual position while waiting for hover-to-switch, with cleanup restore on cancel/copy |
 | ✅ DONE      | Drop image file from OS (Tauri 2 onDragDropEvent) |
 | ✅ DONE      | Multi-file cascade (24px offset) |
 | ✅ DONE      | Context-sensitive drop zones (tab/canvas/layers-panel/tab-empty/outside) |
@@ -304,8 +305,8 @@
 | ⬜ TODO      | CI pipeline (GitHub Actions)               |
 | ✅ DONE      | Unit tests (core crate) — 85 tests, 92 workspace total |
 | ✅ DONE      | Contract tests (IPC commands) — 13 tests   |
-| ✅ DONE      | Frontend tests — 837 passing tests (59 files) |
-| ✅ DONE      | E2E browser tests — 14 Playwright tests    |
+| ✅ DONE      | Frontend tests — 1078 passing tests (77 files) |
+| ✅ DONE      | E2E browser tests — 21 Playwright tests    |
 | ✅ DONE      | M6 Perf Gate (all metrics PASS)            |
 | ✅ DONE      | Native Vite tsconfig paths (removed `vite-tsconfig-paths` plugin) |
 | ✅ DONE      | Release candidate (MSI + NSIS installers)  |
@@ -315,6 +316,7 @@
 
 | Status | Item |
 | ------ | ---- |
+| DONE | Production risk register hardening executed: closed drag/drop, layer reorder, export, debug-surface, and verification-script gaps with green automated gates |
 | DONE | Cross-doc layer drag tab hover regression fixed: 500ms tab switch now works through real EditorProvider workspace and canvas pointer-drag tab detection |
 | DONE | Ponytail refactor-from-scratch doctrine created: `docs/ponytail-refactor-doctrine/` with anti-overengineering rules, per-area playbooks, roadmap, and review checklists |
 | DONE | 6-month maintainability risk register created: `docs/maintainability-risk-register/` with per-area ownership, refactor, and governance risks |
