@@ -44,16 +44,21 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
     // must also start at index 0 — otherwise the Background (which covers
     // the whole canvas) gets returned for every click and canvas drag does
     // nothing visible.
+    //
+    // transform.x/y are the layer's TOP-LEFT corner (see renderer:
+    //   cx = t.x + effW / 2). Bounds are therefore [t.x, t.x + w] × [t.y, t.y + h].
     for (let i = 0; i < ls.length; i++) {
       const layer = ls[i];
       if (layer.locked || !layer.visible) continue;
-      // Skip the background — it covers the whole canvas and can't be moved.
       if (layer.name === "Background") continue;
-      const halfW = (layer.width * Math.abs(layer.transform.scaleX)) / 2;
-      const halfH = (layer.height * Math.abs(layer.transform.scaleY)) / 2;
-      const localX = docX - layer.transform.x;
-      const localY = docY - layer.transform.y;
-      if (Math.abs(localX) <= halfW && Math.abs(localY) <= halfH) {
+      const w = layer.width * Math.abs(layer.transform.scaleX);
+      const h = layer.height * Math.abs(layer.transform.scaleY);
+      if (
+        docX >= layer.transform.x &&
+        docX <= layer.transform.x + w &&
+        docY >= layer.transform.y &&
+        docY <= layer.transform.y + h
+      ) {
         return layer;
       }
     }

@@ -38,6 +38,8 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
     const a = session.engine.addLayer("Draggable") as LayerNode;
     a.transform.x = 100;
     a.transform.y = 100;
+    a.width = 200;
+    a.height = 200;
     // addLayer inserts at index 0 (newest at front). findLayerAt now iterates
     // top→bottom (index 0 first) so the freshly-added Draggable is on top and
     // hit first. No reorder workaround needed.
@@ -88,24 +90,24 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       expect(layer.transform.x).toBe(100);
       expect(layer.transform.y).toBe(100);
 
-      // Simulate pointerdown at center of layer (100,100 in doc space = screen 100,100)
+      // Simulate pointerdown inside layer's top-left bounds (layer at 100,100 → 300,300)
       ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
         bubbles: true,
         cancelable: true,
         button: 0,
-        clientX: 100,
-        clientY: 100,
-      }));
-
-      // Simulate pointermove at (200, 150) on document
-      document.dispatchEvent(new PointerEvent("pointermove", {
-        bubbles: true,
-        button: 0,
-        clientX: 200,
+        clientX: 150,
         clientY: 150,
       }));
 
-      // Layer should have moved by the delta
+      // Simulate pointermove at (250, 200) on document
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true,
+        button: 0,
+        clientX: 250,
+        clientY: 200,
+      }));
+
+      // Layer should have moved by the delta (100,50)
       expect(layer.transform.x).toBe(200);
       expect(layer.transform.y).toBe(150);
       expect(ctx.getDragApi().isDragging()).toBe(true);
@@ -132,7 +134,7 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       const startX = layer.transform.x;
       const startY = layer.transform.y;
 
-      // Click at (700, 500) — far from any layer
+      // Click at (700, 500) — outside layer's top-left bounds (100→300)
       ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
         bubbles: true,
         cancelable: true,
