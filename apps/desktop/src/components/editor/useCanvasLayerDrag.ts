@@ -3,9 +3,12 @@ import { useEditor } from "./EditorContext";
 import { useDragController } from "./DragController";
 import { addLayerFromCrossDoc } from "./crossDocLayerOps";
 import type { LayerNode } from "@/engine/types";
+import { computeSnapAdjustment, type SnapRect, type SnapLine } from "@/viewport/smartGuides";
+import { getLayerAabb } from "@/viewport/transformGeometry";
 
 interface CanvasLayerDrag {
   layerId: string;
+  sourceDocId: string;
   startDocX: number;
   startDocY: number;
   startTransformX: number;
@@ -18,14 +21,8 @@ export interface CanvasLayerDragApi {
   isDragging: () => boolean;
 }
 
-interface CanvasLayerDragSession {
-  layerId: string;
-  startDocX: number;
-  startDocY: number;
-  startTransformX: number;
-  startTransformY: number;
-  rect: { left: number; top: number };
-  originalSnapshot: unknown;
+export interface CanvasLayerDragOptions {
+  onSnapLinesChange?: (lines: SnapLine[]) => void;
 }
 
 /**
@@ -34,13 +31,23 @@ interface CanvasLayerDragSession {
  * the layer to that doc (cross-doc drag). Otherwise the layer stays at
  * the new position in the current doc.
  *
+ * Snapping: when the global `moveSnapEnabled` signal is on (and Alt is
+ * not held), the layer snaps to the doc bounds, the doc center lines,
+ * and other visible layers' edges.
+ *
+ * Tab switch on hover: when the cursor enters a different document's
+ * tab, the workspace switches to that tab so the user sees the target
+ * canvas in real time and can choose the landing position before
+ * releasing. The source docId is captured at pointerdown so the
+ * cross-doc add uses the original source even after the tab switch.
+ *
  * Hit testing: walks the topmost layer stack from top to bottom and
  * picks the first non-locked, non-background, visible layer whose
  * axis-aligned bounding box contains the pointer. Rotation is ignored
  * for simplicity (matches the existing layer-helpers).
  */
-export function useCanvasLayerDrag(): CanvasLayerDragApi {
-  const { workspace, camera, activeDocumentId, activeTool, scheduler } = useEditor();
+export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLayerDragApi {
+  const { workspace, camera, activeDocumentId, activeTool, scheduler, moveSnapEnabled } = useEditor();
   const dragController = useDragController();
 
   const [drag, setDrag] = createSignal<CanvasLayerDrag | null>(null);
@@ -49,12 +56,6 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
     const engine = workspace.getActiveEngine();
     if (!engine) return null;
     const ls = engine.getLayers();
-    // Engine: addLayer inserts at index 0 (newest at front). Renderer draws
-    // from end to start, so index 0 is the topmost visible layer. Hit-test
-    // must also start at index 0 so the topmost layer is picked first.
-    //
-    // transform.x/y are the layer's TOP-LEFT corner (see renderer:
-    //   cx = t.x + effW / 2). Bounds are therefore [t.x, t.x + w] × [t.y, t.y + h].
     for (let i = 0; i < ls.length; i++) {
       const layer = ls[i];
       if (layer.locked || !layer.visible) continue;
@@ -87,20 +88,61 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
     const dx = docPos.x - d.startDocX;
     const dy = docPos.y - d.startDocY;
 
-    const newX = d.startTransformX + dx;
-    const newY = d.startTransformY + dy;
-    engine.transformLayer(d.layerId, {
-      x: newX,
-      y: newY,
-    });
+    let newX = d.startTransformX + dx;
+    let newY = d.startTransformY + dy;
+
+    // Snap to doc bounds + center lines + other layers (when enabled and Alt not held)
+    const altHeld = e.altKey;
+    if (!altHeld && moveSnapEnabled()) {
+      const docW = engine.getWidth();
+      const docH = engine.getHeight();
+      const movingId = layer.id;
+      const aabb = getLayerAabb(layer.transform, layer.width, layer.height);
+      const baseX = aabb.x;
+      const baseY = aabb.y;
+      const targetAabbX = newX - layer.transform.x;
+      const targetAabbY = newY - layer.transform.y;
+      const rect: SnapRect = {
+        x: baseX + targetAabbX,
+        y: baseY + targetAabbY,
+        w: aabb.width,
+        h: aabb.height,
+      };
+      const otherLayers: SnapRect[] = engine
+        .getLayers()
+        .filter((l) => l.visible && l.id !== movingId && l.id !== "background")
+        .map((l) => {
+          const laabb = getLayerAabb(l.transform, l.width, l.height);
+          return { x: laabb.x, y: laabb.y, w: laabb.width, h: laabb.height };
+        });
+      const snapTargets: SnapRect[] = [
+        { x: 0, y: 0, w: docW, h: docH, snapThreshold: 12, snapPriority: 3 },
+        { x: docW / 2, y: -Infinity, w: 0, h: Infinity, snapThreshold: 6, snapPriority: 2 },
+        { x: -Infinity, y: docH / 2, w: Infinity, h: 0, snapThreshold: 6, snapPriority: 2 },
+        ...otherLayers,
+      ];
+      const result = computeSnapAdjustment(rect, snapTargets);
+      newX += result.dx;
+      newY += result.dy;
+      opts.onSnapLinesChange?.(result.lines);
+    } else {
+      opts.onSnapLinesChange?.([]);
+    }
+
+    engine.transformLayer(d.layerId, { x: newX, y: newY });
     scheduler.requestRender();
 
-    // Highlight tab when hovering a different document's tab
+    // Cross-doc hover: switch the active tab to the target so the user
+    // sees the landing canvas in real time.
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const tabEl = el?.closest("[data-document-tab]") as HTMLElement | null;
     const tabId = tabEl?.getAttribute("data-document-tab") ?? null;
     if (tabId && tabId !== activeDocumentId()) {
       dragController.setDropTarget({ type: "tab", docId: tabId });
+      // Switch the workspace to the target tab so the user can position
+      // the landing layer before releasing. The sourceDocId captured at
+      // pointerdown keeps the cross-doc add correct.
+      workspace.switchDocument(tabId);
     } else {
       const tabBarEl = el?.closest("[data-tab-bar-empty]") as HTMLElement | null;
       if (tabBarEl) {
@@ -121,37 +163,65 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
     document.removeEventListener("pointerup", onPointerUp);
     document.removeEventListener("pointercancel", onPointerCancel);
 
+    opts.onSnapLinesChange?.([]);
+
     const dropTarget = dragController.state().dropTarget;
-    const src = activeDocumentId();
-    console.log("[useCanvasLayerDrag] pointerup", { dropTarget, src, layerId: d.layerId });
+    // Use the source docId captured at pointerdown, NOT the current
+    // activeDocumentId — the user may have switched tab during drag.
+    const src = d.sourceDocId;
+    const currentActive = activeDocumentId();
+    console.log("[useCanvasLayerDrag] pointerup", { dropTarget, src, currentActive, layerId: d.layerId });
 
     let crossDocAdded = false;
-    if (dropTarget && dropTarget.type === "tab" && dropTarget.docId !== src) {
-      const engine = workspace.getEngine(src!);
-      const sourceLayer = engine?.getLayer(d.layerId);
-      if (sourceLayer && engine) {
+    if (
+      dropTarget &&
+      dropTarget.type === "tab" &&
+      dropTarget.docId !== src
+    ) {
+      const sourceEngine = workspace.getEngine(src);
+      const sourceLayer = sourceEngine?.getLayer(d.layerId);
+      if (sourceLayer && sourceEngine) {
+        // The user has been hovering the target canvas (tab already
+        // switched during drag), so place the new layer at the cursor
+        // position in the target doc's coordinate space.
+        const targetEngine = workspace.getActiveEngine();
+        let targetPos = { x: sourceLayer.transform.x, y: sourceLayer.transform.y };
+        if (targetEngine) {
+          const layerAabb = getLayerAabb(sourceLayer.transform, sourceLayer.width, sourceLayer.height);
+          targetPos = {
+            x: e.clientX - d.rect.left - layerAabb.width / 2,
+            y: e.clientY - d.rect.top - layerAabb.height / 2,
+          };
+          const targetDocPos = camera.screenToDocument(
+            e.clientX - d.rect.left,
+            e.clientY - d.rect.top,
+          );
+          targetPos = { x: targetDocPos.x, y: targetDocPos.y };
+        }
         addLayerFromCrossDoc(
           {
             version: 1,
-            sourceDocId: src!,
+            sourceDocId: src,
             layerId: d.layerId,
             sourceName: sourceLayer.name,
             isAltPressed: e.altKey,
           },
           { type: "tab", docId: dropTarget.docId },
-          { x: sourceLayer.transform.x, y: sourceLayer.transform.y },
+          targetPos,
           workspace as unknown as Parameters<typeof addLayerFromCrossDoc>[3],
         );
-        // Switch to the target tab so the user sees the result of their drop.
-        workspace.switchDocument(dropTarget.docId);
+        // Stay on the target tab so the user sees the new layer.
+        if (currentActive !== dropTarget.docId) {
+          workspace.switchDocument(dropTarget.docId);
+        }
         crossDocAdded = true;
         scheduler.requestRender();
       }
     } else if (dropTarget && dropTarget.type === "tab" && dropTarget.docId === src) {
       // Dropped on the same doc's tab — revert position (treat as cancel)
-      const engine = workspace.getEngine(src!);
-      if (engine) {
-        engine.transformLayer(d.layerId, {
+      const sourceEngine = workspace.getEngine(src);
+      if (sourceEngine) {
+        sourceEngine.transformLayer(d.layerId, {
           x: d.startTransformX,
           y: d.startTransformY,
         });
@@ -159,22 +229,18 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
       }
     }
 
-    // Commit history so the user can undo the drag. For cross-doc drops we
-    // commit the *original* snapshot of the source doc so undo reverts the
-    // position change. The cross-doc add itself is its own action tracked
-    // in the target doc's history.
+    // Commit history for the SOURCE doc so the user can undo the drag.
     if (src) {
-      const engine = workspace.getEngine(src);
+      const sourceEngine = workspace.getEngine(src);
       const history = workspace.getActiveHistory();
-      if (engine && history) {
-        // Only commit if the position actually changed (or cross-doc happened)
-        const currentLayer = engine.getLayer(d.layerId);
+      if (sourceEngine && history) {
+        const currentLayer = sourceEngine.getLayer(d.layerId);
         const positionChanged =
           currentLayer &&
           (currentLayer.transform.x !== d.startTransformX ||
             currentLayer.transform.y !== d.startTransformY);
         if (positionChanged || crossDocAdded) {
-          history.commit(engine.snapshot());
+          history.commit(sourceEngine.snapshot());
         }
       }
     }
@@ -188,12 +254,14 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
     if (!d) return;
     document.removeEventListener("pointermove", onPointerMove);
     document.removeEventListener("pointerup", onPointerUp);
-    // Revert position on cancel
-    const src = activeDocumentId();
+    document.removeEventListener("pointercancel", onPointerCancel);
+    opts.onSnapLinesChange?.([]);
+
+    const src = d?.sourceDocId ?? activeDocumentId();
     if (src) {
-      const engine = workspace.getEngine(src);
-      if (engine) {
-        engine.transformLayer(d.layerId, {
+      const sourceEngine = workspace.getEngine(src);
+      if (sourceEngine) {
+        sourceEngine.transformLayer(d.layerId, {
           x: d.startTransformX,
           y: d.startTransformY,
         });
@@ -209,8 +277,6 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
     if (e.button !== 0) return;
 
     // Ignore if the click was on a transform handle or rotate path
-    // (useSelectionTransformDrag handles those and stops propagation, but
-    // guard defensively in case any future SVG element forgets to)
     const target = e.target as HTMLElement;
     if (target.closest("[data-handle], [data-overlay-svg] [path]")) {
       return;
@@ -222,19 +288,17 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
     const screenY = e.clientY - rect.top;
     const docPos = camera.screenToDocument(screenX, screenY);
     const layer = findLayerAt(docPos.x, docPos.y);
-    console.log(
-      `[useCanvasLayerDrag] hit layer=${layer?.name} ` +
-      `locked=${layer?.locked} lockPosition=${layer?.lockPosition} ` +
-      `pos=(${docPos?.x?.toFixed(1)},${docPos?.y?.toFixed(1)}) ` +
-      `screen=(${screenX.toFixed(0)},${screenY.toFixed(0)})`,
-    );
     if (!layer) return;
     if (layer.locked || layer.lockPosition) {
-      console.warn(`[useCanvasLayerDrag] BLOCKED: layer "${layer.name}" is position-locked (locked=${layer.locked}, lockPosition=${layer.lockPosition})`);
+      console.warn(`[useCanvasLayerDrag] BLOCKED: layer "${layer.name}" is position-locked`);
     }
+
+    const src = activeDocumentId();
+    if (!src) return;
 
     setDrag({
       layerId: layer.id,
+      sourceDocId: src,
       startDocX: docPos.x,
       startDocY: docPos.y,
       startTransformX: layer.transform.x,

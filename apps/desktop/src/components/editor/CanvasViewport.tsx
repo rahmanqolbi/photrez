@@ -343,7 +343,9 @@ export function CanvasViewport() {
     moveSnapEnabled: () => moveSnapEnabled(),
   });
 
-  const canvasLayerDrag = useCanvasLayerDrag();
+  const canvasLayerDrag = useCanvasLayerDrag({
+    onSnapLinesChange: setSnapLines,
+  });
 
   const { cropSnapTargets } = useCanvasDerivedState({
     getCanvasContainerRef: () => canvasContainerRef,
