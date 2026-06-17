@@ -179,18 +179,15 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
     const screenY = e.clientY - rect.top;
     const docPos = camera.screenToDocument(screenX, screenY);
     const layer = findLayerAt(docPos.x, docPos.y);
-    console.log("[useCanvasLayerDrag] hit test", {
-      clientX: e.clientX, clientY: e.clientY,
-      rectLeft: rect.left, rectTop: rect.top,
-      screenX, screenY,
-      docPosX: docPos?.x, docPosY: docPos?.y,
-      layer: layer?.name,
-      locked: layer?.locked,
-      lockPosition: layer?.lockPosition,
-    });
+    console.log(
+      `[useCanvasLayerDrag] hit layer=${layer?.name} ` +
+      `locked=${layer?.locked} lockPosition=${layer?.lockPosition} ` +
+      `pos=(${docPos?.x?.toFixed(1)},${docPos?.y?.toFixed(1)}) ` +
+      `screen=(${screenX.toFixed(0)},${screenY.toFixed(0)})`,
+    );
     if (!layer) return;
     if (layer.locked || layer.lockPosition) {
-      console.warn("[useCanvasLayerDrag] layer is position-locked, cannot move via canvas drag");
+      console.warn(`[useCanvasLayerDrag] BLOCKED: layer "${layer.name}" is position-locked (locked=${layer.locked}, lockPosition=${layer.lockPosition})`);
     }
 
     setDrag({
