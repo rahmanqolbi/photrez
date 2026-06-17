@@ -38,13 +38,9 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
     const a = session.engine.addLayer("Draggable") as LayerNode;
     a.transform.x = 100;
     a.transform.y = 100;
-    // addLayer inserts at index 0 (below active bg). Move Draggable to the
-    // top of the visual stack so findLayerAt (which iterates top→bottom) hits
-    // Draggable first instead of the bg.
-    {
-      const ls = session.engine.getLayers();
-      session.engine.reorderLayer(0, ls.length - 1);
-    }
+    // addLayer inserts at index 0 (newest at front). findLayerAt now iterates
+    // top→bottom (index 0 first) so the freshly-added Draggable is on top and
+    // hit first. No reorder workaround needed.
     const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
     const scheduler = { requestRender: vi.fn() };
     const camera = new ViewportCamera();

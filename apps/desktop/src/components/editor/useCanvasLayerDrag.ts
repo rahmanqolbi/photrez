@@ -39,9 +39,16 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
     const engine = workspace.getActiveEngine();
     if (!engine) return null;
     const ls = engine.getLayers();
-    for (let i = ls.length - 1; i >= 0; i--) {
+    // Engine: addLayer inserts at index 0 (newest at front). Renderer draws
+    // from end to start, so index 0 is the topmost visible layer. Hit-test
+    // must also start at index 0 — otherwise the Background (which covers
+    // the whole canvas) gets returned for every click and canvas drag does
+    // nothing visible.
+    for (let i = 0; i < ls.length; i++) {
       const layer = ls[i];
       if (layer.locked || !layer.visible) continue;
+      // Skip the background — it covers the whole canvas and can't be moved.
+      if (layer.name === "Background") continue;
       const halfW = (layer.width * Math.abs(layer.transform.scaleX)) / 2;
       const halfH = (layer.height * Math.abs(layer.transform.scaleY)) / 2;
       const localX = docX - layer.transform.x;
