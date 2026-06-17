@@ -81,6 +81,28 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     const layer = engine.getLayer(d.layerId);
     if (!layer) return;
 
+    // Check for cross-doc tab hover FIRST. A cross-doc drag is a copy
+    // operation — the source layer must stay in place while the user
+    // aims the cursor at the target tab.
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const tabEl = el?.closest("[data-document-tab]") as HTMLElement | null;
+    const tabId = tabEl?.getAttribute("data-document-tab") ?? null;
+    const currentActive = activeDocumentId();
+    const isCrossDocHover = !!(tabId && tabId !== currentActive);
+
+    if (isCrossDocHover) {
+      dragController.setDropTarget({ type: "tab", docId: tabId });
+      // Switch the workspace to the target tab so the user sees the
+      // landing canvas in real time. The sourceDocId captured at
+      // pointerdown keeps the cross-doc add correct.
+      workspace.switchDocument(tabId);
+      // No source mutation, no snap (irrelevant for copy).
+      opts.onSnapLinesChange?.([]);
+      scheduler.requestRender();
+      return;
+    }
+
+    // Same-doc (or no tab): mutate the source layer with snap.
     const docPos = camera.screenToDocument(
       e.clientX - d.rect.left,
       e.clientY - d.rect.top,
@@ -91,7 +113,6 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     let newX = d.startTransformX + dx;
     let newY = d.startTransformY + dy;
 
-    // Snap to doc bounds + center lines + other layers (when enabled and Alt not held)
     const altHeld = e.altKey;
     if (!altHeld && moveSnapEnabled()) {
       const docW = engine.getWidth();
@@ -110,7 +131,7 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
       };
       const otherLayers: SnapRect[] = engine
         .getLayers()
-        .filter((l) => l.visible && l.id !== movingId && l.id !== "background")
+        .filter((l) => l.visible && l.id !== movingId && l.name !== "Background")
         .map((l) => {
           const laabb = getLayerAabb(l.transform, l.width, l.height);
           return { x: laabb.x, y: laabb.y, w: laabb.width, h: laabb.height };
@@ -132,24 +153,12 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     engine.transformLayer(d.layerId, { x: newX, y: newY });
     scheduler.requestRender();
 
-    // Cross-doc hover: switch the active tab to the target so the user
-    // sees the landing canvas in real time.
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    const tabEl = el?.closest("[data-document-tab]") as HTMLElement | null;
-    const tabId = tabEl?.getAttribute("data-document-tab") ?? null;
-    if (tabId && tabId !== activeDocumentId()) {
-      dragController.setDropTarget({ type: "tab", docId: tabId });
-      // Switch the workspace to the target tab so the user can position
-      // the landing layer before releasing. The sourceDocId captured at
-      // pointerdown keeps the cross-doc add correct.
-      workspace.switchDocument(tabId);
+    // Update drop target for non-cross-doc hover.
+    const tabBarEl = el?.closest("[data-tab-bar-empty]") as HTMLElement | null;
+    if (tabBarEl) {
+      dragController.setDropTarget({ type: "tab-empty" });
     } else {
-      const tabBarEl = el?.closest("[data-tab-bar-empty]") as HTMLElement | null;
-      if (tabBarEl) {
-        dragController.setDropTarget({ type: "tab-empty" });
-      } else {
-        dragController.setDropTarget(null);
-      }
+      dragController.setDropTarget(null);
     }
 
     scheduler.requestRender();
