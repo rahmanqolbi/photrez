@@ -91,14 +91,32 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     const isCrossDocHover = !!(tabId && tabId !== currentActive);
 
     if (isCrossDocHover) {
+      // Cross-doc drag is a copy: revert the source layer to its original
+      // position so the source is unchanged on drop. This handles the
+      // case where the user dragged through the source doc first (the
+      // source moved), then crossed to another tab.
+      const sourceEngine = workspace.getEngine(d.sourceDocId);
+      if (sourceEngine) {
+        const sourceLayer = sourceEngine.getLayer(d.layerId);
+        if (
+          sourceLayer &&
+          (sourceLayer.transform.x !== d.startTransformX ||
+            sourceLayer.transform.y !== d.startTransformY)
+        ) {
+          sourceEngine.transformLayer(d.layerId, {
+            x: d.startTransformX,
+            y: d.startTransformY,
+          });
+          scheduler.requestRender();
+        }
+      }
       dragController.setDropTarget({ type: "tab", docId: tabId });
       // Switch the workspace to the target tab so the user sees the
       // landing canvas in real time. The sourceDocId captured at
       // pointerdown keeps the cross-doc add correct.
       workspace.switchDocument(tabId);
-      // No source mutation, no snap (irrelevant for copy).
+      // No snap (irrelevant for copy).
       opts.onSnapLinesChange?.([]);
-      scheduler.requestRender();
       return;
     }
 
