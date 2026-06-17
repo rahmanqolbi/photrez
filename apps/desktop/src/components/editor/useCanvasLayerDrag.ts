@@ -68,10 +68,13 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
     const dx = docPos.x - d.startDocX;
     const dy = docPos.y - d.startDocY;
 
+    const newX = d.startTransformX + dx;
+    const newY = d.startTransformY + dy;
     engine.transformLayer(d.layerId, {
-      x: d.startTransformX + dx,
-      y: d.startTransformY + dy,
+      x: newX,
+      y: newY,
     });
+    scheduler.requestRender();
 
     // Highlight tab when hovering a different document's tab
     const el = document.elementFromPoint(e.clientX, e.clientY);
@@ -159,21 +162,14 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
   }
 
   function handlePointerDown(e: PointerEvent) {
-    console.log("[useCanvasLayerDrag] pointerdown", { tool: activeTool(), button: e.button, target: (e.target as HTMLElement)?.tagName });
-    if (activeTool() !== "move") {
-      console.log("[useCanvasLayerDrag] abort: not move tool");
-      return;
-    }
-    if (e.button !== 0) {
-      console.log("[useCanvasLayerDrag] abort: not primary button");
-      return;
-    }
+    if (activeTool() !== "move") return;
+    if (e.button !== 0) return;
+
     // Ignore if the click was on a transform handle or rotate path
     // (useSelectionTransformDrag handles those and stops propagation, but
     // guard defensively in case any future SVG element forgets to)
     const target = e.target as HTMLElement;
     if (target.closest("[data-handle], [data-overlay-svg] [path]")) {
-      console.log("[useCanvasLayerDrag] abort: handle/rotate element");
       return;
     }
 
@@ -189,8 +185,13 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
       screenX, screenY,
       docPosX: docPos?.x, docPosY: docPos?.y,
       layer: layer?.name,
+      locked: layer?.locked,
+      lockPosition: layer?.lockPosition,
     });
     if (!layer) return;
+    if (layer.locked || layer.lockPosition) {
+      console.warn("[useCanvasLayerDrag] layer is position-locked, cannot move via canvas drag");
+    }
 
     setDrag({
       layerId: layer.id,

@@ -729,7 +729,6 @@ export function CanvasViewport() {
       onWheel={handleWheel}
       onDblClick={handleDoubleClick}
       onPointerDown={(e) => {
-        console.log("[CanvasViewport] pointerdown fired", { target: (e.target as HTMLElement)?.tagName, tool: activeTool() });
         stopMomentum();
         if (isSpacePressed() || isPanning()) {
           onViewportPointerDown(e);
