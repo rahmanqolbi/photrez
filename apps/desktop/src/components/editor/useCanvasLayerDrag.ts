@@ -111,13 +111,19 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
         }
       }
       dragController.setDropTarget({ type: "tab", docId: tabId });
-      // Switch the workspace to the target tab so the user sees the
-      // landing canvas in real time. The sourceDocId captured at
-      // pointerdown keeps the cross-doc add correct.
-      workspace.switchDocument(tabId);
+      // Use the DragController's 500ms hover-to-switch timer (per the
+      // cross-doc spec) so accidental tab-crossings don't switch docs.
+      // The timer also drives the visual countdown on the tab.
+      dragController.startTabHover(tabId);
       // No snap (irrelevant for copy).
       opts.onSnapLinesChange?.([]);
       return;
+    }
+
+    // Cursor is not over a different tab. Cancel any pending hover-to-
+    // switch timer and update drop target for non-tab hover cases.
+    if (dragController.state().hoverTabId) {
+      dragController.cancelTabHover();
     }
 
     // Same-doc (or no tab): mutate the source layer with snap.
