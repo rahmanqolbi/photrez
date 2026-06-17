@@ -41,16 +41,13 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
     const ls = engine.getLayers();
     // Engine: addLayer inserts at index 0 (newest at front). Renderer draws
     // from end to start, so index 0 is the topmost visible layer. Hit-test
-    // must also start at index 0 — otherwise the Background (which covers
-    // the whole canvas) gets returned for every click and canvas drag does
-    // nothing visible.
+    // must also start at index 0 so the topmost layer is picked first.
     //
     // transform.x/y are the layer's TOP-LEFT corner (see renderer:
     //   cx = t.x + effW / 2). Bounds are therefore [t.x, t.x + w] × [t.y, t.y + h].
     for (let i = 0; i < ls.length; i++) {
       const layer = ls[i];
       if (layer.locked || !layer.visible) continue;
-      if (layer.name === "Background") continue;
       const w = layer.width * Math.abs(layer.transform.scaleX);
       const h = layer.height * Math.abs(layer.transform.scaleY);
       if (
@@ -176,27 +173,6 @@ export function useCanvasLayerDrag(): CanvasLayerDragApi {
   function handlePointerDown(e: PointerEvent) {
     if (activeTool() !== "move") return;
     if (e.button !== 0) return;
-
-    // Dump all layers ONCE per session for diagnosis (flag below resets on first
-    // successful drag so the log only fires once).
-    if (!(window as any).__photrez_dumped_layers) {
-      (window as any).__photrez_dumped_layers = true;
-      const eng = workspace.getActiveEngine();
-      const ls = eng?.getLayers() ?? [];
-      console.log(
-        `[useCanvasLayerDrag] LAYER DUMP count=${ls.length}`,
-      );
-      for (const l of ls) {
-        console.log(
-          `  ${l.name} id=${l.id} ` +
-          `pos=(${l.transform.x},${l.transform.y}) ` +
-          `size=(${l.width}x${l.height}) ` +
-          `scale=(${l.transform.scaleX},${l.transform.scaleY}) ` +
-          `rot=${l.transform.rotation} ` +
-          `locked=${l.locked} vis=${l.visible}`,
-        );
-      }
-    }
 
     // Ignore if the click was on a transform handle or rotate path
     // (useSelectionTransformDrag handles those and stops propagation, but

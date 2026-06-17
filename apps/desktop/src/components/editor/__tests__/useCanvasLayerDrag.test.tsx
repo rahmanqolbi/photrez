@@ -134,13 +134,13 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       const startX = layer.transform.x;
       const startY = layer.transform.y;
 
-      // Click at (700, 500) — outside layer's top-left bounds (100→300)
+      // Click at (900, 700) — outside the Draggable (100,100)→(300,300) AND outside the Background (0,0)→(800,600)
       ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
         bubbles: true,
         cancelable: true,
         button: 0,
-        clientX: 700,
-        clientY: 500,
+        clientX: 900,
+        clientY: 700,
       }));
 
       document.dispatchEvent(new PointerEvent("pointermove", {
