@@ -79,3 +79,13 @@ Jika nama final berubah nanti, seluruh dokumen `docs/` harus disinkronkan.
 | Area | Keputusan | Status |
 | ---- | --------- | ------ |
 | Viewport smooth zoom recovery | Do not ship the GPU camera viewport migration as originally planned until every editing tool shares one reactive viewport state and tool overlays have regression coverage. The initial migration split viewport ownership between WebGL camera state, SolidJS signals, and `DocumentEngine.viewport`, causing rendered pixels and overlays to diverge. Smooth zoom must be reintroduced behind a feature flag or as presentation-only interpolation after Move, Brush, Crop, and Navigator checks pass. **Phase 1 complete 2026-06-15**: Overlay container migrated to screen-space positioning in `CanvasViewport.tsx`, eliminating the last general-path CSS transform wrapper (test: 982/982 frontend, 19/19 E2E pass). Phases 2 (Modern Crop CSS path) and 3 (animated keyboard/scroll zoom) remain deferred. | Locked 2026-06-13 |
+
+## Tambahan Keputusan 2026-06-17
+
+| Area | Keputusan | Status |
+| ---- | --------- | ------ |
+| Production bug risk register | Potential production bug risks are tracked in `docs/production-risk-register/`, split by feature/tool area, with shared taxonomy and release gates. This complements `docs/decisions/risk-register.md`, which remains the milestone-level risk register. | Locked 2026-06-17 |
+| FAANG-style review rejection register | Strict review blockers and quality-gate findings are tracked in `docs/faang-review-rejections/`, split by architecture/feature/tool area, with a remediation roadmap. This is a review-readiness register, not a confirmed bug list. | Locked 2026-06-17 |
+| 6-month maintainability risk register | Medium-term maintainability risks are tracked in `docs/maintainability-risk-register/`, split by architecture/feature/tool area, with ownership signals and a six-month remediation roadmap. This is a tech-debt planning register, not a production bug list. | Locked 2026-06-17 |
+| Ponytail refactor doctrine | Refactor-from-scratch planning is governed by `docs/ponytail-refactor-doctrine/`: delete/simplify first, prefer native and existing helpers, avoid framework-like abstractions, and introduce only the smallest module that removes real current complexity. | Locked 2026-06-17 |
+| Cross-doc tab hover ownership | Cross-doc drag tab hover uses the existing `DragController` 500ms timer. `DragControllerProvider` must capture `EditorContext` during render, and canvas pointer drag may start/cancel the same timer from `elementFromPoint()` tab detection. No second hover subsystem. | Locked 2026-06-17 |

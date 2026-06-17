@@ -111,11 +111,7 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
         }
       }
       dragController.setDropTarget({ type: "tab", docId: tabId });
-      // The DocumentTabsBar's onPointerEnter is the source of truth
-      // for starting the 500ms hover-to-switch timer (canvas drag uses
-      // pointer events, not HTML5 drag events). Here we just keep the
-      // drop target in sync. Don't call cancelTabHover here — the tab's
-      // pointerleave owns the cancel logic.
+      dragController.startTabHover(tabId);
       opts.onSnapLinesChange?.([]);
       return;
     }
@@ -178,6 +174,7 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     } else {
       dragController.setDropTarget(null);
     }
+    dragController.cancelTabHover();
 
     scheduler.requestRender();
   }

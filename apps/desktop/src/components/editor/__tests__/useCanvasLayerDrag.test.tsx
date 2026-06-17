@@ -82,6 +82,50 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
     vi.restoreAllMocks();
   }
 
+  function setupWithTwoDocs() {
+    const ws = new WorkspaceManager();
+    const source = WorkspaceManager.createBlankDocument("doc-a", "A", 800, 600);
+    const target = WorkspaceManager.createBlankDocument("doc-b", "B", 800, 600);
+    ws.addDocument(source);
+    ws.addDocument(target);
+    ws.switchDocument("doc-a");
+    const a = source.engine.addLayer("Draggable") as LayerNode;
+    a.transform.x = 100;
+    a.transform.y = 100;
+    a.width = 200;
+    a.height = 200;
+
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    const camera = new ViewportCamera();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const canvasEl = document.createElement("div");
+    canvasEl.setAttribute("data-canvas-container", "true");
+    canvasEl.style.position = "absolute";
+    canvasEl.style.left = "0px";
+    canvasEl.style.top = "0px";
+    canvasEl.style.width = "800px";
+    canvasEl.style.height = "600px";
+    document.body.appendChild(canvasEl);
+
+    let dragApi: ReturnType<typeof useCanvasLayerDrag> | null = null;
+    function Probe() {
+      dragApi = useCanvasLayerDrag();
+      return null;
+    }
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any} camera={camera}>
+          <Probe />
+        </EditorProvider>
+      ),
+      container,
+    );
+    canvasEl.addEventListener("pointerdown", (e) => dragApi?.handlePointerDown(e as PointerEvent));
+    return { ws, canvasEl, getDragApi: () => dragApi!, dispose, container };
+  }
+
   it("click+drag in canvas translates the layer's transform.x and transform.y", () => {
     const ctx = setupWithLayer();
     try {
@@ -153,6 +197,53 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       expect(layer.transform.x).toBe(startX);
       expect(layer.transform.y).toBe(startY);
     } finally {
+      teardown(ctx);
+    }
+  });
+
+  it("hovering a document tab during canvas layer drag switches after 500ms", () => {
+    vi.useFakeTimers();
+    const ctx = setupWithTwoDocs();
+    const tabEl = document.createElement("div");
+    const originalElementFromPoint = (document as any).elementFromPoint;
+    try {
+      tabEl.setAttribute("data-document-tab", "doc-b");
+      document.body.appendChild(tabEl);
+      (document as any).elementFromPoint = vi.fn().mockReturnValue(tabEl);
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        clientX: 150,
+        clientY: 150,
+      }));
+
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true,
+        button: 0,
+        clientX: 20,
+        clientY: 20,
+      }));
+
+      expect(ctx.ws.getActiveDocumentId()).toBe("doc-a");
+      vi.advanceTimersByTime(500);
+      expect(ctx.ws.getActiveDocumentId()).toBe("doc-b");
+
+      document.dispatchEvent(new PointerEvent("pointercancel", {
+        bubbles: true,
+        button: 0,
+        clientX: 20,
+        clientY: 20,
+      }));
+    } finally {
+      if (originalElementFromPoint) {
+        (document as any).elementFromPoint = originalElementFromPoint;
+      } else {
+        delete (document as any).elementFromPoint;
+      }
+      tabEl.parentNode?.removeChild(tabEl);
+      vi.useRealTimers();
       teardown(ctx);
     }
   });

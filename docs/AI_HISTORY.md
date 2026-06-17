@@ -5993,3 +5993,68 @@ Canvas drag fires pointer events; tab hover-to-switch timer (500ms per cross-doc
 - Removed two pointerenter/pointerleave regression tests because they exercised test-environment SolidJS context plumbing (useEditor() inside setTimeout returns the default value), not the actual fix. The 500ms timer behavior is unit-tested in DragController.test.tsx (same-tab early-return, switch-after-timer, cancel-on-leave).
 - Manual smoke test in pnpm tauri dev deferred to user: hold pointer on a tab during a canvas drag ? 500ms countdown ? doc switches, layer lands at cursor. Source transform reverts on cross-doc hover, undo works.
 
+---
+
+## [2026-06-17] DOCUMENTATION - Ponytail Refactor-From-Scratch Doctrine [COMPLETE]
+
+### Kategori: DOCUMENTATION / REFACTORING / MAINTAINABILITY / PONYTAIL
+
+**Goal:**
+Create a comprehensive documentation set for how to refactor or rebuild Photrez from scratch while applying Ponytail-style anti-overengineering constraints.
+
+**Done:**
+1. Read required AI docs, inspected local Ponytail plugin/reference, reviewed source ownership hotspots, and cross-checked existing production-risk, FAANG-review, and maintainability registers.
+2. Created `docs/ponytail-refactor-doctrine/` with rules, non-goals, keep/discard/defer map, minimal target architecture, per-area refactor playbooks, migration roadmap, and review checklists.
+3. Captured explicit guidance for editor context, pointer/keyboard routing, document/layer/history commands, crop/resize, selection/transform, brush/eraser, drag-drop/native IO, renderer/export/performance, tests/CI, and observability.
+4. Applied Ponytail ladder throughout: delete first, prefer native/existing code, avoid framework-like abstractions, and introduce only the smallest useful module that removes real current complexity.
+5. Updated `FEATURES.md`, `AI_CURRENT_TASK.md`, and `docs/decisions/id-decision-log.md`.
+
+**Files Created:**
+- `docs/ponytail-refactor-doctrine/README.md`
+- `docs/ponytail-refactor-doctrine/00-ponytail-rules-and-refactor-non-goals.md`
+- `docs/ponytail-refactor-doctrine/01-keep-discard-defer-map.md`
+- `docs/ponytail-refactor-doctrine/02-target-architecture-minimum.md`
+- `docs/ponytail-refactor-doctrine/03-editor-state-context-simplification.md`
+- `docs/ponytail-refactor-doctrine/04-tools-pointer-keyboard-routing.md`
+- `docs/ponytail-refactor-doctrine/05-document-layer-history-commands.md`
+- `docs/ponytail-refactor-doctrine/06-crop-resize-refactor.md`
+- `docs/ponytail-refactor-doctrine/07-selection-transform-refactor.md`
+- `docs/ponytail-refactor-doctrine/08-brush-eraser-paint-refactor.md`
+- `docs/ponytail-refactor-doctrine/09-drag-drop-native-io-refactor.md`
+- `docs/ponytail-refactor-doctrine/10-renderer-export-performance-refactor.md`
+- `docs/ponytail-refactor-doctrine/11-tests-ci-observability-refactor.md`
+- `docs/ponytail-refactor-doctrine/12-migration-roadmap.md`
+- `docs/ponytail-refactor-doctrine/13-review-checklists.md`
+
+**Verification:**
+- Documentation-only change. Verified file creation, Ponytail/refactor terms, review checklist coverage, and markdown whitespace locally.
+- No runtime code changed, so build/test execution was not required for this docs task.
+
+---
+
+## [2026-06-17] BUG FIX - Cross-Doc Layer Drag Tab Hover [COMPLETE]
+
+### Kategori: BUG FIX / DRAG-DROP / WIRING / PONYTAIL
+
+**Goal:**
+Make cross-document layer drag match the locked plan: hovering another document tab for 500ms opens that document, for both Layers panel HTML5 drag and canvas pointer drag.
+
+**Root Cause:**
+1. `DragControllerProvider` resolved `useEditor()` lazily inside the `setTimeout` callback used by `startTabHover()`. That callback runs outside Solid's provider owner, so the real `EditorContext` workspace can be unavailable and tab switching becomes unreliable.
+2. `useCanvasLayerDrag` already detected target tabs with `document.elementFromPoint()`, but it only updated `dropTarget`; it did not start the existing 500ms hover timer from that pointer-drag path.
+
+**Fix Rationale:**
+- Capture `const editor = useEditor()` when `DragControllerProvider` renders, then use `editor.workspace` inside the timer. This keeps the existing DragController API and avoids new context plumbing.
+- Reuse the existing `dragController.startTabHover(tabId)` and `cancelTabHover()` from `useCanvasLayerDrag` instead of adding a second hover system.
+- Preserve the current tab/panel/canvas drop model and Copy default / Alt=Move contract.
+
+**Files Changed:**
+- `apps/desktop/src/components/editor/DragController.tsx`
+- `apps/desktop/src/components/editor/useCanvasLayerDrag.ts`
+- `apps/desktop/src/components/editor/__tests__/crossDocDragDropWiring.test.tsx`
+- `apps/desktop/src/components/editor/__tests__/useCanvasLayerDrag.test.tsx`
+
+**Verification:**
+- PASS: targeted regression tests: `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/DragController.test.tsx src/components/editor/__tests__/crossDocDragDropWiring.test.tsx src/components/editor/__tests__/useCanvasLayerDrag.test.tsx` (3 files, 34 tests).
+- PASS: `pnpm.cmd run build`.
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (75 files, 1071 tests).

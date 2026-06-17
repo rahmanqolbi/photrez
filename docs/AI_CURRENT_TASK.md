@@ -4,6 +4,107 @@
 
 ## Current Tasks
 
+### [2026-06-17] Bug Fix - Cross-Doc Layer Drag Tab Hover [COMPLETE]
+
+**Goal:**
+Fix cross-document layer drag so hovering over another document tab reliably opens that document, matching the locked cross-doc drag-drop plan.
+
+**Scope:**
+- [x] Read required AI docs and project instructions
+- [x] Review cross-doc drag-drop spec/plan and existing wiring tests
+- [x] Patch the smallest production path that fails tab hover
+- [x] Add/adjust wiring regression tests
+- [x] Run mandatory verification
+- [x] Update AI_HISTORY.md and FEATURES.md
+
+**Notes:**
+- Ponytail ladder applied: reuse the existing DragController hover timer and existing elementFromPoint tab detection; do not introduce a new drag subsystem.
+- Root cause: `DragController` used `useEditor()` from inside the 500ms timer callback, outside Solid's provider owner, so the real workspace could be unavailable; canvas drag also detected target tabs but did not start the existing hover timer directly.
+- Done: `DragControllerProvider` captures editor context at render time, canvas layer drag starts/cancels the existing tab hover timer from its `elementFromPoint` path, and regression tests now prove both HTML5 tab hover and canvas pointer drag switch docs after 500ms.
+- Verification: `pnpm.cmd run build` PASS; `pnpm.cmd --filter photrez-desktop test --run` PASS (75 files, 1071 tests).
+
+---
+
+### [2026-06-17] Documentation - Ponytail Refactor-From-Scratch Doctrine [COMPLETE]
+
+**Goal:**
+Create a comprehensive markdown documentation set for how to refactor/rebuild Photrez from scratch with Ponytail-style anti-overengineering constraints.
+
+**Scope:**
+- [x] Read required AI docs and project instructions
+- [x] Inspect Ponytail plugin/reference locally
+- [x] Audit existing risk/refactor docs and source ownership hotspots
+- [x] Create `docs/ponytail-refactor-doctrine/`
+- [x] Add per-area/tool docs for what to keep, discard, simplify, and implement minimally
+- [x] Update AI_HISTORY.md, FEATURES.md, and decision log
+
+**Notes:**
+- Documentation-only task. No runtime code changes planned.
+- Ponytail ladder applied: skip what does not need to exist, prefer native/existing code, avoid custom algorithms unless a real product constraint requires them, and define the smallest useful abstraction.
+- Result: created 15 markdown files under `docs/ponytail-refactor-doctrine/` covering anti-overengineering rules, keep/discard/defer map, minimal target architecture, per-area refactor playbooks, migration roadmap, and review checklists.
+
+---
+
+### [2026-06-17] Documentation - 6-Month Maintainability Risk Register [COMPLETE]
+
+**Goal:**
+Create a structured markdown register of code areas that are likely to become hard to maintain within 6 months, split by feature/tool area.
+
+**Scope:**
+- [x] Read required AI docs and project instructions
+- [x] Audit source/test hotspots for maintainability risks
+- [x] Create `docs/maintainability-risk-register/`
+- [x] Add per-feature/tool maintainability docs
+- [x] Add remediation roadmap and ownership checklist
+- [x] Update AI_HISTORY.md, FEATURES.md, and decision log
+
+**Notes:**
+- Documentation-only task. No runtime code changes planned.
+- Focus areas: oversized modules, unstable ownership boundaries, typed API erosion, duplicate state paths, test brittleness, native/browser verification drift, renderer lifecycle complexity, and release governance.
+- Result: created 13 markdown files under `docs/maintainability-risk-register/` covering taxonomy, per-area six-month maintainability risks, and remediation roadmap.
+
+---
+
+### [2026-06-17] Documentation - FAANG-Style Review Rejection Register [COMPLETE]
+
+**Goal:**
+Create a structured markdown register of issues that would likely be rejected in a strict FAANG-style code review, split by architecture/feature/tool area.
+
+**Scope:**
+- [x] Read required AI docs and project instructions
+- [x] Audit source/test hotspots for likely code review rejection classes
+- [x] Create `docs/faang-review-rejections/`
+- [x] Add per-feature/tool review rejection docs
+- [x] Add merge-readiness checklist and remediation priority guide
+- [x] Update AI_HISTORY.md, FEATURES.md, and decision log
+
+**Notes:**
+- Documentation-only task. No runtime code changes planned.
+- Focus areas: oversized modules, ownership boundary drift, state synchronization fragility, test realism gaps, native-vs-browser verification gaps, async target capture, undo/data-loss contracts, performance/resource lifecycle, and release governance.
+- Result: created 13 markdown files under `docs/faang-review-rejections/` covering executive summary, per-area likely review rejects, and remediation roadmap.
+
+---
+
+### [2026-06-17] Documentation - Production Bug Risk Register [COMPLETE]
+
+**Goal:**
+Create a structured markdown risk register for potential production bugs, split by feature/tool area, so future implementation and QA work has a concrete checklist.
+
+**Scope:**
+- [x] Read required AI docs and project instructions
+- [x] Audit feature/tool surface from docs and source structure
+- [x] Create `docs/production-risk-register/`
+- [x] Add per-feature/tool production bug risk docs
+- [x] Add index/triage guide
+- [x] Update AI_HISTORY.md and FEATURES.md
+
+**Notes:**
+- Documentation-only task. No runtime code changes planned.
+- Focus areas: wiring/no-op failures, Solid signal desync, viewport coordinate drift, history omissions, renderer/export parity, Tauri IPC/file IO, drag/drop, and tool-specific edge cases.
+- Result: created 12 markdown files under `docs/production-risk-register/` covering README, shared release gates, and per-area production bug risks.
+
+---
+
 ### [2026-06-16] Feature — Cross-Document Drag & Drop (Layer + File) [IN PROGRESS]
 
 **Goal:**

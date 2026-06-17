@@ -315,6 +315,11 @@
 
 | Status | Item |
 | ------ | ---- |
+| DONE | Cross-doc layer drag tab hover regression fixed: 500ms tab switch now works through real EditorProvider workspace and canvas pointer-drag tab detection |
+| DONE | Ponytail refactor-from-scratch doctrine created: `docs/ponytail-refactor-doctrine/` with anti-overengineering rules, per-area playbooks, roadmap, and review checklists |
+| DONE | 6-month maintainability risk register created: `docs/maintainability-risk-register/` with per-area ownership, refactor, and governance risks |
+| DONE | FAANG-style review rejection register created: `docs/faang-review-rejections/` with per-area quality gate findings and remediation roadmap |
+| DONE | Production bug risk register created: `docs/production-risk-register/` with release gates and per-feature/tool risk checklists |
 | DONE | Viewport tool alignment browser QA hardened: Playwright smoke now covers Move Tool transform geometry across fit, zoom, and pan |
 | DONE | Viewport camera regression recovery executed: one viewport adapter + reactive overlay alignment fixes |
 | DONE | Viewport camera regression recovery todo created: `docs/plans/2026-06-13-viewport-camera-regression-recovery-todo.md` |

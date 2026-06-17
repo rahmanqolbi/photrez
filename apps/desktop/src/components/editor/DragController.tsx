@@ -32,17 +32,10 @@ export interface WorkspaceLike {
 const DragControllerContext = createContext<DragController>();
 
 export function DragControllerProvider(props: ParentProps<{ workspaceOverride?: WorkspaceLike }>) {
+  const editor = useEditor();
   const workspace = (): WorkspaceLike => {
     if (props.workspaceOverride) return props.workspaceOverride;
-    // Lazy access of useEditor() — this is called only from event handlers
-    // (startTabHover's setTimeout callback), by which time the EditorContext
-    // module is fully initialized. The static import above is safe because
-    // we only call useEditor() inside a function body, not at module top
-    // level, so the circular import between DragController ↔ EditorContext
-    // resolves cleanly (this was previously done via `require()` which
-    // Vite mis-transformed to an async dynamic import, breaking the sync
-    // workspace() call).
-    return useEditor().workspace as unknown as WorkspaceLike;
+    return editor.workspace as unknown as WorkspaceLike;
   };
 
   const [state, setState] = createSignal<DragState>({
@@ -129,4 +122,3 @@ export function useDragController(): DragController {
   if (!ctx) throw new Error("useDragController must be used within DragControllerProvider");
   return ctx;
 }
-

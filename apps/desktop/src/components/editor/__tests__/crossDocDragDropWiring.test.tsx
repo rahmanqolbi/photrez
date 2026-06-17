@@ -615,18 +615,22 @@ describe("DocumentTabsBar wiring (hover-to-switch)", () => {
     expect(dropTarget).toEqual({ type: "tab", docId: "doc-b" });
   });
 
-  it("hovering over a different tab sets hoverTabId (the 500ms switch is unit-tested in DragController.test.tsx with workspaceOverride)", async () => {
-    renderTabs();
-    expect(ws.getActiveDocumentId()).toBe("doc-a");
+  it("hovering over a different tab for 500ms switches through the real EditorProvider workspace", async () => {
+    vi.useFakeTimers();
+    try {
+      renderTabs();
+      expect(ws.getActiveDocumentId()).toBe("doc-a");
 
-    const tabEl = container.querySelector('[data-document-tab="doc-b"]') as HTMLElement;
-    fireDragOver(tabEl);
-    expect(probeRef.current.drag.state().hoverTabId).toBe("doc-b");
-    // The 500ms timer is started inside DragController.startTabHover. The actual
-    // workspace.switchDocument call is unit-tested in DragController.test.tsx:40
-    // with workspaceOverride (bypasses the useEditor() reactive-context boundary
-    // that breaks in the integration test's setTimeout). The dragleave test below
-    // also exercises the cancel path.
+      const tabEl = container.querySelector('[data-document-tab="doc-b"]') as HTMLElement;
+      fireDragOver(tabEl);
+      expect(probeRef.current.drag.state().hoverTabId).toBe("doc-b");
+
+      vi.advanceTimersByTime(500);
+      expect(ws.getActiveDocumentId()).toBe("doc-b");
+      expect(probeRef.current.drag.state().hoverTabId).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("dragleave on tab cancels the hover-to-switch timer", async () => {
