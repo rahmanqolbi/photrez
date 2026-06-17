@@ -111,19 +111,13 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
         }
       }
       dragController.setDropTarget({ type: "tab", docId: tabId });
-      // Use the DragController's 500ms hover-to-switch timer (per the
-      // cross-doc spec) so accidental tab-crossings don't switch docs.
-      // The timer also drives the visual countdown on the tab.
-      dragController.startTabHover(tabId);
-      // No snap (irrelevant for copy).
+      // The DocumentTabsBar's onPointerEnter is the source of truth
+      // for starting the 500ms hover-to-switch timer (canvas drag uses
+      // pointer events, not HTML5 drag events). Here we just keep the
+      // drop target in sync. Don't call cancelTabHover here — the tab's
+      // pointerleave owns the cancel logic.
       opts.onSnapLinesChange?.([]);
       return;
-    }
-
-    // Cursor is not over a different tab. Cancel any pending hover-to-
-    // switch timer and update drop target for non-tab hover cases.
-    if (dragController.state().hoverTabId) {
-      dragController.cancelTabHover();
     }
 
     // Same-doc (or no tab): mutate the source layer with snap.
@@ -298,6 +292,7 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
 
     dragController.setDropTarget(null);
     setDrag(null);
+    dragController.endDrag();
   }
 
   function onPointerCancel() {
@@ -321,6 +316,7 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     }
     dragController.setDropTarget(null);
     setDrag(null);
+    dragController.endDrag();
   }
 
   function handlePointerDown(e: PointerEvent) {
@@ -356,6 +352,23 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
       startTransformY: layer.transform.y,
       rect: { left: rect.left, top: rect.top },
     });
+
+    // Notify the DragController so cross-cutting subscribers
+    // (DocumentTabsBar's pointerenter → 500ms hover-to-switch timer,
+    // drop-target tracking) know a drag is in progress. Without this,
+    // the tab's onPointerEnter sees dragKind === null and skips the
+    // timer entirely — even though the user is mid-drag with the
+    // pointer over the tab.
+    dragController.beginLayerDrag(
+      {
+        version: 1,
+        sourceDocId: src,
+        layerId: layer.id,
+        sourceName: layer.name,
+        isAltPressed: e.altKey,
+      },
+      null,
+    );
 
     document.addEventListener("pointermove", onPointerMove);
     document.addEventListener("pointerup", onPointerUp);

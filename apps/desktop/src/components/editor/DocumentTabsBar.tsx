@@ -47,6 +47,28 @@ export function DocumentTabsBar() {
     scheduler.requestRender();
   };
 
+  // Pointer-driven hover detection (separate from HTML5 drag handlers
+  // below). The canvas drag uses pointer events, not HTML5 drag events,
+  // so the tab's onDragOver/onDragLeave don't fire for canvas drags.
+  // We need pointerenter/pointerleave on the tab itself to start and
+  // cancel the 500ms hover-to-switch timer.
+  const handleTabPointerEnter = (e: PointerEvent, tabId: string) => {
+    if (drag.state().dragKind === null) return;
+    if (activeDocumentId() === tabId) {
+      drag.cancelTabHover();
+      return;
+    }
+    drag.startTabHover(tabId);
+  };
+
+  const handleTabPointerLeave = (_e: PointerEvent, tabId: string) => {
+    // Only cancel if the timer was for THIS tab. Otherwise we cancel
+    // a timer started by another tab.
+    if (drag.state().hoverTabId === tabId) {
+      drag.cancelTabHover();
+    }
+  };
+
   const handleTabDragOver = (e: DragEvent, tabId: string) => {
     e.preventDefault();
     drag.setDropTarget({ type: "tab", docId: tabId });
@@ -144,6 +166,8 @@ export function DocumentTabsBar() {
               data-drag-over={isDragOver() ? "tab" : null}
               data-hover-tab-progress={isHovering() ? "1" : null}
               onClick={() => handleSwitchTab(tab.id)}
+              onPointerEnter={(e) => handleTabPointerEnter(e, tab.id)}
+              onPointerLeave={(e) => handleTabPointerLeave(e, tab.id)}
               onDragOver={(e) => handleTabDragOver(e, tab.id)}
               onDragLeave={(e) => handleTabDragLeave(e, tab.id)}
               onDrop={(e) => handleTabDrop(e, tab.id)}
