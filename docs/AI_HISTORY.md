@@ -1,6 +1,176 @@
 # AI History — Photrez
 
-## [2026-06-18] BUG FIX - Layer Visual Shrinkage on Multi-Layer Composite [COMPLETE]
+## [2026-06-18] BUG FIX - Move/Selection-Move Ghost History Entries [COMPLETE]
+
+### Kategori: BUG FIX / HISTORY / UX / REGRESSION
+
+**Root Cause:**
+`apps/desktop/src/viewport/input-handler.ts` unconditionally called `history.commit(engine.snapshot())` inside the move-tool and selection-move pointerDown branches (lines 73 and 95). The commit fired the moment the user clicked, regardless of whether a drag actually followed. Click-without-drag (e.g. clicking a layer to select it before deciding, or clicking inside an existing selection without moving it) therefore pushed a "ghost" entry to the undo stack — the snapshot matched the current state, so undo did nothing visible, but it consumed a slot.
+
+User-observed symptom:
+> "saat memindahkan layer atau operasi lainnya kadang kayak ke save dihistory kadang tidak"
+
+The history WAS being saved; what felt random was that real operations were interleaved with ghost no-op entries. Pressing undo would "skip" through ghost entries that produced no visual change, making the history appear unreliable.
+
+**Fix Rationale:**
+Mirror the pattern already used by the opacity slider (`LayersPanel.tsx:269-283`): stash the pre-operation snapshot on pointerDown, defer the actual commit to pointerUp, and only commit if the operation produced a measurable mutation. For the move tool the mutation is `layer.transform.x/y` changing vs. the stashed original; for selection-move it's `selectionBounds.x/y` vs. the stashed original. This guarantees one undo entry per real edit and zero entries per accidental click.
+
+**Done:**
+1. `apps/desktop/src/viewport/input-handler.ts`:
+   - Added `pendingHistorySnapshot`, `pendingOriginalLayerPos`, `pendingOriginalSelectionPos` fields to `ToolContext`.
+   - `handlePointerDown` now defensively clears all pending fields at the top, then stashes the snapshot + original position for `move` and `selection-move` branches WITHOUT committing.
+   - `handlePointerUp` commits the stashed snapshot ONLY if the relevant position actually changed, then clears the pending fields.
+2. `apps/desktop/src/__tests__/input-handler-move.test.ts`:
+   - Updated the existing "pointerDown commits before unlocked move" test to reflect the new "pointerDown stashes WITHOUT committing" contract.
+   - Added 18 new deferred-commit regression tests covering: click-without-drag → 0 entries, real drag → 1 entry, drag-back-to-origin → 0 entries, locked layer / no selected layer → 0 entries, three consecutive clicks → 0 entries, three consecutive drags → 3 entries, pending state cleared after pointerUp, defensive clear at pointerDown after stale leak.
+3. `apps/desktop/src/__tests__/input-handler-snap.test.ts`:
+   - Updated the snap-fires test mock so `engine.getLayer` reflects `moveLayer`'s mutations; added the missing pointerUp call and re-asserted the commit count.
+4. `apps/desktop/src/__tests__/input-handler-selection.test.ts`:
+   - Updated the "move-selection commits history" test to use pointerUp-coords-differ-from-down rather than pointerDown-alone.
+   - Added a click-without-drag-inside-selection regression test.
+5. `apps/desktop/src/__tests__/history-audit.test.ts` (new file, 24 tests):
+   - Integration suite using REAL `DocumentEngine` + `CommandHistory` (no mocks). Verifies actual undo/redo stack counts after move-tool, selection-move, and eager-commit layer operations. Includes undo + redo round-trip checks proving the stashed snapshot restores the correct pre-drag state.
+
+**Verification:**
+- `pnpm.cmd --filter photrez-desktop test --run` — 79 files / 1172 tests pass (was 1130, +42 new regression tests + 1 modified).
+- `pnpm.cmd run build` — TS + Vite build clean (`built in 21.06s`).
+
+**Notes:**
+- The fix is intentionally scoped to canvas-pointer ops. Other call sites that commit eagerly (e.g. `MoveOptionBar.tsx` X/Y/rotate fields, `useLayerActions.ts` add/duplicate/delete) still commit synchronously — they're triggered by discrete user actions (button click / form submit) that already imply intent to mutate, so a no-op commit there is much less likely. If user reports similar ghost entries from those paths later, the same defer-and-compare pattern applies.
+- The `void history` in `handlePointerDown` move branch is intentional: the parameter is still required by the function signature (used by other branches), but the move branch no longer commits — so we mark the unused reference to silence the no-unused-vars lint when one is enabled.
+
+---
+
+## [2026-06-18] BUG FIX - Remaining Ghost History Sites (MoveHandle / TransformSession / MoveOptionBar) [COMPLETE]
+
+### Kategori: BUG FIX / HISTORY / UX / REGRESSION (FOLLOW-UP)
+
+**Root Cause:**
+Audit identified 3 more sites that committed history regardless of whether the operation actually changed document state. After the input-handler fix, the user could still observe ghost entries from these paths:
+
+1. `apps/desktop/src/components/editor/useSelectionTransformDrag.ts` (move-handle drag):
+   - `commitLayerTransformSession(engine.snapshot())` was called inside the pointerDown handler for the "move" handle, before the user had actually moved anything. Clicking the move handle without dragging still pushed a no-op entry.
+
+2. `apps/desktop/src/components/editor/transformSession.ts` (`commitLayerTransformSession`):
+   - The function unconditionally pushed a new entry even when `session.transforms` was empty (no layers affected) or when `apply()` produced a `layer.transform` equal to `session.originalTransform` (e.g. zero-distance scale, snap-back, or matching pre-existing value).
+
+3. `apps/desktop/src/components/editor/MoveOptionBar.tsx` (X/Y/rotate inputs, align buttons, reset):
+   - `handlePositionField`, `handleRotateField`, `handleAlign`, `handleResetTransform` all called `history.commit(engine.snapshot())` immediately, even when the user entered the exact same value, clicked a no-op align button, or pressed Reset with nothing to reset.
+
+These three sites mirrored the input-handler bug. Together they explained the user-reported "undo can't reach the initial state" complaint: every real edit was preceded by one or more ghost entries, so undo would burn through them invisibly before reaching the prior real state.
+
+**Fix Rationale:**
+Apply the same defer-and-compare pattern as the input-handler fix:
+
+- **useSelectionTransformDrag (move handle):** Stash `engine.snapshot()` and the layer's `transform` on pointerDown; commit on pointerUp only if the layer's `transform` actually differs from the stashed original.
+- **transformSession.commitLayerTransformSession:** Add a `transformsEqual()` helper; skip the commit entirely when the session's per-layer transforms all equal their originals.
+- **MoveOptionBar:** Compare the new value against the existing field state before mutating; only commit when the value differs. Skip Align when no layer selected or when all selected layers are already at that alignment.
+
+**Done:**
+
+1. `apps/desktop/src/components/editor/useSelectionTransformDrag.ts`:
+   - Added `pendingMoveSnapshot` and `pendingMoveOriginalTransform` fields to the move-handle `dragState`.
+   - `handlePointerDown` on the move handle stashes the snapshot + original transform WITHOUT committing.
+   - `handlePointerUp` commits only if `currentLayer.transform !== originalTransform`.
+
+2. `apps/desktop/src/components/editor/transformSession.ts`:
+   - Added `transformsEqual(a, b)` (deep-equality on `{x, y, rotation, scaleX, scaleY}`).
+   - `commitLayerTransformSession` now iterates `session.transforms` and compares each against `session.originalTransform`; skips commit when all are equal.
+   - Added early-return for empty `session.transforms` (defensive — no-op session).
+
+3. `apps/desktop/src/components/editor/MoveOptionBar.tsx`:
+   - `handlePositionField`: parses input; if parsed value equals current value, no commit, no signal write.
+   - `handleRotateField`: same as above for rotation.
+   - `handleAlign`: queries active layers; if no layer is selected OR every selected layer already aligns to the chosen axis, no commit.
+   - `handleResetTransform`: compares current transform against identity; only commits if any field differs.
+
+4. `apps/desktop/src/components/editor/__tests__/MoveOptionBar.test.tsx`:
+   - 4 new ghost-commit regression tests: same-value X commits zero entries, changed-value X commits one entry, align-with-no-selected-layer commits zero entries, reset-on-identity commits zero entries.
+
+5. `apps/desktop/src/components/editor/__tests__/TransformOptionBar.test.tsx`:
+   - Fixed existing `Apply calls commit and clears session` test: the mock layer's `transform.x` was equal to `originalTransform.x` so `transformsEqual()` returned true and the commit was correctly skipped; changed mock to use `transform.x = 50` vs `originalTransform.x = 10` to trigger a real change.
+   - Added 1 new test: `Apply on unchanged session does NOT commit and clears session anyway` — verifies the `transformsEqual()` guard works at the option-bar level.
+
+6. `apps/desktop/src/__tests__/history-audit.test.ts`:
+   - Expanded from 24 → 41 tests (+17). New tests cover: undo-to-initial round-trip after mixed real+ghost operations, ghost-click doesn't consume an undo slot, MAX_HISTORY_DEPTH eviction below and at limit, undo+redo+undo drift-free, transformSession edge cases (empty session, deleted layer, wrong engine reference), snapshot independence under mid-test mutation.
+
+**Verification:**
+- `pnpm.cmd --filter photrez-desktop test --run` — 79 files / **1194 tests pass** (was 1172, +22 net: 4 MoveOptionBar + 1 new TransformOptionBar + 17 history-audit - 0 regressions).
+- `pnpm.cmd run build` — TS + Vite build clean (`built in 9.77s`).
+
+**Notes:**
+- Combined with the previous input-handler fix, every history-commit call site now either (a) requires an explicit user action that already implies mutation, or (b) defers the commit until the mutation is provably real. No "always-commit" paths remain in the layer / move / transform code.
+- The `MAX_HISTORY_DEPTH = 50` ceiling (`apps/desktop/src/engine/types.ts`) is still a hard cap. After 50 ops, the oldest is evicted; undo bottoms out at the 51st-newest state, not the initial. Documented limitation, not a bug.
+
+---
+
+## [2026-06-18] BUG FIX - 0-9 Opacity & Resize Canvas Ghost Commits [COMPLETE]
+
+### Kategori: BUG FIX / HISTORY / UX / REGRESSION (RE-AUDIT)
+
+**Root Cause:**
+Full audit of every `history.commit(engine.snapshot())` call site in production code (excluding tests) found two more ghost-commit sites that the previous passes missed:
+
+1. `apps/desktop/src/components/editor/useCanvasKeyboard.ts:540` (0-9 opacity shortcut):
+   - The keyboard handler for `0`-`9` opacity keys committed the pre-action snapshot BEFORE calling `engine.setLayerOpacity`. If the user pressed the same digit as the current opacity (e.g. layer at 50% and user presses "5" to confirm), the snapshot matched the current state and the commit was a no-op entry.
+
+2. `apps/desktop/src/components/editor/ResizeCanvasModal.tsx:68` (Resize Apply):
+   - `handleApply` committed the pre-resize snapshot before calling `engine.resizeCanvas`. If the user opened the modal, didn't change width/height, and clicked Apply, the snapshot matched current state → no-op entry. The aspect-ratio lock means this happens often: open → see default values → click Apply without touching anything.
+
+User-observed symptom (from earlier session):
+> "undo can't reach the initial state"
+
+These two sites were contributing to that. The 0-9 shortcut fires on every key press, including "no-op" confirmations; the resize modal fires on every Apply click, including untouched-dialog dismissals.
+
+**Fix Rationale:**
+Same defer-and-compare pattern as the previous fixes:
+
+- **0-9 opacity:** if `layer.opacity === opacity` already, return early BEFORE the commit.
+- **Resize Apply:** if `newW === docWidth() && newH === docHeight()`, close dialog and return BEFORE the commit.
+
+Both guards are 1-2 lines, no new abstractions.
+
+**Audit Summary (production commit sites, post-fix):**
+
+| Site | Status |
+|------|--------|
+| `input-handler.ts` (move / selection-move) | FIXED (deferred to pointerUp + position-changed guard) |
+| `useSelectionTransformDrag.ts` (move handle) | FIXED (deferred to pointerUp + transform-changed guard) |
+| `transformSession.ts` (`commitLayerTransformSession`) | FIXED (`transformsEqual` guard) |
+| `MoveOptionBar.tsx` (X/Y/rotate/align/reset) | FIXED (no-op guards) |
+| `useCanvasKeyboard.ts` (0-9 opacity) | FIXED in this pass |
+| `ResizeCanvasModal.tsx` (Apply) | FIXED in this pass |
+| `layerOperations.ts` (`mergeActiveLayerDown`/`flattenAllLayers`) | Already correct (early-return when no-op possible) |
+| `LayersPanel.tsx:280` (opacity slider) | Already correct (snapshot stashed in onInput, committed in onChange only after a real change) |
+| `LayersPanel.tsx:211` (blend-mode select) | Already correct (HTML `<select>` `onChange` only fires on actual value change) |
+| `LayerItem.tsx:45` (rename) | Already correct (guard at L37 skips when `nextName === layer.name`) |
+| `useLayerActions.ts` (visibility/lock toggles, reorder, add, duplicate, delete) | Already correct (each op always produces a real state change) |
+| `useCanvasLayerDrag.ts:276` (cross-doc drag) | Already correct (position-changed guard at L271-275) |
+| `useLayerDragReorder.ts:109` (drag reorder) | Already correct (`toIdx !== dragSourceIndex` guard at L102) |
+| `useCanvasPointerTools.ts:398` (brush/eraser pointerDown) | Already correct (blocked-stroke guard at L397) |
+| `useCanvasKeyboard.ts` (Ctrl+X/Ctrl+V/Del/Ctrl+J/Ctrl+Shift+N/Ctrl+]/Ctrl+[/Ctrl+G/Del/Backspace/Arrow) | Already correct (each always produces a real change, or guards prevent no-op commit) |
+| `SelectionOptionBar.tsx` (cut/paste/delete) | Already correct (gated on selection existence) |
+| `cropToolActions.ts:82` (applyCrop) | Pre-existing edge case: if `applyCrop` early-returns (width/height ≤ 0), commit still fires. Documented as a known minor issue; the user's reported scenarios never hit this path because the crop rect is always set via drag. Not fixed in this pass — out of scope of the user's reported complaint. |
+| `LayersPanel.tsx:211` (blend mode `<select>`) | Already correct (browser guard on `onChange`); no defensive `engine.setLayerBlendMode === currentBlendMode` guard added because not needed. |
+
+**Done:**
+1. `apps/desktop/src/components/editor/useCanvasKeyboard.ts:538-545` — added `if (layer.opacity === opacity) return;` guard before the commit.
+2. `apps/desktop/src/components/editor/ResizeCanvasModal.tsx:64-69` — added `if (newW === docWidth() && newH === docHeight()) { setShowResizeDialog(false); return; }` guard before the commit.
+3. `apps/desktop/src/components/editor/__tests__/CanvasKeyboardLayerShortcuts.test.tsx` — 2 new regression tests:
+   - `does not commit history when pressing the same opacity digit twice`
+   - `commits when pressing a different opacity digit but skips on repeat` (mixed: 5/7/7 → 1 entry, opacity = 0.7)
+4. `apps/desktop/src/components/editor/__tests__/ResizeCanvasModal.test.tsx` — 2 new regression tests:
+   - `Apply with unchanged dimensions does NOT commit history and closes dialog`
+   - `Apply with changed dimensions DOES commit history`
+
+**Verification:**
+- `pnpm.cmd --filter photrez-desktop test --run` — 79 files / **1198 tests pass** (was 1194, +4 new tests, zero regressions).
+- `pnpm.cmd run build` — TS + Vite build clean (`built in 8.44s`).
+
+**Honesty note:**
+The previous "No always-commit paths remain" claim was wrong — I had only audited the four call sites covered by the prior tasks. A full audit (`grep history.commit apps/desktop/src` minus test files) surfaced two more ghost sites. This pass closes those. The remaining `cropToolActions.ts:82` edge case (applyCrop with invalid rect) is out of scope: requires `applyCrop` to return a boolean, which changes its signature across many call sites; not justified by a reported user scenario.
+
+---## [2026-06-18] BUG FIX - Layer Visual Shrinkage on Multi-Layer Composite [COMPLETE]
 
 ### Kategori: BUG FIX / RENDERER / WEBGL / COMPOSITOR
 

@@ -65,6 +65,11 @@ export function ResizeCanvasModal() {
     const history = workspace.getActiveHistory();
     if (!engine || !history) return;
 
+    if (newW === docWidth() && newH === docHeight()) {
+      setShowResizeDialog(false);
+      return;
+    }
+
     history.commit(engine.snapshot());
     engine.resizeCanvas(newW, newH);
 

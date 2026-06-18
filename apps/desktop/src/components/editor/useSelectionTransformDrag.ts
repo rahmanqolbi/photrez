@@ -1,6 +1,6 @@
 import { createSignal, createMemo, onMount, onCleanup } from "solid-js";
 import { useEditor } from "./EditorContext";
-import type { Transform2D } from "@/engine/types";
+import type { DocumentModel, Transform2D } from "@/engine/types";
 import type { HudMode } from "./TransformHud";
 import type { SnapRect, SnapResult } from "@/viewport/smartGuides";
 import {
@@ -53,6 +53,12 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
     startTransform: Transform2D;
     pointerId: number;
     layerId: string;
+    // Deferred-history pattern for the "move" handle drag: stash the pre-move
+    // snapshot here and only commit it on pointerUp IF the layer actually
+    // moved. Prevents ghost undo entries on click-without-drag. Other handle
+    // types (rotate / resize) bundle their commit into the parent transform
+    // session, not here. (Regression 2026-06-18 follow-up.)
+    pendingMoveSnapshot?: DocumentModel | null;
   } | null>(null);
 
   const getLayer = () => {
@@ -194,9 +200,13 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
           startedAt: Date.now(),
         });
       }
-    } else {
-      history.commit(engine.snapshot());
     }
+
+    // Stash the pre-move snapshot for the "move" handle drag. We defer the
+    // commit to pointerUp so a click-without-drag does NOT produce a ghost
+    // undo entry. The other handle types (rotate/resize) are bundled into the
+    // surrounding transform session and committed via Enter / Apply.
+    const pendingMoveSnapshot = type === "move" ? engine.snapshot() : null;
 
     setDragState({
       type,
@@ -205,6 +215,7 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
       startTransform: { ...layer.transform },
       pointerId: e.pointerId,
       layerId: layer.id,
+      pendingMoveSnapshot,
     });
   };
 
@@ -320,6 +331,23 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
     if (svg) {
       try { svg.releasePointerCapture(e.pointerId); } catch {}
     }
+
+    // Commit the deferred "move" snapshot ONLY if the layer's position
+    // actually changed since pointerDown. Click-without-drag → no entry.
+    if (drag.type === "move" && drag.pendingMoveSnapshot) {
+      const engine = workspace.getActiveEngine();
+      const history = workspace.getActiveHistory();
+      const layer = engine?.getLayer(drag.layerId);
+      if (engine && history && layer) {
+        const moved =
+          layer.transform.x !== drag.startTransform.x ||
+          layer.transform.y !== drag.startTransform.y;
+        if (moved) {
+          history.commit(drag.pendingMoveSnapshot);
+        }
+      }
+    }
+
     props.onSnapClear?.();
     props.onHudUpdate?.(null);
     if (drag.type === "rotate") setHoverPos(null);
@@ -333,6 +361,8 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
     if (svg) {
       try { svg.releasePointerCapture(e.pointerId); } catch {}
     }
+    // On cancel we drop the pending move snapshot WITHOUT committing —
+    // the gesture never completed so there's nothing to undo back to.
     props.onSnapClear?.();
     props.onHudUpdate?.(null);
     if (drag.type === "rotate") setHoverPos(null);

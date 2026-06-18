@@ -10,7 +10,12 @@ function makeEngine(): {
   moveLayer: ReturnType<typeof vi.fn>;
   commit: ReturnType<typeof vi.fn>;
 } {
-  const moveLayer = vi.fn();
+  let currentX = 50;
+  let currentY = 50;
+  const moveLayer = vi.fn((_id: string, x: number, y: number) => {
+    currentX = x;
+    currentY = y;
+  });
   const commit = vi.fn();
   const engine = {
     getLayer: (id: string) => ({
@@ -21,7 +26,7 @@ function makeEngine(): {
       opacity: 1,
       locked: false,
       blendMode: "normal" as const,
-      transform: { x: 50, y: 50, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
+      transform: { x: currentX, y: currentY, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
       width: 100,
       height: 100,
       imageBitmap: null,
@@ -62,7 +67,9 @@ describe("input-handler snap wiring", () => {
 
     handlePointerDown("move", 50, 50, engine, history, () => {}, ctx);
     handlePointerMove("move", 55, 50, engine, () => {}, ctx);
+    handlePointerUp("move", 55, 50, engine, history, () => {}, ctx);
 
+    // commit deferred to pointerUp — fires exactly once when layer actually moved.
     expect(commit).toHaveBeenCalledTimes(1);
     expect(onComputeSnap).toHaveBeenCalledWith({ x: 55, y: 50, w: 100, h: 100 });
     expect(moveLayer).toHaveBeenCalledWith("L1", 58, 50);

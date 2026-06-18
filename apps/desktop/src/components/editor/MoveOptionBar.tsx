@@ -63,6 +63,21 @@ export function MoveOptionBar() {
     const engine = workspace.getActiveEngine();
     const id = selectedLayerId();
     if (engine && id) {
+      const layer = engine.getLayer(id);
+      // Skip if already at default — prevents ghost undo entries on
+      // repeated Reset clicks (regression 2026-06-18 follow-up).
+      if (
+        layer &&
+        layer.transform.x === 0 &&
+        layer.transform.y === 0 &&
+        layer.transform.scaleX === 1 &&
+        layer.transform.scaleY === 1 &&
+        layer.transform.rotation === 0 &&
+        !layer.transform.flipH &&
+        !layer.transform.flipV
+      ) {
+        return;
+      }
       const history = workspace.getActiveHistory();
       history?.commit(engine.snapshot());
       engine.transformLayer(id, {
@@ -84,6 +99,10 @@ export function MoveOptionBar() {
     if (engine && id) {
       const layer = engine.getLayer(id);
       if (!layer || layer.locked) return;
+      // Skip no-op submits (user blurred without changing). Prevents ghost
+      // undo entries that make undo feel "stuck" — pressing undo would
+      // appear to do nothing because the snapshot matches current state.
+      if (layer.transform[axis] === val) return;
       const history = workspace.getActiveHistory();
       history?.commit(engine.snapshot());
       const next = { ...layer.transform };
@@ -99,6 +118,7 @@ export function MoveOptionBar() {
     if (engine && id) {
       const layer = engine.getLayer(id);
       if (!layer || layer.locked) return;
+      if (layer.transform.rotation === val) return;
       const history = workspace.getActiveHistory();
       history?.commit(engine.snapshot());
       engine.transformLayer(id, { ...layer.transform, rotation: val });
@@ -112,8 +132,6 @@ export function MoveOptionBar() {
     if (engine && id) {
       const layer = engine.getLayer(id);
       if (!layer || layer.locked) return;
-      const history = workspace.getActiveHistory();
-      history?.commit(engine.snapshot());
       const next = { ...layer.transform };
       
       const layerW = Math.round(layer.width * layer.transform.scaleX);
@@ -141,6 +159,10 @@ export function MoveOptionBar() {
           next.y = docH - layerH;
           break;
       }
+      // Skip if alignment is a no-op (layer already at the requested edge).
+      if (next.x === layer.transform.x && next.y === layer.transform.y) return;
+      const history = workspace.getActiveHistory();
+      history?.commit(engine.snapshot());
       engine.transformLayer(id, next);
       scheduler.requestRender();
     }

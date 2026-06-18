@@ -756,4 +756,188 @@ describe("MoveOptionBar", () => {
     dispose();
     container.parentNode?.removeChild(container);
   });
+
+  // ─── Regression 2026-06-18 follow-up: skip ghost commits on no-op clicks ───
+
+  it("clicking Align Left when already at x=0 produces NO history entry (regression: ghost commit)", () => {
+    const engine = {
+      getLayer: () => ({
+        id: "layer-1",
+        locked: false,
+        width: 100,
+        height: 100,
+        transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
+      }),
+      snapshot: vi.fn(() => ({})),
+      flipLayer: vi.fn(),
+      transformLayer: vi.fn(),
+    };
+    const history = { commit: vi.fn() };
+    const mockValue = {
+      workspace: { getActiveEngine: () => engine, getActiveHistory: () => history },
+      activeTool: () => "move",
+      layers: () => [mockLayer({ width: 100, height: 100, transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false } })],
+      activeLayerId: () => "layer-1",
+      selectedLayerId: () => "layer-1",
+      scheduler: { requestRender: vi.fn() },
+      moveAutoSelect: () => true,
+      setMoveAutoSelect: vi.fn(),
+      moveSnapEnabled: () => true,
+      setMoveSnapEnabled: vi.fn(),
+      hoveredLayerId: () => null,
+      docWidth: () => 800,
+      docHeight: () => 600,
+    };
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const dispose = render(() => <MoveOptionBar />, container);
+
+    qs<HTMLButtonElement>(container, 'button[aria-label="Align left"]')!.click();
+    expect(history.commit).not.toHaveBeenCalled();
+    expect(engine.transformLayer).not.toHaveBeenCalled();
+
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("clicking Align Left when NOT at x=0 commits exactly once", () => {
+    const engine = {
+      getLayer: () => ({
+        id: "layer-1",
+        locked: false,
+        width: 100,
+        height: 100,
+        transform: { x: 50, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
+      }),
+      snapshot: vi.fn(() => ({})),
+      flipLayer: vi.fn(),
+      transformLayer: vi.fn(),
+    };
+    const history = { commit: vi.fn() };
+    const mockValue = {
+      workspace: { getActiveEngine: () => engine, getActiveHistory: () => history },
+      activeTool: () => "move",
+      layers: () => [mockLayer({ width: 100, height: 100, transform: { x: 50, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false } })],
+      activeLayerId: () => "layer-1",
+      selectedLayerId: () => "layer-1",
+      scheduler: { requestRender: vi.fn() },
+      moveAutoSelect: () => true,
+      setMoveAutoSelect: vi.fn(),
+      moveSnapEnabled: () => true,
+      setMoveSnapEnabled: vi.fn(),
+      hoveredLayerId: () => null,
+      docWidth: () => 800,
+      docHeight: () => 600,
+    };
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const dispose = render(() => <MoveOptionBar />, container);
+
+    qs<HTMLButtonElement>(container, 'button[aria-label="Align left"]')!.click();
+    expect(history.commit).toHaveBeenCalledTimes(1);
+    expect(engine.transformLayer).toHaveBeenCalledTimes(1);
+
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("clicking Reset Transform when already at default produces NO history entry (regression: ghost commit)", () => {
+    const engine = {
+      getLayer: () => ({
+        id: "layer-1",
+        locked: false,
+        width: 100,
+        height: 100,
+        transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
+      }),
+      snapshot: vi.fn(() => ({})),
+      flipLayer: vi.fn(),
+      transformLayer: vi.fn(),
+    };
+    const history = { commit: vi.fn() };
+    const mockValue = {
+      workspace: { getActiveEngine: () => engine, getActiveHistory: () => history },
+      activeTool: () => "move",
+      layers: () => [mockLayer({ transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false } })],
+      activeLayerId: () => "layer-1",
+      selectedLayerId: () => "layer-1",
+      scheduler: { requestRender: vi.fn() },
+      moveAutoSelect: () => true,
+      setMoveAutoSelect: vi.fn(),
+      moveSnapEnabled: () => true,
+      setMoveSnapEnabled: vi.fn(),
+      hoveredLayerId: () => null,
+      docWidth: () => 800,
+      docHeight: () => 600,
+    };
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const dispose = render(() => <MoveOptionBar />, container);
+
+    const resetBtn = Array.from(container.querySelectorAll("button")).find(
+      (b) => b.textContent?.trim() === "Reset",
+    ) as HTMLButtonElement | undefined;
+    expect(resetBtn).toBeDefined();
+    resetBtn!.click();
+
+    expect(history.commit).not.toHaveBeenCalled();
+    expect(engine.transformLayer).not.toHaveBeenCalled();
+
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("clicking Reset Transform when transform IS modified commits exactly once", () => {
+    const engine = {
+      getLayer: () => ({
+        id: "layer-1",
+        locked: false,
+        width: 100,
+        height: 100,
+        transform: { x: 50, y: 20, scaleX: 1.5, scaleY: 1, rotation: 45, flipH: false, flipV: false },
+      }),
+      snapshot: vi.fn(() => ({})),
+      flipLayer: vi.fn(),
+      transformLayer: vi.fn(),
+    };
+    const history = { commit: vi.fn() };
+    const mockValue = {
+      workspace: { getActiveEngine: () => engine, getActiveHistory: () => history },
+      activeTool: () => "move",
+      layers: () => [mockLayer({ transform: { x: 50, y: 20, scaleX: 1.5, scaleY: 1, rotation: 45, flipH: false, flipV: false } })],
+      activeLayerId: () => "layer-1",
+      selectedLayerId: () => "layer-1",
+      scheduler: { requestRender: vi.fn() },
+      moveAutoSelect: () => true,
+      setMoveAutoSelect: vi.fn(),
+      moveSnapEnabled: () => true,
+      setMoveSnapEnabled: vi.fn(),
+      hoveredLayerId: () => null,
+      docWidth: () => 800,
+      docHeight: () => 600,
+    };
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const dispose = render(() => <MoveOptionBar />, container);
+
+    const resetBtn = Array.from(container.querySelectorAll("button")).find(
+      (b) => b.textContent?.trim() === "Reset",
+    ) as HTMLButtonElement | undefined;
+    expect(resetBtn).toBeDefined();
+    resetBtn!.click();
+
+    expect(history.commit).toHaveBeenCalledTimes(1);
+    expect(engine.transformLayer).toHaveBeenCalledTimes(1);
+
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
 });

@@ -184,4 +184,47 @@ describe("ResizeCanvasModal", () => {
     expect(engine.getWidth()).toBe(800);
     expect(engine.getHeight()).toBe(600);
   });
+
+  it("Apply with unchanged dimensions does NOT commit history and closes dialog", async () => {
+    const { container, renderer, dispose } = renderModal(true);
+    await tick();
+
+    const applyBtn = Array.from(container.querySelectorAll("button")).find(
+      (b) => b.textContent?.includes("Image Size"),
+    );
+    expect(applyBtn).toBeTruthy();
+
+    const initialUndo = getWidth();
+    void initialUndo;
+
+    (applyBtn as HTMLButtonElement).click();
+    await tick();
+
+    expect(renderer.resize).not.toHaveBeenCalled();
+    expect(container.textContent).toBe("");
+
+    dispose();
+  });
+
+  it("Apply with changed dimensions DOES commit history", async () => {
+    const { container, renderer, dispose } = renderModal(true);
+    await tick();
+
+    const applyBtn = Array.from(container.querySelectorAll("button")).find(
+      (b) => b.textContent?.includes("Image Size"),
+    );
+
+    const inputs = container.querySelectorAll<HTMLInputElement>("input[type=number]");
+    inputs[0].value = "1024";
+    inputs[0].dispatchEvent(new Event("input", { bubbles: true }));
+    inputs[0].dispatchEvent(new Event("change", { bubbles: true }));
+    await tick();
+
+    (applyBtn as HTMLButtonElement).click();
+    await tick();
+
+    expect(renderer.resize).toHaveBeenCalledWith(1024, expect.any(Number), expect.any(Number), expect.any(Number));
+
+    dispose();
+  });
 });

@@ -537,6 +537,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
             e.stopPropagation();
             const digit = e.key.charCodeAt(0) - 48;
             const opacity = digit === 0 ? 1.0 : digit / 10;
+            if (layer.opacity === opacity) return;
             history.commit(engine.snapshot());
             engine.setLayerOpacity(activeId, opacity);
             scheduler.requestRender();

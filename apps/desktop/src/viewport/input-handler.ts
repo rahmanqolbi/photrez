@@ -1,5 +1,6 @@
 import type { DocumentEngine } from "../engine/document";
 import type { CommandHistory } from "../engine/history";
+import type { DocumentModel } from "../engine/types";
 import type { SnapLine, SnapRect, SnapResult } from "./smartGuides";
 import type { PaintToolSettings } from "@/components/editor/brushToolState";
 import { getLayerAabb } from "./transformGeometry";
@@ -47,6 +48,16 @@ export interface ToolContext {
   rotateCenter?: { x: number; y: number };
   rotateStartAngle?: number;
   selectionAngle?: number;
+
+  // Deferred-history pattern: pointerDown records the pre-mutation snapshot
+  // here without committing. pointerUp commits IF and ONLY IF the operation
+  // actually mutated state (compared via pendingOriginal*). Prevents ghost
+  // undo entries on click-without-drag (regression 2026-06-18 — user-visible
+  // as "history kadang ke-save kadang tidak" because consecutive ghost entries
+  // make undo appear to skip steps with no visual change).
+  pendingHistorySnapshot?: DocumentModel | null;
+  pendingOriginalLayerPos?: { x: number; y: number } | null;
+  pendingOriginalSelectionPos?: { x: number; y: number } | null;
 }
 
 export function handlePointerDown(
@@ -63,14 +74,20 @@ export function handlePointerDown(
   context.dragStart = { x: docX, y: docY };
   context.dragCurrent = { x: docX, y: docY };
 
+  // Defensive clear: a previous pointerdown might have stashed pending
+  // history state and crashed/cancelled before pointerup. Always start
+  // fresh so we never commit a stale snapshot from an unrelated gesture.
+  context.pendingHistorySnapshot = null;
+  context.pendingOriginalLayerPos = null;
+  context.pendingOriginalSelectionPos = null;
+
   if (tool === "selection") {
     const bounds = context.selectionBounds;
     if (bounds && isPointInSelection(docX, docY, bounds)) {
-      // Commit pre-move snapshot to history so the user can undo/redo
-      // the selection move. Without this, moving the selection rect
-      // mutates the engine state silently and the prior position is
-      // unrecoverable.
-      history.commit(engine.snapshot());
+      // Stash pre-move snapshot for pointerUp. Do NOT commit here — a click
+      // that never drags should not produce an undo entry.
+      context.pendingHistorySnapshot = engine.snapshot();
+      context.pendingOriginalSelectionPos = { x: bounds.x, y: bounds.y };
       context.dragMode = "move-selection";
       context.dragStart = { x: docX - bounds.x, y: docY - bounds.y };
     } else {
@@ -91,8 +108,12 @@ export function handlePointerDown(
   } else if (tool === "move" && context.selectedLayerId) {
     const layer = engine.getLayer(context.selectedLayerId);
     if (layer && !layer.locked) {
-      // Commit state snapshot BEFORE translate moves
-      history.commit(engine.snapshot());
+      // Stash pre-move snapshot for pointerUp. Do NOT commit here — a click
+      // that never drags should not produce an undo entry. (history param is
+      // intentionally not used in this branch; pointerUp commits if moved.)
+      void history;
+      context.pendingHistorySnapshot = engine.snapshot();
+      context.pendingOriginalLayerPos = { x: layer.transform.x, y: layer.transform.y };
       context.dragStart = { x: docX - layer.transform.x, y: docY - layer.transform.y };
     }
   }
@@ -220,6 +241,16 @@ export function handlePointerUp(
       const newX = docX - context.dragStart.x;
       const newY = docY - context.dragStart.y;
       context.onSelectionMoved?.(newX, newY);
+
+      // Commit deferred history snapshot ONLY if the selection actually moved.
+      // Click-without-drag must not produce an undo entry.
+      const pending = context.pendingHistorySnapshot;
+      const orig = context.pendingOriginalSelectionPos;
+      if (pending && orig && (newX !== orig.x || newY !== orig.y)) {
+        history.commit(pending);
+      }
+      context.pendingHistorySnapshot = null;
+      context.pendingOriginalSelectionPos = null;
     } else if (context.dragMode === "rotate-selection") {
       // Rotation is already applied live via onSelectionRotated in move handler
     } else {
@@ -274,6 +305,18 @@ export function handlePointerUp(
       context.onCropCreated?.(x, y, w, h);
     }
   } else if (tool === "move") {
+    // Commit deferred history snapshot ONLY if the layer actually moved.
+    // Click-without-drag must not produce an undo entry.
+    const pending = context.pendingHistorySnapshot;
+    const orig = context.pendingOriginalLayerPos;
+    if (pending && orig && context.selectedLayerId) {
+      const layer = engine.getLayer(context.selectedLayerId);
+      if (layer && (layer.transform.x !== orig.x || layer.transform.y !== orig.y)) {
+        history.commit(pending);
+      }
+    }
+    context.pendingHistorySnapshot = null;
+    context.pendingOriginalLayerPos = null;
     context.onSnapLines?.([]);
   }
   requestRender();

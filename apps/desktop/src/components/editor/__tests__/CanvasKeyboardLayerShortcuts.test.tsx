@@ -419,4 +419,44 @@ describe("canvas layer keyboard shortcuts", () => {
 
     dispose();
   });
+
+  it("does not commit history when pressing the same opacity digit twice", async () => {
+    const session = WorkspaceManager.createBlankDocument("opacity-noop", "Opacity NoOp", 800, 600);
+    const layer = session.engine.addLayer("Top");
+    session.engine.setActiveLayer(layer.id);
+    session.engine.setLayerOpacity(layer.id, 0.5);
+
+    const { ws, dispose } = renderKeyboardHarness(session);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "5" }));
+
+    expect(session.engine.getLayer(layer.id)?.opacity).toBeCloseTo(0.5);
+    expect(ws.getActiveHistory()?.canUndo()).toBe(false);
+    expect(ws.getActiveHistory()?.getUndoCount()).toBe(0);
+
+    dispose();
+  });
+
+  it("commits when pressing a different opacity digit but skips on repeat", async () => {
+    const session = WorkspaceManager.createBlankDocument("opacity-mixed", "Opacity Mixed", 800, 600);
+    const layer = session.engine.addLayer("Top");
+    session.engine.setActiveLayer(layer.id);
+    session.engine.setLayerOpacity(layer.id, 0.5);
+
+    const { ws, dispose } = renderKeyboardHarness(session);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "5" }));
+    expect(ws.getActiveHistory()?.getUndoCount()).toBe(0);
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "7" }));
+    expect(session.engine.getLayer(layer.id)?.opacity).toBeCloseTo(0.7);
+    expect(ws.getActiveHistory()?.getUndoCount()).toBe(1);
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "7" }));
+    expect(ws.getActiveHistory()?.getUndoCount()).toBe(1);
+
+    dispose();
+  });
 });

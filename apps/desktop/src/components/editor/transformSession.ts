@@ -20,6 +20,18 @@ export function isSessionForEngine(
   return Boolean(session && engine && session.documentId === engine.getId());
 }
 
+function transformsEqual(a: Transform2D, b: Transform2D): boolean {
+  return (
+    a.x === b.x &&
+    a.y === b.y &&
+    a.scaleX === b.scaleX &&
+    a.scaleY === b.scaleY &&
+    a.rotation === b.rotation &&
+    a.flipH === b.flipH &&
+    a.flipV === b.flipV
+  );
+}
+
 export function commitLayerTransformSession(
   session: LayerTransformSession | null,
   engine: TransformSessionEngine | null | undefined,
@@ -29,6 +41,16 @@ export function commitLayerTransformSession(
   if (!isSessionForEngine(session, engine)) return false;
   const layer = engine.getLayer(session.layerId);
   if (!layer) return true;
+
+  // Skip the commit if the layer transform did not actually change during the
+  // session. Otherwise pressing Apply on an unchanged session pushes a ghost
+  // entry to the undo stack — undoing it produces no visual change and makes
+  // the user feel they can't undo all the way back to the original state.
+  // (Regression 2026-06-18 follow-up.)
+  if (transformsEqual(layer.transform, session.originalTransform)) {
+    return true;
+  }
+
   history.commit(session.originalSnapshot);
   return true;
 }

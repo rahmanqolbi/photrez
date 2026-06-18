@@ -176,7 +176,7 @@ describe("input-handler: selection tool draw modifiers", () => {
   });
 
   describe("history commits for selection edits", () => {
-    it("move-selection start commits history so undo can revert the move (regression: edits not saved)", () => {
+    it("move-selection commits history on pointerUp when selection actually moved (regression: edits not saved)", () => {
       const engine = createMockEngine();
       const ctx = createContext({
         selectionBounds: { x: 50, y: 50, width: 200, height: 150 },
@@ -185,10 +185,26 @@ describe("input-handler: selection tool draw modifiers", () => {
 
       handlePointerDown("selection", 100, 100, engine as any, history, vi.fn(), ctx);
       handlePointerMove("selection", 150, 130, engine as any, vi.fn(), ctx);
+      handlePointerUp("selection", 150, 130, engine as any, history, vi.fn(), ctx);
 
-      // Pointer-down on existing selection must commit the pre-move state
-      // to history so the user can undo to restore the prior selection rect.
-      expect(history.commit).toHaveBeenCalled();
+      // Selection moved (pointer up at different doc coords than down) — must
+      // commit the pre-move snapshot so undo restores prior selection rect.
+      expect(history.commit).toHaveBeenCalledTimes(1);
+    });
+
+    it("move-selection click-without-drag does NOT commit history (regression 2026-06-18: ghost entries)", () => {
+      const engine = createMockEngine();
+      const ctx = createContext({
+        selectionBounds: { x: 50, y: 50, width: 200, height: 150 },
+      });
+      const history = mockHistory();
+
+      // Click inside selection at (100, 100), release at same spot — no drag.
+      handlePointerDown("selection", 100, 100, engine as any, history, vi.fn(), ctx);
+      handlePointerUp("selection", 100, 100, engine as any, history, vi.fn(), ctx);
+
+      // Previously this produced a ghost undo entry that did nothing visible.
+      expect(history.commit).not.toHaveBeenCalled();
     });
 
     it("drawing a fresh selection does NOT commit history (regression: avoid history noise)", () => {
