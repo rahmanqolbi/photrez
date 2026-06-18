@@ -1,6 +1,36 @@
 # AI History — Photrez
 
-## [2026-06-18] FEATURE - Layer Keyboard Shortcuts [COMPLETE]
+## [2026-06-18] BUG FIX - Layer Visual Shrinkage on Multi-Layer Composite [COMPLETE]
+
+### Kategori: BUG FIX / RENDERER / WEBGL / COMPOSITOR
+
+**Root Cause:**
+The WebGL2 ping-pong compositor in `apps/desktop/src/renderer/webgl2.ts` reused the camera viewProjection matrix and a doc-coord rect for the INTER-LAYER COPY pass (copy FBO[prev] → FBO[curr] before drawing the next layer on top). When fit-to-screen left padding (default 80px), the camera viewProj only mapped the doc bounds to the CENTRAL area of NDC. The destination quad therefore covered only the doc-region of FBO[curr] — but the sampler reads the WHOLE source FBO via `texCoord = pos.xy` (0..1). The result: the full source FBO (layer + transparent margins) was squeezed into the smaller doc-region of the destination, shrinking the previous layer by the doc/viewport ratio (~92% at default fit) on every layer composited above it.
+
+User-observed symptom:
+- 1 layer: looks fine
+- Add layer 2: layer 1 shrinks with padding around it
+- Add layer 3: layer 1 has 2× padding, layer 2 has 1× padding
+- Merge / Flatten "fixes" it (merge collapses to 1 layer → only `firstDraw` branch runs → copy branch is skipped, no shrinkage)
+
+**Fix Rationale:**
+The inter-layer copy is conceptually "duplicate FBO[prev] into FBO[curr] bit-for-bit". It must therefore cover the FULL FBO (logical viewport), not the doc-region. Mirroring the existing final-screen pass setup at `webgl2.ts:412-413`, the copy now uses `computeViewMatrix(logicalWidth, logicalHeight)` with `layerRect = (0, 0, logicalWidth, logicalHeight)` and `layerCenter = (logicalWidth/2, logicalHeight/2)`. With this setup, the destination quad covers the full FBO and texCoord 0..1 maps 1:1 to the source FBO — no compression. The subsequent composite pass continues to use the camera viewProj + doc-coord rect for the new layer's own draw, which is correct.
+
+**Done:**
+1. `apps/desktop/src/renderer/webgl2.ts:300-322` — replaced camera viewProj + doc-coord rect in the copy branch with NDC-fullscreen quad using `computeViewMatrix(logicalWidth, logicalHeight)` and logical-viewport rect/center. Added a long comment explaining the regression to prevent re-introduction.
+2. `apps/desktop/src/renderer/webgl2.ts:48-58` — extracted `getInterLayerCopyQuad(logicalWidth, logicalHeight)` as a tiny pure helper consumed by the render path. Lets us regression-test the invariant without a full WebGL mock.
+3. `apps/desktop/src/renderer/__tests__/webgl2-layer-copy.test.ts` — added a 27-test regression suite. Pure-helper edge cases (zero, 1-px, fractional, 4K, portrait/landscape, linearity) + render-path tests using a Proxy-based GL mock that records every gl.* call. Render-path assertions verify the EXACT `uniform4f(u_layerRect, ...)` and `uniform2f(u_layerCenter, ...)` sequences for: 1/2/3/5 layers, hidden layer, layer-without-texture, viewport resize (larger AND smaller), DPR > 1, doc > viewport (zoom-in), doc < viewport (zoom-out), zero layers, non-default layer transform/opacity. Includes explicit "must NOT equal doc bounds" sentinel checks so any future revert to camera viewProj + doc-coord rect fails loudly. Also pins down the expected `drawArrays` count per layer count.
+
+**Verification:**
+- `pnpm.cmd --filter photrez-desktop test --run` — 78 files / 1130 tests pass (was 1103 before this fix, +27 regression tests in `webgl2-layer-copy.test.ts`).
+- `pnpm.cmd run build` — TS + Vite build clean (`built in 8.68s`).
+
+**Notes:**
+- Bug only manifests when camera has zoom-to-fit padding (the common case after opening a new doc). At zoom levels where the doc exactly fills the viewport (no padding), the shrinkage factor is 1.0 and the bug is invisible — which is likely why it survived. The default fit adds 80px padding (`useViewportRenderer.fitToScreenAndRender` line 61) so any user opening a doc would have seen it after their second layer.
+- The COMPOSITE pass (right after the copy) still uses the camera viewProj + per-layer transform — that's correct because the new layer is positioned in doc-space. Only the copy step needed to be FBO-space.
+- The COMPOSITE pass's backdrop sampling via `gl_FragCoord.xy / u_resolution` already maps to FBO-space (not doc-space), so after the fixed copy it correctly reads the preserved prior layers at their actual FBO positions.
+
+---## [2026-06-18] FEATURE - Layer Keyboard Shortcuts [COMPLETE]
 
 ### Kategori: FEATURE / UX / KEYBOARD / LAYER
 

@@ -45,6 +45,27 @@ export function projectDocumentScissor(
   };
 }
 
+/**
+ * Computes the uniform values for the inter-layer ping-pong COPY pass.
+ *
+ * Regression note (2026-06-18): the copy must cover the ENTIRE FBO
+ * (logical viewport), not just the doc-coord region. The sampler reads the
+ * whole source FBO via texCoord 0..1; if the destination quad only writes
+ * the doc-region, the source FBO (layer + transparent margins) is squeezed
+ * into that smaller region — previous layers visually shrank by the
+ * doc/viewport ratio on every layer above them. Merging masked the bug
+ * because a single layer skips the copy branch entirely.
+ */
+export function getInterLayerCopyQuad(
+  logicalWidth: number,
+  logicalHeight: number,
+): { rect: [number, number, number, number]; center: [number, number] } {
+  return {
+    rect: [0, 0, logicalWidth, logicalHeight],
+    center: [logicalWidth / 2, logicalHeight / 2],
+  };
+}
+
 export class WebGL2Backend implements RenderBackend {
   readonly name = "webgl2";
   readonly capabilities: RenderCapabilities;
@@ -297,15 +318,26 @@ export class WebGL2Backend implements RenderBackend {
           gl.bindTexture(gl.TEXTURE_2D, this.pingPongTextures[prevFboIndex]);
           gl.uniform1i(this.layerUniforms.texture, 0);
 
-          gl.uniformMatrix4fv(this.layerUniforms.viewProj, false, viewProj);
+          // Use an NDC-fullscreen quad for the copy (same pattern as the
+          // final screen pass below). The previous pipeline reused the
+          // camera viewProj + doc-coord rect — when fit-to-screen leaves
+          // padding the doc only covers the central area of the FBO, but
+          // the sampler reads the WHOLE source FBO (texCoord 0..1). That
+          // squeezed the full source FBO (layer + transparent margins) into
+          // the doc-region of the target FBO, shrinking the previous layer
+          // by the doc/viewport ratio on every layer above it. Merging
+          // hid the bug because a single layer skips this branch entirely.
+          const copyProj = this.computeViewMatrix(this.logicalWidth, this.logicalHeight);
+          gl.uniformMatrix4fv(this.layerUniforms.viewProj, false, copyProj);
           gl.uniform1f(this.layerUniforms.opacity, 1.0);
           gl.uniform1i(this.layerUniforms.blendMode, 0);
           gl.uniform1i(this.layerUniforms.useBackdrop, 0);
           gl.uniform1i(this.layerUniforms.flipTexY, 1); // FBO texture, flip Y
 
-          // Fullscreen quad in document coords
-          gl.uniform4f(this.layerUniforms.layerRect, 0, 0, docW, docH);
-          gl.uniform2f(this.layerUniforms.layerCenter, docW / 2, docH / 2);
+          // Fullscreen quad in logical-viewport coords (matches copyProj)
+          const copyQuad = getInterLayerCopyQuad(this.logicalWidth, this.logicalHeight);
+          gl.uniform4f(this.layerUniforms.layerRect, ...copyQuad.rect);
+          gl.uniform2f(this.layerUniforms.layerCenter, ...copyQuad.center);
           gl.uniform1f(this.layerUniforms.layerRotation, 0);
           gl.uniform2f(this.layerUniforms.flipSign, 1.0, 1.0);
 
