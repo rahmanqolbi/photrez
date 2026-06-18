@@ -1,5 +1,84 @@
 # AI History — Photrez
 
+## [2026-06-18] HARDENING - FAANG CI Gate Added [COMPLETE]
+
+### Kategori: HARDENING / CI / TESTING / GOVERNANCE
+
+**Root Cause:**
+The FAANG review register still had a governance blocker: root scripts existed after Phase 0, but there was no committed CI workflow proving that reviewers and future contributors would run the same gates.
+
+**Fix Rationale:**
+Use the existing root scripts instead of inventing a second verification system. Add the smallest visible GitHub Actions workflow that mirrors local gates and keeps dependency audit as a separate job with network/tooling access.
+
+**Done:**
+1. Added .github/workflows/ci.yml.
+2. CI verify job runs type-check, lint, frontend tests, build, browser E2E, cargo test -p photrez-core, and cargo test --workspace on windows-latest.
+3. CI audit job installs cargo-audit and runs pnpm run audit.
+4. Updated FEATURES.md and FAANG review docs to mark FRR-TEST-001 / FRR-EXEC-007 mitigated.
+
+**Verification:**
+- Workflow file exists and contains all expected gate commands.
+- git diff --check passes for the workflow and touched CI docs.
+- Search found no remaining CI pipeline TODO / no committed CI / reject-rated FRR-TEST-001 or FRR-EXEC-007 text in docs/faang-review-rejections/*.md.
+
+---## [2026-06-18] DOCUMENTATION - FAANG Architecture Runtime Drift Closure [COMPLETE]
+
+### Kategori: DOCUMENTATION / ARCHITECTURE / IPC / FAANG-REVIEW
+
+**Root Cause:**
+After the Phase 0 hardening pass, ARCHITECTURE.md still described response contract v1.0.0 and a historical active Tauri command table. That contradicted main.rs and command-contract-spec.md, so the FAANG register still had stale evidence for contract drift.
+
+**Fix Rationale:**
+Keep the architecture reference as the current runtime truth: show the v2.0.0 envelope, list only registered Tauri commands, and explicitly label old workspace/layer/crop/export command names as historical/product-capability context rather than active shell commands.
+
+**Done:**
+1. Updated ARCHITECTURE.md contract and active Tauri command table.
+2. Marked FRR-ARCH-001, FRR-SHELL-001, and FRR-SHELL-002 as mitigated.
+3. Added the Mitigated rating definition to the FAANG register README.
+4. Fixed the latest AI_HISTORY separator formatting.
+
+**Verification:**
+- Search across ARCHITECTURE.md, command-contract-spec.md, and docs/faang-review-rejections/*.md found no active v1.0.0/1.0.0/get_workspace_state/export_document drift.
+- git diff --numstat for AI_HISTORY.md and ARCHITECTURE.md reports text diffs, not binary diffs.
+
+---## [2026-06-18] FAANG REVIEW REJECTION EXECUTION - PHASE 0 HARDENING [COMPLETE]
+
+### Kategori: ARCHITECTURE / IPC / TESTING / GOVERNANCE / PONYTAIL
+
+**Goal:**
+Execute the urgent blockers from docs/faang-review-rejections/ without starting a rewrite.
+
+**Root Cause:**
+The FAANG review register correctly identified several active release/readiness gaps: Tauri IPC docs did not match the runtime 2.0.0 command surface, response helpers used normal-path serialization unwrap(), file IO had no size guard, useEditor() returned fake production context outside EditorProvider, and root static-analysis/audit scripts were missing.
+
+**Fix Rationale:**
+Apply Ponytail: close the concrete mismatch first, reuse existing contracts, avoid a new architecture, and make missing providers fail loudly. Test harnesses should provide explicit context instead of letting production code fabricate one.
+
+**Done:**
+1. Updated docs/reference/command-contract-spec.md to match the Tauri shell runtime: 2.0.0, ping, get_contract_info, read_file_bytes, and write_file_bytes.
+2. Added a shared CONTRACT_VERSION constant, structured serialization failure handling, and 256MB read/write guards in apps/desktop/src-tauri/src/main.rs.
+3. Removed the fake useEditor() fallback; tests now use explicit EditorProvider wrapping or workspaceOverride.
+4. Added root type-check, lint, and audit scripts plus desktop type-check/lint.
+5. Added docs/faang-review-rejections/2026-06-18-execution-audit.md and updated FAANG review docs + FEATURES.md.
+
+**Verification:**
+- pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/CropOverlay.test.tsx src/components/editor/__tests__/DragController.test.tsx src/components/editor/__tests__/crossDocDragDropWiring.test.tsx - PASS (70 tests).
+- pnpm.cmd --filter photrez-desktop test --run - PASS (77 files / 1079 tests).
+- pnpm.cmd run type-check - PASS.
+- pnpm.cmd run lint - PASS.
+- pnpm.cmd run build - PASS.
+- cargo test -p photrez-desktop - PASS (8 tests).
+- cargo test -p photrez-core - PASS (85 tests).
+- cargo test --workspace - PASS.
+- pnpm.cmd run audit - BLOCKED by network access to npm advisory endpoint; escalated retry exceeded useful wait window.
+
+**Remaining Follow-up:**
+- Add committed CI workflow wiring.
+- Add native Tauri smoke/release proof.
+- Replace base64 file IO with streaming/chunking if large-file support becomes a product requirement.
+
+---
+
 ## [2026-06-17] BUG FIX - Cross-Doc Drag Tab Hover Snap-Back [COMPLETE]
 
 ### Kategori: BUG FIX / FRONTEND / DRAG-DROP / MOVE TOOL

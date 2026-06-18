@@ -190,27 +190,7 @@ export { useGPUCameraForModernCrop, setUseGPUCameraForModernCrop };
 export function useEditor(): EditorContextValue {
   const context = useContext(EditorContext);
   if (!context) {
-    // Safe fallback for unit testing isolated components
-    return {
-      workspace: {} as any,
-      renderer: {} as any,
-      scheduler: {} as any,
-      camera: new ViewportCamera(),
-      setViewportState: () => {},
-      syncFromCamera: () => {},
-      zoom: () => 1.0,
-      pan: () => ({ x: 0, y: 0 }),
-      setPan: () => {},
-      viewportWidth: () => 800,
-      viewportHeight: () => 600,
-      activeTool: () => "crop",
-      cropInteractionMode: () => "classic",
-      hoverPos: () => null,
-      setHoverPos: () => {},
-      commitCropState: () => {},
-      useGPUCameraForModernCrop: () => true,
-      setUseGPUCameraForModernCrop: () => {},
-    } as unknown as EditorContextValue;
+    throw new Error("useEditor must be used within an EditorProvider");
   }
   return context;
 }

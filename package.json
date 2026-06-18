@@ -5,7 +5,10 @@
     "dev": "pnpm --filter photrez-desktop dev",
     "build": "pnpm --filter photrez-desktop build",
     "test": "pnpm --filter photrez-desktop test",
+    "type-check": "pnpm --filter photrez-desktop type-check",
+    "lint": "pnpm --filter photrez-desktop lint",
     "test:e2e": "pnpm --filter photrez-desktop test:e2e",
+    "audit": "pnpm audit --prod && cargo audit",
     "verify": "pnpm --filter photrez-desktop test --run && pnpm run build && cargo test -p photrez-core && cargo test --workspace",
     "tauri": "tauri",
     "prepare": "husky"

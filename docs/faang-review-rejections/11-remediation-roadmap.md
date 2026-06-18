@@ -11,6 +11,8 @@ This is the suggested order to address FAANG-style review blockers without turni
 | P0 | Guard/remove `window.__photrezEditor` in production | Release/debug boundary is a merge-blocking concern. |
 | P0 | Add lint/type-check/audit scripts | Makes the documented review bar executable. |
 
+2026-06-18 status: Phase 0 is mostly closed in code/docs. Contract docs now match the Tauri runtime, placeholder drag/drop E2E had already been replaced, the debug handle is guarded, and root lint/type-check/audit scripts exist. Audit execution still needs network/tooling proof, and CI wiring remains Phase 3.
+
 ## Phase 1: Type Safety and Test Realism
 
 | Priority | Work | Expected result |
@@ -33,8 +35,8 @@ This is the suggested order to address FAANG-style review blockers without turni
 
 | Priority | Work | Expected result |
 | --- | --- | --- |
-| P1 | Add Tauri-runtime smoke checklist or automation | Native file drop/save/app launch are verified. |
-| P1 | Add CI pipeline mirroring local gates | Reviewers can trust merge status. |
+| P1 | Add Tauri-runtime smoke checklist or automation | Mitigated 2026-06-18 with `2026-06-18-native-runtime-smoke-checklist.md`; filled evidence remains required for release candidates. |
+| P1 | Add CI pipeline mirroring local gates | Mitigated 2026-06-18 with `.github/workflows/ci.yml`; keep it aligned as gates evolve. |
 | P2 | Add performance budget scripts | Startup/RAM/export regressions become visible. |
 | P2 | Add structured diagnostic logging | Production bug reports become actionable. |
 
@@ -45,4 +47,3 @@ This is the suggested order to address FAANG-style review blockers without turni
 | P2 | Evaluate dirty-rect history for paint-heavy workflows | Large documents avoid snapshot memory pressure. |
 | P2 | Clarify Rust core/WebGL2/TS engine migration plan | Future architecture stops drifting. |
 | P2 | Add generated docs for command/test/dependency inventories | Long-lived docs stay accurate. |
-

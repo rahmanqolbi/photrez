@@ -3,15 +3,21 @@ import { renderHook } from "@solidjs/testing-library";
 import { DragControllerProvider, useDragController } from "../DragController";
 
 describe("DragController", () => {
+  const testWorkspace = { switchDocument: vi.fn() };
+  const wrapper = (props: any) => (
+    <DragControllerProvider workspaceOverride={testWorkspace} {...props} />
+  );
+
   beforeEach(() => {
     vi.useFakeTimers();
+    testWorkspace.switchDocument.mockClear();
   });
   afterEach(() => {
     vi.useRealTimers();
   });
 
   it("begins a layer drag and stores payload", () => {
-    const { result } = renderHook(() => useDragController(), { wrapper: DragControllerProvider });
+    const { result } = renderHook(() => useDragController(), { wrapper });
     result.beginLayerDrag({
       version: 1,
       sourceDocId: "d",
@@ -24,7 +30,7 @@ describe("DragController", () => {
   });
 
   it("endDrag clears all state", () => {
-    const { result } = renderHook(() => useDragController(), { wrapper: DragControllerProvider });
+    const { result } = renderHook(() => useDragController(), { wrapper });
     result.beginLayerDrag({
       version: 1,
       sourceDocId: "d",
@@ -65,13 +71,13 @@ describe("DragController", () => {
   });
 
   it("setDropTarget updates state", () => {
-    const { result } = renderHook(() => useDragController(), { wrapper: DragControllerProvider });
+    const { result } = renderHook(() => useDragController(), { wrapper });
     result.setDropTarget({ type: "canvas" });
     expect(result.state().dropTarget).toEqual({ type: "canvas" });
   });
 
   it("beginFileDrag sets file paths and position", () => {
-    const { result } = renderHook(() => useDragController(), { wrapper: DragControllerProvider });
+    const { result } = renderHook(() => useDragController(), { wrapper });
     result.beginFileDrag(["/a.png", "/b.jpg"], { x: 100, y: 200 });
     expect(result.state().dragKind).toBe("file");
     expect(result.state().filePaths).toEqual(["/a.png", "/b.jpg"]);

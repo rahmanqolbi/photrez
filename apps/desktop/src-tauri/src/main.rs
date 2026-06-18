@@ -3,6 +3,9 @@
 use serde::Serialize;
 use serde_json::Value;
 
+const CONTRACT_VERSION: &str = "2.0.0";
+const MAX_FILE_IO_BYTES: u64 = 256 * 1024 * 1024;
+
 // ─── Response Envelope ───
 #[derive(Serialize)]
 struct ApiSuccessResponse {
@@ -26,25 +29,41 @@ struct ApiErrorResponse {
 }
 
 fn ok_response<T: Serialize>(data: T) -> Result<Value, Value> {
+    let data = serde_json::to_value(data)
+        .map_err(|e| internal_error_value(&format!("Failed to serialize response data: {}", e)))?;
     let success = ApiSuccessResponse {
         ok: true,
-        contract_version: "2.0.0".to_string(),
-        data: serde_json::to_value(data).unwrap(),
+        contract_version: CONTRACT_VERSION.to_string(),
+        data,
     };
-    Ok(serde_json::to_value(&success).unwrap())
+    serde_json::to_value(&success)
+        .map_err(|e| internal_error_value(&format!("Failed to serialize success envelope: {}", e)))
 }
 
 fn err_response(code: &str, message: &str) -> Result<Value, Value> {
     let error = ApiErrorResponse {
         ok: false,
-        contract_version: "2.0.0".to_string(),
+        contract_version: CONTRACT_VERSION.to_string(),
         error: ApiErrorPayload {
             code: code.to_string(),
             message: message.to_string(),
             details: Value::Null,
         },
     };
-    Err(serde_json::to_value(&error).unwrap())
+    Err(serde_json::to_value(&error)
+        .unwrap_or_else(|_| internal_error_value("Failed to serialize error envelope")))
+}
+
+fn internal_error_value(message: &str) -> Value {
+    serde_json::json!({
+        "ok": false,
+        "contract_version": CONTRACT_VERSION,
+        "error": {
+            "code": "E_INTERNAL",
+            "message": message,
+            "details": null
+        }
+    })
 }
 
 // ─── Commands ───
@@ -58,7 +77,7 @@ fn ping() -> Result<Value, Value> {
 fn get_contract_info() -> Result<Value, Value> {
     ok_response(serde_json::json!({
         "name": "photrez-command-contract",
-        "version": "2.0.0",
+        "version": CONTRACT_VERSION,
         "supported_commands": [
             "ping", "get_contract_info",
             "read_file_bytes", "write_file_bytes"
@@ -69,6 +88,17 @@ fn get_contract_info() -> Result<Value, Value> {
 /// Read file bytes from disk. Returns base64-encoded bytes.
 #[tauri::command]
 fn read_file_bytes(path: String) -> Result<Value, Value> {
+    match std::fs::metadata(&path) {
+        Ok(metadata) if metadata.len() > MAX_FILE_IO_BYTES => {
+            return err_response(
+                "E_RESOURCE_LIMIT",
+                "File is too large for IPC transfer; max supported size is 256 MB",
+            );
+        }
+        Ok(_) => {}
+        Err(e) => return err_response("E_IO", &format!("Failed to inspect file: {}", e)),
+    }
+
     match std::fs::read(&path) {
         Ok(bytes) => {
             use base64::Engine;
@@ -91,6 +121,12 @@ fn write_file_bytes(path: String, data: String) -> Result<Value, Value> {
         Ok(b) => b,
         Err(e) => return err_response("E_VALIDATION", &format!("Invalid base64: {}", e)),
     };
+    if bytes.len() as u64 > MAX_FILE_IO_BYTES {
+        return err_response(
+            "E_RESOURCE_LIMIT",
+            "File is too large for IPC transfer; max supported size is 256 MB",
+        );
+    }
 
     match std::fs::write(&path, &bytes) {
         Ok(_) => ok_response(serde_json::json!({
@@ -220,9 +256,22 @@ mod tests {
         let result = get_contract_info();
         assert!(result.is_ok());
         let value = result.unwrap();
+        assert_eq!(value["contract_version"], CONTRACT_VERSION);
+        assert_eq!(value["data"]["version"], CONTRACT_VERSION);
         let commands = value["data"]["supported_commands"].as_array().unwrap();
         let names: Vec<&str> = commands.iter().map(|c| c.as_str().unwrap()).collect();
-        assert!(names.contains(&"write_file_bytes"));
-        assert!(names.contains(&"read_file_bytes"));
+        assert_eq!(
+            names,
+            vec!["ping", "get_contract_info", "read_file_bytes", "write_file_bytes"]
+        );
+    }
+
+    #[test]
+    fn test_error_response_uses_contract_version() {
+        let result = err_response("E_VALIDATION", "bad input");
+        assert!(result.is_err());
+        let value = result.unwrap_err();
+        assert_eq!(value["contract_version"], CONTRACT_VERSION);
+        assert_eq!(value["error"]["code"], "E_VALIDATION");
     }
 }

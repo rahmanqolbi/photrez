@@ -175,7 +175,7 @@
 | ⬜ KNOWN LIMITATION | Blend mode parity: Canvas 2D globalCompositeOperation vs WebGL GLSL shader may differ slightly at alpha=0 or alpha=1 boundaries (pre-multiplied vs straight alpha edge cases). Visual difference is negligible for MVP. |
 | ✅ DONE      | Rust unit tests: write_file_bytes creates file, read_file_bytes roundtrip, error handling (7 tests) |
 | ✅ DONE      | E2E data flow test: encodeComposite → base64 → decode → byte-for-byte match + valid PNG image |
-| ⬜ MANUAL    | Native save dialog UI + file-on-disk verification: run `pnpm tauri dev`, draw, Ctrl+S, save, open in external viewer |
+| ✅ RELEASE GATE | Native Tauri smoke checklist for app launch, OS drag/drop, cross-doc drag, native export/save, cancel export, and window controls: `docs/faang-review-rejections/2026-06-18-native-runtime-smoke-checklist.md` |
 
 ---
 
@@ -250,7 +250,7 @@
 | ✅ DONE      | File menu dropdown                         |
 | ✅ DONE      | Status bar (dimensions, cursor pos, zoom, RAM) |
 | ✅ DONE      | Tauri bridge IPC (`invoke` → `#[tauri::command]`) |
-| ✅ DONE      | Response envelope contract (v1.0.0)        |
+| ✅ DONE      | Response envelope contract (v2.0.0 Tauri shell runtime: ping, contract info, file read/write) |
 | ✅ DONE      | File open dialog (Ctrl+O)                  |
 | ⬜ TODO      | Native menu integration                    |
 | ⬜ TODO      | Window state persistence (size/position)   |
@@ -302,10 +302,10 @@
 | ✅ DONE      | Rust workspace (core + render crates)      |
 | ✅ DONE      | Tailwind CSS v4                            |
 | ✅ DONE      | Restructured documentation suite (organized into spec/, reference/, decisions/) |
-| ⬜ TODO      | CI pipeline (GitHub Actions)               |
+| ✅ DONE      | CI pipeline (GitHub Actions: type-check, lint, frontend tests, build, browser E2E, Rust tests, dependency audit) |
 | ✅ DONE      | Unit tests (core crate) — 85 tests, 92 workspace total |
-| ✅ DONE      | Contract tests (IPC commands) — 13 tests   |
-| ✅ DONE      | Frontend tests — 1078 passing tests (77 files) |
+| ✅ DONE      | Desktop shell contract tests — 8 Tauri command tests |
+| ✅ DONE      | Frontend tests — 1079 passing tests (77 files) |
 | ✅ DONE      | E2E browser tests — 21 Playwright tests    |
 | ✅ DONE      | M6 Perf Gate (all metrics PASS)            |
 | ✅ DONE      | Native Vite tsconfig paths (removed `vite-tsconfig-paths` plugin) |
@@ -316,6 +316,7 @@
 
 | Status | Item |
 | ------ | ---- |
+| DONE | FAANG review rejection Phase 0 execution: contract drift, production context fallback, shell response panics, file IO size guard, and root static-analysis scripts addressed with green build/test/type gates |
 | DONE | Production risk register hardening executed: closed drag/drop, layer reorder, export, debug-surface, and verification-script gaps with green automated gates |
 | DONE | Cross-doc layer drag tab hover regression fixed: 500ms tab switch now works through real EditorProvider workspace and canvas pointer-drag tab detection |
 | DONE | Ponytail refactor-from-scratch doctrine created: `docs/ponytail-refactor-doctrine/` with anti-overengineering rules, per-area playbooks, roadmap, and review checklists |

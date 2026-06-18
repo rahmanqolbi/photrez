@@ -1,11 +1,13 @@
-# 15 - Command Contract Specification (MVP Baseline)
+# 15 - Command Contract Specification (Tauri Shell Runtime)
 
-This file defines the authoritative IPC contract between Shell (Tauri) and Rust Core.
+This file defines the authoritative IPC contract currently exposed by the Tauri shell runtime.
+
+Historical editor commands are implemented in the TypeScript MVP editor hot path, not registered as Tauri commands in the current runtime.
 
 ## 1) Contract Metadata
 
 - Contract name: `photrez-command-contract`
-- Current version: `1.0.0`
+- Current version: `2.0.0`
 - Transport: Tauri command invoke (request/response)
 - Encoding: JSON
 
@@ -18,7 +20,7 @@ Success:
 ```json
 {
   "ok": true,
-  "contract_version": "1.0.0",
+  "contract_version": "2.0.0",
   "data": {}
 }
 ```
@@ -28,7 +30,7 @@ Error:
 ```json
 {
   "ok": false,
-  "contract_version": "1.0.0",
+  "contract_version": "2.0.0",
   "error": {
     "code": "E_VALIDATION",
     "message": "Human-readable error message",
@@ -64,8 +66,8 @@ Notes:
 
 ## 4) Versioning Rules
 
-- Patch (`1.0.x`): non-breaking changes (new optional fields, better messages).
-- Minor (`1.x.0`): additive backward-compatible command/data expansion.
+- Patch (`2.0.x`): non-breaking changes (new optional fields, better messages).
+- Minor (`2.x.0`): additive backward-compatible command/data expansion.
 - Major (`x.0.0`): breaking schema/envelope semantics.
 - Any breaking change requires ADR update and migration note.
 
@@ -81,7 +83,7 @@ Conventions:
 - Opacity in range `[0..1]`.
 - Booleans are explicit (`flip_x`, `flip_y`, `preserve_aspect`).
 
-## 6) Milestone 1 Baseline Commands
+## 6) Runtime Commands
 
 ### 6.1 `ping`
 
@@ -98,7 +100,7 @@ Success `data`:
 ```json
 {
   "status": "ok",
-  "service": "core"
+  "service": "native"
 }
 ```
 
@@ -117,78 +119,101 @@ Success `data`:
 ```json
 {
   "name": "photrez-command-contract",
-  "version": "1.0.0",
-  "supported_commands": ["ping", "get_contract_info"]
+  "version": "2.0.0",
+  "supported_commands": ["ping", "get_contract_info", "read_file_bytes", "write_file_bytes"]
 }
 ```
 
+### 6.3 `read_file_bytes`
+
+Purpose: read a dialog/drop-provided local file path and return base64-encoded bytes to the frontend.
+
+Request:
+
+```json
+{ "path": "C:\\Users\\Example\\Pictures\\image.png" }
+```
+
+Success `data`:
+
+```json
+{
+  "path": "C:\\Users\\Example\\Pictures\\image.png",
+  "size": 1234,
+  "data": "base64-encoded-bytes"
+}
+```
+
+Failure:
+
+- `E_IO` when metadata/read fails.
+- `E_RESOURCE_LIMIT` when file size exceeds 256 MB.
+
+### 6.4 `write_file_bytes`
+
+Purpose: write base64-encoded bytes to a local path selected by the native save dialog.
+
+Request:
+
+```json
+{
+  "path": "C:\\Users\\Example\\Pictures\\export.png",
+  "data": "base64-encoded-bytes"
+}
+```
+
+Success `data`:
+
+```json
+{
+  "path": "C:\\Users\\Example\\Pictures\\export.png",
+  "size": 1234
+}
+```
+
+Failure:
+
+- `E_VALIDATION` when `data` is not valid base64.
+- `E_RESOURCE_LIMIT` when decoded bytes exceed 256 MB.
+- `E_IO` when write fails.
+
 ## 7) Implemented & Registered IPC Commands
 
-The following commands are registered and implemented in the Tauri application layer:
+The following commands are registered and implemented in `apps/desktop/src-tauri/src/main.rs`:
 
 - `ping` (Bridge health check)
 - `get_contract_info` (Version and command metadata)
-- `get_workspace_state` (Retrieves full multi-document workspace state)
-- `get_document_state` (Returns active document state)
-- `open_images` (Opens a list of image file paths into workspace tabs)
-- `switch_document` (Switches active workspace document)
-- `close_document` (Closes active/specified workspace document)
-- `set_selected_layer` (Updates active selection UI layer ID)
-- `add_layer` (Creates a new bitmap layer)
-- `delete_layer` (Removes the specified layer)
-- `reorder_layer` (Reorders layers within the stack)
-- `update_layer` (Updates opacity, visibility, lock, blend_mode, name)
-- `undo` (Undo last command snapshot)
-- `redo` (Redo last undone command snapshot)
-- `create_selection` (Creates selection marquee rect bounds)
-- `clear_selection` (Deselects active selection marquee)
-- `select_all` (Selects the entire canvas area)
-- `move_layer` (Repositions layer offset coordinates)
-- `transform_layer` (Applies scale, rotate, flip transformations)
-- `crop_canvas` (Destructively crops canvas dimensions)
-- `resize_canvas` (Resizes canvas bounding dimensions)
-- `draw_brush_stroke` (Applies painting stroke or erasing stroke dabs)
-- `export_document` (Composites layer stack and exports to PNG/JPG/WebP)
-- `sample_pixel` (Samples RGBA color at coordinates)
-- `open_image` (Legacy single image opener; delegates to `open_images`)
-- `trigger_render` (Forces WebGL renderer redraw)
-- `update_viewport_state` (Synchronizes viewport scale, pan, bounds)
-- `preview_frame` (Pre-renders canvas frame preview)
+- `read_file_bytes` (Base64 file import bridge, max 256 MB)
+- `write_file_bytes` (Base64 file export bridge, max 256 MB)
 
 Any addition or modification of IPC contract interfaces must update this registry.
 
 ## 8) Example Error Cases
 
-### Invalid opacity
+### Invalid base64 payload
 
 ```json
 {
   "ok": false,
-  "contract_version": "1.0.0",
+  "contract_version": "2.0.0",
   "error": {
     "code": "E_VALIDATION",
-    "message": "opacity must be between 0 and 1",
-    "details": {
-      "field": "opacity",
-      "received": 1.7
-    }
+    "message": "Invalid base64: Invalid byte 45, offset 3.",
+    "details": null
   }
 }
 ```
 
-### Unsupported command in current milestone
+### File too large for IPC transfer
 
 ```json
 {
   "ok": false,
-  "contract_version": "1.0.0",
+  "contract_version": "2.0.0",
   "error": {
-    "code": "E_UNSUPPORTED",
-    "message": "command is not available in this milestone",
-    "details": {
-      "command": "export_document",
-      "milestone": 1
-    }
+    "code": "E_RESOURCE_LIMIT",
+    "message": "File is too large for IPC transfer; max supported size is 256 MB",
+    "details": null
   }
 }
 ```
@@ -200,7 +225,7 @@ At minimum, contract tests must verify:
 1. Envelope shape for success and error.
 2. `contract_version` presence in all responses.
 3. Deterministic `E_VALIDATION` on malformed payload.
-4. Deterministic `E_UNSUPPORTED` for unavailable command paths.
+4. Runtime `get_contract_info.supported_commands` exactly matches registered commands.
 5. No panic/uncaught failure leaks to shell.
 
 ## 10) Ownership and Change Control

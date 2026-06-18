@@ -4,6 +4,107 @@
 
 ## Current Tasks
 
+### [2026-06-18] FAANG Review Rejection Continuation - Native Runtime Smoke Gate [IN PROGRESS]
+
+**Goal:**
+Close the documented native-runtime proof gap by adding a concrete Tauri smoke checklist for OS-only behaviors that browser E2E cannot prove.
+
+**Scope:**
+- [ ] Add native runtime smoke checklist/evidence template
+- [ ] Link it from FAANG testing/shell docs and `FEATURES.md`
+- [ ] Run documentation consistency checks
+- [ ] Update AI history
+
+**Initial findings:**
+- FRR-TEST-004 and FRR-SHELL-007 still require explicit native runtime proof for OS file drop, native dialog/save, app launch, and file-on-disk verification.
+- CI can run browser E2E, but it does not replace manual or automated Tauri runtime evidence.
+
+---
+
+### [2026-06-18] FAANG Review Rejection Continuation - CI Gate [COMPLETE]
+
+**Goal:**
+Close the visible CI governance gap from `docs/faang-review-rejections/10-testing-ci-observability.md` by adding a committed CI workflow that mirrors the local review gates.
+
+**Scope:**
+- [x] Inspect root/desktop scripts and existing `.github` tree
+- [x] Add GitHub Actions workflow for static checks, frontend tests, build, Rust tests, and dependency audit
+- [x] Update FAANG testing docs and feature tracker
+- [x] Run local syntax/consistency checks for the workflow
+- [x] Update AI history
+
+**Done:**
+- Added `.github/workflows/ci.yml` with Windows CI jobs for type-check, lint, frontend tests, build, browser E2E, Rust tests, and dependency audit.
+- Updated `FEATURES.md`, FAANG README, executive summary, testing review, roadmap, and execution audit.
+
+**Verification:**
+- PASS: workflow file exists and includes all expected gate commands.
+- PASS: `git diff --check -- .github/workflows/ci.yml` and touched CI docs.
+- PASS: no remaining `CI pipeline TODO`, `no committed CI`, or reject-rated FRR-TEST-001/FRR-EXEC-007 text in `docs/faang-review-rejections/*.md`.
+
+---
+
+### [2026-06-18] FAANG Review Rejection Continuation - Architecture Runtime Drift [COMPLETE]
+
+**Goal:**
+Continue executing `docs/faang-review-rejections/` after Phase 0 by closing remaining confirmed documentation/runtime drift that still affects reviewer trust.
+
+**Scope:**
+- [x] Re-read required AI docs and current FAANG execution state
+- [x] Update stale runtime contract sections in `ARCHITECTURE.md`
+- [x] Fix latest `AI_HISTORY.md` formatting issue introduced by byte-preserving insert
+- [x] Run focused documentation consistency checks
+- [x] Update AI history/features/FAANG docs if needed
+
+**Done:**
+- Updated `ARCHITECTURE.md` response envelope and active command table to match runtime contract `2.0.0`.
+- Reworded historical command references so the active runtime table is unambiguous.
+- Marked FRR-ARCH-001, FRR-SHELL-001, and FRR-SHELL-002 as mitigated in the FAANG register.
+- Fixed the latest `AI_HISTORY.md` separator formatting.
+
+**Verification:**
+- PASS: no `v1.0.0`, `1.0.0`, `get_workspace_state`, or `export_document` active-command drift in `ARCHITECTURE.md`, `command-contract-spec.md`, or `docs/faang-review-rejections/*.md`.
+- PASS: `git diff --numstat docs/AI_HISTORY.md docs/ARCHITECTURE.md` reports text diffs, not binary diffs.
+
+---
+
+### [2026-06-18] FAANG Review Rejection Execution [COMPLETE]
+
+**Goal:**
+Execute the urgent blockers from `docs/faang-review-rejections/`, starting from Phase 0 Reject items and continuing into concrete Must Fix gaps that can be closed safely without a rewrite.
+
+**Scope:**
+- [x] Read required AI docs and project instructions
+- [x] Audit `docs/faang-review-rejections/` against current code
+- [x] Patch confirmed Reject/Must Fix blockers with minimal Ponytail changes
+- [x] Add or adjust contract/wiring tests for changed behavior
+- [x] Run verification gates
+- [x] Update FAANG review docs, AI_HISTORY.md, FEATURES.md, and decision log if needed
+
+**Done:**
+- Closed the active IPC contract drift by aligning `command-contract-spec.md` with runtime contract `2.0.0` and the four registered Tauri commands.
+- Hardened Tauri shell response helpers to avoid normal-path serialization `unwrap()` and added a 256MB file IO size guard.
+- Removed the production `useEditor()` fake fallback; tests now use explicit providers or `workspaceOverride`.
+- Added root `type-check`, `lint`, and `audit` scripts plus desktop static-analysis scripts.
+- Added `docs/faang-review-rejections/2026-06-18-execution-audit.md`.
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (77 files, 1079 tests).
+- PASS: `pnpm.cmd run type-check`.
+- PASS: `pnpm.cmd run lint`.
+- PASS: `pnpm.cmd run build`.
+- PASS: `cargo test -p photrez-desktop` (8 tests).
+- PASS: `cargo test -p photrez-core` (85 tests).
+- PASS: `cargo test --workspace`.
+- GAP: `pnpm.cmd run audit` exists but could not complete because `pnpm audit` needs network access to the npm advisory endpoint; escalated retry exceeded the useful wait window.
+
+**Remaining follow-up risks:**
+- Native Tauri smoke/release proof is still separate from browser E2E proof.
+- CI workflow wiring is still TODO.
+- File IO still uses base64 payloads with a size cap; streaming remains future work.
+
+---
+
 ### [2026-06-17] Bug Fix - Cross-Doc Drag Tab Hover Snap-Back [COMPLETE]
 
 **Goal:**

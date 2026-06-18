@@ -13,6 +13,12 @@
 | FRR-STATE-007 | Should Fix | Tests rely heavily on `as any` mocks for editor context | Test scan shows high `as any` counts in input handler and component tests. | Create typed test builders/fakes instead of structural casts. |
 | FRR-STATE-008 | Should Fix | Tool wiring depends on many separate registration points | Existing AGENTS docs already call out tool union, keyboard, pointer handler, toolbar, option bar, cursor, undo/status/context wiring. | Generate a tool registration table or use compile-time route map. |
 
+## 2026-06-18 Execution Update
+
+- FRR-STATE-001: mitigated. `useEditor()` now throws outside `EditorProvider`.
+- Tests that previously relied on the fake fallback now use an explicit `EditorProvider` wrapper or `DragControllerProvider.workspaceOverride`.
+- FRR-STATE-002 through FRR-STATE-008 remain follow-up review risks.
+
 ## Feature/Tool Impact
 
 - New tools can pass unit tests but fail in the app if dispatcher wiring is missed.
@@ -25,4 +31,3 @@
 - `activeTool` uses a project-wide `ToolId` union.
 - New tools register through a single typed manifest or have generated checklist tests.
 - Keyboard routing has an explicit priority model.
-

@@ -90,3 +90,11 @@ Jika nama final berubah nanti, seluruh dokumen `docs/` harus disinkronkan.
 | Ponytail refactor doctrine | Refactor-from-scratch planning is governed by `docs/ponytail-refactor-doctrine/`: delete/simplify first, prefer native and existing helpers, avoid framework-like abstractions, and introduce only the smallest module that removes real current complexity. | Locked 2026-06-17 |
 | Cross-doc tab hover ownership | Cross-doc drag tab hover uses the existing `DragController` 500ms timer. `DragControllerProvider` must capture `EditorContext` during render, and canvas pointer drag may start/cancel the same timer from `elementFromPoint()` tab detection. No second hover subsystem. | Locked 2026-06-17 |
 | Production hardening gate | Local hardening uses `pnpm run verify` for frontend tests, production build, core Rust tests, and workspace Rust tests; browser-sensitive editor flows also require Playwright. Native OS drag/drop and dialogs remain explicit Tauri runtime release smoke items. | Locked 2026-06-17 |
+
+## Tambahan Keputusan 2026-06-18
+
+| Area | Keputusan | Status |
+| ---- | --------- | ------ |
+| Tauri shell contract baseline | Runtime shell contract baseline is `2.0.0` with exactly `ping`, `get_contract_info`, `read_file_bytes`, and `write_file_bytes`; docs must describe this runtime surface, while historical editor operations remain TypeScript hot-path behavior unless registered in Tauri. | Locked 2026-06-18 |
+| File IO resource guard | MVP Tauri file read/write keeps base64 IPC for now but rejects payloads over 256MB with `E_RESOURCE_LIMIT`; streaming/chunked IO is deferred until large-file support becomes an explicit product requirement. | Locked 2026-06-18 |
+| Static analysis and audit gates | Root `type-check`, `lint`, and `audit` scripts are required for review readiness. `lint` is currently a TypeScript static gate; `audit` requires network/tooling access and must be proven in CI or native release evidence. | Locked 2026-06-18 |

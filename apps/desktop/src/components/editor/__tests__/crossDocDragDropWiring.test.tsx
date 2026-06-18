@@ -303,7 +303,7 @@ describe("LayerItem wiring (in-app layer drag)", () => {
     };
     dispose = render(
       () => (
-        <DragControllerProvider>
+        <DragControllerProvider workspaceOverride={{ switchDocument: vi.fn() }}>
           <LayerItem
             layer={mockLayer}
             idx={0}
@@ -388,7 +388,7 @@ describe("LayerItem wiring (in-app layer drag)", () => {
     };
     dispose = render(
       () => (
-        <DragControllerProvider>
+        <DragControllerProvider workspaceOverride={{ switchDocument: vi.fn() }}>
           <LayerItem
             layer={lockedLayer}
             idx={0}

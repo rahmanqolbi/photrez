@@ -1,10 +1,32 @@
 import { describe, it, expect, vi } from "vitest";
-import { render } from "solid-js/web";
-import { createSignal } from "solid-js";
+import { render as solidRender } from "solid-js/web";
+import { createSignal, type JSX } from "solid-js";
 import { CropOverlay } from "../CropOverlay";
 import { ModernCropOverlay } from "../ModernCropOverlay";
 import * as EditorContextModule from "../EditorContext";
 import { ViewportCamera } from "../../../viewport/viewportCamera";
+import { WorkspaceManager } from "@/engine/workspace";
+import type { WebGL2Backend } from "@/renderer/webgl2";
+import type { RenderScheduler } from "@/renderer/scheduler";
+
+function render(ui: () => JSX.Element, container: HTMLElement) {
+  const workspace = new WorkspaceManager();
+  const renderer = {} as WebGL2Backend;
+  const scheduler = { requestRender: vi.fn() } as unknown as RenderScheduler;
+  return solidRender(
+    () => (
+      <EditorContextModule.EditorProvider
+        workspace={workspace}
+        renderer={renderer}
+        scheduler={scheduler}
+        camera={new ViewportCamera()}
+      >
+        {ui()}
+      </EditorContextModule.EditorProvider>
+    ),
+    container,
+  );
+}
 
 describe("CropOverlay pointer capture", () => {
   it("captures pointer on its own svg root", () => {

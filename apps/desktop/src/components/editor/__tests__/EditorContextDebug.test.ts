@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { shouldExposeEditorDebugHandle } from "../EditorContext";
+import { render } from "solid-js/web";
+import { shouldExposeEditorDebugHandle, useEditor } from "../EditorContext";
 
 describe("EditorContext debug handle exposure", () => {
   it("exposes window.__photrezEditor in dev and test modes", () => {
@@ -17,5 +18,19 @@ describe("EditorContext debug handle exposure", () => {
       MODE: "production",
       VITE_PHOTREZ_DEBUG_EDITOR: "1",
     })).toBe(true);
+  });
+});
+
+describe("useEditor provider contract", () => {
+  it("fails loudly when used outside EditorProvider", () => {
+    const container = document.createElement("div");
+    function Probe() {
+      useEditor();
+      return null;
+    }
+
+    expect(() => render(() => Probe(), container)).toThrow(
+      "useEditor must be used within an EditorProvider",
+    );
   });
 });

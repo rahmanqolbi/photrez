@@ -20,7 +20,7 @@ Photrez adalah lightweight desktop image editor yang dibangun untuk workflow dig
 - **Core Crate**: Document model, layer management, bitmap buffers, selection, transform, brush/eraser, import decode, export encode, and workspace management exist. Core tests pass (`cargo test -p photrez-core`: 85 tests). Workspace total: 92 tests (`cargo test --workspace`).
 - **Render Crate**: wgpu renderer code exists (future target), but render crate tests currently fail with `STATUS_ENTRYPOINT_NOT_FOUND`; workspace test gate is not green. MVP rendering via **WebGL2** (`apps/desktop/src/renderer/webgl2.ts`).
 - **Frontend**: Full UI shell with multi-document workspace, document tabs, empty state, drag/drop, and all core editing interactions. Artboard renders via WebGL2 projection-matrix-driven camera viewport.
-- **Testing**: Frontend build and tests pass (`pnpm.cmd run build`; `pnpm.cmd --filter photrez-desktop test`: 837 tests, 59 files). Rust workspace tests pass (92 tests). Playwright E2E tests pass (14 browser tests).
+- **Testing**: Current verified gates are tracked in `docs/AI_CURRENT_TASK.md` and `docs/AI_HISTORY.md`. As of 2026-06-18: frontend tests pass (77 files / 1079 tests), `pnpm.cmd run build` passes, `cargo test -p photrez-core` passes (85 tests), and `cargo test --workspace` passes.
 - **Recovery Reference** (historical): `docs/archive/usable-mvp-recovery-plan.md`.
 
 ---
@@ -154,52 +154,30 @@ Note 2026-05-29: the diagram below is historical and still useful for ownership 
 
 ---
 
-## Response Envelope Contract (v1.0.0)
+## Response Envelope Contract (v2.0.0)
 
 ```rust
 // Success
-{ "ok": true,  "contract_version": "1.0.0", "data": { ... } }
+{ "ok": true,  "contract_version": "2.0.0", "data": { ... } }
 
 // Error
-{ "ok": false, "contract_version": "1.0.0", "error": { "code": "...", "message": "...", "details": null } }
+{ "ok": false, "contract_version": "2.0.0", "error": { "code": "...", "message": "...", "details": null } }
 ```
 
-Detail lengkap: `docs/reference/command-contract-spec.md`
+Detail lengkap: `docs/reference/command-contract-spec.md`. The current Tauri shell runtime exposes a small file-IO contract; most editor operations remain in the TypeScript MVP hot path and are not registered as Tauri commands.
 
 ---
 
-## Registered Commands (Active)
+## Registered Tauri Commands (Active Runtime)
 
-| Command              | Params | Module | Status |
-| -------------------- | ------ | ------ | ------ |
-| `ping`               | none | Shell | Active |
-| `get_contract_info`  | none | Shell | Active |
-| `get_workspace_state` | none | Workspace | Active |
-| `get_document_state` | none | Workspace | Active (compatibility, returns active document) |
-| `open_images`        | `paths: Vec<String>` | Workspace | Active |
-| `switch_document`    | `documentId: String` | Workspace | Active |
-| `close_document`     | `documentId: String, discardChanges: bool` | Workspace | Active |
-| `set_selected_layer` | `layerId: Option<String>` | Workspace | Active |
-| `add_layer`          | `name: String` | Layer | Active |
-| `delete_layer`       | `id: String` | Layer | Active |
-| `reorder_layer`      | `from_idx: usize, to_idx: usize` | Layer | Active |
-| `update_layer`       | `id, opacity?, visible?, locked?, name?, blend_mode?` | Layer | Active |
-| `undo`               | none | History | Active |
-| `redo`               | none | History | Active |
-| `create_selection`   | `x, y, width, height` | Selection | Active |
-| `clear_selection`    | none | Selection | Active |
-| `select_all`         | none | Selection | Active |
-| `move_layer`         | `id, x, y` | Layer | Active |
-| `transform_layer`    | `id, scale_x, scale_y, rotation, flip_h, flip_v` | Transform | Active |
-| `crop_canvas`        | `x, y, width, height` | Document | Active |
-| `resize_canvas`      | `width, height` | Document | Active |
-| `draw_brush_stroke`  | `layer_id, path, size, hardness, color, is_eraser` | Brush | Active |
-| `export_document`    | `format, quality, path` | Export | Active |
-| `sample_pixel`       | `x, y` | Color | Active |
-| `open_image`         | `path` | Import | Active (compatibility, delegates to open_images) |
-| `trigger_render`     | none | Renderer | Active |
-| `update_viewport_state` | artboard/pan/zoom params | Renderer | Active |
-| `preview_frame`      | none | Renderer | Active |
+| Command | Params | Module | Status |
+| --- | --- | --- | --- |
+| `ping` | none | Shell | Active |
+| `get_contract_info` | none | Shell | Active |
+| `read_file_bytes` | `path: String` | Shell file IO | Active, 256MB cap |
+| `write_file_bytes` | `path: String, data: String` | Shell file IO | Active, base64 payload, 256MB cap |
+
+Historical workspace, layer, crop, and export command names describe earlier Rust-command plans and current product capabilities, but they are not registered in `apps/desktop/src-tauri/src/main.rs` in the MVP runtime. Their active implementation path is the SolidJS/TypeScript editor engine plus WebGL2 renderer, with Tauri used for shell file IO and dialogs.
 
 ---
 

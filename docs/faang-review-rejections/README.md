@@ -14,6 +14,7 @@ The word "FAANG" here means a high bar for ownership boundaries, typed APIs, tes
 | Must Fix | Strong reviewer request before merge unless scoped out in writing |
 | Should Fix | Follow-up expected; can merge only with owner/date |
 | Nit | Style or cleanup, not a merge blocker |
+| Mitigated | Previously reject-class finding now addressed; keep regression evidence or follow-up governance |
 
 ## Files
 
@@ -31,16 +32,15 @@ The word "FAANG" here means a high bar for ownership boundaries, typed APIs, tes
 | `09-shell-ipc-security-release.md` | Tauri IPC, native file IO, security, release gates |
 | `10-testing-ci-observability.md` | Test realism, CI, lint/static analysis, observability |
 | `11-remediation-roadmap.md` | Suggested order of fixes |
+| `2026-06-18-execution-audit.md` | Phase 0 execution results and remaining release gaps |
+| `2026-06-18-native-runtime-smoke-checklist.md` | Required release evidence for Tauri-only OS behavior |
 
 ## Quick Answer
 
-The most likely high-bar review rejects are:
+The remaining high-bar review rejects are:
 
 1. Large, multi-owner files with too many responsibilities: `CanvasViewport.tsx`, `useCanvasPointerTools.ts`, `CropOptionBar.tsx`, `webgl2.ts`, `DocumentEngine`.
-2. Type safety bypasses and test-only fallbacks: `as any` in production paths and many tests.
-3. Runtime contract/document drift: docs list many Tauri commands and contract `1.0.0`, while current `main.rs` exposes a smaller `2.0.0` file-IO contract.
-4. Browser E2E tests documenting native behavior instead of proving it in the Tauri runtime.
-5. Shell/file IO security and robustness concerns around raw path-based read/write and base64 memory duplication.
-6. CI/static analysis gaps: no lint script, no audit script, no committed CI gate visible in the root scripts.
-7. Release-only debug/test hooks such as `window.__photrezEditor` being attached whenever `window` exists.
-
+2. Type safety bypasses in broad test surfaces and a few production edge paths.
+3. Release evidence still needs filled native Tauri smoke results; browser E2E alone is not enough.
+4. Shell/file IO robustness concerns around base64 memory duplication; a 256MB guard exists, but streaming is still future work.
+5. Native-runtime evidence and audit execution proof: CI now exists and a Tauri smoke checklist is defined, but actual release artifacts still need filled evidence.
