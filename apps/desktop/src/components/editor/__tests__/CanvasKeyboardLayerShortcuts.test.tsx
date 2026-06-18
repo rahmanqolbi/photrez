@@ -241,4 +241,182 @@ describe("canvas layer keyboard shortcuts", () => {
 
     dispose();
   });
+
+  it("adds a new layer with Ctrl+Shift+N", async () => {
+    const session = WorkspaceManager.createBlankDocument("new-layer-keyboard", "New Layer", 800, 600);
+    const initialCount = session.engine.getLayers().length;
+
+    const { ws, scheduler, dispose } = renderKeyboardHarness(session);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "N", ctrlKey: true, shiftKey: true }));
+
+    expect(session.engine.getLayers()).toHaveLength(initialCount + 1);
+    expect(ws.getActiveHistory()?.canUndo()).toBe(true);
+    expect(scheduler.requestRender).toHaveBeenCalled();
+
+    dispose();
+  });
+
+  it("moves the active layer up in the stack with Ctrl+]", async () => {
+    const session = WorkspaceManager.createBlankDocument("move-up-keyboard", "Move Up", 800, 600);
+    const middle = session.engine.addLayer("Middle");
+    session.engine.addLayer("Top");
+    session.engine.setActiveLayer(middle.id);
+
+    const { ws, scheduler, dispose } = renderKeyboardHarness(session);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const beforeIdx = session.engine.getLayers().findIndex((l) => l.id === middle.id);
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "]", ctrlKey: true }));
+    const afterIdx = session.engine.getLayers().findIndex((l) => l.id === middle.id);
+
+    expect(afterIdx).toBe(beforeIdx - 1);
+    expect(ws.getActiveHistory()?.canUndo()).toBe(true);
+    expect(scheduler.requestRender).toHaveBeenCalled();
+
+    dispose();
+  });
+
+  it("moves the active layer down in the stack with Ctrl+[", async () => {
+    const session = WorkspaceManager.createBlankDocument("move-down-keyboard", "Move Down", 800, 600);
+    const middle = session.engine.addLayer("Middle");
+    session.engine.addLayer("Top");
+    session.engine.setActiveLayer(middle.id);
+
+    const { ws, scheduler, dispose } = renderKeyboardHarness(session);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const beforeIdx = session.engine.getLayers().findIndex((l) => l.id === middle.id);
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "[", ctrlKey: true }));
+    const afterIdx = session.engine.getLayers().findIndex((l) => l.id === middle.id);
+
+    expect(afterIdx).toBe(beforeIdx + 1);
+    expect(ws.getActiveHistory()?.canUndo()).toBe(true);
+    expect(scheduler.requestRender).toHaveBeenCalled();
+
+    dispose();
+  });
+
+  it("flips the active layer horizontally with Ctrl+G", async () => {
+    const session = WorkspaceManager.createBlankDocument("flip-h-keyboard", "Flip H", 800, 600);
+    const layer = session.engine.addLayer("Top");
+    session.engine.setActiveLayer(layer.id);
+    const initialFlipH = layer.transform.flipH;
+
+    const { ws, scheduler, dispose } = renderKeyboardHarness(session);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "g", ctrlKey: true }));
+
+    expect(session.engine.getLayer(layer.id)?.transform.flipH).toBe(!initialFlipH);
+    expect(session.engine.getLayer(layer.id)?.transform.flipV).toBe(false);
+    expect(ws.getActiveHistory()?.canUndo()).toBe(true);
+    expect(scheduler.requestRender).toHaveBeenCalled();
+
+    dispose();
+  });
+
+  it("flips the active layer vertically with Ctrl+Shift+G", async () => {
+    const session = WorkspaceManager.createBlankDocument("flip-v-keyboard", "Flip V", 800, 600);
+    const layer = session.engine.addLayer("Top");
+    session.engine.setActiveLayer(layer.id);
+    const initialFlipV = layer.transform.flipV;
+
+    const { ws, scheduler, dispose } = renderKeyboardHarness(session);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "G", ctrlKey: true, shiftKey: true }));
+
+    expect(session.engine.getLayer(layer.id)?.transform.flipV).toBe(!initialFlipV);
+    expect(session.engine.getLayer(layer.id)?.transform.flipH).toBe(false);
+    expect(ws.getActiveHistory()?.canUndo()).toBe(true);
+    expect(scheduler.requestRender).toHaveBeenCalled();
+
+    dispose();
+  });
+
+  it("deletes the active layer with Delete key", async () => {
+    const session = WorkspaceManager.createBlankDocument("delete-keyboard", "Delete", 800, 600);
+    const top = session.engine.addLayer("Top");
+    session.engine.setActiveLayer(top.id);
+    const initialCount = session.engine.getLayers().length;
+
+    const { ws, scheduler, dispose } = renderKeyboardHarness(session);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete" }));
+
+    expect(session.engine.getLayers()).toHaveLength(initialCount - 1);
+    expect(session.engine.getLayer(top.id)).toBeUndefined();
+    expect(ws.getActiveHistory()?.canUndo()).toBe(true);
+    expect(scheduler.requestRender).toHaveBeenCalled();
+
+    dispose();
+  });
+
+  it("deletes the active layer with Backspace key", async () => {
+    const session = WorkspaceManager.createBlankDocument("backspace-keyboard", "Backspace", 800, 600);
+    const top = session.engine.addLayer("Top");
+    session.engine.setActiveLayer(top.id);
+    const initialCount = session.engine.getLayers().length;
+
+    const { dispose } = renderKeyboardHarness(session);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace" }));
+
+    expect(session.engine.getLayers()).toHaveLength(initialCount - 1);
+    expect(session.engine.getLayer(top.id)).toBeUndefined();
+
+    dispose();
+  });
+
+  it("does not delete the only remaining layer", async () => {
+    const session = WorkspaceManager.createBlankDocument("delete-last-keyboard", "Delete Last", 800, 600);
+    const onlyId = session.engine.getActiveLayerId()!;
+
+    const { dispose } = renderKeyboardHarness(session);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete" }));
+
+    expect(session.engine.getLayers()).toHaveLength(1);
+    expect(session.engine.getLayer(onlyId)).toBeDefined();
+
+    dispose();
+  });
+
+  it("sets active layer opacity to 50% with digit 5", async () => {
+    const session = WorkspaceManager.createBlankDocument("opacity-keyboard", "Opacity", 800, 600);
+    const layer = session.engine.addLayer("Top");
+    session.engine.setActiveLayer(layer.id);
+
+    const { ws, scheduler, dispose } = renderKeyboardHarness(session);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "5" }));
+
+    expect(session.engine.getLayer(layer.id)?.opacity).toBeCloseTo(0.5);
+    expect(ws.getActiveHistory()?.canUndo()).toBe(true);
+    expect(scheduler.requestRender).toHaveBeenCalled();
+
+    dispose();
+  });
+
+  it("sets active layer opacity to 100% with digit 0", async () => {
+    const session = WorkspaceManager.createBlankDocument("opacity-0-keyboard", "Opacity 0", 800, 600);
+    const layer = session.engine.addLayer("Top");
+    session.engine.setActiveLayer(layer.id);
+    session.engine.setLayerOpacity(layer.id, 0.3);
+
+    const { dispose } = renderKeyboardHarness(session);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "0" }));
+
+    expect(session.engine.getLayer(layer.id)?.opacity).toBeCloseTo(1.0);
+
+    dispose();
+  });
 });

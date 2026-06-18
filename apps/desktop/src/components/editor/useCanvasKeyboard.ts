@@ -453,6 +453,98 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         return;
       }
 
+      // Layer: Ctrl+Shift+N - Add new layer
+      if (ctrl && e.shiftKey && key === "n") {
+        e.preventDefault();
+        e.stopPropagation();
+        history.commit(engine.snapshot());
+        engine.addLayer(`Layer ${engine.getLayers().length + 1}`);
+        scheduler.requestRender();
+        return;
+      }
+
+      // Layer: Ctrl+] - Move active layer up in stack (towards top, index 0)
+      if (ctrl && !e.shiftKey && e.key === "]") {
+        e.preventDefault();
+        e.stopPropagation();
+        const activeId = engine.getActiveLayerId();
+        if (activeId) {
+          const idx = engine.getLayers().findIndex((l) => l.id === activeId);
+          if (idx > 0) {
+            history.commit(engine.snapshot());
+            engine.reorderLayer(idx, idx - 1);
+            scheduler.requestRender();
+          }
+        }
+        return;
+      }
+
+      // Layer: Ctrl+[ - Move active layer down in stack (towards bottom)
+      if (ctrl && !e.shiftKey && e.key === "[") {
+        e.preventDefault();
+        e.stopPropagation();
+        const activeId = engine.getActiveLayerId();
+        if (activeId) {
+          const stack = engine.getLayers();
+          const idx = stack.findIndex((l) => l.id === activeId);
+          if (idx >= 0 && idx < stack.length - 1) {
+            history.commit(engine.snapshot());
+            engine.reorderLayer(idx, idx + 1);
+            scheduler.requestRender();
+          }
+        }
+        return;
+      }
+
+      // Layer: Ctrl+G - Flip horizontal, Ctrl+Shift+G - Flip vertical
+      if (ctrl && key === "g") {
+        e.preventDefault();
+        e.stopPropagation();
+        const activeId = engine.getActiveLayerId();
+        if (activeId) {
+          const layer = engine.getLayer(activeId);
+          if (layer && !layer.locked) {
+            history.commit(engine.snapshot());
+            engine.flipLayer(activeId, e.shiftKey ? "v" : "h");
+            scheduler.requestRender();
+          }
+        }
+        return;
+      }
+
+      // Layer: Delete / Backspace - Delete active layer
+      // (Selection tool handles this earlier when in selection mode.)
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const activeId = engine.getActiveLayerId();
+        if (activeId && engine.getLayers().length > 1) {
+          e.preventDefault();
+          e.stopPropagation();
+          history.commit(engine.snapshot());
+          engine.deleteLayer(activeId);
+          scheduler.requestRender();
+        }
+        return;
+      }
+
+      // Layer: 0-9 (no modifier) - Set active layer opacity
+      // 0 = 100%, 1 = 10%, 2 = 20%, ..., 9 = 90%
+      if (!ctrl && !e.shiftKey && !e.altKey && e.key.length === 1 && e.key >= "0" && e.key <= "9") {
+        const activeId = engine.getActiveLayerId();
+        if (activeId) {
+          const layer = engine.getLayer(activeId);
+          if (layer && !layer.locked) {
+            e.preventDefault();
+            e.stopPropagation();
+            const digit = e.key.charCodeAt(0) - 48;
+            const opacity = digit === 0 ? 1.0 : digit / 10;
+            history.commit(engine.snapshot());
+            engine.setLayerOpacity(activeId, opacity);
+            scheduler.requestRender();
+            return;
+          }
+        }
+      }
+
       // Paint tool shortcuts
       if (!ctrl && key === "b") {
         e.preventDefault();

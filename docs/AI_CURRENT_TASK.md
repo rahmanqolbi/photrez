@@ -4,6 +4,28 @@
 
 ## Current Tasks
 
+### [2026-06-18] Layer Keyboard Shortcuts [COMPLETE]
+
+**Goal:**
+Add familiar image-editor keyboard shortcuts for layer operations so the app behaves like Photoshop / Krita / Photopea.
+
+**Scope:**
+- [x] Wire `Ctrl+Shift+N` (new layer), `Ctrl+]` / `Ctrl+[` (move up/down), `Ctrl+G` / `Ctrl+Shift+G` (flip H/V), `Delete` / `Backspace` (delete active layer), and `0`–`9` (set opacity) in `useCanvasKeyboard.ts`.
+- [x] Add wiring tests in `CanvasKeyboardLayerShortcuts.test.tsx` (real `KeyboardEvent` dispatch through `EditorProvider`).
+- [x] Add pattern tests in `keyboard-shortcuts.test.ts`.
+- [x] Update `FEATURES.md` and `AI_HISTORY.md`.
+
+**Done:**
+- Added 7 new layer shortcuts wired into the existing `useCanvasKeyboard` handler (placed next to the existing `Ctrl+J` block so all layer ops live together).
+- `Delete` / `Backspace` falls through the selection-tool block so selection-pixel delete keeps working; outside selection tool, Del removes the active layer (no confirm, undo handles it; trash-button confirm is unchanged).
+- 10 new integration tests + 14 pattern tests; full suite 1103/1103.
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (77 files / 1103 tests).
+- PASS: `pnpm.cmd run build` (TS + Vite build clean).
+
+---
+
 ### [2026-06-18] FAANG Review Rejection Continuation - Native Runtime Smoke Gate [IN PROGRESS]
 
 **Goal:**

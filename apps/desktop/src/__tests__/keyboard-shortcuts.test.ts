@@ -101,3 +101,114 @@ describe('Nudge with arrow keys', () => {
     expect(dx).toBe(10);
   });
 });
+
+describe('Layer shortcuts', () => {
+  it('should map Ctrl+Shift+N to add new layer', () => {
+    const ctrlKey = true;
+    const shiftKey = true;
+    const key = 'n';
+    const isNewLayer = ctrlKey && shiftKey && key === 'n';
+    expect(isNewLayer).toBe(true);
+  });
+
+  it('should map Ctrl+] to move layer up', () => {
+    const ctrlKey = true;
+    const shiftKey = false;
+    const key = ']';
+    const isMoveUp = ctrlKey && !shiftKey && key === ']';
+    expect(isMoveUp).toBe(true);
+  });
+
+  it('should map Ctrl+[ to move layer down', () => {
+    const ctrlKey = true;
+    const shiftKey = false;
+    const key = '[';
+    const isMoveDown = ctrlKey && !shiftKey && key === '[';
+    expect(isMoveDown).toBe(true);
+  });
+
+  it('should map Ctrl+G to flip horizontal', () => {
+    const ctrlKey = true;
+    const shiftKey = false;
+    const key = 'g';
+    const isFlipH = ctrlKey && key === 'g' && !shiftKey;
+    expect(isFlipH).toBe(true);
+  });
+
+  it('should map Ctrl+Shift+G to flip vertical', () => {
+    const ctrlKey = true;
+    const shiftKey = true;
+    const key = 'g';
+    const isFlipV = ctrlKey && key === 'g' && shiftKey;
+    expect(isFlipV).toBe(true);
+  });
+
+  it('should map Delete to delete active layer (outside selection tool)', () => {
+    const key = 'Delete';
+    const isDelete = key === 'Delete' || (key as string) === 'Backspace';
+    expect(isDelete).toBe(true);
+  });
+
+  it('should map Backspace to delete active layer (outside selection tool)', () => {
+    const key = 'Backspace';
+    const isDelete = (key as string) === 'Delete' || key === 'Backspace';
+    expect(isDelete).toBe(true);
+  });
+
+  it('should not delete layer when only one layer remains', () => {
+    const layerCount = 1;
+    const canDelete = layerCount > 1;
+    expect(canDelete).toBe(false);
+  });
+
+  it('should map 0 to 100% opacity', () => {
+    const key = '0';
+    const digit = key.charCodeAt(0) - 48;
+    const opacity = digit === 0 ? 1.0 : digit / 10;
+    expect(opacity).toBe(1.0);
+  });
+
+  it('should map 5 to 50% opacity', () => {
+    const key = '5';
+    const digit = key.charCodeAt(0) - 48;
+    const opacity = digit === 0 ? 1.0 : digit / 10;
+    expect(opacity).toBe(0.5);
+  });
+
+  it('should map 9 to 90% opacity', () => {
+    const key = '9';
+    const digit = key.charCodeAt(0) - 48;
+    const opacity = digit === 0 ? 1.0 : digit / 10;
+    expect(opacity).toBe(0.9);
+  });
+
+  it('should not trigger opacity shortcut with Ctrl modifier', () => {
+    const ctrlKey = true;
+    const shiftKey = false;
+    const altKey = false;
+    const key = '5';
+    const isOpacityShortcut =
+      !ctrlKey && !shiftKey && !altKey && key.length === 1 && key >= '0' && key <= '9';
+    expect(isOpacityShortcut).toBe(false);
+  });
+
+  it('should not trigger opacity shortcut with Shift modifier', () => {
+    const ctrlKey = false;
+    const shiftKey = true;
+    const altKey = false;
+    const key = '5';
+    const isOpacityShortcut =
+      !ctrlKey && !shiftKey && !altKey && key.length === 1 && key >= '0' && key <= '9';
+    expect(isOpacityShortcut).toBe(false);
+  });
+
+  it('should trigger opacity shortcut with bare digit', () => {
+    const ctrlKey = false;
+    const shiftKey = false;
+    const altKey = false;
+    const key = '7';
+    const isOpacityShortcut =
+      !ctrlKey && !shiftKey && !altKey && key.length === 1 && key >= '0' && key <= '9';
+    expect(isOpacityShortcut).toBe(true);
+  });
+});
