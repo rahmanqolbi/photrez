@@ -5,6 +5,7 @@ import { RenderScheduler } from "@/renderer/scheduler";
 import { LayerNode, DocumentTabSummary, SelectionState } from "@/engine/types";
 import { Accessor, Setter } from "solid-js";
 import { createEditorState, LayerTransformSession } from "./editorState";
+import type { ToolId } from "./toolTypes";
 import { createCropState, CropPreview, CropFillSource } from "./cropState";
 import {
   createModernCropState,
@@ -17,6 +18,7 @@ import { openImage } from "./editorOpenImage";
 import { ViewportCamera } from "../../viewport/viewportCamera";
 import { DragControllerProvider } from "./DragController";
 import { showToast as showToastImpl } from "./Toast";
+import { runToolSwitchCleanup } from "./toolLifecycle";
 
 
 
@@ -31,8 +33,8 @@ export interface EditorContextValue {
   openImage: () => Promise<void>;
   
   // UI Signals
-  activeTool: Accessor<string>;
-  setActiveTool: Setter<string>;
+  activeTool: Accessor<ToolId>;
+  setActiveTool: Setter<ToolId>;
   
   fgColor: Accessor<string>;
   setFgColor: Setter<string>;
@@ -268,20 +270,17 @@ export function EditorProvider(props: {
     prevActiveLayerId = id;
   });
 
-  // Tool switch cleanup: when activeTool changes, clear tool-specific
-  // transient state (hoverHandle, hoverPos, layerTransformSession,
-  // selectionEditMode). These are tool-local; if not cleared on switch,
-  // they leak into the next tool (P0-1 class bug). Caught by
-  // CanvasViewport.test.tsx §"Phase 4 Deep Tool State Cleanup".
-  let prevActiveTool: string | null = null;
+  // Tool switch cleanup is registered per ToolId in toolLifecycle.ts.
+  // That makes new tool additions declare their cleanup behavior at compile time.
+  let prevActiveTool: ToolId | null = null;
   createEffect(() => {
     const tool = editorState.activeTool();
     if (prevActiveTool !== null && tool !== prevActiveTool) {
-      batch(() => {
-        editorState.setHoverHandle(null);
-        editorState.setHoverPos(null);
-        editorState.setLayerTransformSession(null);
-        editorState.setSelectionEditMode(false);
+      runToolSwitchCleanup(prevActiveTool, tool, {
+        setHoverHandle: editorState.setHoverHandle,
+        setHoverPos: editorState.setHoverPos,
+        setLayerTransformSession: editorState.setLayerTransformSession,
+        setSelectionEditMode: editorState.setSelectionEditMode,
       });
     }
     prevActiveTool = tool;

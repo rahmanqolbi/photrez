@@ -1,5 +1,11 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { WebGL2Backend, getInterLayerCopyQuad } from "../webgl2";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  WebGL2Backend,
+  WEBGL2_CONTEXT_RESTORED_EVENT,
+  WEBGL2_CONTEXT_OPTIONS,
+  getInterLayerCopyQuad,
+  getRequiredUniformLocation,
+} from "../webgl2";
 import type { RenderLayer, RenderState, Transform2D } from "../../engine/types";
 
 /*
@@ -232,6 +238,73 @@ describe("getInterLayerCopyQuad — edge cases", () => {
     expect(b.rect[3]).toBe(a.rect[3] * 2);
     expect(b.center[0]).toBe(a.center[0] * 2);
     expect(b.center[1]).toBe(a.center[1] * 2);
+  });
+});
+
+describe("getRequiredUniformLocation", () => {
+  it("returns the uniform location when the shader exposes it", () => {
+    const location = { name: "u_viewProj" } as unknown as WebGLUniformLocation;
+    const gl = {
+      getUniformLocation: () => location,
+    } as unknown as WebGL2RenderingContext;
+
+    expect(getRequiredUniformLocation(gl, {} as WebGLProgram, "u_viewProj")).toBe(location);
+  });
+
+  it("throws an explicit error when a required uniform is missing", () => {
+    const gl = {
+      getUniformLocation: () => null,
+    } as unknown as WebGL2RenderingContext;
+
+    expect(() => getRequiredUniformLocation(gl, {} as WebGLProgram, "u_missing")).toThrow(
+      "Required WebGL uniform not found: u_missing",
+    );
+  });
+});
+
+describe("WEBGL2_CONTEXT_OPTIONS", () => {
+  it("does not preserve the drawing buffer by default", () => {
+    expect(WEBGL2_CONTEXT_OPTIONS.preserveDrawingBuffer).toBe(false);
+  });
+});
+
+describe("WebGL2Backend context loss handling", () => {
+  const BITMAP = { width: 800, height: 600, close: () => {} } as ImageBitmap;
+
+  it("pauses GPU work while lost and rebuilds resources on restore", () => {
+    const mock = makeGLMock();
+    const canvas = makeCanvas(mock.gl);
+    const renderer = new WebGL2Backend();
+    const restored = vi.fn();
+    canvas.addEventListener(WEBGL2_CONTEXT_RESTORED_EVENT, restored);
+
+    renderer.initialize(canvas);
+    renderer.resizeToViewport(1000, 700, 1);
+    renderer.uploadImage("a", BITMAP);
+    mock.calls.length = 0;
+
+    const lostEvent = new Event("webglcontextlost", { cancelable: true });
+    canvas.dispatchEvent(lostEvent);
+
+    expect(lostEvent.defaultPrevented).toBe(true);
+    expect(renderer.readPixel(0, 0)).toBeNull();
+    expect(() => renderer.uploadImage("a", BITMAP)).toThrow(
+      "Renderer context is lost; upload is paused until restore",
+    );
+
+    renderer.render(makeState([makeLayer("a")]));
+    expect(mock.calls).toHaveLength(0);
+
+    canvas.dispatchEvent(new Event("webglcontextrestored"));
+
+    expect(restored).toHaveBeenCalledTimes(1);
+
+    mock.calls.length = 0;
+    renderer.resizeToViewport(1000, 700, 1);
+    renderer.uploadImage("a", BITMAP);
+    renderer.render(makeState([makeLayer("a")]));
+
+    expect(drawArraysCount(mock.calls)).toBeGreaterThan(0);
   });
 });
 

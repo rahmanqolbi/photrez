@@ -224,7 +224,7 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
           },
           { type: "tab", docId: dropTarget.docId },
           targetPos,
-          workspace as unknown as Parameters<typeof addLayerFromCrossDoc>[3],
+          workspace,
         );
         crossDocAdded = true;
         if (!e.altKey) {

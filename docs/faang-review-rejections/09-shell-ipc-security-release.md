@@ -6,10 +6,10 @@
 | --- | --- | --- | --- | --- |
 | FRR-SHELL-001 | Mitigated | IPC contract version mismatch | 2026-06-18: runtime, `command-contract-spec.md`, and `ARCHITECTURE.md` now agree on `2.0.0`. | Keep contract version assertions in tests. |
 | FRR-SHELL-002 | Mitigated | Runtime supported command list differs from docs | 2026-06-18: runtime docs list only `ping`, `get_contract_info`, `read_file_bytes`, and `write_file_bytes`. | Generate docs from runtime or keep exact command-list tests to prevent drift. |
-| FRR-SHELL-003 | Reject | Raw file path read/write helpers are too broad for a desktop shell | `read_file_bytes(path: String)` and `write_file_bytes(path: String, data: String)` call `std::fs` directly. | Restrict paths through dialog-returned handles/capabilities, validate scope, and document threat model. |
-| FRR-SHELL-004 | Must Fix | Serialization uses `unwrap()` in response helpers | `serde_json::to_value(...).unwrap()` can panic if future data fails serialization. | Return structured internal error instead of unwrap. |
-| FRR-SHELL-005 | Must Fix | Base64 IPC duplicates memory for import/export | File bytes are encoded/decoded as base64 strings across IPC. | Stream or chunk large files, or enforce size limits with clear error. |
-| FRR-SHELL-006 | Must Fix | No visible `cargo audit`/`npm audit` gate despite dependency policy | `dependency-inventory.md` requires both; package scripts do not expose them. | Add scripts and CI jobs, or update policy with current manual process. |
+| FRR-SHELL-003 | Mitigated | Raw file path read/write helpers are too broad for a desktop shell | `read_file_bytes` now rejects unsupported import extensions before metadata/read, and `write_file_bytes` rejects unsupported export extensions before decode/write. The remaining command surface is image import/export only. | Keep extension allowlist tests and revisit handle/capability design if non-image file IO enters scope. |
+| FRR-SHELL-004 | Mitigated | Serialization uses `unwrap()` in response helpers | 2026-06-18: normal response helpers return structured `E_INTERNAL` serialization errors instead of panicking. | Keep contract tests for error envelopes. |
+| FRR-SHELL-005 | Mitigated | Base64 IPC duplicates memory for import/export | 2026-06-18: read/write helpers enforce a 256MB `E_RESOURCE_LIMIT`; streaming remains future scale work. | Revisit streaming if large-file support becomes explicit product scope. |
+| FRR-SHELL-006 | Mitigated | No visible `cargo audit`/`npm audit` gate despite dependency policy | Root `audit` script exists and `.github/workflows/ci.yml` runs it after installing `cargo-audit`. | Capture successful audit job output in release evidence. |
 | FRR-SHELL-007 | Mitigated | Binary verification has a known toolchain workaround | `2026-06-18-native-runtime-smoke-checklist.md` now requires `pnpm.cmd tauri dev` or installer launch evidence for each release candidate. | Fill the checklist with exact command/output evidence before release. |
 | FRR-SHELL-008 | Should Fix | Error details are always `null` | `err_response` does not carry structured details. | Add safe diagnostic details for validation/path/IO failures. |
 
@@ -20,6 +20,7 @@
 - FRR-SHELL-005: partially mitigated. `read_file_bytes` and `write_file_bytes` now enforce a 256MB limit; streaming/chunking remains future work.
 - FRR-SHELL-006: script gap closed. `pnpm.cmd run audit` exists, but local execution was blocked by network access to the npm advisory endpoint.
 - FRR-SHELL-007: mitigated by the native runtime smoke checklist; completed evidence remains release-candidate work.
+- FRR-SHELL-003: mitigated for the current image-only command surface. Runtime read/write helpers enforce explicit extension allowlists: import `.png/.jpg/.jpeg/.webp/.gif/.bmp/.tif/.tiff`; export `.png/.jpg/.jpeg/.webp`.
 
 ## Merge Bar
 

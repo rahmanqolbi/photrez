@@ -7,6 +7,7 @@ import { useDragController } from "./DragController";
 import { addLayerFromCrossDoc, addFilesAsLayers } from "./crossDocLayerOps";
 import { LayerNode } from "@/engine/types";
 import type { DocumentModel } from "@/engine/types";
+import { BLEND_MODE_OPTIONS, isBlendMode } from "@/engine/blendModes";
 import { Navigator } from "./Navigator";
 import { LayerItem } from "./LayerItem";
 import { useLayerDragReorder } from "./useLayerDragReorder";
@@ -203,30 +204,24 @@ export function LayersPanel() {
           onChange={(e) => {
             const engine = workspace.getActiveEngine();
             const id = activeLayerId();
+            const mode = e.currentTarget.value;
+            if (!isBlendMode(mode) || activeLayer()?.blendMode === mode) return;
+
             if (engine && id) {
               if (layerTransformSession()) {
                 cancelActiveTransformSession();
               }
               const history = workspace.getActiveHistory();
               history?.commit(engine.snapshot());
-              engine.setLayerBlendMode(id, e.target.value as any);
+              engine.setLayerBlendMode(id, mode);
               scheduler.requestRender();
             }
           }}
           class="h-[26px] w-[120px] rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[12px] text-editor-text focus:outline-none focus-visible:border-editor-accent"
         >
-          <option value="normal">Normal</option>
-          <option value="multiply">Multiply</option>
-          <option value="screen">Screen</option>
-          <option value="overlay">Overlay</option>
-          <option value="darken">Darken</option>
-          <option value="lighten">Lighten</option>
-          <option value="color-dodge">Color Dodge</option>
-          <option value="color-burn">Color Burn</option>
-          <option value="hard-light">Hard Light</option>
-          <option value="soft-light">Soft Light</option>
-          <option value="difference">Difference</option>
-          <option value="exclusion">Exclusion</option>
+          <For each={BLEND_MODE_OPTIONS}>
+            {(option) => <option value={option.value}>{option.label}</option>}
+          </For>
         </select>
 
         <div class="relative ml-auto flex items-center">
@@ -360,9 +355,9 @@ export function LayersPanel() {
           e.preventDefault();
           const state = dragController.state();
           if (state.dragKind === "layer" && state.payload) {
-            addLayerFromCrossDoc(state.payload, { type: "layers-panel" }, { x: 0, y: 0 }, workspace as unknown as Parameters<typeof addLayerFromCrossDoc>[3]);
+            addLayerFromCrossDoc(state.payload, { type: "layers-panel" }, { x: 0, y: 0 }, workspace);
           } else if (state.dragKind === "file" && state.filePaths) {
-            const created = await addFilesAsLayers(state.filePaths, { type: "layers-panel" }, { x: 0, y: 0 }, workspace as unknown as Parameters<typeof addFilesAsLayers>[3]);
+            const created = await addFilesAsLayers(state.filePaths, { type: "layers-panel" }, { x: 0, y: 0 }, workspace);
             for (const { layerId, bitmap } of created) {
               renderer.uploadImage(layerId, bitmap);
             }

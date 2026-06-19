@@ -1,6 +1,8 @@
-export type ToolType = "move" | "selection" | "crop" | "eyedropper" | "brush" | "eraser";
+import type { ToolId } from "@/components/editor/toolTypes";
 import { getCursorForHandle } from "./transformGeometry";
 import { getRotateCursorByPos, getRotateCursorForHandle } from "./cursorRotate";
+
+export type ToolType = ToolId;
 
 export interface CursorContext {
   isSpacePressed: boolean;

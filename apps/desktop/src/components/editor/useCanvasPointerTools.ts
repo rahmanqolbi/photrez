@@ -4,6 +4,7 @@ import { screenToDocument, documentToScreen } from "@/viewport/coords";
 import { snapCropRect, type CropSnapTargets } from "@/viewport/cropSnap";
 import { hitTestLayers, type LayerInfo } from "@/viewport/layerHitTest";
 import type { DocumentEngine } from "@/engine/document";
+import type { CommandHistory } from "@/engine/history";
 import {
   handlePointerDown,
   handlePointerMove,
@@ -13,6 +14,7 @@ import {
 } from "@/viewport/input-handler";
 import { getActivePaintToolSettings, getPaintToolBlockReason, type PaintToolSettings } from "./brushToolState";
 import { PaintSmoother, smoothingToWindowSize } from "./paintSmoothing";
+import { tryReleasePointerCapture, trySetPointerCapture } from "./pointerCapture";
 import { getLayerAabb } from "@/viewport/transformGeometry";
 import { computeSnapAdjustment, type SnapRect } from "@/viewport/smartGuides";
 import type { HudMode } from "./TransformHud";
@@ -30,7 +32,7 @@ interface UseCanvasPointerToolsParams {
   isAltPressed: () => boolean;
   stopMomentum: () => void;
   fitToScreenAndRender: () => void;
-  commitBrushStroke: (engine: DocumentEngine, id: string, isEraser: boolean) => void;
+  commitBrushStroke: (engine: DocumentEngine, history: CommandHistory, id: string, isEraser: boolean) => void;
   onPaintStroke?: (points: { x: number; y: number }[], isEraser: boolean, settings: PaintToolSettings) => void;
   cropSnapTargets?: () => CropSnapTargets | undefined;
   moveSnapEnabled?: () => boolean;
@@ -344,10 +346,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       const coords = getDocCoords(e);
       const color = engine.samplePixel(coords.x, coords.y);
       setFgColor(rgbToHex(color[0], color[1], color[2]));
-      const canvas = params.getCanvasRef();
-      if (canvas) {
-        canvas.setPointerCapture(e.pointerId);
-      }
+      trySetPointerCapture(params.getCanvasRef(), e.pointerId);
       return;
     }
 
@@ -387,7 +386,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       }
     }
 
-    // Guard: prevent no-op history commit for blocked brush/eraser strokes
+    // Guard: prevent blocked brush/eraser strokes from starting an overlay command.
     if (activeTool() === "brush" || activeTool() === "eraser") {
       const layerId = engine.getActiveLayerId();
       let activePaintLayer: ReturnType<DocumentEngine["getLayer"]> | null = null;
@@ -395,15 +394,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
         activePaintLayer = engine.getLayer(layerId);
       }
       if (getPaintToolBlockReason(activePaintLayer, activeTool() === "eraser")) return;
-      history.commit(engine.snapshot());
     }
 
     // If modern crop mode — skip engine handlePointerDown (it would call
     // onCropCreated and leak state into the Classic crop rect). Modern
     // crop has its own drag-to-create handling via modernDragStart.
     if (activeTool() === "crop" && cropInteractionMode() === "modern") {
-      const canvas = params.getCanvasRef();
-      if (canvas) canvas.setPointerCapture(e.pointerId);
+      trySetPointerCapture(params.getCanvasRef(), e.pointerId);
       setSnapLines([]);
       return;
     }
@@ -411,8 +408,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     prepareToolContext();
     interactiveState.isShiftPressed = e.shiftKey;
     setSnapLines([]);
-    const canvas = params.getCanvasRef();
-    if (canvas) canvas.setPointerCapture(e.pointerId);
+    trySetPointerCapture(params.getCanvasRef(), e.pointerId);
 
     const coords = getDocCoords(e);
     
@@ -579,12 +575,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     if (!engine || !history) return;
 
     if ((activeTool() === "brush" || activeTool() === "eraser") && params.isAltPressed()) {
-      const canvas = params.getCanvasRef();
-      if (canvas) {
-        try {
-          canvas.releasePointerCapture(e.pointerId);
-        } catch {}
-      }
+      tryReleasePointerCapture(params.getCanvasRef(), e.pointerId);
       return;
     }
 
@@ -605,13 +596,12 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       interactiveState,
     );
 
-    const canvas = params.getCanvasRef();
-    try { if (canvas) canvas.releasePointerCapture(e.pointerId); } catch {}
+    tryReleasePointerCapture(params.getCanvasRef(), e.pointerId);
 
     if (hasPoints) {
       const layerId = engine.getActiveLayerId();
       if (layerId) {
-        params.commitBrushStroke(engine, layerId, tool === "eraser");
+        params.commitBrushStroke(engine, history, layerId, tool === "eraser");
         if (lastPt) {
           setLastPaintCoords({ ...lastPt });
         }
@@ -779,20 +769,16 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   const onCanvasPointerCancel = (e: PointerEvent) => {
     paintSmoother.reset();
     const engine = workspace.getActiveEngine();
+    const history = workspace.getActiveHistory();
     if (!engine) return;
 
-    try {
-      const canvas = params.getCanvasRef();
-      if (canvas) canvas.releasePointerCapture(e.pointerId);
-    } catch {
-      // Capture may already have been released — ignore
-    }
+    tryReleasePointerCapture(params.getCanvasRef(), e.pointerId);
 
     const tool = (interactiveState.dragTool ?? activeTool()) as ToolType;
     if (tool === "brush" || tool === "eraser") {
       const layerId = engine.getActiveLayerId();
-      if (layerId && interactiveState.strokePoints.length > 0) {
-        params.commitBrushStroke(engine, layerId, tool === "eraser");
+      if (history && layerId && interactiveState.strokePoints.length > 0) {
+        params.commitBrushStroke(engine, history, layerId, tool === "eraser");
       }
     }
 
@@ -808,13 +794,14 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     paintSmoother.reset();
     // Capture already lost — no releasePointerCapture call needed
     const engine = workspace.getActiveEngine();
+    const history = workspace.getActiveHistory();
     if (!engine) return;
 
     const tool = (interactiveState.dragTool ?? activeTool()) as ToolType;
     if (tool === "brush" || tool === "eraser") {
       const layerId = engine.getActiveLayerId();
-      if (layerId && interactiveState.strokePoints.length > 0) {
-        params.commitBrushStroke(engine, layerId, tool === "eraser");
+      if (history && layerId && interactiveState.strokePoints.length > 0) {
+        params.commitBrushStroke(engine, history, layerId, tool === "eraser");
       }
     }
 

@@ -128,6 +128,11 @@ Success `data`:
 
 Purpose: read a dialog/drop-provided local file path and return base64-encoded bytes to the frontend.
 
+Path policy:
+
+- Supported import extensions: `.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`, `.bmp`, `.tif`, `.tiff`.
+- Extension checks are case-insensitive and run before filesystem metadata/read.
+
 Request:
 
 ```json
@@ -146,12 +151,18 @@ Success `data`:
 
 Failure:
 
+- `E_VALIDATION` when the path extension is not supported for import.
 - `E_IO` when metadata/read fails.
 - `E_RESOURCE_LIMIT` when file size exceeds 256 MB.
 
 ### 6.4 `write_file_bytes`
 
 Purpose: write base64-encoded bytes to a local path selected by the native save dialog.
+
+Path policy:
+
+- Supported export extensions: `.png`, `.jpg`, `.jpeg`, `.webp`.
+- Extension checks are case-insensitive and run before base64 decode/write.
 
 Request:
 
@@ -173,6 +184,7 @@ Success `data`:
 
 Failure:
 
+- `E_VALIDATION` when the path extension is not supported for export.
 - `E_VALIDATION` when `data` is not valid base64.
 - `E_RESOURCE_LIMIT` when decoded bytes exceed 256 MB.
 - `E_IO` when write fails.

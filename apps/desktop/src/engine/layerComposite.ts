@@ -1,11 +1,12 @@
 import type { LayerNode } from "./types";
+import { getCanvasCompositeOperation } from "./blendModes";
 
 export function drawLayerToContext(ctx: OffscreenCanvasRenderingContext2D, layer: LayerNode): void {
   if (!layer.visible || layer.opacity <= 0 || !layer.imageBitmap) return;
 
   ctx.save();
   ctx.globalAlpha = layer.opacity;
-  ctx.globalCompositeOperation = layer.blendMode === "normal" ? "source-over" : (layer.blendMode || "source-over");
+  ctx.globalCompositeOperation = getCanvasCompositeOperation(layer.blendMode);
 
   const lw = layer.width;
   const lh = layer.height;

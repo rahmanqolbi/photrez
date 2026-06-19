@@ -1,5 +1,6 @@
 import { createSignal } from "solid-js";
 import type { LayerNode, DocumentTabSummary, Transform2D, DocumentModel, SelectionState } from "@/engine/types";
+import type { ToolId } from "./toolTypes";
 
 export interface LayerTransformSession {
   documentId: string;
@@ -12,7 +13,7 @@ export interface LayerTransformSession {
 }
 
 export function createEditorState() {
-  const [activeTool, setActiveTool] = createSignal("move");
+  const [activeTool, setActiveTool] = createSignal<ToolId>("move");
   const [fgColor, setFgColor] = createSignal("#E15A17");
   const [bgColor, setBgColor] = createSignal("#FFFFFF");
   const [zoom, setZoom] = createSignal(1.0);
@@ -95,4 +96,3 @@ export function createEditorState() {
     showExportDialog, setShowExportDialog,
   };
 }
-

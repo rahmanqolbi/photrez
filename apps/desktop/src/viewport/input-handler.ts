@@ -3,9 +3,10 @@ import type { CommandHistory } from "../engine/history";
 import type { DocumentModel } from "../engine/types";
 import type { SnapLine, SnapRect, SnapResult } from "./smartGuides";
 import type { PaintToolSettings } from "@/components/editor/brushToolState";
+import type { ToolId } from "@/components/editor/toolTypes";
 import { getLayerAabb } from "./transformGeometry";
 
-export type ToolType = "move" | "selection" | "crop" | "eyedropper" | "brush" | "eraser";
+export type ToolType = ToolId;
 
 export interface ToolContext {
   fgColor: string;

@@ -1,5 +1,368 @@
 # AI History — Photrez
 
+## [2026-06-19] HARDENING - Paint Command Boundary [COMPLETE]
+
+### Kategori: HARDENING / BRUSH-ERASER / HISTORY / RENDERER / FAANG-REVIEW
+
+**Root Cause:**
+FRR-BRUSH-001 was valid because paint behavior spanned overlay state, bitmap generation, `DocumentEngine` mutation, WebGL texture upload, render scheduling, and history commit timing. Before this change, paint pointerdown committed history while the actual bitmap mutation and renderer upload happened later inside `useBrushOverlay`, so reviewers had to reason across separate runtime paths to prove undo/render invariants.
+
+**Fix Rationale:**
+Keep the existing overlay renderer and brush dab logic, but introduce a typed command boundary for the actual paint bitmap commit. `commitPaintBitmap()` now owns the invariant order: commit pre-mutation history snapshot, replace the engine layer bitmap, upload the same bitmap to the renderer, then request render. Brush and eraser commits both route through the same helper.
+
+**Done:**
+1. Added `apps/desktop/src/components/editor/paintCommitCommand.ts`.
+2. Updated `useBrushOverlay` to use `commitPaintBitmap()` for brush and eraser commits.
+3. Moved paint history commit out of pointerdown and into the bitmap commit command path.
+4. Added `apps/desktop/src/components/editor/__tests__/paintCommitCommand.test.ts`.
+5. Marked FRR-BRUSH-001 mitigated in the FAANG brush register.
+
+**Verification:**
+- `pnpm.cmd run type-check` - PASS.
+- `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/paintCommitCommand.test.ts src/components/editor/__tests__/CanvasViewport.test.tsx src/__tests__/history-audit.test.ts` - PASS (3 files / 131 tests).
+- `pnpm.cmd --filter photrez-desktop test --run` - PASS (84 files / 1221 tests).
+- `pnpm.cmd run build` - PASS with workspace-local temp HOME.
+
+---
+
+## [2026-06-19] HARDENING - Paint History Budget Gate [COMPLETE]
+
+### Kategori: HARDENING / BRUSH-ERASER / HISTORY / PERFORMANCE / FAANG-REVIEW
+
+**Root Cause:**
+FRR-BRUSH-002 was valid because paint-heavy workflows use the normal snapshot history path. `createSnapshot()` is shallow and does not clone pixel buffers, but each paint commit can still produce a new bitmap generation that remains reachable through undo/redo history. The project had no executable memory budget proof or dirty-region migration proposal for large-canvas paint release readiness.
+
+**Fix Rationale:**
+Keep the current undo/redo runtime intact for this pass, but make the risk measurable. A deterministic estimator now compares full-layer paint snapshot retention against dirty-region undo/redo patch retention, and the focused `perf:paint-history` gate documents the memory delta without introducing flaky timing benchmarks.
+
+**Done:**
+1. Added `apps/desktop/src/engine/paintHistoryBudget.ts`.
+2. Added `apps/desktop/src/engine/__tests__/paintHistoryBudget.test.ts`.
+3. Added root and desktop `perf:paint-history` scripts.
+4. Added `docs/reference/paint-history-performance-gate.md` with the dirty-region history proposal and release rule.
+5. Marked FRR-BRUSH-002 mitigated in the FAANG brush register.
+
+**Verification:**
+- `pnpm.cmd run type-check` - PASS.
+- `pnpm.cmd --filter photrez-desktop perf:paint-history` - PASS (1 file / 5 tests).
+- `pnpm.cmd run perf:paint-history` - PASS (1 file / 5 tests).
+- `pnpm.cmd --filter photrez-desktop test --run` - PASS (83 files / 1219 tests).
+- `pnpm.cmd run build` - PASS with workspace-local temp HOME.
+
+---
+
+## [2026-06-19] HARDENING - Paint Transformed-Layer Coordinate Guard [COMPLETE]
+
+### Kategori: HARDENING / BRUSH-ERASER / GEOMETRY / FAANG-REVIEW
+
+**Root Cause:**
+FRR-BRUSH-003 was valid as a review concern because painting on transformed layers depends on document-to-layer-local coordinate conversion. The runtime already called `documentToLayerLocal()` inside `useBrushOverlay`, but that paint-specific contract was embedded in the hook and lacked a focused transformed-layer paint/mask regression test.
+
+**Fix Rationale:**
+Keep the existing geometry source of truth and add a tiny paint-specific helper around it. Both hard and soft brush paths now call the same helper, and the tests prove rotate/scale/flip mapping produces the intended local paint pixel before stamping the mask.
+
+**Done:**
+1. Added `apps/desktop/src/components/editor/paintStrokeCoordinates.ts`.
+2. Updated `useBrushOverlay` hard and soft paths to call `mapPaintStrokeToLayerLocal()` / `mapPaintPointToLayerLocal()`.
+3. Added `apps/desktop/src/components/editor/__tests__/paintStrokeCoordinates.test.ts`.
+4. Marked FRR-BRUSH-003 mitigated in the FAANG brush register.
+
+**Verification:**
+- `pnpm.cmd run type-check` - PASS.
+- `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/paintStrokeCoordinates.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts src/__tests__/transform-geometry.test.ts` - PASS (3 files / 104 tests).
+- `pnpm.cmd --filter photrez-desktop test --run` - PASS (82 files / 1214 tests).
+- `pnpm.cmd run build` - PASS with workspace-local temp HOME.
+
+---
+
+## [2026-06-19] HARDENING - Tool Cleanup Lifecycle Registry [COMPLETE]
+
+### Kategori: HARDENING / UI-FRONTEND / EDITOR-STATE / TOOL-LIFECYCLE / FAANG-REVIEW
+
+**Root Cause:**
+FRR-STATE-005 was valid because active-tool switch cleanup lived directly inside `EditorContext` as a manually enumerated list of transient setters. The behavior was covered by integration tests, but adding a new `ToolId` did not force a corresponding cleanup decision, so future tool-local state could be forgotten.
+
+**Fix Rationale:**
+Keep the existing cleanup behavior, but move the policy into a typed lifecycle registry. `TOOL_CLEANUP_HANDLERS satisfies Record<ToolId, ...>` makes TypeScript fail when a new tool is added without a cleanup entry, while `runToolSwitchCleanup()` keeps a defensive fallback for legacy/test casts that pass an unknown runtime string.
+
+**Done:**
+1. Added `apps/desktop/src/components/editor/toolLifecycle.ts`.
+2. Replaced hardcoded cleanup in `EditorContext` with `runToolSwitchCleanup()`.
+3. Added `apps/desktop/src/components/editor/__tests__/toolLifecycle.test.ts`.
+4. Preserved the existing cleanup contract for hover handles, rotate hover position, transform sessions, and selection edit mode.
+5. Marked FRR-STATE-005 mitigated in the FAANG editor-state register.
+
+**Verification:**
+- `pnpm.cmd run type-check` - PASS.
+- `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/toolLifecycle.test.ts src/components/editor/__tests__/CanvasViewport.test.tsx` - PASS (2 files / 91 tests).
+- `pnpm.cmd --filter photrez-desktop test --run` - PASS (81 files / 1211 tests).
+- `pnpm.cmd run build` - PASS with workspace-local temp HOME.
+
+---
+
+## [2026-06-19] HARDENING - Render Export Blend Parity Gate [COMPLETE]
+
+### Kategori: HARDENING / RENDERER / EXPORT / BLEND-MODES / FAANG-REVIEW
+
+**Root Cause:**
+FRR-RENDER-006 was valid because blend-mode behavior crossed two renderers: WebGL preview and Canvas2D export. The engine `BlendMode` type allowed only `normal | multiply | screen | overlay`, but `LayersPanel` displayed additional shader-only modes by casting the select value with `as any`. That made unsupported modes look product-ready without a parity matrix or export proof.
+
+**Fix Rationale:**
+Add one typed registry for blend modes that are allowed to be exposed in MVP. The UI renders from that registry, export compositing uses the same registry's Canvas2D mapping, and unsupported shader-only modes stay blocked until they have type, shader/export mapping, docs, and parity tests together.
+
+**Done:**
+1. Added `apps/desktop/src/engine/blendModes.ts` with `BLEND_MODE_OPTIONS`, `isBlendMode()`, and `getCanvasCompositeOperation()`.
+2. Updated `LayersPanel` to render blend options from the registry and removed the `as any` blend-mode cast.
+3. Updated export compositing to use the registry mapping instead of raw layer blend strings.
+4. Added `apps/desktop/src/engine/__tests__/blendModes.test.ts`.
+5. Added `docs/reference/render-export-parity-matrix.md` and marked FRR-RENDER-006 mitigated.
+
+**Verification:**
+- `pnpm.cmd run type-check` - PASS.
+- `pnpm.cmd --filter photrez-desktop test --run src/engine/__tests__/blendModes.test.ts src/components/editor/__tests__/exportDocument.test.ts src/components/editor/__tests__/LayersPanel.test.tsx` - PASS (3 files / 19 tests).
+- `pnpm.cmd --filter photrez-desktop test --run` - PASS (80 files / 1208 tests).
+- `pnpm.cmd run build` - PASS with workspace-local temp HOME.
+
+---
+
+## [2026-06-19] HARDENING - WebGL Context Loss Lifecycle [COMPLETE]
+
+### Kategori: HARDENING / RENDERER / WEBGL / FAANG-REVIEW
+
+**Root Cause:**
+FRR-RENDER-005 was valid because `WebGL2Backend` initialized a WebGL2 context but did not explicitly handle `webglcontextlost` or `webglcontextrestored`. If the browser/GPU process lost the context, later render, upload, resize, or readback calls could continue against invalid GPU resources with no clear recovery boundary.
+
+**Fix Rationale:**
+Use the browser's native WebGL context lifecycle instead of adding a new renderer subsystem. The renderer now treats context loss as an explicit paused state, prevents the default loss behavior so restoration can occur, clears invalid GPU handles, rebuilds shader/buffer resources on restore, and emits a viewport-level restore event so active document textures are re-uploaded from `layer.imageBitmap`.
+
+**Done:**
+1. Added `webglcontextlost` / `webglcontextrestored` listeners in `WebGL2Backend`.
+2. Guarded `uploadImage`, `render`, `resize`, `resizeToViewport`, `readPixel`, and `dispose` against lost contexts.
+3. Added `WEBGL2_CONTEXT_RESTORED_EVENT` and wired `useViewportRenderer` to resize/re-upload active document textures after restore.
+4. Added renderer regression coverage for pause and restore behavior.
+5. Marked FRR-RENDER-005 mitigated in the FAANG renderer register.
+
+**Verification:**
+- `pnpm.cmd run type-check` - PASS.
+- `pnpm.cmd --filter photrez-desktop test --run src/renderer/__tests__/webgl2-layer-copy.test.ts src/renderer/__tests__/webgl2-scissor.test.ts` - PASS (2 files / 36 tests).
+- `pnpm.cmd --filter photrez-desktop test --run` - PASS (79 files / 1205 tests).
+- `pnpm.cmd run build` - PASS with workspace-local temp HOME.
+- `git diff --check` - PASS (CRLF warnings only).
+
+---
+
+## [2026-06-19] HARDENING - WebGL Preserve Drawing Buffer Disabled by Default [COMPLETE]
+
+### Kategori: HARDENING / RENDERER / WEBGL / PERFORMANCE / FAANG-REVIEW
+
+**Root Cause:**
+FRR-RENDER-004 remained valid because WebGL2 context initialization always set `preserveDrawingBuffer: true`, which can increase memory/performance cost. Current export code uses Canvas2D/OffscreenCanvas, and no production caller uses `WebGL2Backend.readPixel()`, so the default preservation cost was not justified by an active product path.
+
+**Fix Rationale:**
+Make the context policy explicit and disable backbuffer preservation by default. If a future WebGL readback feature requires preservation, it should opt in with a documented contract rather than paying the cost globally.
+
+**Done:**
+1. Added exported `WEBGL2_CONTEXT_OPTIONS` with `preserveDrawingBuffer: false`.
+2. Updated `WebGL2Backend.initialize()` to use the shared context options.
+3. Added a renderer regression test asserting the default context policy.
+4. Marked FRR-RENDER-004 mitigated in the FAANG renderer register.
+
+**Verification:**
+- `pnpm.cmd run type-check` - PASS.
+- `pnpm.cmd --filter photrez-desktop test --run src/renderer/__tests__/webgl2-layer-copy.test.ts src/renderer/__tests__/webgl2-scissor.test.ts` - PASS (2 files / 35 tests).
+- `pnpm.cmd --filter photrez-desktop test --run` - PASS (79 files / 1204 tests).
+- `pnpm.cmd run build` - PASS with workspace-local temp HOME.
+
+---
+
+## [2026-06-19] HARDENING - WebGL Required Uniform Validation [COMPLETE]
+
+### Kategori: HARDENING / RENDERER / WEBGL / FAANG-REVIEW
+
+**Root Cause:**
+FRR-RENDER-003 remained valid because required layer shader uniforms used `gl.getUniformLocation(...)!`. If a shader edit removed or renamed a required uniform, initialization could proceed with a `null` location hidden by TypeScript's non-null assertion and fail later in less obvious render paths.
+
+**Fix Rationale:**
+Add one small shader-contract helper that validates required uniforms at initialization time and reports the exact missing uniform name. This keeps the renderer structure unchanged while making resource errors explicit.
+
+**Done:**
+1. Added `getRequiredUniformLocation(gl, program, name)` in `apps/desktop/src/renderer/webgl2.ts`.
+2. Replaced required layer uniform non-null assertions with the helper.
+3. Added renderer unit coverage for successful uniform lookup and missing-uniform error behavior.
+4. Marked FRR-RENDER-003 mitigated in the FAANG renderer register.
+
+**Verification:**
+- `pnpm.cmd run type-check` - PASS.
+- `pnpm.cmd --filter photrez-desktop test --run src/renderer/__tests__/webgl2-layer-copy.test.ts src/renderer/__tests__/webgl2-scissor.test.ts` - PASS (2 files / 34 tests).
+- `pnpm.cmd --filter photrez-desktop test --run` - PASS (79 files / 1203 tests).
+- `pnpm.cmd run build` - PASS with workspace-local temp HOME.
+
+---
+
+## [2026-06-19] DOCUMENTATION - Active Runtime Architecture Diagram Split [COMPLETE]
+
+### Kategori: DOCUMENTATION / ARCHITECTURE / FAANG-REVIEW
+
+**Root Cause:**
+FRR-ARCH-002 remained valid because `ARCHITECTURE.md` had an active command table, but the large architecture diagram still contained historical workspace/layer/history command labels. Reviewers could reasonably confuse the historical diagram with the current MVP runtime.
+
+**Fix Rationale:**
+Split the architecture section into a concise active MVP runtime diagram and a clearly labeled historical/future-target reference diagram. This keeps the old ownership archaeology available without letting it override the current runtime truth.
+
+**Done:**
+1. Added an "Active MVP Runtime (2026-06-19)" diagram showing SolidJS editor shell, TypeScript `WorkspaceManager` / `DocumentEngine`, WebGL2 renderer, and the four active Tauri shell commands.
+2. Marked the old large ASCII diagram as historical/future-target reference only.
+3. Marked FRR-ARCH-002 mitigated in the FAANG architecture register and execution audit.
+
+**Verification:**
+- Search confirms no remaining `FRR-ARCH-002 | Must Fix` entry in `docs/faang-review-rejections`.
+- `git diff --check` - PASS.
+
+---
+
+## [2026-06-18] HARDENING - Shell File IO Extension Policy [COMPLETE]
+
+### Kategori: HARDENING / SHELL / SECURITY / FAANG-REVIEW
+
+**Root Cause:**
+FRR-SHELL-003 / FRR-EXEC-005 were valid because `read_file_bytes(path)` and `write_file_bytes(path, data)` accepted arbitrary paths and called `std::fs` directly. The current product only needs image import and export, but the shell contract did not enforce that scope at the trust boundary.
+
+**Fix Rationale:**
+Add the smallest runtime policy that matches the current call sites: allow image import extensions for read and export extensions for write, checked inside the Tauri command before filesystem access or base64 decode. This narrows the command surface without introducing a capability registry before the product needs non-image file IO.
+
+**Done:**
+1. Added `READ_FILE_EXTENSIONS` and `WRITE_FILE_EXTENSIONS` allowlists in `apps/desktop/src-tauri/src/main.rs`.
+2. Added `validate_path_extension()` and return `E_VALIDATION` for unsupported read/write extensions.
+3. Added Rust tests for unsupported import/export extensions.
+4. Updated command contract, architecture command table, FAANG shell register, execution audit, and feature tracker.
+
+**Verification:**
+- `cargo test -p photrez-desktop` - PASS (10 tests).
+- `cargo test -p photrez-core` - PASS (85 tests).
+- `cargo test --workspace` - PASS (95 tests total; WebView2Loader copy warning observed because the DLL was in use, tests still passed).
+
+---
+
+## [2026-06-18] BUG FIX - Cross-Doc Alt-Move Last-Layer Guard [COMPLETE]
+
+### Kategori: BUG FIX / DRAG-DROP / LAYER / FAANG-REVIEW
+
+**Root Cause:**
+FRR-LAYER-004 and FRR-DND-006 were valid for the current engine because `DocumentEngine.deleteLayer()` intentionally no-ops when a document has only one layer. Cross-doc Alt-move copied to the target first and then called source `deleteLayer()`, so dragging the source document's last layer with Alt could silently behave as copy rather than move.
+
+**Fix Rationale:**
+Check source-delete eligibility before target mutation. If the source document only has one layer, abort the Alt-move with the existing toast error path and leave both target layers/history untouched. This avoids adding a cross-document transaction system while closing the concrete failure mode.
+
+**Done:**
+1. `addLayerFromCrossDoc` now rejects Alt-move when `sourceEngine.getLayers().length <= 1`.
+2. Default cross-doc copy behavior remains unchanged.
+3. Added mock-level and real-engine tests proving last-layer Alt-move returns `null`, does not add to target, and does not delete source.
+4. Marked FRR-LAYER-004 and FRR-DND-006 mitigated for current engine source-delete semantics.
+
+**Verification:**
+- `pnpm.cmd run type-check` - PASS.
+- `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/crossDocLayerOps.test.ts src/components/editor/__tests__/crossDocLayerOps.engine.test.ts src/components/editor/__tests__/useCanvasLayerDrag.test.tsx` - PASS (3 files / 24 tests).
+- `pnpm.cmd --filter photrez-desktop test --run` - PASS (79 files / 1201 tests).
+- `pnpm.cmd run build` - PASS with workspace-local temp HOME.
+
+---
+
+## [2026-06-18] BUG FIX - File Drop Decode-First Mutation Contract [COMPLETE]
+
+### Kategori: BUG FIX / DRAG-DROP / HISTORY / FAANG-REVIEW
+
+**Root Cause:**
+FRR-DND-005 was valid because `addFilesAsLayers` committed target history and created each layer before that file's bytes had been read and decoded. If a later file failed, earlier mutations stayed committed and a failure at the wrong point could leave partial/empty layer state.
+
+**Fix Rationale:**
+Decode the whole dropped-file batch first, then commit history and create layers only after all inputs are known-good. This is the smallest all-or-nothing boundary for the existing batch API and keeps the renderer upload return contract unchanged.
+
+**Done:**
+1. `addFilesAsLayers` now reads and decodes every dropped file into `ImageBitmap` values before target mutation.
+2. On any read/decode failure, the function shows the existing error toast, returns `[]`, and performs no history commit or layer creation.
+3. Existing cascade position behavior and `{ docId, layerId, bitmap }` return values are preserved after successful decode.
+4. Added a real-engine regression test proving decode failure leaves layer count unchanged and does not call `history.commit()`.
+5. Marked FRR-DND-005 mitigated in the FAANG drag/drop register.
+
+**Verification:**
+- `pnpm.cmd run type-check` - PASS.
+- `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/crossDocLayerOps.engine.test.ts src/components/editor/__tests__/crossDocDragDropWiring.test.tsx src/components/editor/__tests__/engine-signal-contract.test.tsx` - PASS (3 files / 44 tests).
+- `pnpm.cmd --filter photrez-desktop test --run` - PASS (79 files / 1199 tests).
+- `pnpm.cmd run build` - PASS with workspace-local temp HOME.
+
+---
+
+## [2026-06-18] HARDENING - Typed Cross-Doc Engine Facades [COMPLETE]
+
+### Kategori: HARDENING / TYPESCRIPT / DRAG-DROP / FAANG-REVIEW
+
+**Root Cause:**
+FRR-LAYER-003 and FRR-DND-003 were still valid because `crossDocLayerOps.ts` declared an `EngineFacade` with `any` methods and then cast real engines/workspaces to `any` before calling runtime methods dynamically. This hid mismatches between mocked tests and the real `DocumentEngine` API.
+
+**Fix Rationale:**
+Use the smallest useful type boundary: a narrow facade that matches the real `DocumentEngine` / `WorkspaceManager` methods already used by cross-doc drag/drop. This removes production `any` without adding an adapter class or changing behavior.
+
+**Done:**
+1. Typed `EngineFacade` with `LayerNode`, `Transform2D`, `BlendMode`, `DocumentModel`, and real layer mutation methods.
+2. Typed `WorkspaceFacade.addDocument()` against `DocumentSession` so file-drop document creation no longer casts the workspace.
+3. Removed production `as any` / dynamic method checks from `crossDocLayerOps.ts`.
+4. Removed cross-doc workspace casts from `CanvasViewport.tsx`, `DocumentTabsBar.tsx`, `LayersPanel.tsx`, and `useCanvasLayerDrag.ts`.
+5. Updated the cross-doc unit fake engine so it implements real engine-like setters and `getWidth()`/`getHeight()`.
+6. Marked FRR-LAYER-003 and FRR-DND-003 mitigated for the engine-call/type-safety portion.
+
+**Verification:**
+- `pnpm.cmd run type-check` - PASS.
+- `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/crossDocLayerOps.test.ts src/components/editor/__tests__/crossDocLayerOps.engine.test.ts src/components/editor/__tests__/crossDocDragDropWiring.test.tsx src/components/editor/__tests__/useCanvasLayerDrag.test.tsx` - PASS (4 files / 43 tests).
+- `pnpm.cmd --filter photrez-desktop test --run` - PASS (79 files / 1198 tests).
+- `pnpm.cmd run build` - PASS with workspace-local temp HOME after sandboxed pnpm home access failed.
+
+---
+
+## [2026-06-18] HARDENING - ToolId Union for Active Tool State [COMPLETE]
+
+### Kategori: HARDENING / TYPESCRIPT / EDITOR-STATE / FAANG-REVIEW
+
+**Root Cause:**
+FRR-STATE-002 was still valid because activeTool used free-form strings in EditorContext/editorState, so invalid tool IDs could pass through toolbar and action wiring until runtime or tests noticed.
+
+**Fix Rationale:**
+Add the smallest project-level ToolId union and wire it into active tool state plus key call sites. This gives compile-time protection without redesigning the tool system.
+
+**Done:**
+1. Added apps/desktop/src/components/editor/toolTypes.ts with ToolId.
+2. Typed createEditorState activeTool/setActiveTool and EditorContextValue activeTool/setActiveTool with ToolId.
+3. Typed ToolItem.id, LeftToolRail, cropToolActions, viewport ToolType aliases, and pasteboard click policy against ToolId.
+4. Updated FAANG review docs to mark FRR-STATE-002 mitigated.
+
+**Verification:**
+- pnpm.cmd run type-check - PASS.
+- pnpm.cmd --filter photrez-desktop test --run src/__tests__/cursor-resolver.test.ts src/components/editor/__tests__/pasteboardClickPolicy.test.ts src/components/editor/__tests__/MoveOptionBar.test.tsx - PASS (3 files / 59 tests).
+
+---
+
+## [2026-06-18] DOCUMENTATION - Native Runtime Smoke Gate [COMPLETE]
+
+### Kategori: DOCUMENTATION / RELEASE-GATE / TAURI / FAANG-REVIEW
+
+**Root Cause:**
+Browser E2E and CI checks cannot prove OS-integrated Tauri behavior such as File Explorer drag/drop, native save dialogs, installed app launch, or file-on-disk export verification. The FAANG register therefore still had native-runtime proof as an open review blocker.
+
+**Fix Rationale:**
+Do not pretend browser tests prove native behavior. Add an explicit release evidence checklist that must be filled per release candidate or replaced by equivalent Tauri runtime automation output.
+
+**Done:**
+1. Added docs/faang-review-rejections/2026-06-18-native-runtime-smoke-checklist.md.
+2. Covered app launch, OS file drop to new document, OS file drop to existing layer, cross-doc layer drag in Tauri, native export/save, cancel export, and window controls.
+3. Linked the checklist from FAANG README, executive summary, testing review, shell review, roadmap, and FEATURES.md.
+4. Marked FRR-TEST-004, FRR-SHELL-007, and FRR-EXEC-004 as mitigated by the required release evidence gate.
+
+**Verification:**
+- Checklist exists and contains 7 required native runtime cases.
+- Search found no stale native-runtime proof wording or reject/must-fix status for those rows in touched docs.
+- git diff --check passes for the touched native-smoke docs.
+
+---
+
 ## [2026-06-18] BUG FIX - Move/Selection-Move Ghost History Entries [COMPLETE]
 
 ### Kategori: BUG FIX / HISTORY / UX / REGRESSION
@@ -170,7 +533,9 @@ Both guards are 1-2 lines, no new abstractions.
 **Honesty note:**
 The previous "No always-commit paths remain" claim was wrong — I had only audited the four call sites covered by the prior tasks. A full audit (`grep history.commit apps/desktop/src` minus test files) surfaced two more ghost sites. This pass closes those. The remaining `cropToolActions.ts:82` edge case (applyCrop with invalid rect) is out of scope: requires `applyCrop` to return a boolean, which changes its signature across many call sites; not justified by a reported user scenario.
 
----## [2026-06-18] BUG FIX - Layer Visual Shrinkage on Multi-Layer Composite [COMPLETE]
+---
+
+## [2026-06-18] BUG FIX - Layer Visual Shrinkage on Multi-Layer Composite [COMPLETE]
 
 ### Kategori: BUG FIX / RENDERER / WEBGL / COMPOSITOR
 
@@ -200,7 +565,9 @@ The inter-layer copy is conceptually "duplicate FBO[prev] into FBO[curr] bit-for
 - The COMPOSITE pass (right after the copy) still uses the camera viewProj + per-layer transform — that's correct because the new layer is positioned in doc-space. Only the copy step needed to be FBO-space.
 - The COMPOSITE pass's backdrop sampling via `gl_FragCoord.xy / u_resolution` already maps to FBO-space (not doc-space), so after the fixed copy it correctly reads the preserved prior layers at their actual FBO positions.
 
----## [2026-06-18] FEATURE - Layer Keyboard Shortcuts [COMPLETE]
+---
+
+## [2026-06-18] FEATURE - Layer Keyboard Shortcuts [COMPLETE]
 
 ### Kategori: FEATURE / UX / KEYBOARD / LAYER
 
@@ -229,7 +596,9 @@ Match familiar image-editor keyboard expectations (Photoshop / Krita / Photopea)
 - No conflicts with existing shortcuts: bare `[`/`]` (brush size) only fires when `!ctrl` and tool is brush/eraser; bare `0` does not conflict with `Ctrl+0` (fit screen) because modifier check differs.
 - `engine.deleteLayer` already self-guards against deleting the last layer and reassigns `activeLayerId`; `EditorContext` createEffect re-syncs `selectedLayerId` automatically, so no manual signal mutation needed.
 
----## [2026-06-18] HARDENING - FAANG CI Gate Added [COMPLETE]
+---
+
+## [2026-06-18] HARDENING - FAANG CI Gate Added [COMPLETE]
 
 ### Kategori: HARDENING / CI / TESTING / GOVERNANCE
 
@@ -250,7 +619,9 @@ Use the existing root scripts instead of inventing a second verification system.
 - git diff --check passes for the workflow and touched CI docs.
 - Search found no remaining CI pipeline TODO / no committed CI / reject-rated FRR-TEST-001 or FRR-EXEC-007 text in docs/faang-review-rejections/*.md.
 
----## [2026-06-18] DOCUMENTATION - FAANG Architecture Runtime Drift Closure [COMPLETE]
+---
+
+## [2026-06-18] DOCUMENTATION - FAANG Architecture Runtime Drift Closure [COMPLETE]
 
 ### Kategori: DOCUMENTATION / ARCHITECTURE / IPC / FAANG-REVIEW
 
@@ -270,7 +641,9 @@ Keep the architecture reference as the current runtime truth: show the v2.0.0 en
 - Search across ARCHITECTURE.md, command-contract-spec.md, and docs/faang-review-rejections/*.md found no active v1.0.0/1.0.0/get_workspace_state/export_document drift.
 - git diff --numstat for AI_HISTORY.md and ARCHITECTURE.md reports text diffs, not binary diffs.
 
----## [2026-06-18] FAANG REVIEW REJECTION EXECUTION - PHASE 0 HARDENING [COMPLETE]
+---
+
+## [2026-06-18] FAANG REVIEW REJECTION EXECUTION - PHASE 0 HARDENING [COMPLETE]
 
 ### Kategori: ARCHITECTURE / IPC / TESTING / GOVERNANCE / PONYTAIL
 

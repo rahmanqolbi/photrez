@@ -100,7 +100,7 @@ export function DocumentTabsBar() {
           state.payload,
           { type: "tab", docId: tabId },
           { x: engine.getWidth() / 2, y: engine.getHeight() / 2 },
-          workspace as unknown as Parameters<typeof addLayerFromCrossDoc>[3]
+          workspace
         );
         scheduler.requestRender();
       }
@@ -111,7 +111,7 @@ export function DocumentTabsBar() {
           state.filePaths,
           { type: "tab", docId: tabId },
           { x: engine.getWidth() / 2, y: engine.getHeight() / 2 },
-          workspace as unknown as Parameters<typeof addFilesAsLayers>[3]
+          workspace
         );
         for (const { layerId, bitmap } of created) {
           renderer.uploadImage(layerId, bitmap);

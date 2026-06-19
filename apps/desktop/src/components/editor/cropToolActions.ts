@@ -2,6 +2,7 @@ import type { WorkspaceManager } from "@/engine/workspace";
 import type { WebGL2Backend } from "@/renderer/webgl2";
 import type { RenderScheduler } from "@/renderer/scheduler";
 import type { CropPreview } from "./cropState";
+import type { ToolId } from "./toolTypes";
 import type { Point } from "@/viewport/transformGeometry";
 import type { CropRect } from "@/viewport/cropGeometry";
 
@@ -70,7 +71,7 @@ export function applyCropPreview(params: {
   setCropRect: (rect: CropPreview["rect"] | null) => void;
   setCropRotation: (rot: number) => void;
   setHiddenCropPreview: (preview: CropPreview | null) => void;
-  setActiveTool: (tool: string) => void;
+  setActiveTool: (tool: ToolId) => void;
   setSelectedLayerId: (id: string | null) => void;
   recenterViewport?: () => void;
 }) {

@@ -1,3 +1,5 @@
+import type { ToolId } from "./toolTypes";
+
 export type PasteboardClickAction =
   | "noop"
   | "clear-active-layer"
@@ -6,7 +8,7 @@ export type PasteboardClickAction =
 
 export interface PasteboardClickContext {
   hasDocument: boolean;
-  activeTool: string;
+  activeTool: ToolId;
   isNavigationMode: boolean;
   hasLayerTransformSession: boolean;
   hasCropRect: boolean;

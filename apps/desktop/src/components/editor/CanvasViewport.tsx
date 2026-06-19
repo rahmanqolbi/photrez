@@ -707,10 +707,10 @@ export function CanvasViewport() {
         const state = dragController.state();
         if (state.dragKind === "layer" && state.payload) {
           const docPos = camera.screenToDocument(e.clientX, e.clientY);
-          addLayerFromCrossDoc(state.payload, { type: "canvas" }, docPos, workspace as unknown as Parameters<typeof addLayerFromCrossDoc>[3]);
+          addLayerFromCrossDoc(state.payload, { type: "canvas" }, docPos, workspace);
         } else if (state.dragKind === "file" && state.filePaths) {
           const docPos = camera.screenToDocument(e.clientX, e.clientY);
-          const created = await addFilesAsLayers(state.filePaths, { type: "canvas" }, docPos, workspace as unknown as Parameters<typeof addFilesAsLayers>[3]);
+          const created = await addFilesAsLayers(state.filePaths, { type: "canvas" }, docPos, workspace);
           for (const { layerId, bitmap } of created) {
             renderer.uploadImage(layerId, bitmap);
           }

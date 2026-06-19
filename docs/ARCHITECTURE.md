@@ -46,7 +46,38 @@ Photrez adalah lightweight desktop image editor yang dibangun untuk workflow dig
 
 ## Diagram Arsitektur
 
-Note 2026-05-29: the diagram below is historical and still useful for ownership boundaries, but some file labels/status markers are stale. Use the project status and registered command table above/below as the current runtime truth until the diagram is redrawn during the usable-MVP recovery pass.
+### Active MVP Runtime (2026-06-19)
+
+This is the current runtime ownership map. Use this diagram and the registered command table as the source of truth for review.
+
+```text
+User input / UI events
+        |
+        v
+SolidJS editor shell
+  - App chrome, tabs, panels, tools
+  - Solid signals and stores for UI state
+  - WorkspaceManager + TypeScript DocumentEngine for MVP document state
+        |
+        +--> WebGL2 renderer
+        |      - texture upload
+        |      - compositing / preview
+        |      - viewport readback where required
+        |
+        +--> Tauri 2 shell commands
+               - ping
+               - get_contract_info
+               - read_file_bytes  (image import allowlist, 256MB cap)
+               - write_file_bytes (image export allowlist, 256MB cap)
+
+Rust crates today:
+  - photrez-core: reference/domain model and tests
+  - photrez-render: future wgpu target, not active in the MVP hot path
+```
+
+### Historical / Future-Target Reference
+
+Note 2026-06-19: the diagram below is historical and retained only for ownership-context archaeology. It still contains earlier workspace/layer/history command labels that are not registered in the current Tauri runtime. Do not use it as the active runtime command map.
 
 ```text
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
@@ -174,8 +205,8 @@ Detail lengkap: `docs/reference/command-contract-spec.md`. The current Tauri she
 | --- | --- | --- | --- |
 | `ping` | none | Shell | Active |
 | `get_contract_info` | none | Shell | Active |
-| `read_file_bytes` | `path: String` | Shell file IO | Active, 256MB cap |
-| `write_file_bytes` | `path: String, data: String` | Shell file IO | Active, base64 payload, 256MB cap |
+| `read_file_bytes` | `path: String` | Shell file IO | Active, image import extension allowlist, 256MB cap |
+| `write_file_bytes` | `path: String, data: String` | Shell file IO | Active, image export extension allowlist, base64 payload, 256MB cap |
 
 Historical workspace, layer, crop, and export command names describe earlier Rust-command plans and current product capabilities, but they are not registered in `apps/desktop/src-tauri/src/main.rs` in the MVP runtime. Their active implementation path is the SolidJS/TypeScript editor engine plus WebGL2 renderer, with Tauri used for shell file IO and dialogs.
 

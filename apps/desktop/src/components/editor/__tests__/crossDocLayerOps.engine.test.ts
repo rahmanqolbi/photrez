@@ -17,6 +17,14 @@ import { addLayerFromCrossDoc, addFilesAsLayers, createNewDocsFromFiles, type Wo
 import type { LayerDragPayload } from "../dragTypes";
 import { resetToasts } from "../Toast";
 
+const nativeMock = vi.hoisted(() => ({
+  readFileBytes: vi.fn(),
+}));
+
+vi.mock("@/tauri/native", () => ({
+  readFileBytes: nativeMock.readFileBytes,
+}));
+
 // Note: we deliberately do NOT mock Toast — the real toast side effects must
 // work with the real engine. If a test triggers an unexpected error toast,
 // that's a real signal to investigate.
@@ -30,6 +38,8 @@ describe("addLayerFromCrossDoc — real engine integration", () => {
 
   beforeEach(() => {
     resetToasts();
+    nativeMock.readFileBytes.mockResolvedValue(new Uint8Array([1, 2, 3]));
+    globalThis.createImageBitmap = vi.fn().mockResolvedValue({ width: 100, height: 100 } as ImageBitmap);
     ws = new WorkspaceManager();
     const sA = WorkspaceManager.createBlankDocument("docA", "DocA", 800, 600);
     ws.addDocument(sA);
@@ -170,5 +180,62 @@ describe("addLayerFromCrossDoc — real engine integration", () => {
     const cloned = targetEngine.getLayers().find((l) => l.name === "MyLogo")!;
     expect(cloned).toBeDefined();
     expect(cloned.imageBitmap).toBe(fakeBitmap);
+  });
+
+  it("does not copy to target when Alt-moving the source document's last layer", () => {
+    const sourceEngine = ws.getEngine(sourceDocId)!;
+    const targetEngine = ws.getEngine(targetDocId)!;
+    sourceEngine.deleteLayer(sourceLayerId);
+    const onlyLayer = sourceEngine.getLayers()[0];
+    const targetLayerCount = targetEngine.getLayers().length;
+
+    const result = addLayerFromCrossDoc(
+      { ...basePayload, layerId: onlyLayer.id, sourceName: onlyLayer.name, isAltPressed: true },
+      { type: "tab", docId: targetDocId },
+      { x: 0, y: 0 },
+      ws
+    );
+
+    expect(result.newLayerId).toBeNull();
+    expect(sourceEngine.getLayers()).toHaveLength(1);
+    expect(targetEngine.getLayers()).toHaveLength(targetLayerCount);
+  });
+});
+
+describe("addFilesAsLayers — real engine decode-first contract", () => {
+  let ws: WorkspaceManager;
+
+  beforeEach(() => {
+    resetToasts();
+    ws = new WorkspaceManager();
+    ws.addDocument(WorkspaceManager.createBlankDocument("docA", "DocA", 800, 600));
+    globalThis.createImageBitmap = vi.fn().mockResolvedValue({ width: 100, height: 100 } as ImageBitmap);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("does not commit history or create empty layers when any file fails before mutation", async () => {
+    const engine = ws.getEngine("docA")!;
+    const history = ws.getHistory("docA")!;
+    const commitSpy = vi.spyOn(history, "commit");
+    const initialLayerCount = engine.getLayers().length;
+
+    nativeMock.readFileBytes.mockImplementation(async (path: string) => {
+      if (path.includes("bad")) throw new Error("decode failed");
+      return new Uint8Array([1, 2, 3]);
+    });
+
+    const created = await addFilesAsLayers(
+      ["/ok.png", "/bad.png"],
+      { type: "canvas" },
+      { x: 12, y: 34 },
+      ws
+    );
+
+    expect(created).toEqual([]);
+    expect(engine.getLayers().length).toBe(initialLayerCount);
+    expect(commitSpy).not.toHaveBeenCalled();
   });
 });

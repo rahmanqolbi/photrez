@@ -1,4 +1,5 @@
 import type { IconName } from "./icons";
+import type { ToolId } from "./toolTypes";
 
 export type MenuItem = "File" | "Edit" | "Image" | "View" | "Window" | "Help";
 
@@ -9,7 +10,7 @@ export type DocumentTab = {
 };
 
 export type ToolItem = {
-  id: string;
+  id: ToolId;
   icon: IconName;
   label: string;
   active?: boolean;

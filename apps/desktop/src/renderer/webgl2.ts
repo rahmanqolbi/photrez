@@ -66,6 +66,27 @@ export function getInterLayerCopyQuad(
   };
 }
 
+export function getRequiredUniformLocation(
+  gl: WebGL2RenderingContext,
+  program: WebGLProgram,
+  name: string,
+): WebGLUniformLocation {
+  const location = gl.getUniformLocation(program, name);
+  if (!location) {
+    throw new Error(`Required WebGL uniform not found: ${name}`);
+  }
+  return location;
+}
+
+export const WEBGL2_CONTEXT_OPTIONS: WebGLContextAttributes = {
+  premultipliedAlpha: false,
+  alpha: true,
+  antialias: true,
+  preserveDrawingBuffer: false,
+};
+
+export const WEBGL2_CONTEXT_RESTORED_EVENT = "photrez:webglcontextrestored";
+
 export class WebGL2Backend implements RenderBackend {
   readonly name = "webgl2";
   readonly capabilities: RenderCapabilities;
@@ -113,6 +134,7 @@ export class WebGL2Backend implements RenderBackend {
   private currentHeight = 0;
   private logicalWidth = 800;
   private logicalHeight = 600;
+  private contextLost = false;
 
   constructor() {
     this.capabilities = {
@@ -124,19 +146,26 @@ export class WebGL2Backend implements RenderBackend {
   }
 
   initialize(canvas: HTMLCanvasElement): void {
+    if (this.canvas && this.canvas !== canvas) {
+      this.removeContextListeners(this.canvas);
+    }
+
     this.canvas = canvas;
-    this.gl = canvas.getContext("webgl2", {
-      premultipliedAlpha: false,
-      alpha: true,
-      antialias: true,
-      preserveDrawingBuffer: true
-    });
+    this.gl = canvas.getContext("webgl2", WEBGL2_CONTEXT_OPTIONS);
 
     if (!this.gl) {
       throw new Error("WebGL2 not supported on this platform/browser");
     }
 
+    this.contextLost = false;
+    canvas.addEventListener("webglcontextlost", this.handleContextLost);
+    canvas.addEventListener("webglcontextrestored", this.handleContextRestored);
+    this.initializeGpuResources();
+  }
+
+  private initializeGpuResources(): void {
     const gl = this.gl;
+    if (!gl || this.contextLost || gl.isContextLost()) return;
 
     // Compile programs
     const vs = this.compileShader(gl.VERTEX_SHADER, VERTEX_SHADER_SOURCE);
@@ -149,18 +178,18 @@ export class WebGL2Backend implements RenderBackend {
 
     // Get Uniforms
     this.layerUniforms = {
-      viewProj: gl.getUniformLocation(this.layerProgram, "u_viewProj")!,
-      layerRect: gl.getUniformLocation(this.layerProgram, "u_layerRect")!,
-      layerCenter: gl.getUniformLocation(this.layerProgram, "u_layerCenter")!,
-      layerRotation: gl.getUniformLocation(this.layerProgram, "u_layerRotation")!,
-      flipSign: gl.getUniformLocation(this.layerProgram, "u_flipSign")!,
-      texture: gl.getUniformLocation(this.layerProgram, "u_texture")!,
-      backdrop: gl.getUniformLocation(this.layerProgram, "u_backdrop")!,
-      opacity: gl.getUniformLocation(this.layerProgram, "u_opacity")!,
-      blendMode: gl.getUniformLocation(this.layerProgram, "u_blendMode")!,
-      useBackdrop: gl.getUniformLocation(this.layerProgram, "u_useBackdrop")!,
-      flipTexY: gl.getUniformLocation(this.layerProgram, "u_flipTexY")!,
-      resolution: gl.getUniformLocation(this.layerProgram, "u_resolution")!
+      viewProj: getRequiredUniformLocation(gl, this.layerProgram, "u_viewProj"),
+      layerRect: getRequiredUniformLocation(gl, this.layerProgram, "u_layerRect"),
+      layerCenter: getRequiredUniformLocation(gl, this.layerProgram, "u_layerCenter"),
+      layerRotation: getRequiredUniformLocation(gl, this.layerProgram, "u_layerRotation"),
+      flipSign: getRequiredUniformLocation(gl, this.layerProgram, "u_flipSign"),
+      texture: getRequiredUniformLocation(gl, this.layerProgram, "u_texture"),
+      backdrop: getRequiredUniformLocation(gl, this.layerProgram, "u_backdrop"),
+      opacity: getRequiredUniformLocation(gl, this.layerProgram, "u_opacity"),
+      blendMode: getRequiredUniformLocation(gl, this.layerProgram, "u_blendMode"),
+      useBackdrop: getRequiredUniformLocation(gl, this.layerProgram, "u_useBackdrop"),
+      flipTexY: getRequiredUniformLocation(gl, this.layerProgram, "u_flipTexY"),
+      resolution: getRequiredUniformLocation(gl, this.layerProgram, "u_resolution")
     };
 
     this.checkerboardUniforms = {
@@ -181,9 +210,43 @@ export class WebGL2Backend implements RenderBackend {
     this.capabilities.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
   }
 
+  private handleContextLost = (event: Event): void => {
+    event.preventDefault();
+    this.contextLost = true;
+    this.clearGpuResourceRefs();
+  };
+
+  private handleContextRestored = (): void => {
+    this.contextLost = false;
+    this.clearGpuResourceRefs();
+    this.initializeGpuResources();
+    this.canvas?.dispatchEvent(new CustomEvent(WEBGL2_CONTEXT_RESTORED_EVENT));
+  };
+
+  private removeContextListeners(canvas: HTMLCanvasElement): void {
+    canvas.removeEventListener("webglcontextlost", this.handleContextLost);
+    canvas.removeEventListener("webglcontextrestored", this.handleContextRestored);
+  }
+
+  private clearGpuResourceRefs(): void {
+    this.layerProgram = null;
+    this.checkerboardProgram = null;
+    this.layerUniforms = null;
+    this.checkerboardUniforms = null;
+    this.vao = null;
+    this.textures.clear();
+    this.pingPongFbos = [null, null];
+    this.pingPongTextures = [null, null];
+    this.currentWidth = 0;
+    this.currentHeight = 0;
+  }
+
   uploadImage(layerId: string, source: ImageBitmap): TextureRef {
     const gl = this.gl;
     if (!gl) throw new Error("Renderer not initialized");
+    if (this.contextLost || gl.isContextLost()) {
+      throw new Error("Renderer context is lost; upload is paused until restore");
+    }
 
     this.destroyTexture(layerId); // delete existing
 
@@ -214,16 +277,17 @@ export class WebGL2Backend implements RenderBackend {
 
   destroyTexture(layerId: string): void {
     const ref = this.textures.get(layerId);
-    if (ref && this.gl) {
+    if (ref && this.gl && !this.contextLost && !this.gl.isContextLost()) {
       this.gl.deleteTexture(ref.texture);
-      this.textures.delete(layerId);
     }
+    this.textures.delete(layerId);
   }
 
   render(state: RenderState, viewProjectionMatrix?: Float32Array): void {
     const gl = this.gl;
     const canvas = this.canvas;
     if (!gl || !canvas) return;
+    if (this.contextLost || gl.isContextLost()) return;
 
     // Ensure ping-pong FBOs exist and are sized properly
     const docW = state.documentSize.width;
@@ -505,6 +569,7 @@ export class WebGL2Backend implements RenderBackend {
 
     const gl = this.gl;
     if (!gl) return;
+    if (this.contextLost || gl.isContextLost()) return;
 
     if (w !== this.currentWidth || h !== this.currentHeight) {
       this.currentWidth = w;
@@ -574,6 +639,7 @@ export class WebGL2Backend implements RenderBackend {
 
     const gl = this.gl;
     if (!gl) return;
+    if (this.contextLost || gl.isContextLost()) return;
 
     if (w !== this.currentWidth || h !== this.currentHeight) {
       this.currentWidth = w;
@@ -633,6 +699,7 @@ export class WebGL2Backend implements RenderBackend {
   readPixel(x: number, y: number): [number, number, number, number] | null {
     const gl = this.gl;
     if (!gl) return null;
+    if (this.contextLost || gl.isContextLost()) return null;
 
     const pixels = new Uint8Array(4);
     gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
@@ -652,25 +719,30 @@ export class WebGL2Backend implements RenderBackend {
   }
 
   dispose(): void {
+    if (this.canvas) {
+      this.removeContextListeners(this.canvas);
+    }
+
     if (this.gl) {
-      for (const [id, ref] of this.textures.entries()) {
-        this.gl.deleteTexture(ref.texture);
+      if (!this.contextLost && !this.gl.isContextLost()) {
+        for (const ref of this.textures.values()) {
+          this.gl.deleteTexture(ref.texture);
+        }
+
+        for (let i = 0; i < 2; i++) {
+          if (this.pingPongFbos[i]) this.gl.deleteFramebuffer(this.pingPongFbos[i]);
+          if (this.pingPongTextures[i]) this.gl.deleteTexture(this.pingPongTextures[i]);
+        }
+
+        if (this.vao) this.gl.deleteVertexArray(this.vao);
+        if (this.layerProgram) this.gl.deleteProgram(this.layerProgram);
+        if (this.checkerboardProgram) this.gl.deleteProgram(this.checkerboardProgram);
       }
-      this.textures.clear();
 
-      for (let i = 0; i < 2; i++) {
-        if (this.pingPongFbos[i]) this.gl.deleteFramebuffer(this.pingPongFbos[i]);
-        if (this.pingPongTextures[i]) this.gl.deleteTexture(this.pingPongTextures[i]);
-      }
-      this.pingPongFbos = [null, null];
-      this.pingPongTextures = [null, null];
-
-      if (this.vao) this.gl.deleteVertexArray(this.vao);
-      if (this.layerProgram) this.gl.deleteProgram(this.layerProgram);
-      if (this.checkerboardProgram) this.gl.deleteProgram(this.checkerboardProgram);
-
+      this.clearGpuResourceRefs();
       this.gl = null;
     }
+    this.contextLost = false;
     this.canvas = null;
   }
 

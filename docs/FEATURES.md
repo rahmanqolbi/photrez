@@ -173,7 +173,7 @@
 | ✅ DONE      | E2E test: export dialog opens, format switch, quality slider |
 | ✅ DONE      | E2E test: encodeComposite produces valid PNG/JPEG/WebP with correct headers/magic bytes |
 | ✅ DONE      | E2E test: output dimensions match document, invisible layers excluded, transforms respected |
-| ⬜ KNOWN LIMITATION | Blend mode parity: Canvas 2D globalCompositeOperation vs WebGL GLSL shader may differ slightly at alpha=0 or alpha=1 boundaries (pre-multiplied vs straight alpha edge cases). Visual difference is negligible for MVP. |
+| ✅ DONE | Blend mode parity gate: UI exposes only the typed MVP registry (`Normal`, `Multiply`, `Screen`, `Overlay`), export compositing uses the same registry mapping, and unsupported shader-only modes are blocked until parity tests exist (`docs/reference/render-export-parity-matrix.md`). |
 | ✅ DONE      | Rust unit tests: write_file_bytes creates file, read_file_bytes roundtrip, error handling (7 tests) |
 | ✅ DONE      | E2E data flow test: encodeComposite → base64 → decode → byte-for-byte match + valid PNG image |
 | ✅ RELEASE GATE | Native Tauri smoke checklist for app launch, OS drag/drop, cross-doc drag, native export/save, cancel export, and window controls: `docs/faang-review-rejections/2026-06-18-native-runtime-smoke-checklist.md` |
@@ -317,6 +317,20 @@
 
 | Status | Item |
 | ------ | ---- |
+| DONE | FAANG review pointer capture helper: canvas pointer tools now use shared safe capture/release helpers with focused pointer regression tests |
+| DONE | FAANG review paint command boundary: brush/eraser bitmap commits now share `commitPaintBitmap()` for history snapshot, engine mutation, texture upload, and render scheduling |
+| DONE | FAANG review paint history budget gate: `perf:paint-history` now quantifies full-layer snapshot retention vs dirty-region undo/redo patch estimates for paint-heavy workflows |
+| DONE | FAANG review paint transformed-layer guard: brush/eraser strokes now use explicit paint coordinate helpers backed by rotate/scale/flip mask tests |
+| DONE | FAANG review tool cleanup lifecycle: active-tool switches now run through a typed `ToolId` cleanup registry instead of hardcoded cleanup inside `EditorContext` |
+| DONE | FAANG review render/export blend parity gate: blend mode UI/export now share `BLEND_MODE_OPTIONS`, and shader-only modes are documented as blocked until parity proof exists |
+| DONE | FAANG review WebGL context-loss lifecycle: renderer now pauses GPU work on `webglcontextlost`, rebuilds resources on `webglcontextrestored`, and triggers active-document texture re-upload |
+| DONE | FAANG review WebGL context policy: renderer now initializes with `preserveDrawingBuffer: false` by default, with a regression test for the context options |
+| DONE | FAANG review WebGL uniform validation: required layer shader uniforms now throw explicit missing-uniform errors instead of relying on non-null assertions |
+| DONE | FAANG review architecture diagram split: `ARCHITECTURE.md` now separates active MVP runtime ownership from historical/future-target reference diagrams |
+| DONE | FAANG review shell path policy: Tauri file IO now enforces import/export image extension allowlists before read/write, with Rust contract tests |
+| DONE | FAANG review cross-doc Alt-move guard: moving the last layer out of a source document now aborts before target mutation, preventing copy-as-move ambiguity |
+| DONE | FAANG review file-drop mutation hardening: `addFilesAsLayers` decodes the dropped-file batch before history commit/layer creation, preventing empty layer creation on file read/decode failure |
+| DONE | FAANG review typed cross-doc facade hardening: `crossDocLayerOps.ts` now uses a narrow `DocumentEngine`/`WorkspaceManager`-compatible interface with no production `any` casts, backed by type-check, focused drag/drop tests, full frontend tests, and build |
 | DONE | FAANG review rejection Phase 0 execution: contract drift, production context fallback, shell response panics, file IO size guard, and root static-analysis scripts addressed with green build/test/type gates |
 | DONE | Production risk register hardening executed: closed drag/drop, layer reorder, export, debug-surface, and verification-script gaps with green automated gates |
 | DONE | Cross-doc layer drag tab hover regression fixed: 500ms tab switch now works through real EditorProvider workspace and canvas pointer-drag tab detection |

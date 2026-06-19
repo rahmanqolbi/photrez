@@ -5,6 +5,8 @@ use serde_json::Value;
 
 const CONTRACT_VERSION: &str = "2.0.0";
 const MAX_FILE_IO_BYTES: u64 = 256 * 1024 * 1024;
+const READ_FILE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp", "gif", "bmp", "tif", "tiff"];
+const WRITE_FILE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp"];
 
 // ─── Response Envelope ───
 #[derive(Serialize)]
@@ -41,6 +43,10 @@ fn ok_response<T: Serialize>(data: T) -> Result<Value, Value> {
 }
 
 fn err_response(code: &str, message: &str) -> Result<Value, Value> {
+    Err(error_value(code, message))
+}
+
+fn error_value(code: &str, message: &str) -> Value {
     let error = ApiErrorResponse {
         ok: false,
         contract_version: CONTRACT_VERSION.to_string(),
@@ -50,8 +56,8 @@ fn err_response(code: &str, message: &str) -> Result<Value, Value> {
             details: Value::Null,
         },
     };
-    Err(serde_json::to_value(&error)
-        .unwrap_or_else(|_| internal_error_value("Failed to serialize error envelope")))
+    serde_json::to_value(&error)
+        .unwrap_or_else(|_| internal_error_value("Failed to serialize error envelope"))
 }
 
 fn internal_error_value(message: &str) -> Value {
@@ -64,6 +70,28 @@ fn internal_error_value(message: &str) -> Value {
             "details": null
         }
     })
+}
+
+fn validate_path_extension(path: &str, allowed: &[&str], operation: &str) -> Result<(), Value> {
+    let ext = std::path::Path::new(path)
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase());
+
+    if let Some(ext) = ext {
+        if allowed.iter().any(|allowed_ext| *allowed_ext == ext) {
+            return Ok(());
+        }
+    }
+
+    Err(error_value(
+        "E_VALIDATION",
+        &format!(
+            "Unsupported file extension for {}; supported extensions: {}",
+            operation,
+            allowed.join(", ")
+        ),
+    ))
 }
 
 // ─── Commands ───
@@ -88,6 +116,8 @@ fn get_contract_info() -> Result<Value, Value> {
 /// Read file bytes from disk. Returns base64-encoded bytes.
 #[tauri::command]
 fn read_file_bytes(path: String) -> Result<Value, Value> {
+    validate_path_extension(&path, READ_FILE_EXTENSIONS, "read")?;
+
     match std::fs::metadata(&path) {
         Ok(metadata) if metadata.len() > MAX_FILE_IO_BYTES => {
             return err_response(
@@ -116,6 +146,8 @@ fn read_file_bytes(path: String) -> Result<Value, Value> {
 /// Write bytes to disk.
 #[tauri::command]
 fn write_file_bytes(path: String, data: String) -> Result<Value, Value> {
+    validate_path_extension(&path, WRITE_FILE_EXTENSIONS, "write")?;
+
     use base64::Engine;
     let bytes = match base64::engine::general_purpose::STANDARD.decode(&data) {
         Ok(b) => b,
@@ -171,7 +203,11 @@ mod tests {
         let b64 = base64::engine::general_purpose::STANDARD.encode(data);
         let result = write_file_bytes(path.to_str().unwrap().to_string(), b64.clone());
 
-        assert!(result.is_ok(), "write_file_bytes should succeed: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "write_file_bytes should succeed: {:?}",
+            result
+        );
         assert!(path.exists(), "file should exist on disk");
 
         let written = std::fs::read(&path).unwrap();
@@ -188,13 +224,10 @@ mod tests {
         let original: Vec<u8> = vec![
             0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG header
             0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
-            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-            0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
-            0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
-            0x54, 0x08, 0xD7, 0x63, 0x60, 0x60, 0x60, 0x00,
-            0x00, 0x00, 0x04, 0x00, 0x01, 0x27, 0x34, 0x27,
-            0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44,
-            0xAE, 0x42, 0x60, 0x82, // IEND chunk
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90,
+            0x77, 0x53, 0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54, 0x08, 0xD7, 0x63,
+            0x60, 0x60, 0x60, 0x00, 0x00, 0x00, 0x04, 0x00, 0x01, 0x27, 0x34, 0x27, 0x00, 0x00,
+            0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82, // IEND chunk
         ];
         let b64 = base64::engine::general_purpose::STANDARD.encode(&original);
 
@@ -210,7 +243,9 @@ mod tests {
         let value = read_result.unwrap();
         let obj = value.as_object().unwrap();
         let data_str = obj["data"]["data"].as_str().unwrap();
-        let roundtrip = base64::engine::general_purpose::STANDARD.decode(data_str).unwrap();
+        let roundtrip = base64::engine::general_purpose::STANDARD
+            .decode(data_str)
+            .unwrap();
         assert_eq!(roundtrip, original, "roundtrip content should match");
 
         let _ = std::fs::remove_file(&path);
@@ -219,10 +254,28 @@ mod tests {
     #[test]
     fn test_write_file_bytes_invalid_base64() {
         let path = temp_path("test_invalid_b64.png");
-        let result = write_file_bytes(path.to_str().unwrap().to_string(), "not-valid-base64!!!".to_string());
+        let result = write_file_bytes(
+            path.to_str().unwrap().to_string(),
+            "not-valid-base64!!!".to_string(),
+        );
         assert!(result.is_err(), "invalid base64 should produce error");
         let err_value = result.unwrap_err();
         assert!(err_value.to_string().contains("E_VALIDATION"));
+    }
+
+    #[test]
+    fn test_write_file_bytes_rejects_unsupported_extension() {
+        let path = temp_path("test_unsupported_export.txt");
+        let _ = std::fs::remove_file(&path);
+        let b64 = base64::engine::general_purpose::STANDARD.encode(b"test");
+        let result = write_file_bytes(path.to_str().unwrap().to_string(), b64);
+        assert!(result.is_err(), "unsupported export extension should error");
+        let err_value = result.unwrap_err();
+        assert!(err_value.to_string().contains("E_VALIDATION"));
+        assert!(
+            !path.exists(),
+            "unsupported export should not create a file"
+        );
     }
 
     #[test]
@@ -239,6 +292,17 @@ mod tests {
         assert!(result.is_err(), "reading nonexistent file should error");
         let err_value = result.unwrap_err();
         assert!(err_value.to_string().contains("E_IO"));
+    }
+
+    #[test]
+    fn test_read_file_bytes_rejects_unsupported_extension() {
+        let path = temp_path("test_unsupported_import.txt");
+        std::fs::write(&path, b"not an image").unwrap();
+        let result = read_file_bytes(path.to_str().unwrap().to_string());
+        assert!(result.is_err(), "unsupported import extension should error");
+        let err_value = result.unwrap_err();
+        assert!(err_value.to_string().contains("E_VALIDATION"));
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]
@@ -262,7 +326,12 @@ mod tests {
         let names: Vec<&str> = commands.iter().map(|c| c.as_str().unwrap()).collect();
         assert_eq!(
             names,
-            vec!["ping", "get_contract_info", "read_file_bytes", "write_file_bytes"]
+            vec![
+                "ping",
+                "get_contract_info",
+                "read_file_bytes",
+                "write_file_bytes"
+            ]
         );
     }
 

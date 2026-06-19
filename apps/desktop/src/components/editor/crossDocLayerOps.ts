@@ -1,8 +1,9 @@
 import type { LayerDragPayload, DropTarget } from "./dragTypes";
 import { showToast } from "./Toast";
+import type { BlendMode, DocumentModel, LayerNode, Transform2D } from "@/engine/types";
 import { MAX_LAYERS } from "@/engine/types";
 import { readFileBytes } from "@/tauri/native";
-import { WorkspaceManager } from "@/engine/workspace";
+import { WorkspaceManager, type DocumentSession } from "@/engine/workspace";
 
 export const CASCADE_OFFSET_PX = 24;
 
@@ -12,19 +13,24 @@ export interface Point {
 }
 
 export interface EngineFacade {
-  id: string;
-  width: number;
-  height: number;
-  getLayer(id: string): any | null;
-  getLayers(): readonly any[];
-  addLayer(layer: any): any;
+  getWidth(): number;
+  getHeight(): number;
+  getLayer(id: string): LayerNode | undefined;
+  getLayers(): readonly LayerNode[];
+  addLayer(name: string, width?: number, height?: number): LayerNode;
   moveLayer(id: string, x: number, y: number): void;
+  transformLayer(id: string, transform: Partial<Transform2D>): void;
+  setLayerOpacity(id: string, opacity: number): void;
+  setLayerBlendMode(id: string, mode: BlendMode): void;
+  setLayerVisibility(id: string, visible: boolean): void;
+  setLayerLocked(id: string, locked: boolean): void;
+  setLayerImageBitmap(id: string, bitmap: ImageBitmap): void;
   deleteLayer(id: string): void;
-  snapshot(): unknown;
+  snapshot(): DocumentModel;
 }
 
 export interface HistoryFacade {
-  commit(snapshot: unknown): void;
+  commit(snapshot: DocumentModel): void;
 }
 
 export interface WorkspaceFacade {
@@ -32,6 +38,7 @@ export interface WorkspaceFacade {
   getHistory(docId: string): HistoryFacade | null;
   getActiveDocumentId(): string | null;
   isFull(): boolean;
+  addDocument(session: DocumentSession): void;
 }
 
 export interface CreatedLayer {
@@ -60,7 +67,9 @@ function resolveTargetDocId(target: DropTarget, ws: WorkspaceFacade): string | n
 
 async function fileToBitmap(path: string): Promise<ImageBitmap> {
   const bytes = await readFileBytes(path);
-  return await createImageBitmap(new Blob([bytes as any]));
+  const blobBytes = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(blobBytes).set(bytes);
+  return await createImageBitmap(new Blob([blobBytes]));
 }
 
 export function addLayerFromCrossDoc(
@@ -84,6 +93,10 @@ export function addLayerFromCrossDoc(
     showToast("Layer was deleted. Drop cancelled.", "error");
     return { newLayerId: null };
   }
+  if (payload.isAltPressed && sourceEngine.getLayers().length <= 1) {
+    showToast("Cannot move the last layer from a document. Drop cancelled.", "error");
+    return { newLayerId: null };
+  }
 
   const targetEngine = ws.getEngine(targetDocId);
   if (!targetEngine) return { newLayerId: null };
@@ -99,39 +112,27 @@ export function addLayerFromCrossDoc(
     target && (target.type === "canvas" || target.type === "tab")
       ? cursorPos
       : (() => {
-          const e = targetEngine as any;
-          const tw = typeof e.getWidth === "function" ? e.getWidth() : (e.width ?? 0);
-          const th = typeof e.getHeight === "function" ? e.getHeight() : (e.height ?? 0);
+          const tw = targetEngine.getWidth();
+          const th = targetEngine.getHeight();
           return {
-            x: Math.max(0, (tw - (sourceLayer.width ?? 0)) / 2),
-            y: Math.max(0, (th - (sourceLayer.height ?? 0)) / 2),
+            x: Math.max(0, (tw - sourceLayer.width) / 2),
+            y: Math.max(0, (th - sourceLayer.height) / 2),
           };
         })();
 
   const targetHistory = ws.getHistory(targetDocId);
   if (targetHistory) targetHistory.commit(targetEngine.snapshot());
 
-  // Real engine API: addLayer(name, width?, height?) returns LayerNode.
-  // EngineFacade declares single-arg addLayer(layer: any) — pass 3 args
-  // at runtime; real engine picks up name + optional w/h, mock ignores extras.
-  const e = targetEngine as any;
-  const added = e.addLayer(sourceLayer.name ?? "Imported", sourceLayer.width, sourceLayer.height);
-  const newId = added?.id;
+  const added = targetEngine.addLayer(sourceLayer.name, sourceLayer.width, sourceLayer.height);
+  const newId = added.id;
   if (newId) {
-    if (typeof e.transformLayer === "function") {
-      e.transformLayer(newId, { ...sourceLayer.transform, x: targetPos.x, y: targetPos.y });
-    } else if (typeof e.moveLayer === "function") {
-      e.moveLayer(newId, targetPos.x, targetPos.y);
-    }
-    if (typeof e.setLayerOpacity === "function") e.setLayerOpacity(newId, sourceLayer.opacity ?? 1);
-    if (typeof e.setLayerBlendMode === "function") e.setLayerBlendMode(newId, sourceLayer.blendMode ?? "normal");
-    if (typeof e.setLayerVisibility === "function") e.setLayerVisibility(newId, sourceLayer.visible ?? true);
-    if (typeof e.setLayerLocked === "function") e.setLayerLocked(newId, sourceLayer.locked ?? false);
-    // Transfer the source bitmap so the new layer isn't empty.
-    // Without this, the new layer is created with the right name and
-    // size but no image data — exactly the "empty layer" symptom.
-    if (sourceLayer.imageBitmap && typeof e.setLayerImageBitmap === "function") {
-      e.setLayerImageBitmap(newId, sourceLayer.imageBitmap);
+    targetEngine.transformLayer(newId, { ...sourceLayer.transform, x: targetPos.x, y: targetPos.y });
+    targetEngine.setLayerOpacity(newId, sourceLayer.opacity);
+    targetEngine.setLayerBlendMode(newId, sourceLayer.blendMode);
+    targetEngine.setLayerVisibility(newId, sourceLayer.visible);
+    targetEngine.setLayerLocked(newId, sourceLayer.locked);
+    if (sourceLayer.imageBitmap) {
+      targetEngine.setLayerImageBitmap(newId, sourceLayer.imageBitmap);
     }
   }
 
@@ -160,28 +161,31 @@ export async function addFilesAsLayers(
     return [];
   }
 
-  const targetHistory = ws.getHistory(targetDocId);
-  if (targetHistory) targetHistory.commit(targetEngine.snapshot());
-
-  const e = targetEngine as any;
   const created: CreatedLayer[] = [];
+  const decoded: Array<{ name: string; pos: Point; bitmap: ImageBitmap }> = [];
   for (let i = 0; i < paths.length; i++) {
     const path = paths[i];
     const pos = computeCascadePosition(basePos, i);
     const name = path.split(/[\\/]/).pop() ?? "Imported";
-    const added = e.addLayer(name);
-    const newId = added?.id;
-    if (!newId) continue;
-    if (typeof e.moveLayer === "function") e.moveLayer(newId, pos.x, pos.y);
     try {
       const bitmap = await fileToBitmap(path);
-      if (typeof e.setLayerImageBitmap === "function") {
-        e.setLayerImageBitmap(newId, bitmap);
-        created.push({ docId: targetDocId, layerId: newId, bitmap });
-      }
+      decoded.push({ name, pos, bitmap });
     } catch (err) {
       showToast(`Failed to load ${name}: ${err}`, "error");
+      return [];
     }
+  }
+
+  const targetHistory = ws.getHistory(targetDocId);
+  if (targetHistory) targetHistory.commit(targetEngine.snapshot());
+
+  for (const { name, pos, bitmap } of decoded) {
+    const added = targetEngine.addLayer(name);
+    const newId = added.id;
+    if (!newId) continue;
+    targetEngine.moveLayer(newId, pos.x, pos.y);
+    targetEngine.setLayerImageBitmap(newId, bitmap);
+    created.push({ docId: targetDocId, layerId: newId, bitmap });
   }
   return created;
 }
@@ -194,16 +198,15 @@ export async function createNewDocsFromFiles(
     showToast("Workspace full — close a document first (max 16)", "error");
     return [];
   }
-  const w = ws as any;
   const created: CreatedDoc[] = [];
   for (const path of paths) {
-    if (w.isFull()) break;
+    if (ws.isFull()) break;
     const name = path.split(/[\\/]/).pop() || "Image";
     try {
       const bitmap = await fileToBitmap(path);
       const id = `doc-${crypto.randomUUID()}`;
       const session = WorkspaceManager.createDocumentFromImage(id, name, bitmap);
-      w.addDocument(session);
+      ws.addDocument(session);
       const bgLayerId = session.engine.getLayers()[0].id;
       created.push({ docId: id, backgroundLayerId: bgLayerId, bitmap });
     } catch (err) {

@@ -2,6 +2,7 @@ import { createSignal, createEffect, onMount, onCleanup } from "solid-js";
 import { useEditor } from "./EditorContext";
 import { centerModernCropFrame } from "@/viewport/modernCropGeometry";
 import { easeOutCubic } from "@/viewport/easing";
+import { WEBGL2_CONTEXT_RESTORED_EVENT } from "@/renderer/webgl2";
 
 interface UseViewportRendererParams {
   getCanvasContainerRef: () => HTMLDivElement | undefined;
@@ -87,11 +88,29 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
     }
   }
 
+  function reuploadActiveDocumentTextures() {
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+
+    try {
+      resizeRenderer();
+      for (const layer of engine.getLayers()) {
+        if (layer.imageBitmap) {
+          renderer.uploadImage(layer.id, layer.imageBitmap);
+        }
+      }
+      scheduler.requestRender();
+    } catch (err) {
+      console.error("Renderer context restore sync failed:", err);
+    }
+  }
+
   onMount(() => {
     const canvas = params.getCanvasRef();
     if (canvas) {
       try {
         renderer.initialize(canvas);
+        canvas.addEventListener(WEBGL2_CONTEXT_RESTORED_EVENT, reuploadActiveDocumentTextures);
       } catch (err) {
         console.error("Renderer init failed:", err);
       }
@@ -131,6 +150,7 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
       resizeObserver.observe(container);
 
       onCleanup(() => {
+        canvas?.removeEventListener(WEBGL2_CONTEXT_RESTORED_EVENT, reuploadActiveDocumentTextures);
         resizeObserver.disconnect();
         renderer.dispose();
         cancelAnimationFrame(animFrameId);

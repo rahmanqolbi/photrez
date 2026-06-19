@@ -4,6 +4,7 @@ import { Icon } from "./icons";
 import { TOOL_ITEMS } from "./editorData";
 import { useEditor } from "./EditorContext";
 import { cancelLayerTransformSession } from "./transformSession";
+import type { ToolId } from "./toolTypes";
 
 export function LeftToolRail(props: { disabled?: boolean }) {
   const { activeTool, setActiveTool, fgColor, setFgColor, bgColor, setBgColor, scheduler, workspace, layerTransformSession, setLayerTransformSession } = useEditor();
@@ -16,7 +17,7 @@ export function LeftToolRail(props: { disabled?: boolean }) {
     }
   };
 
-  const handleToolChange = (id: string) => {
+  const handleToolChange = (id: ToolId) => {
     if (props.disabled) return;
     if (layerTransformSession() && id !== "move" && id !== "selection") {
       cancelActiveTransformSession();

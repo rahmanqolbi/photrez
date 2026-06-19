@@ -1,7 +1,9 @@
 import { useEditor } from "./EditorContext";
 import type { DocumentEngine } from "@/engine/document";
+import type { CommandHistory } from "@/engine/history";
 import { getPaintToolBlockReason, type PaintToolSettings } from "./brushToolState";
-import { documentToLayerLocal } from "@/viewport/transformGeometry";
+import { commitPaintBitmap } from "./paintCommitCommand";
+import { mapPaintPointToLayerLocal, mapPaintStrokeToLayerLocal } from "./paintStrokeCoordinates";
 import {
   getBrushDabSpacing,
   getBrushTip,
@@ -75,9 +77,7 @@ export function useBrushOverlay() {
 
     // Task 4: Hard brush path (hardness >= 1) remains path-based for performance and visual parity.
     if (settings.hardness >= 1) {
-      const localPoints = points.map(p => documentToLayerLocal(
-        p.x, p.y, layer.transform, layer.width, layer.height,
-      ));
+      const localPoints = mapPaintStrokeToLayerLocal(points, layer);
 
       if (isEraser && (!eraserPreviewCanvas || eraserPreviewCanvas.width !== layer.width || eraserPreviewCanvas.height !== layer.height)) {
         eraserPreviewCanvas = new OffscreenCanvas(layer.width, layer.height);
@@ -173,13 +173,7 @@ export function useBrushOverlay() {
     const startIndex = needsReset ? 0 : prevStrokePointCount;
     for (let i = startIndex; i < points.length; i++) {
       const pt = points[i];
-      const localPt = documentToLayerLocal(
-        pt.x,
-        pt.y,
-        layer.transform,
-        layer.width,
-        layer.height,
-      );
+      const localPt = mapPaintPointToLayerLocal(pt, layer);
 
       if (!paintSession.lastPoint) {
         stampBrushTipMaxAlpha(paintSession.maskData, layer.width, layer.height, tip, localPt.x, localPt.y, alphaScale);
@@ -247,7 +241,7 @@ export function useBrushOverlay() {
     }
   }
 
-  async function commitBrushStroke(engine: DocumentEngine, layerId: string, isEraser: boolean) {
+  async function commitBrushStroke(engine: DocumentEngine, history: CommandHistory, layerId: string, isEraser: boolean) {
     if (prevStrokePointCount === 0) return;
     if (!overlayCanvasRef) return;
     const w = overlayCanvasRef.width;
@@ -255,7 +249,7 @@ export function useBrushOverlay() {
     if (w === 0 || h === 0) return;
 
     if (isEraser) {
-      await commitEraserStroke(engine, layerId, w, h);
+      await commitEraserStroke(engine, history, layerId, w, h);
       return;
     }
 
@@ -289,9 +283,10 @@ export function useBrushOverlay() {
         paintSession = null;
         return;
       }
-      engine.setLayerImageBitmap(layerId, newBitmap);
-      renderer.uploadImage(layerId, newBitmap);
-      scheduler.requestRender();
+      commitPaintBitmap(
+        { engine, history, uploader: renderer, requestRender: () => scheduler.requestRender() },
+        { layerId, bitmap: newBitmap },
+      );
       overlayCtx.clearRect(0, 0, w, h);
       prevStrokePointCount = 0;
       paintSession = null;
@@ -303,6 +298,7 @@ export function useBrushOverlay() {
 
   async function commitEraserStroke(
     engine: DocumentEngine,
+    history: CommandHistory,
     layerId: string,
     w: number,
     h: number,
@@ -324,9 +320,10 @@ export function useBrushOverlay() {
         paintSession = null;
         return;
       }
-      engine.setLayerImageBitmap(layerId, newBitmap);
-      renderer.uploadImage(layerId, newBitmap);
-      scheduler.requestRender();
+      commitPaintBitmap(
+        { engine, history, uploader: renderer, requestRender: () => scheduler.requestRender() },
+        { layerId, bitmap: newBitmap },
+      );
       overlayCtx?.clearRect(0, 0, w, h);
       prevStrokePointCount = 0;
       eraserPreviewCanvas = null;
