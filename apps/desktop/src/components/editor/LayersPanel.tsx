@@ -464,7 +464,7 @@ export function LayersPanel() {
                   engine.fitToScreen(rect.width, rect.height);
                   syncViewport();
                   const dpr = window.devicePixelRatio || 1;
-                  renderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr);
+                  renderer.resizeToViewport(rect.width, rect.height, dpr);
                   scheduler.requestRender();
                 }
               }

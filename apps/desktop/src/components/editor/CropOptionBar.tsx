@@ -268,6 +268,7 @@ export function CropOptionBar() {
     applyCropPreview({
       workspace,
       renderer,
+      viewport: { width: viewportWidth(), height: viewportHeight() },
       cropRect: cropInteractionMode() === "modern" && modernFrame
         ? modernFrameToCropRect({
             frame: modernFrame,

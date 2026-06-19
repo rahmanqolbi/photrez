@@ -26,7 +26,7 @@ function renderModal(show: boolean) {
   const session = WorkspaceManager.createBlankDocument("test", "Test Doc", 800, 600);
   ws.addDocument(session);
 
-  const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn(), resize: vi.fn() };
+  const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn(), resize: vi.fn(), resizeToViewport: vi.fn() };
   const scheduler = { requestRender: vi.fn() };
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -106,7 +106,7 @@ describe("ResizeCanvasModal", () => {
     const ws = new WorkspaceManager();
     ws.addDocument(session);
 
-    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn(), resize: vi.fn() };
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn(), resize: vi.fn(), resizeToViewport: vi.fn() };
     const scheduler = { requestRender: vi.fn() };
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -223,7 +223,7 @@ describe("ResizeCanvasModal", () => {
     (applyBtn as HTMLButtonElement).click();
     await tick();
 
-    expect(renderer.resize).toHaveBeenCalledWith(1024, expect.any(Number), expect.any(Number), expect.any(Number));
+    expect(renderer.resizeToViewport).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), 1);
 
     dispose();
   });

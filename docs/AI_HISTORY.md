@@ -1,5 +1,42 @@
 # AI History — Photrez
 
+## [2026-06-19] BUG FIX - Post-Crop/Resize Canvas Buffer Sizing [COMPLETE]
+
+### Kategori: BUG FIX / RENDERER / CROP / RESIZE-CANVAS
+
+**User Report:**
+"habis crop checkerboard jadi melar/stretch" — after applying a crop, the checkerboard pattern appears stretched (cells are non-square).
+
+**Root Cause:**
+Three production code paths were sizing the WebGL canvas pixel buffer to `docW × zoom × dpr` instead of `viewportW × dpr`:
+
+1. `apps/desktop/src/components/editor/cropToolActions.ts:111` (after applyCrop)
+2. `apps/desktop/src/components/editor/LayersPanel.tsx:467` (Fit Screen button)
+3. `apps/desktop/src/components/editor/ResizeCanvasModal.tsx:78` (after canvas resize)
+
+The canvas CSS is `width: 100%; height: 100%` of the viewport (set in `CanvasViewport.tsx:834-835`). When the buffer (doc×zoom×dpr) has a different aspect ratio than the CSS box (viewport), the browser non-uniformly scales the buffer to fit → 8×8 checker cells render as e.g. 12.8×11.8 px. The previous 2026-06-14 fix removed this anti-pattern from AppTitleBar/LayersPanel undo/redo handlers but missed crop, Fit Screen, and Resize Canvas Modal.
+
+User's specific case: after crop at 80% zoom with `devicePixelRatio = 1.25` on a 200×200 doc in 1100×760 viewport, the buffer became `200 × 0.8 × 1.25 = 200` (square) while the CSS box was `1100×760` (1.45:1). Browser stretched the 200×200 buffer to fit 1100×760 with non-uniform scale → cells visibly stretched.
+
+**Fix Rationale:**
+Use the existing `renderer.resizeToViewport(viewportWidth, viewportHeight, dpr)` API (sets buffer = viewport × dpr, matching the canvas CSS) in all three sites. The previous `renderer.resize(docW, docH, zoom, dpr)` API remains for callers that size the canvas CSS to match doc×zoom, but it should not be called from any code path that leaves the canvas CSS at 100%×100%.
+
+**Done:**
+1. `cropToolActions.ts` — added `viewport: { width, height }` to `applyCropPreview` params; replaced `renderer.resize(docW, docH, zoom, dpr)` with `renderer.resizeToViewport(viewport.width, viewport.height, dpr)`.
+2. `LayersPanel.tsx` — Fit Screen path now calls `renderer.resizeToViewport(rect.width, rect.height, dpr)` (rect was already in scope).
+3. `ResizeCanvasModal.tsx` — added `viewportWidth, viewportHeight` to destructure; replaced `renderer.resize(newW, newH, zoom, dpr)` with `renderer.resizeToViewport(viewportWidth(), viewportHeight(), dpr)`.
+4. Updated 5 callers of `applyCropPreview` to pass `viewport` (CanvasViewport.tsx ×2, CropOptionBar.tsx, useCanvasKeyboard.ts ×2).
+5. Updated 3 test files for the new API (cropToolActions, ResizeCanvasModal ×2 renderer mocks).
+6. Added new regression test in `cropToolActions.test.ts` proving `resizeToViewport` is called with viewport dims and `resize` is NOT called.
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/cropToolActions.test.ts` (9 tests).
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (85 files / 1228 tests).
+- PASS: `pnpm.cmd run type-check`.
+- PASS: `pnpm.cmd run build`.
+
+---
+
 ## [2026-06-19] BUG FIX - Canvas Drag History Snapshot Direction [COMPLETE]
 
 ### Kategori: BUG FIX / MOVE-TOOL / HISTORY / CANVAS-DRAG

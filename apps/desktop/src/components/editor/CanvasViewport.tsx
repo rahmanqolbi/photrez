@@ -1019,6 +1019,7 @@ export function CanvasViewport() {
                 applyCropPreview({
                   workspace,
                   renderer,
+                  viewport: { width: viewportWidth(), height: viewportHeight() },
                   cropRect: cropRect(),
                   cropMode: cropMode(),
                   cropSizeTarget: cropSizeTarget(),
@@ -1092,6 +1093,7 @@ export function CanvasViewport() {
                   applyCropPreview({
                     workspace,
                     renderer,
+                    viewport: { width: viewportWidth(), height: viewportHeight() },
                     cropRect: rect,
                     cropMode: cropMode(),
                     cropSizeTarget: cropSizeTarget(),

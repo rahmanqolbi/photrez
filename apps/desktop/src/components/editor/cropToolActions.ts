@@ -61,6 +61,7 @@ export function resetCropPreviewToCanvas(params: {
 export function applyCropPreview(params: {
   workspace: WorkspaceManager;
   renderer: WebGL2Backend;
+  viewport: { width: number; height: number };
   cropRect: { x: number; y: number; w: number; h: number } | null;
   cropMode: "free" | "ratio" | "size";
   cropSizeTarget: { w: number; h: number } | null;
@@ -108,7 +109,7 @@ export function applyCropPreview(params: {
   params.recenterViewport?.();
 
   const dpr = window.devicePixelRatio || 1;
-  params.renderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr);
+  params.renderer.resizeToViewport(params.viewport.width, params.viewport.height, dpr);
 
   for (const layer of engine.getLayers()) {
     if (layer.imageBitmap) {

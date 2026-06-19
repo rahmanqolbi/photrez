@@ -11,6 +11,8 @@ export function ResizeCanvasModal() {
     scheduler,
     docWidth,
     docHeight,
+    viewportWidth,
+    viewportHeight,
     syncViewport,
   } = useEditor();
 
@@ -74,8 +76,7 @@ export function ResizeCanvasModal() {
     engine.resizeCanvas(newW, newH);
 
     const dpr = window.devicePixelRatio || 1;
-    const zoom = engine.getViewport().zoom;
-    renderer.resize(newW, newH, zoom, dpr);
+    renderer.resizeToViewport(viewportWidth(), viewportHeight(), dpr);
 
     for (const layer of engine.getLayers()) {
       if (layer.imageBitmap) {

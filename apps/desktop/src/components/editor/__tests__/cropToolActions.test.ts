@@ -82,11 +82,13 @@ describe("cropToolActions", () => {
     const renderer = {
       uploadImage: vi.fn(),
       resize: vi.fn(),
+      resizeToViewport: vi.fn(),
     };
 
     applyCropPreview({
       workspace: workspace as any,
       renderer: renderer as any,
+      viewport: { width: 1048, height: 594 },
       cropRect: { x: 10, y: 20, w: 100, h: 200 },
       cropMode: "size",
       cropSizeTarget: { w: 300, h: 400 },
@@ -107,7 +109,7 @@ describe("cropToolActions", () => {
       targetSize: { w: 300, h: 400 },
       rotation: 45,
     });
-    expect(renderer.resize).toHaveBeenCalledWith(300, 200, 1, 1);
+    expect(renderer.resizeToViewport).toHaveBeenCalledWith(1048, 594, 1);
     expect(renderer.uploadImage).toHaveBeenCalledWith("layer-with-bitmap", { width: 300, height: 400 });
     expect(renderer.uploadImage).toHaveBeenCalledTimes(1);
     expect(recenterViewport).toHaveBeenCalledOnce();
@@ -135,11 +137,12 @@ describe("cropToolActions", () => {
       getActiveHistory: () => ({ commit: vi.fn() }),
     };
     const scheduler = { requestRender: vi.fn() };
-    const renderer = { uploadImage: vi.fn(), resize: vi.fn() };
+    const renderer = { uploadImage: vi.fn(), resize: vi.fn(), resizeToViewport: vi.fn() };
 
     applyCropPreview({
       workspace: workspace as any,
       renderer: renderer as any,
+      viewport: { width: 1048, height: 594 },
       cropRect: { x: 10.3, y: 20.7, w: 100.9, h: 200.1 },
       cropMode: "free",
       cropSizeTarget: null,
@@ -154,6 +157,50 @@ describe("cropToolActions", () => {
     });
 
     expect(engine.applyCrop).toHaveBeenCalledWith(10, 21, 101, 200, expect.any(Object));
+  });
+
+  it("regression 2026-06-19: post-crop buffer resize uses VIEWPORT dimensions, not doc×zoom (prevents stretched checkerboard)", () => {
+    // Bug: renderer.resize(docW, docH, zoom, dpr) sized the buffer to doc×zoom×dpr
+    // while the canvas CSS is 100%×100% of the viewport. When doc aspect ≠ viewport
+    // aspect, browser non-uniformly scaled the buffer → cells became non-square
+    // ("melar/stretched"). Fix: resizeToViewport(viewportW, viewportH, dpr).
+    const engine = {
+      snapshot: () => ({}),
+      applyCrop: vi.fn(),
+      setActiveLayer: vi.fn(),
+      getWidth: () => 300,
+      getHeight: () => 200,
+      getViewport: () => ({ zoom: 0.8 }),
+      getLayers: () => [],
+    };
+    const workspace = {
+      getActiveEngine: () => engine,
+      getActiveHistory: () => ({ commit: vi.fn() }),
+    };
+    const scheduler = { requestRender: vi.fn() };
+    const renderer = { uploadImage: vi.fn(), resize: vi.fn(), resizeToViewport: vi.fn() };
+
+    applyCropPreview({
+      workspace: workspace as any,
+      renderer: renderer as any,
+      viewport: { width: 1100, height: 760 },
+      cropRect: { x: 0, y: 0, w: 200, h: 200 },
+      cropMode: "free",
+      cropSizeTarget: null,
+      cropDeletePixels: false,
+      cropRotation: 0,
+      scheduler: scheduler as any,
+      setCropRect: vi.fn(),
+      setCropRotation: vi.fn(),
+      setHiddenCropPreview: vi.fn(),
+      setActiveTool: vi.fn(),
+      setSelectedLayerId: vi.fn(),
+    });
+
+    // After fix: buffer = viewport × dpr (not docW × zoom × dpr).
+    expect(renderer.resizeToViewport).toHaveBeenCalledWith(1100, 760, 1);
+    // Old buggy path must not be called.
+    expect(renderer.resize).not.toHaveBeenCalled();
   });
 });
 
