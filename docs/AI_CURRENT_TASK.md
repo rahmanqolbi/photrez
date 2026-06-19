@@ -4,6 +4,39 @@
 
 ## Current Tasks
 
+### [2026-06-19] BUG FIX - Canvas Drag History Snapshot Direction [COMPLETE]
+
+**Goal:**
+Fix user report "aksi pertama pada layer tidak tercatat di history" — first canvas drag on a layer leaves the undo stack effectively empty (undo restores nothing because the snapshot captures the post-drag state).
+
+**Scope:**
+- [x] Inspect `useCanvasLayerDrag` pointerdown/move/up history commit path
+- [x] Add pre-drag snapshot capture at pointerdown
+- [x] Commit captured snapshot (not a fresh one) at pointerup via source doc history
+- [x] Add regression tests proving same-doc first drag commits 1 entry + undo restores pre-drag + mid-drag doc switch still commits to source history
+- [x] Run focused and broad verification
+- [x] Update `AI_HISTORY.md` and `FEATURES.md`
+
+**Root Cause:**
+`useCanvasLayerDrag.onPointerUp` called `sourceEngine.snapshot()` AFTER `transformLayer` had already mutated `layer.transform.x/y` during pointermove. The committed snapshot represented the post-drag state, so undo restored the engine to the same state — visually a no-op. Also, `getActiveHistory()` is unsafe across the cross-doc tab-hover switch that calls `workspace.switchDocument(...)`.
+
+**Fix Rationale:**
+Capture `engine.snapshot()` at pointerdown and stash it in the drag state as `preDragSnapshot`. Commit that exact snapshot at pointerup via `workspace.getHistory(src)` so the source doc's history is the canonical target even when the active doc changes mid-drag.
+
+**Done:**
+- `CanvasLayerDrag` state carries `preDragSnapshot`.
+- `handlePointerDown` resolves the source engine via `workspace.getEngine(src)` and captures the snapshot.
+- `onPointerUp` commits `d.preDragSnapshot` to `workspace.getHistory(src)`.
+- Three new regression tests in `useCanvasLayerDrag.test.tsx` lock the behavior.
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/useCanvasLayerDrag.test.tsx` (6 tests).
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (85 files / 1228 tests).
+- PASS: `pnpm.cmd run type-check`.
+- PASS: `pnpm.cmd run build`.
+
+---
+
 ### [2026-06-19] FAANG Review Rejection Continuation - Pointer Capture Helper [IN PROGRESS]
 
 **Goal:**

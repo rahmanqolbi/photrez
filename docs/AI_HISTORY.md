@@ -1,5 +1,34 @@
 # AI History — Photrez
 
+## [2026-06-19] BUG FIX - Canvas Drag History Snapshot Direction [COMPLETE]
+
+### Kategori: BUG FIX / MOVE-TOOL / HISTORY / CANVAS-DRAG
+
+**Root Cause:**
+User reported "aksi pertama pada layer tidak tercatat di history" — first drag-to-move on a layer after opening the app appeared to leave the undo stack empty, so undo restored nothing. The bug was in `useCanvasLayerDrag.onPointerUp` (`apps/desktop/src/components/editor/useCanvasLayerDrag.ts`): the history commit captured `sourceEngine.snapshot()` at pointerup, after `transformLayer` had already mutated the layer's transform during pointermove. The committed snapshot therefore represented the post-drag state, and undo restored the engine to that same post-drag state — visually a no-op.
+
+A second related issue was that `getActiveHistory()` is used even though `workspace.switchDocument(...)` can run during cross-doc drag (tab hover), so the source snapshot could end up committed to the target doc's history stack.
+
+**Fix Rationale:**
+Capture the pre-drag snapshot at pointerdown (when the drag state is established) and commit that exact snapshot at pointerup. Also commit via `workspace.getHistory(src)` instead of `getActiveHistory()` so the source doc's history is the canonical target, even when the active document changes mid-drag.
+
+**Done:**
+1. `useCanvasLayerDrag` `CanvasLayerDrag` state now stores `preDragSnapshot`.
+2. `handlePointerDown` resolves the source engine via `workspace.getEngine(src)` and captures `engine.snapshot()` into `preDragSnapshot`.
+3. `onPointerUp` commits `d.preDragSnapshot` (not a fresh snapshot) to `workspace.getHistory(src)` (not `getActiveHistory()`).
+4. Added three regression tests in `useCanvasLayerDrag.test.tsx`:
+   - Same-doc drag commits exactly one history entry (first drag after open).
+   - Same-doc drag undo restores the pre-drag transform.
+   - Mid-drag active-doc switch commits to source doc's history, not target doc's.
+
+**Verification:**
+- `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/useCanvasLayerDrag.test.tsx` - PASS (6 tests).
+- `pnpm.cmd --filter photrez-desktop test --run` - PASS (85 files / 1228 tests).
+- `pnpm.cmd run type-check` - PASS.
+- `pnpm.cmd run build` - PASS.
+
+---
+
 ## [2026-06-19] HARDENING - Paint Command Boundary [COMPLETE]
 
 ### Kategori: HARDENING / BRUSH-ERASER / HISTORY / RENDERER / FAANG-REVIEW

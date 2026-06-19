@@ -265,4 +265,127 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       teardown(ctx);
     }
   });
+
+  it("regression 2026-06-19: same-doc drag commits exactly ONE history entry to the source doc (first drag after open)", () => {
+    const ctx = setupWithLayer();
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      const layer = engine.getLayers().find((l) => l.name === "Draggable")!;
+      const history = ctx.ws.getActiveHistory()!;
+      expect(history.getUndoCount()).toBe(0);
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        clientX: 150,
+        clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true,
+        button: 0,
+        clientX: 250,
+        clientY: 200,
+      }));
+      document.dispatchEvent(new PointerEvent("pointerup", {
+        bubbles: true,
+        button: 0,
+        clientX: 250,
+        clientY: 200,
+      }));
+
+      expect(layer.transform.x).toBe(200);
+      expect(layer.transform.y).toBe(150);
+      expect(history.getUndoCount()).toBe(1);
+      expect(history.canUndo()).toBe(true);
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  it("regression 2026-06-19: same-doc drag undo restores the PRE-DRAG transform", () => {
+    const ctx = setupWithLayer();
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      const layer = engine.getLayers().find((l) => l.name === "Draggable")!;
+      const history = ctx.ws.getActiveHistory()!;
+      const startX = layer.transform.x;
+      const startY = layer.transform.y;
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        clientX: 150,
+        clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true,
+        button: 0,
+        clientX: 250,
+        clientY: 200,
+      }));
+      document.dispatchEvent(new PointerEvent("pointerup", {
+        bubbles: true,
+        button: 0,
+        clientX: 250,
+        clientY: 200,
+      }));
+
+      expect(history.getUndoCount()).toBe(1);
+      const prev = history.undo(engine.snapshot());
+      expect(prev).not.toBeNull();
+      engine.restore(prev!);
+      const restored = engine.getLayer(layer.id)!;
+      expect(restored.transform.x).toBe(startX);
+      expect(restored.transform.y).toBe(startY);
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  it("regression 2026-06-19: history.commit uses the SOURCE doc's history (not active doc's) when active doc changes mid-drag", () => {
+    const ctx = setupWithTwoDocs();
+    try {
+      const sourceEngine = ctx.ws.getEngine("doc-a")!;
+      const targetEngine = ctx.ws.getEngine("doc-b")!;
+      const sourceLayer = sourceEngine.getLayers().find((l) => l.name === "Draggable")!;
+      const sourceHistory = ctx.ws.getHistory("doc-a")!;
+      const targetHistory = ctx.ws.getHistory("doc-b")!;
+      expect(sourceHistory.getUndoCount()).toBe(0);
+      expect(targetHistory.getUndoCount()).toBe(0);
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        clientX: 150,
+        clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true,
+        button: 0,
+        clientX: 250,
+        clientY: 200,
+      }));
+
+      // Simulate mid-drag active-doc switch (matches what tab-hover-to-switch does).
+      ctx.ws.switchDocument("doc-b");
+
+      document.dispatchEvent(new PointerEvent("pointerup", {
+        bubbles: true,
+        button: 0,
+        clientX: 250,
+        clientY: 200,
+      }));
+
+      // Source layer moved; source history should have exactly ONE entry.
+      // Target doc's history must NOT receive the source doc's snapshot.
+      expect(sourceLayer.transform.x).toBe(200);
+      expect(sourceHistory.getUndoCount()).toBe(1);
+      expect(targetHistory.getUndoCount()).toBe(0);
+    } finally {
+      teardown(ctx);
+    }
+  });
 });

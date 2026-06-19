@@ -14,6 +14,7 @@ interface CanvasLayerDrag {
   startTransformX: number;
   startTransformY: number;
   rect: { left: number; top: number };
+  preDragSnapshot: import("@/engine/types").DocumentModel;
 }
 
 export interface CanvasLayerDragApi {
@@ -263,9 +264,13 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     }
 
     // Commit history for the SOURCE doc so the user can undo the drag.
+    // Use the PRE-DRAG snapshot captured at pointerdown so undo restores the
+    // original position. Capturing at pointerup would snapshot the post-drag
+    // state and undo would appear to do nothing (regression 2026-06-19:
+    // "first drag after open not recorded in history").
     if (src) {
       const sourceEngine = workspace.getEngine(src);
-      const history = workspace.getActiveHistory();
+      const history = workspace.getHistory(src);
       if (sourceEngine && history) {
         const currentLayer = sourceEngine.getLayer(d.layerId);
         const positionChanged =
@@ -273,7 +278,7 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
           (currentLayer.transform.x !== d.startTransformX ||
             currentLayer.transform.y !== d.startTransformY);
         if (positionChanged || crossDocAdded) {
-          history.commit(sourceEngine.snapshot());
+          history.commit(d.preDragSnapshot);
         }
       }
     }
@@ -330,6 +335,8 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
 
     const src = activeDocumentId();
     if (!src) return;
+    const sourceEngine = workspace.getEngine(src);
+    if (!sourceEngine) return;
 
     setDrag({
       layerId: layer.id,
@@ -339,6 +346,7 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
       startTransformX: layer.transform.x,
       startTransformY: layer.transform.y,
       rect: { left: rect.left, top: rect.top },
+      preDragSnapshot: sourceEngine.snapshot(),
     });
 
     // Notify the DragController so cross-cutting subscribers
