@@ -4,9 +4,10 @@ import {
   createBrushTip,
   falloff,
   getBrushDabSpacing,
+  getBrushTipOuterRadius,
   getBrushTipCacheKey,
   interpolateDabs,
-  stampBrushTipMaxAlpha,
+  stampBrushTip,
   compositeMaskToImageData,
   paintMaskToContext,
   getEffectiveFlowMultiplier,
@@ -28,13 +29,19 @@ describe("brushTipMask falloff", () => {
     expect(brushAlphaAtDistance(50, radius, 0, "cosine")).toBe(0);
   });
 
-  it("keeps a solid center at the hardness radius", () => {
+  it("keeps diameter fixed while hardness sharpens the falloff", () => {
     const radius = 50;
-    // Linear editor-like mapping: hardness 50% keeps a solid core through 50% radius.
+    expect(brushAlphaAtDistance(25, radius, 0, "cosine")).toBeCloseTo(0.5, 5);
     expect(brushAlphaAtDistance(25, radius, 0.5, "cosine")).toBe(1);
-    expect(brushAlphaAtDistance(25.1, radius, 0.5, "cosine")).toBeLessThan(1);
-    expect(brushAlphaAtDistance(37.5, radius, 0.5, "cosine")).toBeCloseTo(0.5, 4);
-    expect(brushAlphaAtDistance(50, radius, 0.5, "cosine")).toBe(0);
+    expect(brushAlphaAtDistance(37.5, radius, 0.5, "cosine")).toBeCloseTo(0.5, 5);
+    expect(brushAlphaAtDistance(40, radius, 0.8, "cosine")).toBe(1);
+    expect(brushAlphaAtDistance(45, radius, 0.8, "cosine")).toBeCloseTo(0.5, 5);
+
+    for (const hardness of [0, 0.5, 0.8, 1]) {
+      expect(brushAlphaAtDistance(49, radius, hardness, "cosine")).toBeGreaterThan(0);
+      expect(brushAlphaAtDistance(50, radius, hardness, "cosine")).toBe(0);
+      expect(brushAlphaAtDistance(51, radius, hardness, "cosine")).toBe(0);
+    }
   });
 
   it("creates a tip with center alpha and zero outer edge", () => {
@@ -53,19 +60,27 @@ describe("brushTipMask falloff", () => {
 });
 
 describe("brushTipMask dabs", () => {
-  it("uses tighter spacing for soft brushes", () => {
-    expect(getBrushDabSpacing(100, 0, 1)).toBeLessThan(getBrushDabSpacing(100, 1, 1));
-    expect(getBrushDabSpacing(100, 0, 1)).toBeGreaterThanOrEqual(1);
+  it("uses fixed 25% size spacing (Photoshop default) regardless of hardness", () => {
+    expect(getBrushDabSpacing(100, 0, 1)).toBe(25);
+    expect(getBrushDabSpacing(100, 1, 1)).toBe(25);
+    expect(getBrushDabSpacing(100, 0.5, 1)).toBe(25);
   });
 
-  it("uses dense spacing for large soft brushes", () => {
-    expect(getBrushDabSpacing(75, 0, 1)).toBeLessThanOrEqual(6);
-    expect(getBrushDabSpacing(75, 0, 1)).toBeGreaterThanOrEqual(1);
+  it("never returns less than 1 even for tiny brushes", () => {
+    expect(getBrushDabSpacing(1, 0, 1)).toBe(1);
+    expect(getBrushDabSpacing(2, 0, 1)).toBe(1);
   });
 
-  it("uses dense spacing for size 70 hardness 0", () => {
-    expect(getBrushDabSpacing(70, 0, 1)).toBeLessThanOrEqual(4);
-    expect(getBrushDabSpacing(70, 0, 1)).toBeGreaterThanOrEqual(2);
+  it("scales linearly with size (no per-harness floor)", () => {
+    expect(getBrushDabSpacing(20, 0, 1)).toBe(5);
+    expect(getBrushDabSpacing(40, 0, 1)).toBe(10);
+    expect(getBrushDabSpacing(80, 0, 1)).toBe(20);
+    expect(getBrushDabSpacing(400, 0, 1)).toBe(100);
+  });
+
+  it("does not depend on flow", () => {
+    expect(getBrushDabSpacing(100, 0, 0.1)).toBe(getBrushDabSpacing(100, 0, 1));
+    expect(getBrushDabSpacing(100, 1, 0.5)).toBe(getBrushDabSpacing(100, 1, 1));
   });
 
   it("interpolates dabs between two points", () => {
@@ -80,25 +95,44 @@ describe("brushTipMask dabs", () => {
     expect(result.carry).toBe(5);
   });
 
-  it("stamps with max alpha instead of additive alpha", () => {
+  it("accumulates dabs toward saturation (Photoshop-like source-over)", () => {
     const tip = createBrushTip({ size: 3, hardness: 1, curve: "cosine" });
     const mask = new Uint8ClampedArray(9);
-    stampBrushTipMaxAlpha(mask, 3, 3, tip, 1, 1, 0.5);
-    stampBrushTipMaxAlpha(mask, 3, 3, tip, 1, 1, 0.5);
-    expect(mask[4]).toBe(128);
+    stampBrushTip(mask, 3, 3, tip, 1, 1, 0.5);
+    stampBrushTip(mask, 3, 3, tip, 1, 1, 0.5);
+    // First stamp: 128 (center alpha scaled by 0.5).
+    // Second stamp pre-multiplied accumulation: 128 + round((255-128)*128/255) = 192.
+    expect(mask[4]).toBe(192);
+  });
+
+  it("saturates after enough passes at opacity 50%", () => {
+    const tip = createBrushTip({ size: 3, hardness: 1, curve: "cosine" });
+    const mask = new Uint8ClampedArray(9);
+    for (let i = 0; i < 20; i += 1) {
+      stampBrushTip(mask, 3, 3, tip, 1, 1, 0.5);
+    }
+    // 20 passes at alpha 0.5 → 1 - (0.5)^20 ≈ 1.0
+    expect(mask[4]).toBe(255);
+  });
+
+  it("saturates with 5 passes at full opacity", () => {
+    const tip = createBrushTip({ size: 3, hardness: 1, curve: "cosine" });
+    const mask = new Uint8ClampedArray(9);
+    stampBrushTip(mask, 3, 3, tip, 1, 1, 1.0);
+    expect(mask[4]).toBe(255);
   });
 
   it("supports subpixel stamping with bilinear interpolation", () => {
     const tip = createBrushTip({ size: 3, hardness: 0, curve: "cosine" });
-    
+
     // Stamp at integer coordinates
     const maskInteger = new Uint8ClampedArray(9);
-    stampBrushTipMaxAlpha(maskInteger, 3, 3, tip, 1, 1, 1.0);
-    
+    stampBrushTip(maskInteger, 3, 3, tip, 1, 1, 1.0);
+
     // Stamp at fractional coordinates
     const maskFractional = new Uint8ClampedArray(9);
-    stampBrushTipMaxAlpha(maskFractional, 3, 3, tip, 1.5, 1, 1.0);
-    
+    stampBrushTip(maskFractional, 3, 3, tip, 1.5, 1, 1.0);
+
     // The mask stamped at 1.5 should be different (interpolated)
     expect(maskFractional[3]).not.toEqual(maskInteger[3]);
     expect(maskFractional[4]).not.toEqual(maskInteger[4]);
@@ -150,89 +184,101 @@ describe("brushTipMask pixel profile", () => {
     return tip.data[(y * tip.width + x) * 4 + 3] / 255;
   }
 
-  it("hardness 0 uses a broad, soft feather instead of a narrow core", () => {
+  it("hardness 0 uses a Photoshop-style cosine-smoothstep feather (dense mid-radius)", () => {
     const tip = createBrushTip({ size: 75, hardness: 0, curve: "soft" });
     const c = Math.floor(tip.width / 2);
 
     const center = alphaAt(tip, c, c);
+    // u=0.125 (12.5% of cursor radius): smoothstep at u/(T) ≈ 0.125/1.10 = 0.114 → ~0.86
+    const r12 = alphaAt(tip, c + Math.round(75 * 0.0625), c);
+    // u=0.25 (25% of cursor radius): smoothstep at 0.25/1.10 = 0.227 → ~0.625
     const r25 = alphaAt(tip, c + Math.round(75 * 0.125), c);
+    // u=0.5 (50% of cursor radius): smoothstep at 0.5/1.10 = 0.455 → ~0.275
     const r50 = alphaAt(tip, c + Math.round(75 * 0.25), c);
+    // u=0.75 (75% of cursor radius): smoothstep at 0.75/1.10 = 0.682 → ~0.125
     const r75 = alphaAt(tip, c + Math.round(75 * 0.375), c);
     const edge = alphaAt(tip, tip.width - 1, c);
 
-    expect(center).toBeGreaterThanOrEqual(0.8);
-    expect(center).toBeLessThanOrEqual(0.95);
-    expect(r25).toBeGreaterThanOrEqual(0.7);
-    expect(r25).toBeLessThanOrEqual(0.85);
-    expect(r50).toBeGreaterThanOrEqual(0.45);
-    expect(r50).toBeLessThanOrEqual(0.65);
-    expect(r75).toBeGreaterThanOrEqual(0.18);
-    expect(r75).toBeLessThanOrEqual(0.42);
-    expect(edge).toBeLessThan(0.05);
+    expect(center).toBe(1);
+    expect(r12).toBeGreaterThan(0.95);
+    expect(r25).toBeGreaterThan(0.90);
+    expect(r50).toBeGreaterThan(0.70);
+    expect(r75).toBeGreaterThan(0.55);
+    expect(edge).toBeLessThan(0.10);
   });
 
-  it("applies non-linear hardness mapping and hard edge 100", () => {
-    const tip0 = createBrushTip({ size: 75, hardness: 0, curve: "soft" });
-    const tip20 = createBrushTip({ size: 75, hardness: 0.2, curve: "soft" });
-    const tip50 = createBrushTip({ size: 75, hardness: 0.5, curve: "soft" });
-    const tip80 = createBrushTip({ size: 75, hardness: 0.8, curve: "soft" });
-    const tip100 = createBrushTip({ size: 75, hardness: 1.0, curve: "soft" });
+it("keeps a soft feather tail outside the normal cursor radius (visible edge + feather overshoot)", () => {
+    const size = 75;
+    const radius = size / 2;
+    const tip = createBrushTip({ size, hardness: 0, curve: "soft" });
+    const c = Math.floor(tip.width / 2);
 
-    const c = Math.floor(tip0.width / 2);
+    expect(getBrushTipOuterRadius(radius, 0, "soft")).toBeGreaterThan(radius);
+    expect(getBrushTipOuterRadius(radius, 1, "soft")).toBe(radius);
+    expect(getBrushTipOuterRadius(radius, 0, "cosine")).toBe(radius);
+    expect(tip.width).toBeGreaterThan(size);
 
-    // Distance 5 (x = c + 5):
-    // - 20%, 50%, 80%, 100% must have a solid core
-    // - 0% stays feathered immediately away from center
-    expect(alphaAt(tip100, c + 5, c)).toBe(1);
-    expect(alphaAt(tip80, c + 5, c)).toBe(1);
-    expect(alphaAt(tip50, c + 5, c)).toBe(1);
-    expect(alphaAt(tip20, c + 5, c)).toBe(1);
-    expect(alphaAt(tip0, c + 5, c)).toBeLessThan(1);
+    // At the cursor edge: strongly visible alpha (paint reaches the visual indicator)
+    const cursorEdge = alphaAt(tip, c + Math.round(radius), c);
+    expect(cursorEdge).toBeGreaterThan(0.40);
+    expect(cursorEdge).toBeLessThan(0.60);
+    // Just past the cursor edge: feather overshoot (fainter but still visible)
+    const outsideCircle = alphaAt(tip, c + Math.round(radius + 2), c);
+    expect(outsideCircle).toBeGreaterThan(0);
+    expect(outsideCircle).toBeLessThan(cursorEdge);
+    // At the support edge: zero
+    const supportEdge = alphaAt(tip, tip.width - 1, c);
+    expect(supportEdge).toBeLessThan(0.05);
+  });
 
-    // Distance 20 (x = c + 20):
-    // - 80% and 100% must be solid; 50% is already feathering by this distance
-    expect(alphaAt(tip100, c + 20, c)).toBe(1);
-    expect(alphaAt(tip80, c + 20, c)).toBe(1);
-    expect(alphaAt(tip50, c + 20, c)).toBeLessThan(1);
+  it("hardness 0.8 produces a mostly solid disk with a narrow feather rim (Photoshop-style)", () => {
+    const tip = createBrushTip({ size: 75, hardness: 0.8, curve: "soft" });
+    const c = Math.floor(tip.width / 2);
 
-    // Distance 30 (x = c + 30):
-    // - 80% and 100% should still be solid; 80% should feel nearly hard.
-    expect(alphaAt(tip100, c + 30, c)).toBe(1);
-    expect(alphaAt(tip80, c + 30, c)).toBe(1);
+    // Inner ~60% should remain at full alpha
+    const at20 = alphaAt(tip, c + Math.round(75 * 0.10), c);
+    const at40 = alphaAt(tip, c + Math.round(75 * 0.20), c);
+    expect(at20).toBe(1);
+    expect(at40).toBe(1);
 
-    // Distance 31 (x = c + 31):
-    // - 80% should only feather in a narrow outer rim.
-    expect(alphaAt(tip80, c + 31, c)).toBeLessThan(1);
-    expect(alphaAt(tip80, c + 31, c)).toBeGreaterThan(0.2);
+    // The feather rim is narrow: alpha drops sharply in the outer ~15%
+    const at70 = alphaAt(tip, c + Math.round(75 * 0.35), c);
+    const at95 = alphaAt(tip, c + Math.round(75 * 0.475), c);
+    expect(at70).toBeGreaterThan(0.50);
+    expect(at95).toBeLessThan(0.60);
+  });
 
-    // Near outer edge (x = 74, distance 37):
-    // - 100% must remain fully solid (alpha = 1) - no feather
-    // - 80% is near 0 (alpha < 0.05)
-    expect(alphaAt(tip100, tip100.width - 1, c)).toBe(1);
-    expect(alphaAt(tip80, tip80.width - 1, c)).toBeLessThan(0.05);
-    expect(alphaAt(tip50, tip50.width - 1, c)).toBeLessThan(0.05);
-    expect(alphaAt(tip20, tip20.width - 1, c)).toBeLessThan(0.05);
-    expect(alphaAt(tip0, tip0.width - 1, c)).toBeLessThan(0.05);
+  it("hardness 0.5 produces a solid core + outer feather (Photoshop-style)", () => {
+    const tip = createBrushTip({ size: 75, hardness: 0.5, curve: "soft" });
+    const c = Math.floor(tip.width / 2);
+
+    // Inner 50% of radius is solid (≤ ~19 pixels from center)
+    expect(alphaAt(tip, c, c)).toBe(1);
+    expect(alphaAt(tip, c + 5, c)).toBe(1);
+    expect(alphaAt(tip, c + 10, c)).toBe(1);
+    expect(alphaAt(tip, c + 15, c)).toBe(1);
+
+    // Feather in the outer half — alpha stays visible (>= 0.5) up to the cursor edge
+    const at20 = alphaAt(tip, c + 20, c);
+    const at30 = alphaAt(tip, c + 30, c);
+    expect(at20).toBeGreaterThan(0.90);
+    expect(at30).toBeGreaterThan(0.50);
   });
 });
 
 describe("brushTipMask effective flow multiplier", () => {
-  it("calculates correct multiplier checkpoints based on hardness", () => {
-    // f(0) = 0.90
-    expect(getEffectiveFlowMultiplier(0)).toBeCloseTo(0.90, 4);
-    // f(0.8) = 0.98
-    expect(getEffectiveFlowMultiplier(0.8)).toBeCloseTo(0.98, 4);
-    // f(1.0) = 1.00
-    expect(getEffectiveFlowMultiplier(1.0)).toBeCloseTo(1.0, 4);
+  it("keeps opacity and flow independent from hardness", () => {
+    expect(getEffectiveFlowMultiplier(0)).toBe(1);
+    expect(getEffectiveFlowMultiplier(0.8)).toBe(1);
+    expect(getEffectiveFlowMultiplier(1.0)).toBe(1);
   });
 
-  it("ensures that soft brush alphaScale is scaled down compared to hard brush", () => {
+  it("uses the same alpha scale for soft and hard brushes at equal opacity/flow", () => {
     const opacity = 1.0;
     const flow = 1.0;
     const softAlphaScale = opacity * flow * getEffectiveFlowMultiplier(0);
     const hardAlphaScale = opacity * flow * getEffectiveFlowMultiplier(1.0);
-    expect(softAlphaScale).toBeCloseTo(0.90, 4);
     expect(hardAlphaScale).toBe(1.0);
-    expect(softAlphaScale).toBeLessThan(hardAlphaScale);
+    expect(softAlphaScale).toBe(hardAlphaScale);
   });
 });

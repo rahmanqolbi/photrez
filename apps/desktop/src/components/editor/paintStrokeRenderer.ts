@@ -3,7 +3,7 @@ import {
   getBrushDabSpacing,
   getBrushTip,
   interpolateDabs,
-  stampBrushTipMaxAlpha,
+  stampBrushTip,
   compositeMaskToImageData,
   parsePaintColor,
   type RgbaColor,
@@ -79,7 +79,7 @@ function renderSoftStrokeWithTipMask(
   const spacing = getBrushDabSpacing(settings.size, settings.hardness, settings.flow);
 
   // Always stamp the first point
-  stampBrushTipMaxAlpha(mask, canvas.width, canvas.height, tip, points[0].x, points[0].y, alphaScale);
+  stampBrushTip(mask, canvas.width, canvas.height, tip, points[0].x, points[0].y, alphaScale);
 
   if (points.length > 1) {
     let carry = 0;
@@ -87,7 +87,7 @@ function renderSoftStrokeWithTipMask(
       const result = interpolateDabs(points[i - 1], points[i], spacing, carry);
       carry = result.carry;
       for (const dab of result.dabs) {
-        stampBrushTipMaxAlpha(mask, canvas.width, canvas.height, tip, dab.x, dab.y, alphaScale);
+        stampBrushTip(mask, canvas.width, canvas.height, tip, dab.x, dab.y, alphaScale);
       }
     }
   }
@@ -105,36 +105,14 @@ export function renderPaintStrokeToContext(
 ): void {
   if (points.length === 0) return;
 
-  const size = settings.size;
-  const hardness = settings.hardness;
-
   ctx.save();
   ctx.globalCompositeOperation = isEraser ? "destination-out" : "source-over";
-  ctx.globalAlpha = settings.opacity * settings.flow;
-
-  if (hardness >= 1) {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = size;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i].x, points[i].y);
-    }
-    
-    if (points.length === 1) {
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(points[0].x, points[0].y, size / 2, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      ctx.stroke();
-    }
-  } else {
-    renderSoftStrokeWithTipMask(ctx, points, settings, color, isEraser);
-  }
+  // ponytail: route every hardness through the mask engine. The previous
+  // ctx.lineCap=round shortcut for hardness>=1 produced browser-dependent
+  // AA and skipped the brush-tip pipeline entirely. brushAlphaAtDistance
+  // already returns 1 inside radius / 0 outside for hardness=1, so the
+  // mask path gives a hard edge with deterministic subpixel AA.
+  renderSoftStrokeWithTipMask(ctx, points, settings, color, isEraser);
 
   ctx.restore();
 }

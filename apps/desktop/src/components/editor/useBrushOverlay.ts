@@ -8,7 +8,7 @@ import {
   getBrushDabSpacing,
   getBrushTip,
   interpolateDabs,
-  stampBrushTipMaxAlpha,
+  stampBrushTip,
   paintMaskToContext,
   getEffectiveFlowMultiplier,
 } from "./brushTipMask";
@@ -75,65 +75,10 @@ export function useBrushOverlay() {
       overlayCanvasRef.height = layer.height;
     }
 
-    // Task 4: Hard brush path (hardness >= 1) remains path-based for performance and visual parity.
-    if (settings.hardness >= 1) {
-      const localPoints = mapPaintStrokeToLayerLocal(points, layer);
-
-      if (isEraser && (!eraserPreviewCanvas || eraserPreviewCanvas.width !== layer.width || eraserPreviewCanvas.height !== layer.height)) {
-        eraserPreviewCanvas = new OffscreenCanvas(layer.width, layer.height);
-        eraserPreviewCtx = eraserPreviewCanvas.getContext("2d");
-      }
-      const activeCtx = isEraser ? eraserPreviewCtx : overlayCtx;
-      if (!activeCtx) return;
-
-      activeCtx.save();
-      if (isEraser) {
-        activeCtx.clearRect(0, 0, layer.width, layer.height);
-        if (layer.imageBitmap) {
-          activeCtx.drawImage(layer.imageBitmap, 0, 0);
-        }
-        activeCtx.globalCompositeOperation = "destination-out";
-      } else {
-        activeCtx.clearRect(0, 0, layer.width, layer.height);
-        activeCtx.globalCompositeOperation = "source-over";
-      }
-      activeCtx.globalAlpha = settings.opacity * settings.flow;
-      activeCtx.strokeStyle = isEraser ? "rgba(0,0,0,1)" : fgColor();
-      activeCtx.lineWidth = settings.size;
-      activeCtx.lineCap = "round";
-      activeCtx.lineJoin = "round";
-
-      if (localPoints.length > 0) {
-        activeCtx.beginPath();
-        activeCtx.moveTo(localPoints[0].x, localPoints[0].y);
-        for (let i = 1; i < localPoints.length; i++) {
-          activeCtx.lineTo(localPoints[i].x, localPoints[i].y);
-        }
-        if (localPoints.length === 1) {
-          activeCtx.fillStyle = isEraser ? "rgba(0,0,0,1)" : fgColor();
-          activeCtx.beginPath();
-          activeCtx.arc(localPoints[0].x, localPoints[0].y, settings.size / 2, 0, Math.PI * 2);
-          activeCtx.fill();
-        } else {
-          activeCtx.stroke();
-        }
-      }
-      activeCtx.restore();
-
-      if (!isEraser && layer.lockTransparency && layer.imageBitmap) {
-        overlayCtx.globalCompositeOperation = "destination-in";
-        overlayCtx.drawImage(layer.imageBitmap, 0, 0);
-        overlayCtx.globalCompositeOperation = "source-over";
-      }
-
-      if (isEraser) {
-        uploadEraserPreview(activeEngine, activeId, layer.width, layer.height);
-      }
-      prevStrokePointCount = points.length;
-      return;
-    }
-
-    // Soft brush path (hardness < 1) uses incremental PaintStrokeSession
+    // ponytail: every hardness now routes through the soft mask path so the
+    // brush tip pipeline owns both soft and hard edges. The previous
+    // ctx.lineCap=round shortcut for hardness>=1 produced browser-dependent
+    // AA and bypassed the mask engine entirely.
     const settingsKey = getPaintSessionKey(settings, fgColor());
     const needsReset =
       !paintSession ||
@@ -176,13 +121,13 @@ export function useBrushOverlay() {
       const localPt = mapPaintPointToLayerLocal(pt, layer);
 
       if (!paintSession.lastPoint) {
-        stampBrushTipMaxAlpha(paintSession.maskData, layer.width, layer.height, tip, localPt.x, localPt.y, alphaScale);
+        stampBrushTip(paintSession.maskData, layer.width, layer.height, tip, localPt.x, localPt.y, alphaScale);
         paintSession.dabCount += 1;
       } else {
         const result = interpolateDabs(paintSession.lastPoint, localPt, spacing, paintSession.spacingCarry);
         paintSession.spacingCarry = result.carry;
         for (const dab of result.dabs) {
-          stampBrushTipMaxAlpha(paintSession.maskData, layer.width, layer.height, tip, dab.x, dab.y, alphaScale);
+          stampBrushTip(paintSession.maskData, layer.width, layer.height, tip, dab.x, dab.y, alphaScale);
           paintSession.dabCount += 1;
         }
       }

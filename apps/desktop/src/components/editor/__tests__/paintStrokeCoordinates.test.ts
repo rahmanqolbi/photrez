@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LayerNode, Transform2D } from "@/engine/types";
-import { getBrushTip, stampBrushTipMaxAlpha } from "../brushTipMask";
+import { getBrushTip, stampBrushTip } from "../brushTipMask";
 import {
   mapPaintPointToLayerLocal,
   mapPaintStrokeToLayerLocal,
@@ -95,7 +95,7 @@ describe("paint stroke coordinate mapping", () => {
     const mask = new Uint8ClampedArray(layer.width * layer.height);
     const tip = getBrushTip({ size: 3, hardness: 1, curve: "soft" });
 
-    stampBrushTipMaxAlpha(mask, layer.width, layer.height, tip, local.x, local.y, 1);
+    stampBrushTip(mask, layer.width, layer.height, tip, local.x, local.y, 1);
 
     expect(mask[targetLocal.y * layer.width + targetLocal.x]).toBeGreaterThan(0);
     expect(mask[0]).toBe(0);

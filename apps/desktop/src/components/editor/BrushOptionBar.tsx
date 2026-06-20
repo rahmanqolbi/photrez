@@ -119,7 +119,7 @@ export function BrushOptionBar() {
 
       <div class="flex items-center gap-1.5 shrink-0">
         <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
-          <span class="text-[10px] font-medium text-editor-text-dim @max-[900px]:hidden">Size</span>
+          <span class="text-[10px] font-medium text-editor-text-dim">Size</span>
           <input
             data-paint-size
             type="number"
@@ -143,12 +143,12 @@ export function BrushOptionBar() {
         />
       </div>
 
-      {/* Secondary Options on Main Bar (hidden under 880px) */}
-      <div class="hidden @min-[880px]:flex items-center gap-1.5 shrink-0">
+      {/* Secondary Options on Main Bar (always visible) */}
+      <div class="flex items-center gap-1.5 shrink-0">
         <Divider />
 
         <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
-          <span class="text-[10px] font-medium text-editor-text-dim @max-[900px]:hidden">Hard</span>
+          <span class="text-[10px] font-medium text-editor-text-dim">Hard</span>
           <input
             data-paint-hardness
             type="number"
@@ -162,7 +162,7 @@ export function BrushOptionBar() {
         </label>
 
         <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
-          <span class="text-[10px] font-medium text-editor-text-dim @max-[900px]:hidden">Strength</span>
+          <span class="text-[10px] font-medium text-editor-text-dim">Strength</span>
           <input
             data-paint-opacity
             type="number"
@@ -176,7 +176,7 @@ export function BrushOptionBar() {
         </label>
 
         <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
-          <span class="text-[10px] font-medium text-editor-text-dim @max-[900px]:hidden">Flow</span>
+          <span class="text-[10px] font-medium text-editor-text-dim">Flow</span>
           <input
             data-paint-flow
             type="number"
@@ -190,7 +190,7 @@ export function BrushOptionBar() {
         </label>
 
         <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
-          <span class="text-[10px] font-medium text-editor-text-dim @max-[900px]:hidden">Smooth</span>
+          <span class="text-[10px] font-medium text-editor-text-dim">Smooth</span>
           <input
             data-paint-smoothing
             type="number"

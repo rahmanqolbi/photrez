@@ -131,6 +131,9 @@ describe("renderPaintStrokeToContext", () => {
       stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
+      canvas: { width: 1, height: 1 },
+      getImageData: vi.fn(() => createImageDataMock(1, 1)),
+      putImageData: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
 
     renderPaintStrokeToContext(ctx, [], { size: 20, hardness: 0.5, opacity: 1, flow: 1, smoothing: 0 }, "#ff0000", false);
@@ -150,6 +153,9 @@ describe("renderPaintStrokeToContext", () => {
       stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
+      canvas: { width: 80, height: 80 },
+      getImageData: vi.fn(() => createImageDataMock(80, 80)),
+      putImageData: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
 
     renderPaintStrokeToContext(ctx, [{ x: 50, y: 50 }], { size: 20, hardness: 1, opacity: 1, flow: 1, smoothing: 0 }, "rgba(0,0,0,1)", true);
@@ -207,6 +213,9 @@ describe("renderPaintStrokeToContext", () => {
       stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
+      canvas: { width: 80, height: 80 },
+      getImageData: vi.fn(() => createImageDataMock(80, 80)),
+      putImageData: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
 
     renderPaintStrokeToContext(ctx, [{ x: 50, y: 50 }], { size: 20, hardness: 1, opacity: 1, flow: 1, smoothing: 0 }, "#ff0000", false);
@@ -214,7 +223,8 @@ describe("renderPaintStrokeToContext", () => {
     expect(ctx.globalCompositeOperation).toBe("source-over");
   });
 
-  it("uses solid line when hardness is 1", () => {
+  it("routes hardness 1 through the same mask engine (no stroke/arc shortcuts)", () => {
+    const imageData = createImageDataMock(80, 80);
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),
@@ -222,21 +232,24 @@ describe("renderPaintStrokeToContext", () => {
       globalAlpha: 1,
       strokeStyle: "",
       lineWidth: 0,
+      fillStyle: "",
       beginPath: vi.fn(),
       moveTo: vi.fn(),
       lineTo: vi.fn(),
       stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
+      canvas: { width: 80, height: 80 },
+      getImageData: vi.fn(() => imageData),
+      putImageData: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
 
     renderPaintStrokeToContext(ctx, [{ x: 50, y: 50 }, { x: 100, y: 50 }], { size: 20, hardness: 1, opacity: 1, flow: 1, smoothing: 0 }, "#ff0000", false);
 
-    expect(ctx.strokeStyle).toBe("#ff0000");
-    expect(ctx.lineWidth).toBe(20);
-    expect(ctx.moveTo).toHaveBeenCalledWith(50, 50);
-    expect(ctx.lineTo).toHaveBeenCalledWith(100, 50);
-    expect(ctx.stroke).toHaveBeenCalled();
+    expect(ctx.stroke).not.toHaveBeenCalled();
+    expect(ctx.arc).not.toHaveBeenCalled();
+    expect(ctx.fill).not.toHaveBeenCalled();
+    expect(ctx.putImageData).toHaveBeenCalledTimes(1);
   });
 
   function createImageDataMock(width: number, height: number): ImageData {
@@ -280,7 +293,7 @@ describe("renderPaintStrokeToContext", () => {
     expect((ctx as unknown as { shadowBlur: number }).shadowBlur).toBe(0);
   });
 
-  it("keeps hardness 0 visible across the full brush diameter", () => {
+  it("keeps hardness 0 visible past the normal brush cursor radius", () => {
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),
@@ -316,13 +329,20 @@ describe("renderPaintStrokeToContext", () => {
       const ly = cy - oy;
       return img.data[(ly * img.width + lx) * 4 + 3];
     };
+    // Center stays at full alpha
     expect(alphaAt(20, 20)).toBeGreaterThan(100);
+    // Mid-radius still dense (Photoshop soft round characteristic)
     expect(alphaAt(25, 20)).toBeGreaterThan(25);
+    // Near the cursor edge, faint but nonzero (10% soft tail)
     expect(alphaAt(29, 20)).toBeGreaterThan(0);
-    expect(alphaAt(31, 20)).toBe(0);
+    // Just past cursor radius: faint alpha visible
+    expect(alphaAt(30, 20)).toBeGreaterThan(0);
+    // Past the support edge: zero
+    expect(alphaAt(32, 20)).toBe(0);
   });
 
-  it("draws a single dot using arc for 1-point stroke (hardness=1)", () => {
+  it("paints a single hardness=1 dab via the mask engine (no arc/fill shortcut)", () => {
+    const imageData = createImageDataMock(80, 80);
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),
@@ -335,17 +355,21 @@ describe("renderPaintStrokeToContext", () => {
       stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
+      canvas: { width: 80, height: 80 },
+      getImageData: vi.fn(() => imageData),
+      putImageData: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
 
-    renderPaintStrokeToContext(ctx, [{ x: 100, y: 200 }], { size: 50, hardness: 1, opacity: 0.5, flow: 1, smoothing: 0 }, "#ff0000", false);
+    renderPaintStrokeToContext(ctx, [{ x: 40, y: 40 }], { size: 20, hardness: 1, opacity: 0.5, flow: 1, smoothing: 0 }, "#ff0000", false);
 
-    expect(ctx.arc).toHaveBeenCalledWith(100, 200, 25, 0, Math.PI * 2);
-    expect(ctx.fillStyle).toBe("#ff0000");
-    expect(ctx.fill).toHaveBeenCalledTimes(1);
+    expect(ctx.arc).not.toHaveBeenCalled();
+    expect(ctx.fill).not.toHaveBeenCalled();
     expect(ctx.stroke).not.toHaveBeenCalled();
+    expect(ctx.putImageData).toHaveBeenCalledTimes(1);
   });
 
-  it("applies flow multiplier to globalAlpha", () => {
+  it("applies flow multiplier to dab alpha in the mask engine", () => {
+    const imageData = createImageDataMock(80, 80);
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),
@@ -357,20 +381,27 @@ describe("renderPaintStrokeToContext", () => {
       stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
+      canvas: { width: 80, height: 80 },
+      getImageData: vi.fn(() => imageData),
+      putImageData: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
 
     renderPaintStrokeToContext(
       ctx,
-      [{ x: 50, y: 50 }],
-      { size: 20, hardness: 1, opacity: 1, flow: 0.5, smoothing: 0 },
+      [{ x: 40, y: 40 }],
+      { size: 21, hardness: 1, opacity: 1, flow: 0.5, smoothing: 0 },
       "#ff0000",
       false,
     );
 
-    expect(ctx.globalAlpha).toBe(0.5);
+    const written = (ctx.putImageData as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as ImageData;
+    const centerIdx = (40 * written.width + 40) * 4 + 3;
+    // flow=0.5 caps each dab at 50% alpha at the mask center
+    expect(written.data[centerIdx]).toBeGreaterThan(120);
+    expect(written.data[centerIdx]).toBeLessThan(135);
   });
 
-  it("does not accumulate alpha where one stroke path overlaps itself", () => {
+  it("accumulates alpha across overlapping dabs in one stroke (Photoshop-like)", () => {
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),
@@ -389,9 +420,15 @@ describe("renderPaintStrokeToContext", () => {
       fill: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
 
+    // Stroke traces over itself 4× at opacity 0.5 → expected accumulated
+    // alpha at overlap center ≈ 1 - (0.5)^4 = 0.9375 → pixel alpha ~239.
     renderPaintStrokeToContext(
       ctx,
       [
+        { x: 20, y: 40 },
+        { x: 60, y: 40 },
+        { x: 20, y: 40 },
+        { x: 60, y: 40 },
         { x: 20, y: 40 },
         { x: 60, y: 40 },
         { x: 20, y: 40 },
@@ -412,8 +449,9 @@ describe("renderPaintStrokeToContext", () => {
       if (lx < 0 || lx >= img.width || ly < 0 || ly >= img.height) return 0;
       return img.data[(ly * img.width + lx) * 4 + 3];
     };
-    expect(alphaAt(40, 40)).toBeLessThanOrEqual(110);
-    expect(alphaAt(40, 40)).toBeGreaterThan(60);
+    // 4 overlapping passes at opacity 0.5 should exceed the per-dab 0.5 cap
+    // by the source-over accumulation rule.
+    expect(alphaAt(40, 40)).toBeGreaterThan(140);
   });
 
   it("renders soft brush using full canvas in one-shot compatibility path", () => {
@@ -482,7 +520,7 @@ describe("renderPaintStrokeToContext", () => {
     expect(written.data[idx]).toBe(255);
     expect(written.data[idx + 1]).toBe(102);
     expect(written.data[idx + 2]).toBe(0);
-    expect(written.data[idx + 3]).toBe(207);
+    expect(written.data[idx + 3]).toBe(255);
     expect(ctx.stroke).not.toHaveBeenCalled();
   });
 
@@ -498,6 +536,9 @@ describe("renderPaintStrokeToContext", () => {
       stroke: vi.fn(),
       arc: vi.fn(),
       fill: vi.fn(),
+      canvas: { width: 80, height: 80 },
+      getImageData: vi.fn(() => createImageDataMock(80, 80)),
+      putImageData: vi.fn(),
     } as unknown as CanvasRenderingContext2D;
 
     renderPaintStrokeToContext(ctx, [{ x: 50, y: 50 }], { size: 20, hardness: 1, opacity: 1, flow: 1, smoothing: 0 }, "#ff0000", false);

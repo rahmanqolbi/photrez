@@ -111,8 +111,8 @@ export function BrushCursorOverlay(props?: {
           cy={0}
           r={radius()}
           fill="none"
-          stroke="rgba(0,0,0,0.4)"
-          stroke-width={2}
+          stroke="rgba(0,0,0,0.5)"
+          stroke-width={1.5}
         />
         <circle
           data-paint-cursor-outer

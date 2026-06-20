@@ -36,29 +36,77 @@ export function falloff(x: number, curve: BrushFalloffCurve = "soft"): number {
   return Math.pow(v, 0.7);
 }
 
+const SOFT_BRUSH_TAIL_RATIO = 0.10;
+const SOFT_BRUSH_EDGE_ALPHA = 0.50;
+
+export function getBrushTipOuterRadius(
+  radius: number,
+  hardness: number,
+  curve: BrushFalloffCurve = "soft",
+): number {
+  if (curve !== "soft") return radius;
+  const softness = 1 - clamp01(hardness);
+  return radius * (1 + SOFT_BRUSH_TAIL_RATIO * Math.pow(softness, 1.5));
+}
+
+function smoothstep01(t: number): number {
+  // ponytail: cubic smoothstep in [0,1] — flat derivatives at both ends,
+  // matches Photoshop soft round feel at mid-radius.
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  return t * t * (3 - 2 * t);
+}
+
+function softFalloff(distance: number, outerRadius: number, hardness: number): number {
+  // ponytail: Photoshop-style soft round profile with visible alpha at the
+  // cursor edge and a small feather overshoot past it. Three regions:
+  //   - Core: alpha = 1 inside u = distance/cursorRadius <= hardness
+  //   - Feather: smoothstep fade from 1 to SOFT_BRUSH_EDGE_ALPHA at u = 1
+  //   - Overshoot: linear fade from SOFT_BRUSH_EDGE_ALPHA to 0 over [1, T]
+  //
+  // The visible edge alpha means the brush reaches the cursor edge (so the
+  // user's visual cursor aligns with the paint boundary), and the linear
+  // overshoot provides the feather overshoot effect that visually indicates
+  // the brush is touching the edge.
+  if (distance >= outerRadius) return 0;
+  if (distance <= 0) return 1;
+  if (hardness >= 1) return 1;
+
+  const radius = outerRadius / (1 + SOFT_BRUSH_TAIL_RATIO * Math.pow(1 - hardness, 1.5));
+  const u = distance / radius;
+  const T = outerRadius / radius;
+
+  if (u >= T) return 0;
+  if (u > 1) {
+    return SOFT_BRUSH_EDGE_ALPHA * (1 - (u - 1) / (T - 1));
+  }
+  if (u <= hardness) return 1;
+
+  const t = (u - hardness) / (1 - hardness);
+  return 1 - smoothstep01(t) * (1 - SOFT_BRUSH_EDGE_ALPHA);
+}
+
 export function brushAlphaAtDistance(
   distance: number,
   radius: number,
   hardness: number,
   curve: BrushFalloffCurve = "soft",
 ): number {
-  if (radius <= 0 || distance >= radius) return 0;
+  if (radius <= 0) return 0;
   const h = clamp01(hardness);
+  const outerRadius = getBrushTipOuterRadius(radius, h, curve);
+  if (distance >= outerRadius) return 0;
   if (h >= 1) return 1;
-  const hMapped = h;
-  const hardRadius = radius * hMapped;
-  if (hardRadius > 0 && distance <= hardRadius) return 1;
-  const t = (distance - hardRadius) / Math.max(0.0001, radius - hardRadius);
+
+  if (curve === "soft") return softFalloff(distance, outerRadius, h);
+
+  const coreRadius = radius * h;
+  if (distance <= coreRadius) return 1;
+
+  const featherWidth = Math.max(0.0001, outerRadius - coreRadius);
+  const t = (distance - coreRadius) / featherWidth;
   const v = 1 - t;
-  const vMapped = 3 * v * v - 2 * v * v * v;
-  const rawAlpha = curve === "soft"
-    ? Math.pow(clamp01(vMapped), 0.7 + 0.6 * h)
-    : falloff(v, curve);
-  if (curve === "soft") {
-    const peakMultiplier = 0.9 + 0.1 * h;
-    return rawAlpha * peakMultiplier;
-  }
-  return rawAlpha;
+  return falloff(v, curve);
 }
 
 export function getBrushTipCacheKey(options: BrushTipOptions): string {
@@ -72,15 +120,21 @@ const brushTipCache = new Map<string, BrushTip>();
 export function createBrushTip(options: BrushTipOptions): BrushTip {
   const size = Math.max(1, Math.round(options.size));
   const radius = size / 2;
-  const width = size;
-  const height = size;
+  const curve = options.curve ?? "soft";
+  const hardness = clamp01(options.hardness);
+  const outerRadius = getBrushTipOuterRadius(radius, hardness, curve);
+  let width = Math.max(size, Math.ceil(outerRadius * 2));
+  if (curve === "soft" && hardness < 1 && width % 2 === 0) {
+    width += 1;
+  }
+  const height = width;
   const data = new Uint8ClampedArray(width * height * 4);
-  const center = (size - 1) / 2;
+  const center = (width - 1) / 2;
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const distance = Math.hypot(x - center, y - center);
-      const alpha = brushAlphaAtDistance(distance, radius, options.hardness, options.curve ?? "soft");
+      const alpha = brushAlphaAtDistance(distance, radius, hardness, curve);
       const idx = (y * width + x) * 4;
       data[idx] = 255;
       data[idx + 1] = 255;
@@ -105,16 +159,18 @@ export function clearBrushTipCache(): void {
   brushTipCache.clear();
 }
 
-export function getEffectiveFlowMultiplier(hardness: number): number {
-  const h = clamp01(hardness);
-  return 0.9 + 0.1 * h;
+export function getEffectiveFlowMultiplier(_hardness: number): number {
+  return 1;
 }
 
 export function getBrushDabSpacing(size: number, hardness: number, flow: number): number {
-  const h = clamp01(hardness);
-  const baseRatio = 0.04 + 0.12 * h;
-  const flowRatio = flow < 0.5 ? 0.85 : 1;
-  return Math.max(1, Math.min(18, Math.round(size * baseRatio * flowRatio)));
+  // ponytail: fixed 25% × size spacing matches Photoshop default and produces
+  // visible individual dabs (brush-stroke character) instead of a smooth blob.
+  // Hardness already controls the soft profile inside the mask, so spacing
+  // stays geometry-agnostic across the hardness range. Flow remains a stroke
+  // alpha multiplier and does not change geometric spacing.
+  const spacing = size * 0.25;
+  return Math.max(1, Math.round(spacing));
 }
 
 export function interpolateDabs(
@@ -139,7 +195,7 @@ export function interpolateDabs(
   return { dabs, carry: distance - (next - spacing) };
 }
 
-export function stampBrushTipMaxAlpha(
+export function stampBrushTip(
   mask: Uint8ClampedArray,
   maskWidth: number,
   maskHeight: number,
@@ -148,6 +204,13 @@ export function stampBrushTipMaxAlpha(
   centerY: number,
   alphaScale: number,
 ): void {
+  // ponytail: pre-multiplied source-over accumulation per dab so multiple
+  // dabs on the same pixel accumulate toward saturation as
+  //   1 - (1 - alpha)^N
+  // matching Photoshop / Krita / Procreate. Opacity and flow act as the
+  // per-dab alpha cap, so flow=50% + ~10 passes reaches ~99% at the mask
+  // center. Replaces the previous max-within-stroke semantics which made
+  // brush strokes stop accumulating after the first pass.
   const scale = clamp01(alphaScale);
   const cx = (tip.width - 1) / 2;
   const cy = (tip.height - 1) / 2;
@@ -190,11 +253,13 @@ export function stampBrushTipMaxAlpha(
 
       if (interpolatedAlpha <= 0) continue;
 
-      const idx = rowIdx + x;
       const scaled = Math.round(interpolatedAlpha * scale);
-      if (scaled > mask[idx]) {
-        mask[idx] = scaled;
-      }
+      if (scaled <= 0) continue;
+
+      const idx = rowIdx + x;
+      const cur = mask[idx];
+      if (cur >= 255) continue;
+      mask[idx] = cur + Math.round((255 - cur) * scaled / 255);
     }
   }
 }

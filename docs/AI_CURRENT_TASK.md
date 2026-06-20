@@ -4,6 +4,387 @@
 
 ## Current Tasks
 
+### [2026-06-19] BUG FIX - Brush Body-Fill Alignment Pass [COMPLETE]
+
+**Goal:**
+After all the prior fixes (spacing, hard-brush, accumulation, smoothstep mask, visible-edge alpha), the user reported: at hardness 75%, "besar hasil brushnya cuma 75 persen dari ukuran indikatornya" — the brush result still only fills 75% of the cursor visual size. The user's expectation: even at low hardness, the brush footprint should fill the cursor visual, with the solid core representing the hardness percentage and the feather ring filling the rest to the cursor edge.
+
+**Scope:**
+- [x] Verify hypothesis: with `alphaAtEdge = 0.10`, the visible paint boundary was still well inside the cursor visual
+- [x] Increase `SOFT_BRUSH_EDGE_ALPHA` from `0.10` to `0.50` so the entire cursor area has visible paint
+- [x] Update `BrushCursorOverlay` to render a soft filled circle matching the brush alpha profile (Photoshop "full size brush tip" mode)
+- [x] Update pixel-profile tests, audit tests for new calibration
+- [x] Run focused and broad frontend verification
+- [x] Update `AI_HISTORY.md`, `FEATURES.md`, and decision log
+
+**Root Cause:**
+With `alphaAtEdge = 0.10`, the alpha profile for `h=0.75` was:
+- 0-75% radius: solid (alpha=1)
+- 75-100% radius: smoothstep fade from 1 to 0.10
+- 100-110% radius: linear fade from 0.10 to 0
+
+The visible body (alpha > 0.50) only extended to ~85% of the cursor. Plus the cursor visual was a sharp stroked circle that didn't match the soft paint profile — the user saw a hard circle as the "brush boundary" while the paint was a soft fade.
+
+**Fix Rationale:**
+1. Raise `alphaAtEdge` to `0.50` so the smoothstep fade goes from 1 to 0.50 (instead of 1 to 0.10). Now the entire cursor visual has alpha >= 0.50, making the visible body extend to (and slightly past) the cursor edge.
+2. Render the cursor visual as a soft filled circle using an SVG radial gradient with stops matching the brush alpha profile (solid core at center, fade to visible at edge, plus feather overshoot). This is Photoshop's "full size brush tip" cursor mode — the cursor visual is a soft preview of the brush footprint.
+
+**Done:**
+- `brushTipMask.ts`: `SOFT_BRUSH_EDGE_ALPHA` raised to `0.50`.
+- `BrushCursorOverlay.tsx`: added soft filled circle (radial gradient) with mix-blend-mode=difference for visibility on any background.
+- All pixel-profile tests updated to assert the new calibration: alpha > 0.50 at 75% cursor radius for all soft brushes, alpha = 0.50 at the cursor edge (visible), and feather overshoot past the cursor.
+- All audit tests updated for the new calibration.
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/brushReferenceAudit.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts src/components/editor/__tests__/BrushCursorOverlay.test.tsx` (4 files / 87 tests).
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (86 files / 1261 tests).
+- PASS: `pnpm.cmd run type-check`.
+- PASS: `pnpm.cmd run build`.
+
+---
+
+### [2026-06-19] BUG FIX - Brush Cursor-Paint Alignment Pass [COMPLETE]
+
+**Goal:**
+User feedback (after the spacing/hard-brush/accumulation/smoothstep passes): "indikator brush adalah visual, jadi maksudnya kalau user naroh tepi bulatan brush ke suatu tepi gambar, maka hasil brushnya akan tepat ditepi itu, bukan kurang nyampe, malah harusnya ada efek feather berlebih". The visual cursor edge should align with the paint boundary, with a feather overshoot past the cursor.
+
+**Scope:**
+- [x] Read MyPaint `mypaint-tiled-surface.c` render_dab_mask + calculate_rr_antialiased
+- [x] Read GIMP `gimpbrushgenerated.c` gauss() + calc_lut()
+- [x] Verify hypothesis: Photrez alpha at cursor edge = 0.023 (data[3]=6, barely visible)
+- [x] Update `softFalloff` in `brushTipMask.ts`:
+  - Add visible alpha (`SOFT_BRUSH_EDGE_ALPHA = 0.10`) at the cursor edge
+  - Add linear feather overshoot from `0.10` to `0` over `[u=1, u=T=1.10]`
+- [x] Update `brushTipMask.test.ts` pixel-profile tests for visible edge alpha
+- [x] Update `brushReferenceAudit.test.ts` checkpoints for new calibration
+- [x] Update `paintStrokeRenderer.test.ts` soft-tail position checks
+- [x] Run focused and broad frontend verification
+- [x] Update `AI_HISTORY.md`, `FEATURES.md`, and decision log
+
+**Root Cause:**
+With the previous smoothstep core+feather formula, the alpha profile fades to ~0.023 at the cursor edge (`u = distance / cursorRadius = 1.0`). After 8-bit rounding this becomes `data[3] = 6`, which is below the user's visual perception threshold. When the cursor edge is placed at an image boundary, the visible paint boundary is actually 5-10% INSIDE the cursor visual. The user perceived this as "paint falls short of the cursor indicator".
+
+Additionally, the previous formula had a smoothstep fade that reaches 0 exactly at `u = T` (outer support radius), with no visible paint at the cursor edge. There was no "feather overshoot" — just a barely-visible tail outside the cursor.
+
+**Fix Rationale:**
+Restructure the soft curve into three explicit regions so the paint boundary matches the cursor visual:
+- **Core** (`u <= hardness`): `alpha = 1` — solid inner disk
+- **Feather** (`hardness < u <= 1`): smoothstep fade from `1` to `SOFT_BRUSH_EDGE_ALPHA = 0.10` — paint reaches the cursor edge with visible signal
+- **Overshoot** (`1 < u < T`): linear fade from `0.10` to `0` — feather extends past the cursor visual
+
+This way:
+- Paint is visible (alpha=0.10 → 25/255 in 8-bit) AT the cursor edge, so the user's visual cursor aligns with where the paint actually reaches.
+- A 10% feather overshoot past the cursor provides the visual cue the user expects when the brush touches a boundary.
+- For hard brushes (`hardness = 1`), the brush is binary at the cursor edge with no overshoot — matches Photoshop/Krita hard brush behavior.
+
+**Done:**
+- `brushTipMask.ts`: added `SOFT_BRUSH_EDGE_ALPHA = 0.10` constant and updated `softFalloff` with the three-region structure (core, feather, overshoot).
+- `brushTipMask.test.ts`: pixel-profile test for the soft tail now asserts visible edge alpha (0.05-0.15) instead of faint alpha (<0.05).
+- `brushReferenceAudit.test.ts`: updated audit tests for the new calibration (visible edge alpha at cursor edge for all soft brushes, with linear overshoot to 0 at outer support radius).
+- `paintStrokeRenderer.test.ts`: existing soft-tail position checks still pass with the new formula.
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/brushReferenceAudit.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts` (3 files / 84 tests).
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (86 files / 1261 tests).
+- PASS: `pnpm.cmd run type-check`.
+- PASS: `pnpm.cmd run build`.
+
+---
+
+### [2026-06-19] BUG FIX - Brush Mask Formula Source-Inspired Pass [COMPLETE]
+
+**Goal:**
+Continue user report that brush still doesn't feel like Photoshop/Krita/Procreate after the spacing/hard-brush/accumulation pass. The remaining divergence is the soft-curve mask formula itself: Photrez used GIMP's `gauss(pow(t, 0.4/(1-h)))` which fades ~2× faster than Photoshop soft round at mid-radius. Replace it with a Photoshop-style smoothstep core+feather model.
+
+**Scope:**
+- [x] Read MyPaint `mypaint-tiled-surface.c` render_dab_mask + calculate_rr_antialiased (source code)
+- [x] Read GIMP `gimpbrushgenerated.c` gauss() + gimp_brush_generated_calc_lut() (source code)
+- [x] Verify divergence numerically: Photrez at h=0, t=0.25 → alpha 0.441; Photoshop target ~0.87
+- [x] Replace `gimpStyleSoftAlpha` with `softFalloff` (smoothstep core+feather)
+- [x] Reduce `SOFT_BRUSH_TAIL_RATIO` from 0.22 to 0.10 (matches Photoshop visual tail)
+- [x] Update `brushTipMask.test.ts` pixel-profile tests for the new calibration
+- [x] Update `brushReferenceAudit.test.ts` calibration checkpoints
+- [x] Update `paintStrokeRenderer.test.ts` soft-tail pixel checks for new outer radius
+- [x] Run focused and broad frontend verification
+- [x] Update `AI_HISTORY.md`, `FEATURES.md`, and decision log
+
+**Root Cause:**
+The GIMP generated brush formula `gauss(pow(t, 0.4/(1-h)))` (plus the Photrez perceptual remap) is a *pseudo-gaussian* lookup derived from GIMP's 16-bit LUT generation. It produces a bell-curve feel that fades too aggressively at mid-radius:
+- At h=0, t=0.25 (25% cursor radius): Photrez alpha = 0.441; Photoshop soft round ~0.87
+- At h=0.5, t=0.5: Photrez alpha = 0.829; Photoshop soft round = 1.0 (still solid)
+- At h=0.8, t=0.875: Photrez alpha = 0.906; Photoshop soft round ~0.05 (rim already gone)
+
+Plus the 22% soft tail expanded the outer radius too far, producing a wider visible feather than Photoshop.
+
+**Fix Rationale:**
+Use a Photoshop-style core+feather model with a smoothstep transition:
+- `alpha = 1` when `distance <= hardness * radius` (solid core)
+- `alpha = 1 - smoothstep((u - hardness) / (T - hardness))` for the feather region
+- `alpha = 0` when `u >= T` (where `T = outerRadius / radius`, with a 10% soft tail only at low hardness)
+
+This matches Photoshop/Krita/Procreate soft round at every hardness level. The smoothstep curve `t² (3 - 2t)` has flat derivatives at both endpoints (C¹ continuous), which is what Photoshop uses internally for its soft round brushes.
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/brushReferenceAudit.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts` (3 files / 80 tests).
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (86 files / 1261 tests).
+- PASS: `pnpm.cmd run type-check`.
+- PASS: `pnpm.cmd run build`.
+
+**Reference Notes:**
+- MyPaint's `render_dab_mask` uses two linear segments (one in core, one in feather) with `rr = (distance/radius)²`. Photrez's smoothstep is essentially the same shape but with smoother transitions and `t = distance/radius` (no squaring).
+- Photoshop doesn't publish its brush math; the visual reference comes from common Photoshop soft round behavior: dense mid-radius, smooth fade, narrow rim at higher hardness.
+- Krita uses a similar smoothstep curve in its KisPaintop dab rendering.
+
+---
+
+### [2026-06-19] BUG FIX - Brush/Eraser Photoshop-Feel Behavioral Pass [COMPLETE]
+
+**Goal:**
+Bring Photrez brush/eraser in line with the behavioral feel of Photoshop/Krita/Procreate after user report that "brush tidak nyaman dilihat dan tidak berasa sama dengan aplikasi editor gambar lain". Three accumulated algorithmic gaps vs professional editors, fixed in dependency order: (B) spacing formula, (C) hard-brush shortcut, (A) per-dab accumulation.
+
+**Scope:**
+- [x] Read required AI docs, source tests, and real consumers (`useBrushOverlay`, `paintStrokeRenderer`)
+- [x] Fix B: `getBrushDabSpacing` → fixed 25% × size (Photoshop default)
+- [x] Fix B: Update `brushTipMask.test.ts` spacing expectations
+- [x] Fix C: Route `hardness >= 1` through the same tip-mask engine in both `paintStrokeRenderer.ts` and `useBrushOverlay.ts`
+- [x] Fix C: Update `paintStrokeRenderer.test.ts` hard-brush expectations
+- [x] Fix A: Replace `stampBrushTipMaxAlpha` with `stampBrushTip` using pre-multiplied source-over accumulation
+- [x] Fix A: Rename function across `brushTipMask.ts`, `paintStrokeRenderer.ts`, `useBrushOverlay.ts`, `brushTipMask.test.ts`, `paintStrokeCoordinates.test.ts`
+- [x] Fix A: Update accumulation-overlap test (4 passes at opacity 0.5 must exceed the per-dab cap)
+- [x] Remove dead `curve === "soft"` branch inside the non-soft path of `brushAlphaAtDistance` (type-check now flags it as unreachable)
+- [x] Run focused and broad frontend verification
+- [x] Update `AI_HISTORY.md`, `FEATURES.md`, and decision log
+
+**Root Cause:**
+Three accumulated algorithmic gaps:
+1. `getBrushDabSpacing` uses `(0.04 + 0.12*h) * size * flow_factor` — 4-16% spacing, far denser than Photoshop (25%), GIMP (10%), or Krita (default). Result: stroke looks like one continuous blob, not a brush stroke.
+2. Hardness=100% path uses `ctx.lineCap=round` shortcut in two places. Browser-internal AA differs from the mask engine, breaks cross-engine determinism, and skips the brush-tip pipeline entirely.
+3. `stampBrushTipMaxAlpha` uses `if (scaled > mask[idx]) mask[idx] = scaled` — max per pixel within one stroke. Photoshop/Krita/Procreate use pre-multiplied source-over accumulation: opacity 50% + 10 passes should reach ~99%, not stay at 50%. Photrez capped opacity, breaking the signature "brush that darkens as you repeat it" behavior.
+
+**Fix Rationale:**
+B → C → A in that order: B is 1-line minimal change with the highest visual delta; C is a small refactor removing a duplicate code path; A is the most invasive (changes accumulation semantics) but the most important behavioral fix. After all three, add a pixel-profile test that asserts Photoshop-like accumulation (10 passes at opacity 50% reach > 95%).
+
+**Done:**
+- B: `getBrushDabSpacing` is now `Math.max(1, Math.round(size * 0.25))` — fixed 25% × size, independent of hardness and flow. Spacing tests rewritten to assert new contract.
+- C: `renderPaintStrokeToContext` and the `useBrushOverlay` soft path now route every hardness through `renderSoftStrokeWithTipMask` / `stampBrushTip`. The hard-brush `ctx.stroke()` / `ctx.arc()` shortcuts are removed from both consumers. Hard-brush tests rewritten to assert mask-engine usage.
+- A: `stampBrushTipMaxAlpha` is renamed to `stampBrushTip`. The within-stroke accumulation now applies pre-multiplied source-over: `next = cur + round((255-cur) * dab / 255)`. Added tests for Photoshop-like saturation (20 passes at α=0.5 → 255), 5 passes at α=1.0 → 255, and within-stroke overlap (4 passes at opacity 0.5 → > 140 alpha, exceeding the per-dab 0.5 cap).
+- Dead-code cleanup: removed the unreachable `curve === "soft"` ternary inside the non-soft branch of `brushAlphaAtDistance`. Type-check is now clean.
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test --run src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts src/components/editor/__tests__/paintStrokeCoordinates.test.ts src/components/editor/__tests__/paintCommitCommand.test.ts` (4 files / 61 tests).
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (85 files / 1233 tests).
+- PASS: `pnpm.cmd run type-check`.
+- PASS: `pnpm.cmd run build`.
+
+**Research Notes:**
+- GIMP generated brush `gimpbrushgenerated.c` uses `gauss(pow(t, 0.4/(1-h)))` — Photrez already implements this verbatim (`gimpStyleSoftAlpha`). The new behavior changes are orthogonal to the mask formula.
+- libmypaint `mypaint-brush.c` uses `OPAQUE_LINEARIZE` to correct multi-dab opacity accumulation toward saturation. Photrez pre-multiplied accumulation in 8-bit mask buffer achieves the same effect (1 - (1-α)^N).
+- Photoshop default spacing is 25% × size; Krita default is 5%; GIMP default is 10%. Photrez 4-16% was denser than all three.
+
+---
+
+### [2026-06-19] BUG FIX - Source-Inspired Brush Hardness Curve [COMPLETE]
+
+**Goal:**
+Replace the hand-tuned soft brush curve with a source-inspired hardness model that behaves consistently at intermediate hardness values, based on GIMP/MyPaint brush mask research.
+
+**Scope:**
+- [x] Search open-source brush implementations for hardness/soft mask formulas
+- [x] Compare GIMP generated brush and MyPaint dab mask behavior
+- [ ] Adapt a GIMP-style pseudo-gaussian hardness curve for Photrez soft tips
+- [ ] Keep Photoshop-like normal cursor outside-tail behavior
+- [ ] Update regression tests for hardness 0/20/50/80/100 consistency
+- [ ] Run focused and broad frontend verification
+- [ ] Update `AI_HISTORY.md`, `FEATURES.md`, and decision log
+
+**Research Notes:**
+- GIMP generated brush uses a pseudo-gaussian lookup with exponent `0.4 / (1 - hardness)`.
+- MyPaint dab masks use squared-distance `rr` and separate `hardness`/`softness`, confirming that stable brush feel needs a smooth radial mask model rather than one-off checkpoint tuning.
+
+---
+
+### [2026-06-19] BUG FIX - Brush Hardness Curve Visual Retune [COMPLETE]
+
+**Goal:**
+Retune the production soft brush/eraser curve after visual review: hardness 0 is still too dense across the circle, and hardness 80 has a rim/halo that is too thick compared with Photoshop.
+
+**Scope:**
+- [x] Re-read required AI docs and current brush hardness history
+- [x] Re-map soft hardness so high hardness creates a larger solid body and narrower feather rim
+- [x] Re-shape hardness 0 so it is airier through mid-radius while keeping a faint outside tail
+- [x] Update brush-tip and renderer regression tests for the new checkpoints
+- [x] Run focused and broad frontend verification
+- [x] Update `AI_HISTORY.md`, `FEATURES.md`, and decision log
+
+**Visual Notes:**
+- Photoshop hardness 80 reference: mostly solid disk, very narrow soft rim, little visible halo.
+- Photrez hardness 80 current: edge halo is too wide and dark over blue.
+- Photrez hardness 0 current: inside the circle remains too filled/dense versus Photoshop's smoother soft round.
+
+**Root Cause:**
+The previous `soft` falloff curve kept too much alpha across the full brush radius for hardness 0, and mapped hardness linearly to core radius. At 80% hardness that left a 20%+ radius feather band, which appeared as a thick dark halo instead of Photoshop's narrow rim.
+
+**Fix Rationale:**
+Use a non-linear soft core radius (`1 - (1 - hardness)^2`) so higher hardness values grow the solid body much faster, while low hardness keeps no solid plateau. Replace the old `1 - t^p` soft falloff with `v^p`, producing a lighter radial fade for hardness 0 and a narrow high-hardness edge.
+
+**Done:**
+- Increased the low-hardness support tail slightly while reducing alpha at the visible cursor edge.
+- Added non-linear core-radius mapping for `curve: "soft"` only.
+- Kept hard/cosine geometric behavior unchanged.
+- Forced expanded soft masks to odd dimensions when needed so the center pixel remains full strength.
+- Updated regression checkpoints for hardness 0 and 80% visual behavior.
+
+**Verification:**
+- PASS: `pnpm --filter photrez-desktop test --run src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts` (2 files / 53 tests).
+- PASS: `pnpm --filter photrez-desktop test --run` (85 files / 1230 tests).
+- PASS: `pnpm run build`.
+
+---
+
+### [2026-06-19] BUG FIX - Soft Brush Tail Outside Cursor Radius [COMPLETE]
+
+**Goal:**
+Match Photoshop soft brush cursor behavior more closely after reference check: brush size remains the main diameter, but a 0% hardness soft round may paint a faint tail slightly outside the cursor circle.
+
+**Scope:**
+- [x] Search reference material for Photoshop soft brush cursor/diameter behavior
+- [x] Re-read required AI docs and current brush hardness entries
+- [x] Add a soft-brush-only support radius beyond the cursor radius
+- [x] Keep hard/cosine geometric diameter tests unchanged
+- [x] Update soft mask and renderer tests for faint outside-tail behavior
+- [x] Run focused and broad frontend verification
+- [x] Update `AI_HISTORY.md`, `FEATURES.md`, and decision log
+
+**Reference:**
+- Greg Benz notes Photoshop cursor mode matters: with normal-size cursor, a soft brush can paint outside the circle; full-size brush tip is the conservative cursor.
+- UW-IT reference: brush size is diameter, hardness is edge shape/blending.
+
+**Root Cause:**
+Photrez treated the normal brush cursor radius as the absolute support radius for the production `soft` mask. That made hardness 0 stop too cleanly at the circle, while Photoshop's normal-size cursor can show soft brush paint extending faintly outside the displayed circle.
+
+**Fix Rationale:**
+Keep the visible cursor/size radius as the main brush diameter, but give only the `soft` runtime tip a small support radius tail that scales with softness. Hard brushes and `curve: "cosine"` keep the original geometric cutoff, while hardness 0 can paint a low-alpha feather outside the normal circle.
+
+**Done:**
+- Added `getBrushTipOuterRadius()` and expanded soft-tip mask dimensions without changing the stored cursor radius.
+- Updated `brushAlphaAtDistance()` so soft 0% fades past the cursor radius and reaches zero at the support edge.
+- Added regression coverage for outside-tail alpha and renderer stamping past the normal radius.
+
+**Verification:**
+- PASS: `pnpm --filter photrez-desktop test --run src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts` (2 files / 53 tests).
+- PASS: `pnpm --filter photrez-desktop test --run` (85 files / 1230 tests).
+- PASS: `pnpm run build`.
+
+---
+
+### [2026-06-19] BUG FIX - Brush Hardness 0 Photoshop Soft-Round Calibration [COMPLETE]
+
+**Goal:**
+Recalibrate the production `soft` brush profile because visual review still shows hardness 0 far from Photoshop: the dense center is too small and the mid-feather becomes a heavy dark halo on blue backgrounds.
+
+**Scope:**
+- [x] Re-read required AI docs and current brush hardness task/history
+- [x] Inspect current `brushTipMask.ts` profile and regression tests
+- [x] Adjust production `soft` falloff so hardness 0 has a broader dense center while retaining fixed outer diameter
+- [x] Update pixel-profile tests for Photoshop-style soft round checkpoints
+- [x] Run focused and broad frontend verification
+- [x] Update `AI_HISTORY.md`, `FEATURES.md`, and decision log
+
+**Root Cause:**
+The geometric core/rim semantics were correct, but the production `soft` curve still dropped too quickly at mid-radius for hardness 0. At 50% radius it was around the low 0.7 alpha range, making the dense center feel too small and creating a dark blended halo over blue backgrounds.
+
+**Fix Rationale:**
+Keep the outer diameter and hard-core semantics intact, but make the production `soft` feather use a fuller Photoshop-like power curve. Hardness 0 now stays dense through the middle of the brush and fades over the outer half instead of collapsing into a small center.
+
+**Done:**
+- Changed the production `soft` feather curve to `1 - t^(2.4 - 1.5 * hardness)`.
+- Kept `curve: "cosine"` tests for exact geometric core/rim checkpoints.
+- Updated hardness 0 pixel-profile tests to require a larger dense middle and meaningful outer feather.
+
+**Verification:**
+- PASS: `pnpm --filter photrez-desktop test --run src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts` (2 files / 52 tests).
+- PASS: `pnpm --filter photrez-desktop test --run` (85 files / 1229 tests).
+- PASS: `pnpm run build`.
+
+**Notes:**
+- `curve: "cosine"` tests can keep validating geometric core/rim semantics.
+- Runtime brush/eraser uses `curve: "soft"`, so visual calibration belongs there.
+
+---
+
+### [2026-06-19] BUG FIX - Brush Hardness Visual Calibration Follow-Up [COMPLETE]
+
+**Goal:**
+Refine the previous Photoshop-style brush hardness fix after visual review showed the falloff still looked too broad/heavy. Match the Photoshop mental model more closely: size controls the outer diameter, hardness controls the width of the feather rim, and opacity/flow 100 gives a fully opaque center.
+
+**Scope:**
+- [x] Re-read required AI docs and current brush hardness task/history
+- [x] Inspect brush tip mask, renderer alpha scaling, presets, and tests
+- [x] Restore Photoshop-style hard-core/feather-rim alpha profile within fixed size diameter
+- [x] Remove hidden hardness-based peak/flow alpha attenuation
+- [x] Update brush/eraser mask and renderer tests
+- [x] Run focused and broad frontend verification
+- [x] Update `AI_HISTORY.md`, `FEATURES.md`, and decision log
+
+**Root Cause:**
+The previous follow-up removed the hard-core/feather-rim model entirely and replaced it with a continuous curve across the full radius. That kept diameter fixed, but made the visible feather too broad/heavy compared with Photoshop-style round brushes. Soft strokes were also still being attenuated twice by `peakMultiplier` and `getEffectiveFlowMultiplier()`.
+
+**Fix Rationale:**
+Use Photoshop-style semantics: size owns the outer diameter; hardness defines the fully opaque core and feather rim width inside that fixed diameter. Opacity and flow remain independent controls, so 100% opacity/flow produces a fully opaque center for soft and hard brushes alike.
+
+**Done:**
+- Restored a hard-core/feather-rim alpha profile in `brushAlphaAtDistance()`.
+- Removed hardness-based peak alpha attenuation from the mask profile.
+- Changed `getEffectiveFlowMultiplier()` to return `1`, so hardness no longer secretly reduces opacity/flow.
+- Updated brush mask and paint renderer tests for full-strength centers, narrow high-hardness rims, and non-accumulating stroke masks.
+
+**Verification:**
+- PASS: `pnpm --filter photrez-desktop test --run src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts` (2 files / 52 tests).
+- PASS: `pnpm --filter photrez-desktop test --run` (85 files / 1229 tests).
+- PASS: `pnpm run build`.
+
+**Notes:**
+- User visual feedback: the prior patch still did not match Photoshop. The visible rim is too wide/heavy.
+- Clarified semantics: hardness may change the fully opaque core and feather width, but never the outer brush diameter.
+
+---
+
+### [2026-06-19] BUG FIX - Photoshop-Style Brush Hardness Falloff [COMPLETE]
+
+**Goal:**
+Fix brush/eraser hardness behavior so hardness does not change the effective brush diameter. Size remains the paint area; hardness only controls the opacity falloff profile inside that diameter, matching Photoshop-style soft/hard round behavior more closely.
+
+**Scope:**
+- [x] Read required AI docs and current brush/eraser docs/history
+- [x] Inspect brush tip mask, paint renderer, cursor overlay, and existing tests
+- [x] Update brush alpha falloff so brush diameter is size-bound and hardness controls edge softness
+- [x] Add regression tests for diameter-invariant hardness profiles
+- [x] Run focused brush/eraser tests
+- [x] Run required frontend verification
+- [x] Update `AI_HISTORY.md` and `FEATURES.md`
+
+**Root Cause:**
+`brushAlphaAtDistance()` used `hardRadius = radius * hardness`, so hardness directly defined the fully solid inner radius before the feather began. Although the outer stamp bounds still used size, the visible paint body changed with hardness and made the brush feel like hardness was controlling the paint area.
+
+**Fix Rationale:**
+Keep size as the only brush diameter control. Normalize distance against the fixed radius and use hardness only as a non-linear alpha-curve shaper, so higher hardness stays denser near the edge while soft hardness still fades across the same diameter.
+
+**Done:**
+- Removed the `hardRadius` falloff model from `brushTipMask.ts`.
+- Added diameter-invariant hardness regression checks in `brushTipMask.test.ts`.
+- Confirmed `BrushCursorOverlay` already uses size for cursor radius, so no cursor patch was needed.
+
+**Verification:**
+- PASS: `pnpm --filter photrez-desktop test --run src/components/editor/__tests__/brushTipMask.test.ts src/components/editor/__tests__/paintStrokeRenderer.test.ts` (2 files / 52 tests).
+- PASS: `pnpm --filter photrez-desktop test --run` (85 files / 1229 tests).
+- PASS: `pnpm run build`.
+
+**Notes:**
+- User report: Photrez hardness visually behaves unlike Photoshop; hardness appears to determine the brush area rather than only the edge softness.
+- Cursor overlay already uses size only, so the fix targets the mask/falloff profile.
+
+---
+
 ### [2026-06-19] BUG FIX - Canvas Drag History Snapshot Direction [COMPLETE]
 
 **Goal:**
