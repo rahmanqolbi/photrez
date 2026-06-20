@@ -4,6 +4,17 @@
 
 ## Current Tasks
 
+### [2026-06-20] UI RESPONSIVENESS - Responsive RightDock Layout [COMPLETE]
+
+**Goal:**
+Make RightDock layout responsive by stacking panels vertically on screens smaller than 1280px, preventing viewport occlusion and keeping panels docked (static) at all times.
+
+**Scope:**
+- [x] Update RightDock.tsx styles for responsive stacking
+- [x] Run frontend verification tests
+- [x] Verify local build succeeds
+- [x] Create walkthrough.md documentation
+
 ### [2026-06-20] TEST INFRASTRUCTURE - Fast Feedback Path [COMPLETE]
 
 **Goal:**

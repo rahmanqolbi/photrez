@@ -1,5 +1,28 @@
 # AI History — Photrez
 
+## [2026-06-20] FEATURE - Responsive RightDock Layout [COMPLETE]
+
+### Kategori: FEATURE / UI-UX / LAYOUT / RESPONSIVENESS
+
+**Goal:**
+Resolve artboard/canvas occlusion when the window is resized to a smaller width by making the right dock layout responsive.
+
+**Fix Rationale:**
+Instead of a fixed floating overlay (which took up 634px and covered more than half the workspace on screens < 1280px), RightDock now stacks its panels vertically on screens smaller than 1280px. Both panels (Properties and Layers/Navigator) share the vertical height 50/50. Additionally, the dock is static (docked) at all viewport sizes, so the canvas automatically shrinks and remains fully visible and usable.
+
+**Done:**
+1. Modified `apps/desktop/src/components/editor/RightDock.tsx`:
+   - Updated layout flow of `RightDock` to `flex-col xl:flex-row`.
+   - Set width to `w-[300px] xl:w-auto` and changed placement classes to keep the dock static at all window sizes.
+   - Configured `InspectorDock` to stack cleanly: `w-full flex-1 min-h-0 xl:w-[300px] 2xl:w-[336px] xl:flex-none` with border adjustment `border-b xl:border-b-0 xl:border-r`.
+   - Configured `LayerDock` to stack cleanly: `w-full flex-1 min-h-0 xl:w-[260px] 2xl:w-[298px] xl:flex-none`.
+2. Created implementation plan (`implementation_plan.md`) and walkthrough (`walkthrough.md`) in the artifact directory.
+3. Verified the changes by running all unit/integration tests and confirming the production build is green.
+
+**Verification:**
+- PASS: `pnpm.cmd --filter photrez-desktop test --run` (86 files / 1261 tests).
+- PASS: `pnpm run build` (production build compiled successfully in 8.00s).
+
 ## [2026-06-20] BUG FIX - Window-State Plugin Broke All Tauri IPC; Pivoted to Manual Implementation [COMPLETE]
 
 ### Kategori: BUG FIX / TAURI / PLUGIN-COMPATIBILITY / IPC / WINDOW-STATE
@@ -6610,7 +6633,8 @@ Tampilkan pola papan catur (checkerboard) di area artboard canvas sehingga user 
 - Tidak ada unit test untuk infra checkerboard atau kontras warnanya.
 
 **Fixes:**
-1. **Extract** warna checkerboard ke module enderer/checkerboard.ts agar bisa di-test tanpa WebGL. Fungsi: getCheckerboardColors().
+1. **Extract** warna checkerboard ke module 
+enderer/checkerboard.ts agar bisa di-test tanpa WebGL. Fungsi: getCheckerboardColors().
 2. **Ganti warna** ke Photopea-style: light gray (0.78, 0.78, 0.78) vs dark gray (0.55, 0.55, 0.55). Delta 0.23 per channel, luminance delta ~0.45 dari background midnight.
 3. **Wire** webgl2.ts pakai getCheckerboardColors() bukan hardcoded.
 4. **Test TDD:**
@@ -6657,7 +6681,8 @@ User reported: "saya geser layer pada canvas, masih belum muncul itu pattern" �
 - pps/desktop/src/renderer/webgl2.ts:
   - Added layerRect and layerCenter to the cached checkerboardUniforms type
   - Added gl.getUniformLocation(this.checkerboardProgram, "u_layerRect") and "u_layerCenter" in initialize()
-  - In the checkerboard pass of ender(), set both:
+  - In the checkerboard pass of 
+ender(), set both:
     - gl.uniform4f(layerRect, 0, 0, docW, docH) — quad size
     - gl.uniform2f(layerCenter, docW / 2, docH / 2) — center of artboard (so positions are in [-1, 1] clip space)
   - Removed the inline getUniformLocation calls (slower than cached)
@@ -6691,7 +6716,8 @@ Even with u_layerCenter = (docW/2, docH/2) set, the checkerboard pass wasn't pro
 - Updated pps/desktop/src/renderer/webgl2.ts:
   - initialize() now compiles the dedicated vertex shader for the checkerboard program
   - checkerboardUniforms type simplified to only 4 uniforms (no more layerRect, layerCenter, viewProj)
-  - ender() checker pass no longer sets the 3 transform uniforms
+  - 
+ender() checker pass no longer sets the 3 transform uniforms
 
 **Verification:**
 - Playwright e2e e2e/checkerboard.spec.ts now passes with **9/9 pixel samples showing the correct checker pattern** (alternating 199/199/199 and 140/140/140 RGBA).
@@ -6746,8 +6772,10 @@ Playwright e2e with readPixels revealed that after undo, canvas.width changed fr
      this.model.viewport = currentViewport;
    }
    `
-2. AppTitleBar.tsx:52 and LayersPanel.tsx:108,122 call engine.restore(prev) without estoreViewport: true.
-3. After restore, syncViewport() reads engine.getViewport() (still the post-action viewport), syncs the camera to it, and enderer.resize() uses that zoom. Canvas is rendered at the wrong size for the restored document.
+2. AppTitleBar.tsx:52 and LayersPanel.tsx:108,122 call engine.restore(prev) without 
+estoreViewport: true.
+3. After restore, syncViewport() reads engine.getViewport() (still the post-action viewport), syncs the camera to it, and 
+enderer.resize() uses that zoom. Canvas is rendered at the wrong size for the restored document.
 
 **Fix:**
 - pps/desktop/src/components/editor/AppTitleBar.tsx — pass { restoreViewport: true } to engine.restore() in both handleUndo and handleRedo.
@@ -6756,7 +6784,8 @@ Playwright e2e with readPixels revealed that after undo, canvas.width changed fr
 The engine.restore(snap, { restoreViewport: true }) path was already implemented and tested (document.test.ts:180); we just weren't using it in the UI undo/redo call sites.
 
 **Verification:**
-- All 947 unit tests pass (includes existing estoreViewport: true test).
+- All 947 unit tests pass (includes existing 
+estoreViewport: true test).
 - E2e smoke tests pass (artboard center is checker, pasteboard is midnight).
 - Build clean.
 
@@ -6807,7 +6836,8 @@ The selection tool's resize handles and rotation handle are rendered visually bu
 ### Kategori: BUG FIX / RENDERER
 
 **Problem (continued):**
-User reported that undo/redo still makes the checkerboard appear "stretched" (melar). Previous fix (estoreViewport: true in engine.restore()) made the engine viewport restore correctly, but a createEffect in useViewportRenderer.ts was OVERRIDING the canvas size to the viewport dimensions afterwards, undoing the fix's effect.
+User reported that undo/redo still makes the checkerboard appear "stretched" (melar). Previous fix (
+estoreViewport: true in engine.restore()) made the engine viewport restore correctly, but a createEffect in useViewportRenderer.ts was OVERRIDING the canvas size to the viewport dimensions afterwards, undoing the fix's effect.
 
 **Root Cause:**
 TDD red test in e2e/checkerboard-selection-undo.spec.ts:
@@ -6819,7 +6849,8 @@ TDD red test in e2e/checkerboard-selection-undo.spec.ts:
 
 The change from 685 to 1048 happened during undo. Investigation:
 
-1. handleUndo calls enderer.resize(400, 300, 2.62, 1) → canvas = 1048×594 ✓
+1. handleUndo calls 
+enderer.resize(400, 300, 2.62, 1) → canvas = 1048×594 ✓
 2. But immediately after, a createEffect runs because the zoom signal changed in syncViewport():
    `	s
    createEffect(() => {
@@ -6829,11 +6860,15 @@ The change from 685 to 1048 happened during undo. Investigation:
      resizeRenderer();
    });
    `
-3. esizeRenderer() (in the OLD code) called enderer.resizeToViewport(viewportWidth(), viewportHeight(), dpr) for non-modern-crop — this sets canvas.width = viewportWidth × dpr.
+3. 
+esizeRenderer() (in the OLD code) called 
+enderer.resizeToViewport(viewportWidth(), viewportHeight(), dpr) for non-modern-crop — this sets canvas.width = viewportWidth × dpr.
 4. iewportWidth was 1048 (the container's contentRect width), so canvas got resized to 1048 again, OVERRIDING the previous resize() call.
 
 **Fix:**
-pps/desktop/src/components/editor/useViewportRenderer.ts — esizeRenderer() now always uses enderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr) based on **document size + zoom**, not viewport dimensions. The canvas backing buffer is meant to be 1:1 with the document at the current zoom (CSS transform on a separate container handles pan/zoom).
+pps/desktop/src/components/editor/useViewportRenderer.ts — 
+esizeRenderer() now always uses 
+enderer.resize(engine.getWidth(), engine.getHeight(), engine.getViewport().zoom, dpr) based on **document size + zoom**, not viewport dimensions. The canvas backing buffer is meant to be 1:1 with the document at the current zoom (CSS transform on a separate container handles pan/zoom).
 
 **Verification:**
 - Selection-tool undo/redo e2e now passes (canvas stable at 685×514 across all phases)
@@ -6842,7 +6877,8 @@ The change from 685 to 1048 happened during undo. Investigation:
 - TypeScript + Vite build clean
 
 **Architectural note:**
-The OLD esizeToViewport approach was used to make the canvas drawing buffer match the viewport size. But the architecture (per docs/ARCHITECTURE.md) specifies that the WebGL canvas should be 1:1 with the document, and CSS transforms on a separate container handle pan/zoom. So the document-based resize is the architecturally correct one.
+The OLD 
+esizeToViewport approach was used to make the canvas drawing buffer match the viewport size. But the architecture (per docs/ARCHITECTURE.md) specifies that the WebGL canvas should be 1:1 with the document, and CSS transforms on a separate container handle pan/zoom. So the document-based resize is the architecturally correct one.
 
 ---
 
@@ -6891,9 +6927,11 @@ This matches docs/ARCHITECTURE.md:668-673 which says the WebGL canvas should be 
 User reported "pipih itu squize" — the layer is squished (non-uniform aspect ratio) when rendered after undo/redo.
 
 **Root Cause Investigation (continued):**
-Previous fix made the drawing buffer = document size (enderer.resize(docW, docH, zoom, dpr)). This caused a NEW bug:
+Previous fix made the drawing buffer = document size (
+enderer.resize(docW, docH, zoom, dpr)). This caused a NEW bug:
 
-1. handleUndo calls enderer.resize(400, 300, 1.71, 1) → drawing buffer = 685×514 (doc-fit)
+1. handleUndo calls 
+enderer.resize(400, 300, 1.71, 1) → drawing buffer = 685×514 (doc-fit)
 2. But the camera matrix (set in EditorShell) is based on **viewport** size (1100×760), NOT canvas drawing buffer
 3. Pass 1 (FBO composite) sets GL viewport to 685×514 (canvas drawing buffer) but uses the camera matrix (which expects 1100×760 viewport)
 4. The camera matrix maps doc space non-uniformly to NDC (because its X/Y scales were derived from a different aspect ratio)
@@ -6903,11 +6941,14 @@ Previous fix made the drawing buffer = document size (enderer.resize(docW, docH
 **The key insight:** the camera matrix AND the GL viewport must refer to the same coord system, otherwise the layer is rendered with non-uniform scaling.
 
 **Fix:**
-pps/desktop/src/components/editor/useViewportRenderer.ts — reverted esizeRenderer() to use enderer.resizeToViewport(viewportWidth(), viewportHeight(), dpr). Now the drawing buffer matches the camera's viewport (both are container-size), so the layer compositing is geometrically consistent.
+pps/desktop/src/components/editor/useViewportRenderer.ts — reverted 
+esizeRenderer() to use 
+enderer.resizeToViewport(viewportWidth(), viewportHeight(), dpr). Now the drawing buffer matches the camera's viewport (both are container-size), so the layer compositing is geometrically consistent.
 
 pps/desktop/src/components/editor/CanvasViewport.tsx — reverted canvas CSS to width: 100%; height: 100% (fills container). The drawing buffer matches the CSS box, so the browser does NOT scale — cells are square (8×8 px), no stretching.
 
-pps/desktop/src/components/editor/AppTitleBar.tsx & LayersPanel.tsx — removed the enderer.resize(...) call from handleUndo/handleRedo/handleHistoryUndo/handleHistoryRedo. The buffer doesn't need to be resized during undo because:
+pps/desktop/src/components/editor/AppTitleBar.tsx & LayersPanel.tsx — removed the 
+enderer.resize(...) call from handleUndo/handleRedo/handleHistoryUndo/handleHistoryRedo. The buffer doesn't need to be resized during undo because:
 - The buffer is sized to the viewport, not the doc
 - The viewport doesn't change during undo (for selection tool, crop, etc.)
 - The next render pass re-composites the engine state to the existing FBO
@@ -6916,7 +6957,8 @@ Previous fix made the drawing buffer = document size (enderer.resize(docW, docH
 engine.restore(prev, { restoreViewport: true }) is still called so the camera (which is independent from the buffer size) restores to the pre-action state.
 
 **Tests:**
-- Updated AppTitleBar.test.tsx test to reflect the new undo behavior (no enderer.resize call)
+- Updated AppTitleBar.test.tsx test to reflect the new undo behavior (no 
+enderer.resize call)
 - Selection-tool undo/redo e2e passes (canvas stable at 1048×594 across all phases)
 - All 949 unit tests pass
 - All 18 e2e tests pass
@@ -6936,26 +6978,31 @@ engine.restore(prev, { restoreViewport: true }) is still called so the camera (w
 ### Kategori: BUG FIX / HISTORY / UX
 
 **Problem identified by user:**
-User noted that docs/AI_HISTORY.md:1187-1199 (2026-06-11 fix) established the rule that undo/redo MUST preserve the user's current viewport (zoom/pan) to prevent zoom-popping. The estoreViewport: true option was explicitly designed to be used ONLY in unit tests.
+User noted that docs/AI_HISTORY.md:1187-1199 (2026-06-11 fix) established the rule that undo/redo MUST preserve the user's current viewport (zoom/pan) to prevent zoom-popping. The 
+estoreViewport: true option was explicitly designed to be used ONLY in unit tests.
 
 However, the previous "Pipih" fix incorrectly added { restoreViewport: true } to the UI handlers in AppTitleBar.handleUndo/handleRedo and LayersPanel.handleHistoryUndo/handleHistoryRedo. This violated the 2026-06-11 design decision and would re-introduce the zoom-popping bug.
 
 **Root cause analysis of the original "Pipih" bug (revisited):**
-The pipih (squished layer) bug was NOT caused by the default estoreViewport: false behavior. It was caused by:
+The pipih (squished layer) bug was NOT caused by the default 
+estoreViewport: false behavior. It was caused by:
 1. Drawing buffer sized to docW * zoom (non-uniform aspect ratio vs viewport-based camera matrix)
 2. Canvas CSS sized to docW * zoom px (non-uniform browser scaling)
 3. The two were inconsistent with each other AND with the camera matrix
 
 The fix has nothing to do with viewport restoration. The correct fix is to:
-- Size the drawing buffer to the viewport (container) via enderer.resizeToViewport(...)
+- Size the drawing buffer to the viewport (container) via 
+enderer.resizeToViewport(...)
 - Size the canvas CSS to 100% of the container (width: 100%; height: 100%)
 - Leave the camera matrix viewport-based
 
 With all three (buffer, CSS, camera) referring to the viewport (not docW*zoom), the layer is composited with uniform aspect ratio and the cells are square.
 
 **Fix:**
-- pps/desktop/src/components/editor/AppTitleBar.tsx — Reverted engine.restore(prev, { restoreViewport: true }) to engine.restore(prev) (uses default estoreViewport: false which preserves the user's current viewport). Removed the now-redundant explicit syncViewport() call (it's triggered automatically by workspace.onChange listener in workspaceSync.ts:65-68).
-- pps/desktop/src/components/editor/LayersPanel.tsx — Same revert: engine.restore(next) and engine.restore(previous) without estoreViewport: true.
+- pps/desktop/src/components/editor/AppTitleBar.tsx — Reverted engine.restore(prev, { restoreViewport: true }) to engine.restore(prev) (uses default 
+estoreViewport: false which preserves the user's current viewport). Removed the now-redundant explicit syncViewport() call (it's triggered automatically by workspace.onChange listener in workspaceSync.ts:65-68).
+- pps/desktop/src/components/editor/LayersPanel.tsx — Same revert: engine.restore(next) and engine.restore(previous) without 
+estoreViewport: true.
 
 **Tests:**
 - All 949 unit tests pass
@@ -6963,7 +7010,8 @@ With all three (buffer, CSS, camera) referring to the viewport (not docW*zoom), 
 - TypeScript + Vite build clean
 
 **Architectural reaffirmation:**
-- engine.restore(snapshot) preserves the user's current viewport (default estoreViewport: false).
+- engine.restore(snapshot) preserves the user's current viewport (default 
+estoreViewport: false).
 - engine.restore(snapshot, { restoreViewport: true }) is reserved for unit tests that explicitly verify viewport restoration from snapshot.
 - UI handlers MUST use the default (no option) so undo/redo does not cause zoom-popping.
 - Drawing buffer, CSS canvas, and camera matrix all refer to the viewport (not docW*zoom) so layer compositing is geometrically uniform.
@@ -6987,19 +7035,26 @@ Both bugs live at the **call sites** of SelectionOperations, not in the class it
 - Without this commit, the pre-action state is never recorded.
 - history.undo() can still work IF there was a prior commit (e.g., from selection-draw), but it would rewind to that prior state, NOT the pre-delete state. The post-delete state was never recorded, so history.redo() would replay the same pre-draw state — visible to the user as "redo doesn't restore my deleted pixels".
 
-**Bug 2 (stale canvas):** No enderer.uploadImage(layerId, layer.imageBitmap) AFTER the action.
+**Bug 2 (stale canvas):** No 
+enderer.uploadImage(layerId, layer.imageBitmap) AFTER the action.
 - SelectionOperations.deleteSelection calls engine.setLayerImageBitmap(id, newBitmap) which updates the engine's layer.imageBitmap reference and fires 
 otifyVisualChange.
-- The onVisualChange listener in workspaceSync.ts:70-73 calls scheduler.requestRender() — but the render reads from enderer.textures.get(layerId) (the GPU texture handle), NOT from engine.layer.imageBitmap.
-- The GPU texture was created via enderer.uploadImage() and stored in a Map. Without an explicit uploadImage call after setLayerImageBitmap, the map still points to the OLD WebGLTexture.
+- The onVisualChange listener in workspaceSync.ts:70-73 calls scheduler.requestRender() — but the render reads from 
+enderer.textures.get(layerId) (the GPU texture handle), NOT from engine.layer.imageBitmap.
+- The GPU texture was created via 
+enderer.uploadImage() and stored in a Map. Without an explicit uploadImage call after setLayerImageBitmap, the map still points to the OLD WebGLTexture.
 - The render draws the OLD texture, so the canvas visually displays the pre-delete pixels.
 - Switching tools triggers a different code path (e.g., setActiveTool → various effects) that incidentally calls uploadImage for some layers, which is why the user observed the canvas updating only after a tool switch.
 
 **Pattern across working code (Phase 2 - pattern analysis):**
-- AppTitleBar.handleUndo/handleRedo (apps/desktop/src/components/editor/AppTitleBar.tsx:62, 95) — after engine.restore(), loops all layers and calls enderer.uploadImage(layer.id, layer.imageBitmap).
-- useBrushOverlay.ts:243, 293, 328 — after every brush/eraser commit, calls enderer.uploadImage(layerId, bitmap).
-- layerOperations.ts:26, 51 — after merge/flatten, calls enderer.uploadImage.
-- cropToolActions.ts:114 — after crop apply, calls enderer.uploadImage.
+- AppTitleBar.handleUndo/handleRedo (apps/desktop/src/components/editor/AppTitleBar.tsx:62, 95) — after engine.restore(), loops all layers and calls 
+enderer.uploadImage(layer.id, layer.imageBitmap).
+- useBrushOverlay.ts:243, 293, 328 — after every brush/eraser commit, calls 
+enderer.uploadImage(layerId, bitmap).
+- layerOperations.ts:26, 51 — after merge/flatten, calls 
+enderer.uploadImage.
+- cropToolActions.ts:114 — after crop apply, calls 
+enderer.uploadImage.
 
 The selection-edit call sites were the ONLY place that mutated layer.imageBitmap without re-uploading.
 
@@ -7028,7 +7083,8 @@ For paste, ddLayer sets ctiveLayerId = newLayer.id (apps/desktop/src/engine/do
 
 **Files changed:**
 - pps/desktop/src/components/editor/useCanvasKeyboard.ts — Ctrl+X, Ctrl+V, Delete/Backspace handlers now commit + upload.
-- pps/desktop/src/components/editor/SelectionOptionBar.tsx — handleCut, handlePaste, handleDelete now commit + upload. Added enderer to useEditor() destructure + uploadActiveLayerBitmap() helper + historyGetter = () => workspace.getActiveHistory().
+- pps/desktop/src/components/editor/SelectionOptionBar.tsx — handleCut, handlePaste, handleDelete now commit + upload. Added 
+enderer to useEditor() destructure + uploadActiveLayerBitmap() helper + historyGetter = () => workspace.getActiveHistory().
 
 **Tests added (TDD red → green):**
 - pps/desktop/src/components/editor/__tests__/SelectionHistoryIntegration.test.tsx (NEW, 7 tests):

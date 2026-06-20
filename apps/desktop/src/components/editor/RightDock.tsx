@@ -51,7 +51,7 @@ function ExportButton() {
 
 function InspectorDock() {
   return (
-    <div class="flex w-[300px] shrink-0 flex-col border-r border-editor-divider bg-editor-panel 2xl:w-[336px]">
+    <div class="flex w-full flex-1 min-h-0 flex-col border-b xl:border-b-0 xl:border-r border-editor-divider bg-editor-panel xl:w-[300px] 2xl:w-[336px] xl:flex-none">
       <div class="flex h-[44px] shrink-0 items-center border-b border-editor-divider bg-editor-topbar pl-0">
         <InspectorTabs />
       </div>
@@ -62,7 +62,7 @@ function InspectorDock() {
 
 function LayerDock(props: Pick<RightDockProps, "onClose">) {
   return (
-    <div class="flex w-[260px] shrink-0 flex-col bg-editor-panel 2xl:w-[298px]">
+    <div class="flex w-full flex-1 min-h-0 flex-col bg-editor-panel xl:w-[260px] 2xl:w-[298px] xl:flex-none">
       <div class="flex h-[44px] shrink-0 items-center justify-end gap-2 border-b border-editor-divider bg-editor-topbar pr-4">
         <ExportButton />
         <button
@@ -82,8 +82,8 @@ export function RightDock(props: RightDockProps) {
   return (
     <aside
       class={clsx(
-        "bottom-[32px] right-0 top-[54px] z-40 flex shrink-0 overflow-hidden border-l border-editor-divider shadow-[-18px_0_40px_rgba(0,0,0,0.24)]",
-        "fixed w-[min(92vw,634px)] max-w-[calc(100vw-52px)] xl:static xl:z-auto xl:flex xl:w-auto xl:max-w-none xl:shadow-none",
+        "flex flex-col xl:flex-row shrink-0 overflow-hidden border-l border-editor-divider bg-editor-panel",
+        "w-[300px] xl:w-auto xl:static xl:z-auto xl:shadow-none",
         props.open ? "flex" : "hidden",
       )}
     >
