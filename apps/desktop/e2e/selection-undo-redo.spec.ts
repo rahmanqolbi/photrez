@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readRenderedPixel } from "./helpers/screenshotPixels";
 
 /**
  * Visual regression for the two bugs the user reported on 2026-06-14:
@@ -37,30 +38,7 @@ async function createBlankCanvas(page: import("@playwright/test").Page, width = 
 }
 
 function readPixelAt(page: import("@playwright/test").Page, screenX: number, screenY: number) {
-  return page.evaluate(
-    ({ x, y }: { x: number; y: number }) => {
-      const container = document.getElementById("canvas-container");
-      if (!container) return null;
-      const canvas = container.querySelector("canvas") as HTMLCanvasElement | null;
-      if (!canvas) return null;
-      // Get the same context the renderer uses (must be webgl2 with preserveDrawingBuffer)
-      const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true }) as WebGL2RenderingContext | null;
-      if (!gl) return null;
-      const rect = canvas.getBoundingClientRect();
-      // Convert screen coords to canvas buffer coords (WebGL Y is flipped)
-      const px = Math.floor(((x - rect.left) / rect.width) * gl.drawingBufferWidth);
-      const py = Math.floor(((y - rect.top) / rect.height) * gl.drawingBufferHeight);
-      if (px < 0 || py < 0 || px >= gl.drawingBufferWidth || py >= gl.drawingBufferHeight) {
-        return null;
-      }
-      // readPixels uses bottom-left origin: yBuffer = (height - 1) - y
-      const flippedY = gl.drawingBufferHeight - 1 - py;
-      const pixel = new Uint8Array(4);
-      gl.readPixels(px, flippedY, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-      return Array.from(pixel);
-    },
-    { x: screenX, y: screenY },
-  );
+  return readRenderedPixel(page.locator("#canvas-container > canvas").first(), screenX, screenY);
 }
 
 test.describe("selection tool — delete + undo + redo (regression: 2026-06-14)", () => {

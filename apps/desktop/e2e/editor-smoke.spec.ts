@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readRenderedPixelAtRatio } from "./helpers/screenshotPixels";
 
 async function createBlankCanvas(page: import("@playwright/test").Page, width = "800", height = "600") {
   const promptValues = [width, height];
@@ -234,13 +235,7 @@ test.describe("editor browser smoke", () => {
     await page.getByRole("button", { name: "Brush Tool" }).click();
 
     const canvas = page.locator("#canvas-container > canvas").first();
-    const before = await canvas.evaluate((node) => {
-      const gl = (node as HTMLCanvasElement).getContext("webgl2", { preserveDrawingBuffer: true });
-      if (!gl) return null;
-      const pixel = new Uint8Array(4);
-      gl.readPixels(Math.floor(gl.drawingBufferWidth / 2), Math.floor(gl.drawingBufferHeight / 2), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-      return Array.from(pixel);
-    });
+    const before = await readRenderedPixelAtRatio(canvas, 0.5, 0.5);
     expect(before).not.toBeNull();
 
     const fitZoom = Math.max(0.05, Math.min((containerBox!.width - 80) / 120, (containerBox!.height - 80) / 90, 10));
@@ -254,13 +249,7 @@ test.describe("editor browser smoke", () => {
     await page.mouse.up();
     await page.waitForTimeout(150);
 
-    const after = await canvas.evaluate((node) => {
-      const gl = (node as HTMLCanvasElement).getContext("webgl2", { preserveDrawingBuffer: true });
-      if (!gl) return null;
-      const pixel = new Uint8Array(4);
-      gl.readPixels(Math.floor(gl.drawingBufferWidth / 2), Math.floor(gl.drawingBufferHeight / 2), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-      return Array.from(pixel);
-    });
+    const after = await readRenderedPixelAtRatio(canvas, 0.5, 0.5);
     expect(after).not.toBeNull();
     expect(after).not.toEqual(before);
 
@@ -271,13 +260,7 @@ test.describe("editor browser smoke", () => {
     await page.mouse.up();
     await page.waitForTimeout(150);
 
-    const erased = await canvas.evaluate((node) => {
-      const gl = (node as HTMLCanvasElement).getContext("webgl2", { preserveDrawingBuffer: true });
-      if (!gl) return null;
-      const pixel = new Uint8Array(4);
-      gl.readPixels(Math.floor(gl.drawingBufferWidth / 2), Math.floor(gl.drawingBufferHeight / 2), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-      return Array.from(pixel);
-    });
+    const erased = await readRenderedPixelAtRatio(canvas, 0.5, 0.5);
     expect(erased).not.toBeNull();
     expect(erased).not.toEqual(after);
   });

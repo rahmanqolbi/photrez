@@ -139,6 +139,7 @@
 | ✅ DONE      | Brush visual calibration: Photoshop-like hardness 0 soft-round profile with broader dense center, dense soft spacing, subpixel bilinear stamping, opacity/flow-independent alpha scale, and pixel-profile regression tests |
 | ✅ DONE      | Photoshop-style hardness falloff — brush/eraser size remains the fixed outer diameter; hardness controls the fully opaque core and feather rim width inside that diameter |
 | ✅ DONE      | Fixed brush/eraser footprint — every hardness uses the exact displayed Size radius; softness is contained inside the cursor circle |
+| ✅ DONE      | Inverse-quadratic soft feather — after the hardness-defined solid core, alpha follows `1 - t²` to the fixed zero-alpha Size boundary so the visible feather fills more of the cursor without expanding its footprint |
 | ✅ DONE      | Brush hardness curve retune — hardness 0 uses a lighter airier radial fade, while 80% hardness maps to a larger solid body with a narrow Photoshop-like feather rim |
 | ✅ DONE      | Alt-Hold Eyedropper modifier for sampling colors from active canvas |
 | ✅ DONE      | Shift-Click Straight Lines interpolation connecting last painted dab |
@@ -195,7 +196,7 @@
 | ✅ DONE      | Redo (Ctrl+Y / Ctrl+Shift+Z)               |
 | ✅ DONE      | Snapshot-based history (max 50)            |
 | ✅ DONE      | Redo branch discard on new mutation        |
-| ⬜ TODO      | History panel UI (list of operations)      |
+| 🗓️ PLANNED (POST-MVP) | History panel UI (list of operations)      |
 
 ---
 
@@ -260,8 +261,8 @@
 | ✅ DONE      | Tauri bridge IPC (`invoke` → `#[tauri::command]`) |
 | ✅ DONE      | Response envelope contract (v2.0.0 Tauri shell runtime: ping, contract info, file read/write) |
 | ✅ DONE      | File open dialog (Ctrl+O)                  |
-| ⬜ TODO      | Native menu integration                    |
-| ⬜ TODO      | Window state persistence (size/position)   |
+| 🗓️ PLANNED (POST-MVP) | Native menu integration                    |
+| ✅ DONE      | Window state persistence (size/position/maximized, manual core-API impl in `main.rs`) |
 
 ---
 
@@ -294,9 +295,9 @@
 | ✅ DONE      | Crop mode Size (target W/H constraint, Shift = free) + editable target W/H + Apply resizes canvas |
 | ✅ DONE      | Delete Cropped Pixels toggle (ON = destructive bitmap crop, OFF = offset-based) |
 | ✅ DONE      | Crop Enter/Esc keyboard shortcuts |
-| ⬜ TODO      | Context menu                               |
-| ⬜ TODO      | Tooltip system                             |
-| ⬜ TODO      | Dialog system (modal)                      |
+| 🗓️ PLANNED (POST-MVP) | General context menu system                |
+| 🗓️ PLANNED (POST-MVP) | Tooltip system                             |
+| 🗓️ PLANNED (POST-MVP) | Dialog system (modal)                      |
 
 ---
 
@@ -313,8 +314,10 @@
 | ✅ DONE      | CI pipeline (GitHub Actions: type-check, lint, frontend tests, build, browser E2E, Rust tests, dependency audit) |
 | ✅ DONE      | Unit tests (core crate) — 85 tests, 92 workspace total |
 | ✅ DONE      | Desktop shell contract tests — 8 Tauri command tests |
-| ✅ DONE      | Frontend tests — 1079 passing tests (77 files) |
+| ✅ DONE      | Frontend tests — 1261 passing tests (86 files), latest recorded 2026-06-20 |
+| ✅ DONE      | Split Vitest feedback paths — 346 pure-Node tests (~7s), 915 jsdom tests, full 1261-test gate 85.80s (62% faster than 228.33s baseline) |
 | ✅ DONE      | E2E browser tests — 21 Playwright tests    |
+| ✅ DONE      | E2E visible-pixel sampling compatible with `preserveDrawingBuffer: false` — checkerboard, brush/eraser, and selection undo/redo tests sample composited screenshots instead of an undefined default WebGL framebuffer |
 | ✅ DONE      | M6 Perf Gate (all metrics PASS)            |
 | ✅ DONE      | Native Vite tsconfig paths (removed `vite-tsconfig-paths` plugin) |
 | ✅ DONE      | Release candidate (MSI + NSIS installers)  |
@@ -324,6 +327,8 @@
 
 | Status | Item |
 | ------ | ---- |
+| PLANNED | Post-MVP UI backlog preserved with entry gates and delivery order: `docs/plans/2026-06-20-post-mvp-ui-backlog.md` |
+| PARTIAL | Native Tauri release smoke evidence: NATIVE-001 launch passed with retry warning; NATIVE-002 through NATIVE-007 remain pending interactive verification |
 | DONE | FAANG review pointer capture helper: canvas pointer tools now use shared safe capture/release helpers with focused pointer regression tests |
 | DONE | FAANG review paint command boundary: brush/eraser bitmap commits now share `commitPaintBitmap()` for history snapshot, engine mutation, texture upload, and render scheduling |
 | DONE | FAANG review paint history budget gate: `perf:paint-history` now quantifies full-layer snapshot retention vs dirty-region undo/redo patch estimates for paint-heavy workflows |

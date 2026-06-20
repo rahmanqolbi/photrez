@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readRenderedPixelAtRatio } from "./helpers/screenshotPixels";
 
 /**
  * Visual regression: the checkerboard pattern must remain visually stable
@@ -16,37 +17,23 @@ async function createBlankCanvas(page: import("@playwright/test").Page, width = 
   await page.getByRole("button", { name: "New Canvas" }).click();
 }
 
-function samplePixels(page: import("@playwright/test").Page) {
-  return page.evaluate(() => {
-    const container = document.getElementById("canvas-container");
-    if (!container) return null;
-    const canvases = Array.from(container.querySelectorAll("canvas"));
-    const webglCanvas = canvases.find((c) => c.getContext("webgl2"));
-    if (!webglCanvas) return null;
-    const gl = webglCanvas.getContext("webgl2");
-    if (!gl) return null;
-
-    const w = gl.drawingBufferWidth;
-    const h = gl.drawingBufferHeight;
-    const sampleAt = (x: number, y: number) => {
-      const pixel = new Uint8Array(4);
-      gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-      return Array.from(pixel);
-    };
-    return {
-      w,
-      h,
-      // Pasteboard corners (very close to canvas edges, outside artboard)
-      pasteboard: {
-        topLeft: sampleAt(5, h - 5),
-        topRight: sampleAt(w - 5, h - 5),
-        bottomLeft: sampleAt(5, 5),
-        bottomRight: sampleAt(w - 5, 5),
-      },
-      // Artboard center (should be checker ~140 or ~199)
-      artboardCenter: sampleAt(Math.floor(w / 2), Math.floor(h / 2)),
-    };
-  });
+async function samplePixels(page: import("@playwright/test").Page) {
+  const canvas = page.locator("#canvas-container > canvas").first();
+  const box = await canvas.boundingBox();
+  if (!box) return null;
+  const xEdge = 5 / box.width;
+  const yEdge = 5 / box.height;
+  return {
+    pasteboard: {
+      topLeft: await readRenderedPixelAtRatio(canvas, xEdge, yEdge),
+      topRight: await readRenderedPixelAtRatio(canvas, 1 - xEdge, yEdge),
+      bottomLeft: await readRenderedPixelAtRatio(canvas, xEdge, 1 - yEdge),
+      bottomRight: await readRenderedPixelAtRatio(canvas, 1 - xEdge, 1 - yEdge),
+    },
+    // Avoid the exact viewport center, where tool/transform overlays may render
+    // Photon Amber controls over the otherwise neutral checkerboard.
+    artboardCenter: await readRenderedPixelAtRatio(canvas, 0.45, 0.45),
+  };
 }
 
 test.describe("canvas checkerboard visibility", () => {
@@ -66,14 +53,16 @@ test.describe("canvas checkerboard visibility", () => {
     if (!samples) return;
 
     // The artboard center should be a checker color (light ~199 or dark ~140)
-    const [ar, ag, ab] = samples.artboardCenter;
+    expect(samples.artboardCenter).not.toBeNull();
+    const [ar, ag, ab] = samples.artboardCenter!;
     expect(ar).toBeGreaterThan(100);
     expect(ag).toBeGreaterThan(100);
     expect(ab).toBeGreaterThan(100);
 
     // The pasteboard corners should be the midnight background (~13, 15, 18)
     for (const [name, px] of Object.entries(samples.pasteboard)) {
-      const [r, g, b] = px;
+      expect(px).not.toBeNull();
+      const [r, g, b] = px!;
       expect(r, `pasteboard ${name} should be midnight (r=${r})`).toBeLessThan(50);
       expect(g, `pasteboard ${name} should be midnight (g=${g})`).toBeLessThan(50);
       expect(b, `pasteboard ${name} should be midnight (b=${b})`).toBeLessThan(50);

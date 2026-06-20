@@ -18,9 +18,9 @@ Photrez adalah lightweight desktop image editor yang dibangun untuk workflow dig
 
 - **Phase**: Post-MVP polish & bug-fix (2026-06-13). GPU viewport migration, brush calibration, crop UX improvements, and multi-cycle bug-fix passes completed. Multi-document workspace implemented.
 - **Core Crate**: Document model, layer management, bitmap buffers, selection, transform, brush/eraser, import decode, export encode, and workspace management exist. Core tests pass (`cargo test -p photrez-core`: 85 tests). Workspace total: 92 tests (`cargo test --workspace`).
-- **Render Crate**: wgpu renderer code exists (future target), but render crate tests currently fail with `STATUS_ENTRYPOINT_NOT_FOUND`; workspace test gate is not green. MVP rendering via **WebGL2** (`apps/desktop/src/renderer/webgl2.ts`).
+- **Render Crate**: wgpu renderer code exists as a future target and is not part of the MVP hot path. The latest recorded `cargo test --workspace` gate passes; MVP rendering remains **WebGL2** (`apps/desktop/src/renderer/webgl2.ts`).
 - **Frontend**: Full UI shell with multi-document workspace, document tabs, empty state, drag/drop, and all core editing interactions. Artboard renders via WebGL2 projection-matrix-driven camera viewport.
-- **Testing**: Current verified gates are tracked in `docs/AI_CURRENT_TASK.md` and `docs/AI_HISTORY.md`. As of 2026-06-18: frontend tests pass (77 files / 1079 tests), `pnpm.cmd run build` passes, `cargo test -p photrez-core` passes (85 tests), and `cargo test --workspace` passes.
+- **Testing**: Current verified gates are tracked in `docs/AI_CURRENT_TASK.md` and `docs/AI_HISTORY.md`. Latest recorded frontend verification on 2026-06-20 passes (86 files / 1261 tests), type-check and production build pass; the latest recorded Rust gates pass for `photrez-core` (85 tests) and the workspace.
 - **Recovery Reference** (historical): `docs/archive/usable-mvp-recovery-plan.md`.
 
 ---

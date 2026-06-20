@@ -4,6 +4,168 @@
 
 ## Current Tasks
 
+### [2026-06-20] TEST INFRASTRUCTURE - Fast Feedback Path [COMPLETE]
+
+**Goal:**
+Reduce frontend test feedback time without weakening wiring, state-contract, CanvasViewport, or browser E2E coverage.
+
+**Scope:**
+- [x] Separate pure Node tests from jsdom component/wiring tests using supported Vitest 4 projects
+- [x] Add explicit unit/component/related/full test scripts
+- [x] Benchmark worker counts and retain Vitest's faster stable default
+- [x] Remove Solid owner-leak warnings from `brushUx.test.tsx`; retain four pre-existing jsdom canvas warnings pending a native-canvas dependency decision
+- [x] Run focused tests, full frontend suite, build, and mandatory regression gates
+- [x] Record measured results in `AI_HISTORY.md` and update `FEATURES.md`
+
+**Constraints:**
+- Existing test semantics and coverage remain intact; no test deletion or assertion weakening.
+- Solid/jsdom tests remain isolated because prior concurrent execution caused signal pollution.
+- Preserve unrelated dirty-working-tree changes.
+
+**Done:**
+- `unit-node`: 27 files / 346 tests, no jsdom or global DOM setup, 6.96s measured fast run.
+- `component-jsdom`: 59 files / 915 tests, preserving all component, wiring, pointer, CanvasViewport, and browser-like behavior.
+- Full gate: 86 files / 1261 tests in 85.80s versus 228.33s baseline (62.4% wall-time reduction).
+- Added `test:unit`, `test:component`, and `test:related`; existing `test` remains the complete gate.
+- Worker benchmark for the Node project: default 6.96s, 4 workers 10.18s, 2 workers 13.20s, 1 worker 20.61s; no artificial cap retained.
+- Wrapped brush UX signals and pointer-tool computations in owned Solid roots with explicit disposal.
+
+**Verification:**
+- PASS: `pnpm --filter photrez-desktop test` — 1261/1261 in 85.80s.
+- PASS: `pnpm run build` — TypeScript + Vite production build.
+- PASS: `cargo test -p photrez-core` — 85/85.
+- PASS: `cargo test --workspace` — core 85/85 + desktop 11/11.
+- NOTE: four existing `HTMLCanvasElement.getContext()` jsdom warnings remain; no assertion or runtime regression is associated with them.
+
+### [2026-06-20] POST-MVP - Window State Persistence [COMPLETE — pivoted to manual implementation after plugin IPC failure] — Final implementation: manual core-API approach in `apps/desktop/src-tauri/src/main.rs` (no third-party plugin, no new Cargo deps). `SavedWindowState` struct + `load_window_state`/`save_window_state` helpers; `.setup(...)` restores size/position/maximized on launch; `.on_window_event(...)` saves on `CloseRequested`. State file at `%APPDATA%\com.photrez.app\window-state.json`. Three tests added (roundtrip, default-matches-tauri-config, legacy-format forward-compat). Debug logging removed from `tauriWindow.ts` and `AppTitleBar.tsx`. Docs (FEATURES, decision log, dependency inventory, AI_HISTORY, spec, plan) synced. Verification: cargo test --workspace 85+13 green; cargo build green; frontend regression 86 files/1261 green; type-check + build green.
+
+**Pivot history (same day):** Original implementation used `tauri-plugin-window-state` v2.4.1. After wiring, EVERY Tauri IPC command (core + dialog) returned `Plugin not found` — removing the plugin restored IPC, proving the plugin was the trigger. Root cause at source level unresolved (Cargo.lock chain clean, plugin API looked correct). Two capabilities file fix attempts did not help. Decision: pivot to manual implementation. See `docs/AI_HISTORY.md` `[2026-06-20] BUG FIX - Window-State Plugin Broke All Tauri IPC; Pivoted to Manual Implementation` for full root cause + fix rationale. Manual NATIVE-008 restart smoke deferred to user after rebuild.
+
+**Goal:**
+Implement window state persistence (position, size, maximized state) for the Photrez desktop app per `docs/plans/2026-06-20-post-mvp-ui-backlog.md` recommended order #1.
+
+**Scope (current phase: COMPLETE with same-day bug-fix revision):**
+- [x] Open dedicated task in `AI_CURRENT_TASK.md`
+- [x] Brainstorm design (storage location, invalid/off-screen bounds recovery, multi-monitor behavior)
+- [x] Write design doc to `docs/superpowers/specs/2026-06-20-window-state-persistence-design.md` (Approved 2026-06-20, scope revised 2026-06-20 after bug report)
+- [x] User review of spec (Approved via "lanjut")
+- [x] Implementation plan via writing-plans skill (`docs/superpowers/plans/2026-06-20-window-state-persistence.md`)
+- [x] Implementation + tests
+- [x] Verification + history/feature update
+- [x] **Bug fix (same-day)**: user reported window un-interactive + buttons unresponsive. Root-caused via plugin source + 3 upstream GitHub issues (#2203, #1970, #2617); narrowed scope to `SIZE | POSITION | MAXIMIZED | FULLSCREEN` via `.with_state_flags(...)`. Spec + decision log + AI_HISTORY updated.
+
+**Done:**
+- Spec: `docs/superpowers/specs/2026-06-20-window-state-persistence-design.md` (Approved + scope revised after bug fix)
+- Plan: `docs/superpowers/plans/2026-06-20-window-state-persistence.md` (10 tasks)
+- Code: `tauri-plugin-window-state = "2"` dep (resolved v2.4.1), `.plugin(tauri_plugin_window_state::Builder::default().with_state_flags(STATE_FLAGS).build())` in builder chain (full path for `StateFlags` to stay consistent with no-`use` style), wiring test `test_window_state_plugin_builder_builds` (turbofish `.build::<tauri::Wry>()`). `Cargo.lock` auto-updated.
+- **Bug fix (same-day, 2026-06-20)**: narrowed `StateFlags` from `all()` to `SIZE | POSITION | MAXIMIZED | FULLSCREEN`. Excludes `DECORATIONS` (upstream #2203/#1970 — plugin flipped `decorations: false` to `true` and overlaid native title bar on custom title bar) and `VISIBLE` (upstream #2537/#2109 — `set_focus()` race during `on_window_ready`).
+- Doc sync: `FEATURES.md` row PLANNED→DONE, `dependency-inventory.md` row added, `id-decision-log.md` 2 rows in existing 2026-06-20 section (scope row marked "revised 2026-06-20"), `native-runtime-smoke-checklist.md` NATIVE-008 row added, `AI_HISTORY.md` FEATURE + BUG FIX entries appended.
+- Verification (during inline plan execution + post-bug-fix):
+  - RED → GREEN TDD: cargo test failed `E0433` before dep; passed after.
+  - PASS: `cargo test --workspace` (photrez-core 85 + photrez-desktop 11 = 96 tests).
+  - PASS: `cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml` (initial 1m25s, incremental 0.82s after bug fix).
+  - PASS: `pnpm.cmd --filter photrez-desktop test --run` (86 files / 1261 tests, baseline match).
+  - PASS: `pnpm.cmd run type-check` (0 TypeScript errors).
+  - PASS: `pnpm.cmd run build` (Vite, 24.72s, same bundle profile as baseline).
+  - PENDING (manual, deferred): NATIVE-008 restart smoke (user-driven).
+  - PENDING (manual, user-driven): Verify bug fix — buttons respond + window draggable + close.
+  - NO COMMITS (per AGENTS.md); all changes uncommitted on `main` awaiting user approval.
+
+**Notes:**
+- User opted to follow the backlog recommended order and skip the manual NATIVE-002 → NATIVE-007 entry gate evidence. Waiver recorded in spec §Follow-ups.
+- Decision logs appended to existing 2026-06-20 section (not a new duplicate-header section).
+- Conscious deviation from official Tauri docs example (which uses `.setup(|app| ...)` + `#[cfg(desktop)]` guard): Photrez is desktop-only, so the guard is noise. Direct `.plugin()` chaining matches existing `tauri_plugin_dialog::init()` style.
+- **Bug-fix lesson**: plugin default `Builder::default()` is rarely the right choice for apps with custom title bars or controlled visibility. Default `StateFlags::all()` is a known footgun (#2203, #1970, #2617). Always pass `.with_state_flags(...)` explicitly with the narrowest set the app actually needs.
+- Per AGENTS.md, only this backlog item is in scope for this task. Items #2–#6 (Native menu, Tooltip, Context menu, Dialog, History Panel) remain untouched.
+
+### [2026-06-20] RELEASE HARDENING - Automated Gates and Native Tauri Smoke Evidence [PARTIAL - INTERACTIVE EVIDENCE PENDING] 
+
+**Goal:**
+Run the release verification gates and collect honest native Tauri evidence for the current working tree, marking only scenarios that are directly observed.
+
+**Scope:**
+- [x] Record environment, commit, working-tree state, and command evidence
+- [x] Run root verify, type-check, lint, browser E2E, and dependency audit gates; record failures/blocks honestly
+- [x] Launch the real Tauri runtime and capture native launch evidence
+- [x] Execute native smoke cases that can be directly controlled in this environment
+- [x] Leave genuinely interactive/unverified native scenarios pending rather than inferring success
+- [x] Update native checklist, `AI_HISTORY.md`, and `FEATURES.md` with results
+- [x] Verify documentation diffs and encoding integrity
+
+**Notes:**
+- The working tree already contains the preceding documentation reconciliation and is not committed; verification will record this explicitly.
+- OS drag/drop and native save-dialog rows require real desktop interaction and evidence. Automated unit/browser coverage is supporting evidence only, not a substitute.
+
+**Root Cause (E2E gate):**
+Three Playwright pixel assertions used `gl.readPixels()` on the default framebuffer after the renderer intentionally switched to `preserveDrawingBuffer: false`. Browser presentation may clear that buffer, so the tests read transparent black instead of user-visible compositor output.
+
+**Fix Rationale:**
+Sample Playwright element screenshots through the browser compositor. This tests what users see and preserves the production WebGL performance policy.
+
+**Done:**
+- Added shared screenshot pixel sampling and migrated checkerboard, brush/eraser, and selection undo/redo E2E.
+- Captured a responsive native Photrez launch plus Tauri stdout/stderr evidence.
+- Marked NATIVE-002 through NATIVE-007 pending because real File Explorer drag, native dialog, and custom window-control interaction were not executed.
+
+**Verification:**
+- PASS: full browser E2E (21/21).
+- PASS: frontend unit coverage across split execution after runner pressure: 83 files / 1213 tests, then the three worker-timeout files / 48 tests; total 86 files / 1261 tests with no assertion failures.
+- PASS: type-check, lint, production build, core Rust tests (85), and workspace Rust tests (95).
+- PASS: `pnpm audit --prod` — no known vulnerabilities.
+- BLOCKED: `cargo audit`; `cargo-audit` is absent and installation fails on the current MinGW toolchain while compiling `aws-lc-sys`.
+- PASS WITH WARNING: NATIVE-001 on the logged retry; the first launch attempt produced a non-responsive window.
+- PENDING: NATIVE-002 through NATIVE-007 require interactive native evidence.
+- PASS: documentation diff and encoding integrity — `git diff --check` produced no whitespace errors on my added block; BOM probe on all 7 doc files (6 modified + 1 new) and the new `apps/desktop/e2e/helpers/screenshotPixels.ts` returned `noBOM` for every file in the working tree; `git diff --numstat` returned numeric counts for every modified doc, confirming no file was treated as binary during diffing.
+
+**Blocking finding (pre-existing, surfaced by this pass):**
+- HEAD version of `docs/AI_HISTORY.md` is encoded as **UTF-16 LE with BOM (`FF FE`)**, violating `AI_CONTEXT.md` §1.7 which mandates UTF-8 no BOM for all markdown files. The Edit tool rewrote the file as UTF-8 no BOM when this pass prepended a new entry, which is why `git diff --check` reports a flood of false-positive "trailing whitespace" lines: every other line shows trailing `\x00` bytes when git byte-compares the UTF-16 committed content against the new UTF-8 content.
+- Working tree is now compliant: BOM probe shows `none` for every modified doc, and the only genuine trailing-whitespace lines in `docs/AI_HISTORY.md` (4 lines: 31, 5555, 5997, 6909) are in pre-existing entries that already had trailing spaces in HEAD. None of them are inside the new RELEASE HARDENING block (lines 1-30).
+- This needs a separate follow-up to either re-encode the file properly as a docs-cleanup commit, or to accept the encoding-change diff as part of the next release commit. Both options leave the file UTF-8 no BOM going forward.
+
+**Notes:**
+- Task remains `PARTIAL - INTERACTIVE EVIDENCE PENDING` because NATIVE-002 through NATIVE-007 require real desktop interaction that cannot be substituted with automated or unit evidence. Closing the documentation scope item now is correct: it removes the last static-source blocker from this release gate.
+
+### [2026-06-20] DOCUMENTATION - Source-of-Truth Reconciliation and Post-MVP Backlog [COMPLETE]
+
+**Goal:**
+Reconcile current runtime, task, feature, architecture, history, and decision documentation after the latest brush work; preserve the remaining requested UI items as an explicit post-MVP backlog; and identify the next release-hardening gate without expanding the locked MVP runtime.
+
+**Scope:**
+- [x] Re-read all five required AI documents and the decision log
+- [x] Record the inverse-quadratic brush falloff as the current superseding decision
+- [x] Close stale `IN PROGRESS` task entries that already have implementation and verification evidence
+- [x] Reconcile stale architecture and test-status statements
+- [x] Convert remaining feature TODOs into an explicit post-MVP planned backlog
+- [x] Update `AI_HISTORY.md`, `FEATURES.md`, and decision log
+- [x] Verify documentation diffs and encoding integrity
+
+**Notes:**
+- The requested History Panel, native menu, window persistence, general context-menu system, tooltip system, and modal/dialog system remain desired work, but are scheduled after release-candidate evidence because they are outside the locked MVP feature set.
+- Native Tauri smoke evidence remains the next release gate after this reconciliation.
+
+**Done:**
+- Reconciled brush formula, stale task statuses, architecture test status, and feature test counts.
+- Preserved all six requested items as a sequenced post-MVP backlog in `docs/plans/2026-06-20-post-mvp-ui-backlog.md`.
+- Kept the locked MVP and future Rust/wgpu boundaries unchanged.
+
+**Verification:**
+- PASS: `git diff --check` (line-ending normalization warnings only; no whitespace errors).
+- PASS: all changed AI documentation is represented as textual diff; no binary/encoding replacement detected.
+- Runtime build/tests not rerun because this task changes documentation only.
+
+### [2026-06-20] BUG FIX - Brush Falloff Curve: Smoothstep to Inverse-Quadratic [COMPLETE]
+
+**Goal:**
+Keep the fixed brush/eraser footprint while making the feather visually fill more of the displayed cursor circle.
+
+**Done:**
+- Replaced the smoothstep feather with `alpha = 1 - t²` inside the fixed support radius.
+- Preserved the hardness-defined solid core and exact zero-alpha boundary at `Size / 2`.
+- Updated brush-tip, reference-audit, and paint-renderer expectations.
+
+**Verification:**
+- PASS: full frontend suite (86 files / 1261 tests).
+
 ### [2026-06-20] BUG FIX - Fixed Brush/Eraser Footprint Across Hardness [COMPLETE]
 
 **Goal:**
@@ -216,7 +378,7 @@ B → C → A in that order: B is 1-line minimal change with the highest visual 
 
 ---
 
-### [2026-06-19] BUG FIX - Source-Inspired Brush Hardness Curve [COMPLETE]
+### [2026-06-19] BUG FIX - Source-Inspired Brush Hardness Curve [SUPERSEDED]
 
 **Goal:**
 Replace the hand-tuned soft brush curve with a source-inspired hardness model that behaves consistently at intermediate hardness values, based on GIMP/MyPaint brush mask research.
@@ -224,15 +386,14 @@ Replace the hand-tuned soft brush curve with a source-inspired hardness model th
 **Scope:**
 - [x] Search open-source brush implementations for hardness/soft mask formulas
 - [x] Compare GIMP generated brush and MyPaint dab mask behavior
-- [ ] Adapt a GIMP-style pseudo-gaussian hardness curve for Photrez soft tips
-- [ ] Keep Photoshop-like normal cursor outside-tail behavior
-- [ ] Update regression tests for hardness 0/20/50/80/100 consistency
-- [ ] Run focused and broad frontend verification
-- [ ] Update `AI_HISTORY.md`, `FEATURES.md`, and decision log
+- Not pursued: adapt a GIMP-style pseudo-gaussian hardness curve for Photrez soft tips.
+- Not pursued: keep the outside-tail behavior; the fixed-footprint decision explicitly removed it.
+- Superseding fixed-footprint/inverse-quadratic work owns the regression tests, verification, and documentation updates.
 
 **Research Notes:**
 - GIMP generated brush uses a pseudo-gaussian lookup with exponent `0.4 / (1 - hardness)`.
 - MyPaint dab masks use squared-distance `rr` and separate `hardness`/`softness`, confirming that stable brush feel needs a smooth radial mask model rather than one-off checkpoint tuning.
+- This proposal was not completed as written. Later fixed-footprint and inverse-quadratic work superseded the proposed pseudo-gaussian/outside-tail implementation.
 
 ---
 
@@ -451,22 +612,22 @@ Capture `engine.snapshot()` at pointerdown and stash it in the drag state as `pr
 
 ---
 
-### [2026-06-19] FAANG Review Rejection Continuation - Pointer Capture Helper [IN PROGRESS]
+### [2026-06-19] FAANG Review Rejection Continuation - Pointer Capture Helper [COMPLETE]
 
 **Goal:**
 Mitigate FRR-MOVE-003 by replacing ad-hoc canvas pointer capture/release calls with a small typed helper and focused regression tests.
 
 **Scope:**
 - [x] Inspect pointer capture/release call sites
-- [ ] Add helper for safe pointer capture/release
-- [ ] Wire canvas pointer tools to the helper
-- [ ] Add focused helper tests
-- [ ] Update FAANG docs/history/features
-- [ ] Run focused and broad verification
+- [x] Add helper for safe pointer capture/release
+- [x] Wire canvas pointer tools to the helper
+- [x] Add focused helper tests
+- [x] Update FAANG docs/history/features
+- [x] Run focused and broad verification
 
 **Notes:**
 - Ponytail constraint: do not rewrite Move/Selection state machines in this pass.
-- Current finding: canvas pointer tools repeatedly call `setPointerCapture` / `releasePointerCapture` with local try/catch blocks.
+- Completed via `pointerCapture.ts`; canvas pointer tools use the helper and focused plus CanvasViewport regression tests pass. See `docs/faang-review-rejections/2026-06-18-execution-audit.md`.
 
 ---
 
@@ -1161,7 +1322,7 @@ Create a structured markdown risk register for potential production bugs, split 
 
 ---
 
-### [2026-06-16] Feature — Cross-Document Drag & Drop (Layer + File) [IN PROGRESS]
+### [2026-06-16] Feature — Cross-Document Drag & Drop (Layer + File) [COMPLETE]
 
 **Goal:**
 Implement two related drag-drop features for Photrez:
@@ -1173,16 +1334,16 @@ Implement two related drag-drop features for Photrez:
 - Multi-file cascade (+24px per layer)
 - Minimal toast notification system for error UX
 
-**Status:** Design phase. Spec at `docs/superpowers/specs/2026-06-16-cross-doc-drag-drop-design.md` (pending review).
+**Status:** Implemented and verified. Spec retained at `docs/superpowers/specs/2026-06-16-cross-doc-drag-drop-design.md` as the design record.
 
 **Scope (this phase):**
 - [x] Brainstorming completed (10 clarifying questions, 3 architectural approaches evaluated)
 - [x] User approved design (Q1: Copy+Alt=Move, Q2: Multi-zone drop targets, Q2a: 500ms hover-to-switch, Q3: cursor position, Q4: context-sensitive file drop, Q5: single layer only MVP, Q6: 24px cascade, Q7: A Coexist integration strategy, Q8: per-doc history approach A)
 - [x] Spec draft written
-- [ ] User reviews spec
-- [ ] Invoke writing-plans skill
-- [ ] Implementation + tests
-- [ ] Verification pipeline green
+- [x] User reviews spec
+- [x] Invoke writing-plans skill
+- [x] Implementation + tests
+- [x] Verification pipeline green
 
 **Key Design Decisions (locked):**
 - Q1: Cross-doc layer drag default = **Copy**, Alt = Move
@@ -1352,7 +1513,7 @@ Remove the last general-path CSS transform wrapper in `CanvasViewport.tsx:740-76
 
 ---
 
-### [2026-06-14] Photrez Test Quality & Speed Overhaul [IN PROGRESS]
+### [2026-06-14] Photrez Test Quality & Speed Overhaul [COMPLETE]
 
 **Goal:**
 Address the recurring "every new tool passes unit test but fails in frontend" pattern by building proper test infrastructure, contract tests that catch wiring bugs at the engine→signal→UI boundary, and a faster test suite. Pilot on Move Tool (which has a deferred bug), then replicate to all other tools.
@@ -1378,7 +1539,7 @@ Address the recurring "every new tool passes unit test but fails in frontend" pa
 - Global mocks for pointer capture, WebGL2, getComputedStyle, RAF were tried and reverted — they broke existing pixel-dependent and positioning tests. Use per-test mocks instead.
 - `vi.clearAllMocks()` in global beforeEach clears spies set up in test file's own beforeEach — skip it
 
-**Planned Phases (remaining):**
+**Historical Planned Phases (all completed below):**
 - **Phase 2:** Pilot on Move Tool — resolve deferred Resize Cursor bug, add 1 CanvasViewport integration test, add contract test
 - **Phase 3:** Replicate contract test pattern to Selection, Brush, Crop, Transform
 - **Phase 4:** Enforce via Definition of Done in `AGENTS.md` + tool creation recipe in `CONVENTIONS.md`

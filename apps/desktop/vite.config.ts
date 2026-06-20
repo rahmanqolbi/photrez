@@ -3,6 +3,40 @@ import { defineConfig } from "vitest/config";
 import solidPlugin from "vite-plugin-solid";
 import tailwindcss from "@tailwindcss/vite";
 
+// Keep this list conservative: only tests that do not require browser globals,
+// Solid rendering, canvas APIs, or DOM event wiring belong in the fast project.
+const nodeTestFiles = [
+  "src/engine/__tests__/paintHistoryBudget.test.ts",
+  "src/engine/__tests__/blendModes.test.ts",
+  "src/engine/__tests__/history.test.ts",
+  "src/components/editor/__tests__/dragTypes.test.ts",
+  "src/components/editor/__tests__/toolLifecycle.test.ts",
+  "src/components/editor/__tests__/brushReferenceAudit.test.ts",
+  "src/components/editor/__tests__/rotateBand.test.ts",
+  "src/components/editor/__tests__/brushToolState.test.ts",
+  "src/components/editor/__tests__/paintSmoothing.test.ts",
+  "src/components/editor/__tests__/pointerCapture.test.ts",
+  "src/components/editor/__tests__/crossDocLayerOps.test.ts",
+  "src/features/selection/__tests__/SelectionValidator.test.ts",
+  "src/features/selection/__tests__/SelectionManager.test.ts",
+  "src/__tests__/viewport.test.ts",
+  "src/__tests__/layer-hit-test.test.ts",
+  "src/__tests__/snap-adjustment.test.ts",
+  "src/__tests__/transform.test.ts",
+  "src/__tests__/smart-guides.test.ts",
+  "src/__tests__/move-rotate-cursor.test.ts",
+  "src/__tests__/renderer.test.ts",
+  "src/__tests__/modern-crop-state.test.ts",
+  "src/__tests__/input-handler-move.test.ts",
+  "src/__tests__/cursor-rotate.test.ts",
+  "src/__tests__/input-handler-selection.test.ts",
+  "src/__tests__/crop-snap.test.ts",
+  "src/__tests__/keyboard-shortcuts.test.ts",
+  "src/__tests__/cursor-resolver.test.ts",
+] as const;
+
+const defaultTestExcludes = ["node_modules/**", "dist/**", "e2e/**"];
+
 export default defineConfig({
   plugins: [solidPlugin(process.env.VITEST ? { hot: false } : undefined), tailwindcss()],
 
@@ -11,13 +45,33 @@ export default defineConfig({
   },
 
   test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    css: true,
-    exclude: ["node_modules/**", "dist/**", "e2e/**"],
-
-    pool: 'threads',
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit-node",
+          globals: true,
+          environment: "node",
+          include: [...nodeTestFiles],
+          exclude: defaultTestExcludes,
+          css: false,
+          pool: "threads",
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "component-jsdom",
+          globals: true,
+          environment: "jsdom",
+          include: ["src/**/*.test.{ts,tsx}"],
+          exclude: [...defaultTestExcludes, ...nodeTestFiles],
+          setupFiles: ["./src/test/setup.ts"],
+          css: true,
+          pool: "threads",
+        },
+      },
+    ],
   },
 
   // Prevent vite from obscuring rust errors

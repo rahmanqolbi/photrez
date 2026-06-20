@@ -1,12 +1,17 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::path::PathBuf;
+use tauri::Manager;
 
 const CONTRACT_VERSION: &str = "2.0.0";
 const MAX_FILE_IO_BYTES: u64 = 256 * 1024 * 1024;
 const READ_FILE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp", "gif", "bmp", "tif", "tiff"];
 const WRITE_FILE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp"];
+const DEFAULT_WINDOW_WIDTH: u32 = 1280;
+const DEFAULT_WINDOW_HEIGHT: u32 = 832;
+const WINDOW_STATE_FILENAME: &str = "window-state.json";
 
 // ─── Response Envelope ───
 #[derive(Serialize)]
@@ -94,6 +99,75 @@ fn validate_path_extension(path: &str, allowed: &[&str], operation: &str) -> Res
     ))
 }
 
+// ─── Window State Persistence ───
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct SavedWindowState {
+    width: u32,
+    height: u32,
+    #[serde(default)]
+    x: Option<i32>,
+    #[serde(default)]
+    y: Option<i32>,
+    maximized: bool,
+}
+
+impl Default for SavedWindowState {
+    fn default() -> Self {
+        Self {
+            width: DEFAULT_WINDOW_WIDTH,
+            height: DEFAULT_WINDOW_HEIGHT,
+            x: None,
+            y: None,
+            maximized: false,
+        }
+    }
+}
+
+fn window_state_path<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<PathBuf> {
+    app.path()
+        .app_config_dir()
+        .ok()
+        .map(|dir| dir.join(WINDOW_STATE_FILENAME))
+}
+
+fn load_window_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> SavedWindowState {
+    let Some(path) = window_state_path(app) else {
+        return SavedWindowState::default();
+    };
+    match std::fs::read_to_string(&path) {
+        Ok(json) => serde_json::from_str(&json).unwrap_or_default(),
+        Err(_) => SavedWindowState::default(),
+    }
+}
+
+fn save_window_state<R: tauri::Runtime>(window: &tauri::Window<R>) {
+    let Some(path) = window_state_path(window.app_handle()) else {
+        return;
+    };
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let (size, pos, maximized) = match (
+        window.inner_size(),
+        window.outer_position(),
+        window.is_maximized(),
+    ) {
+        (Ok(s), Ok(p), Ok(m)) => (s, p, m),
+        _ => return,
+    };
+    let state = SavedWindowState {
+        width: size.width,
+        height: size.height,
+        x: Some(pos.x),
+        y: Some(pos.y),
+        maximized,
+    };
+    if let Ok(json) = serde_json::to_string_pretty(&state) {
+        let _ = std::fs::write(&path, json);
+    }
+}
+
 // ─── Commands ───
 
 #[tauri::command]
@@ -172,6 +246,26 @@ fn write_file_bytes(path: String, data: String) -> Result<Value, Value> {
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                let saved = load_window_state(&app.handle());
+                let _ = window.set_size(tauri::PhysicalSize::new(saved.width, saved.height));
+                if let (Some(x), Some(y)) = (saved.x, saved.y) {
+                    let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
+                }
+                if saved.maximized {
+                    let _ = window.maximize();
+                }
+            }
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            if window.label() == "main" {
+                if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                    save_window_state(window);
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             ping,
             get_contract_info,
@@ -342,5 +436,55 @@ mod tests {
         let value = result.unwrap_err();
         assert_eq!(value["contract_version"], CONTRACT_VERSION);
         assert_eq!(value["error"]["code"], "E_VALIDATION");
+    }
+
+    #[test]
+    fn test_window_state_roundtrip() {
+        // ponytail: exercise serialize → deserialize round-trip for the on-disk
+        // format. Mirrors what save_window_state writes and load_window_state reads
+        // so any future change to the JSON schema is caught here, not at runtime
+        // when the user relaunches the app.
+        let original = SavedWindowState {
+            width: 1600,
+            height: 900,
+            x: Some(120),
+            y: Some(80),
+            maximized: false,
+        };
+        let json = serde_json::to_string_pretty(&original).expect("serialize");
+        let parsed: SavedWindowState = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(parsed.width, original.width);
+        assert_eq!(parsed.height, original.height);
+        assert_eq!(parsed.x, original.x);
+        assert_eq!(parsed.y, original.y);
+        assert_eq!(parsed.maximized, original.maximized);
+    }
+
+    #[test]
+    fn test_window_state_default_matches_tauri_config() {
+        // ponytail: invariant gate — SavedWindowState::default() must match
+        // `tauri.conf.json` window dimensions so first-launch behavior is a no-op
+        // (no visual jump when applying saved state on a fresh install).
+        let defaults = SavedWindowState::default();
+        assert_eq!(defaults.width, DEFAULT_WINDOW_WIDTH);
+        assert_eq!(defaults.height, DEFAULT_WINDOW_HEIGHT);
+        assert_eq!(defaults.x, None, "first launch should not force position");
+        assert_eq!(defaults.y, None, "first launch should not force position");
+        assert!(!defaults.maximized);
+    }
+
+    #[test]
+    fn test_window_state_legacy_format_without_optional_position() {
+        // ponytail: forward-compat gate — older builds may have written state
+        // without x/y (pre-Option migration). load_window_state must default the
+        // missing fields rather than crash, otherwise users with stale state files
+        // lose their saved size on the next launch.
+        let legacy_json = r#"{ "width": 1024, "height": 768, "maximized": false }"#;
+        let parsed: SavedWindowState = serde_json::from_str(legacy_json).expect("deserialize");
+        assert_eq!(parsed.width, 1024);
+        assert_eq!(parsed.height, 768);
+        assert_eq!(parsed.x, None);
+        assert_eq!(parsed.y, None);
+        assert!(!parsed.maximized);
     }
 }

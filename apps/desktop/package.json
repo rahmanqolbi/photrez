@@ -10,6 +10,9 @@
     "lint": "tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:unit": "vitest run --project unit-node",
+    "test:component": "vitest run --project component-jsdom",
+    "test:related": "vitest related --run",
     "perf:paint-history": "vitest run src/engine/__tests__/paintHistoryBudget.test.ts",
     "test:e2e:install": "playwright install chromium",
     "test:e2e": "playwright test"
