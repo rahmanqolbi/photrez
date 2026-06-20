@@ -36,54 +36,30 @@ export function falloff(x: number, curve: BrushFalloffCurve = "soft"): number {
   return Math.pow(v, 0.7);
 }
 
-const SOFT_BRUSH_TAIL_RATIO = 0.10;
-const SOFT_BRUSH_EDGE_ALPHA = 0.50;
-
 export function getBrushTipOuterRadius(
   radius: number,
-  hardness: number,
-  curve: BrushFalloffCurve = "soft",
+  _hardness: number,
+  _curve: BrushFalloffCurve = "soft",
 ): number {
-  if (curve !== "soft") return radius;
-  const softness = 1 - clamp01(hardness);
-  return radius * (1 + SOFT_BRUSH_TAIL_RATIO * Math.pow(softness, 1.5));
+  return radius;
 }
 
-function smoothstep01(t: number): number {
-  // ponytail: cubic smoothstep in [0,1] — flat derivatives at both ends,
-  // matches Photoshop soft round feel at mid-radius.
-  if (t <= 0) return 0;
-  if (t >= 1) return 1;
-  return t * t * (3 - 2 * t);
-}
-
-function softFalloff(distance: number, outerRadius: number, hardness: number): number {
-  // ponytail: Photoshop-style soft round profile with visible alpha at the
-  // cursor edge and a small feather overshoot past it. Three regions:
-  //   - Core: alpha = 1 inside u = distance/cursorRadius <= hardness
-  //   - Feather: smoothstep fade from 1 to SOFT_BRUSH_EDGE_ALPHA at u = 1
-  //   - Overshoot: linear fade from SOFT_BRUSH_EDGE_ALPHA to 0 over [1, T]
-  //
-  // The visible edge alpha means the brush reaches the cursor edge (so the
-  // user's visual cursor aligns with the paint boundary), and the linear
-  // overshoot provides the feather overshoot effect that visually indicates
-  // the brush is touching the edge.
-  if (distance >= outerRadius) return 0;
+function softFalloff(distance: number, radius: number, hardness: number): number {
+  // Size owns the fixed support radius. Hardness only moves the boundary
+  // between the solid core and the feather inside that radius.
+  // Uses inverse-quadratic falloff (1 - t²) which keeps alpha values
+  // significantly higher throughout the feather zone than smoothstep,
+  // making the painted area visually fill the entire cursor circle
+  // like Photoshop/Krita soft round brushes.
+  if (distance >= radius) return 0;
   if (distance <= 0) return 1;
   if (hardness >= 1) return 1;
 
-  const radius = outerRadius / (1 + SOFT_BRUSH_TAIL_RATIO * Math.pow(1 - hardness, 1.5));
-  const u = distance / radius;
-  const T = outerRadius / radius;
+  const coreRadius = radius * hardness;
+  if (distance <= coreRadius) return 1;
 
-  if (u >= T) return 0;
-  if (u > 1) {
-    return SOFT_BRUSH_EDGE_ALPHA * (1 - (u - 1) / (T - 1));
-  }
-  if (u <= hardness) return 1;
-
-  const t = (u - hardness) / (1 - hardness);
-  return 1 - smoothstep01(t) * (1 - SOFT_BRUSH_EDGE_ALPHA);
+  const t = (distance - coreRadius) / (radius - coreRadius);
+  return 1 - t * t;
 }
 
 export function brushAlphaAtDistance(
@@ -123,10 +99,7 @@ export function createBrushTip(options: BrushTipOptions): BrushTip {
   const curve = options.curve ?? "soft";
   const hardness = clamp01(options.hardness);
   const outerRadius = getBrushTipOuterRadius(radius, hardness, curve);
-  let width = Math.max(size, Math.ceil(outerRadius * 2));
-  if (curve === "soft" && hardness < 1 && width % 2 === 0) {
-    width += 1;
-  }
+  const width = Math.max(size, Math.ceil(outerRadius * 2));
   const height = width;
   const data = new Uint8ClampedArray(width * height * 4);
   const center = (width - 1) / 2;

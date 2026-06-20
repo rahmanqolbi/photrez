@@ -45,65 +45,52 @@ describe("audit: Photoshop hard-edge binary alpha inside cursor radius", () => {
   });
 });
 
-describe("audit: Photoshop soft-tail outside cursor circle (hardness 0)", () => {
-  it("soft hardness 0 keeps a strong visible alpha at the cursor edge + feather overshoot", () => {
+describe("audit: fixed brush support radius", () => {
+  it("uses the same support radius and mask dimensions at every hardness", () => {
     const size = 75;
     const radius = size / 2;
-    const outerRadius = getBrushTipOuterRadius(radius, 0, "soft");
-    const tip = createBrushTip({ size, hardness: 0, curve: "soft" });
-    const c = Math.floor(tip.width / 2);
-
-    // Outer radius must be > cursor radius (small 10% tail)
-    expect(outerRadius).toBeGreaterThan(radius);
-    expect(outerRadius).toBeLessThan(radius * 1.15);
-
-    // At the cursor edge: strong visible alpha (~50%) so paint fills the indicator
-    const cursorEdge = alphaAt(tip, c + Math.round(radius), c);
-    expect(cursorEdge).toBeGreaterThan(0.40);
-    expect(cursorEdge).toBeLessThan(0.60);
-
-    // Just past cursor radius: feather overshoot (fainter but still visible)
-    const justPast = alphaAt(tip, c + Math.round(radius + 2), c);
-    expect(justPast).toBeGreaterThan(0);
-    expect(justPast).toBeLessThan(cursorEdge);
-
-    // At the support edge the brush is essentially zero
-    const supportEdge = alphaAt(tip, tip.width - 1, c);
-    expect(supportEdge).toBeLessThan(0.05);
+    for (const hardness of [0, 0.2, 0.5, 0.8, 1]) {
+      const tip = createBrushTip({ size, hardness, curve: "soft" });
+      expect(getBrushTipOuterRadius(radius, hardness, "soft")).toBe(radius);
+      expect(tip.width).toBe(size);
+      expect(tip.height).toBe(size);
+      expect(brushAlphaAtDistance(radius, radius, hardness, "soft")).toBe(0);
+      expect(brushAlphaAtDistance(radius + 1, radius, hardness, "soft")).toBe(0);
+    }
   });
 });
 
-describe("audit: Photrez soft hardness 0 dense-feather profile (calibration lock)", () => {
-  // Photoshop soft round (h=0) visual reference (smoothstep core+feather with
-  // visible edge alpha = 0.5 so the brush "fills" the cursor visual size):
-  //   u=0.125 → ~0.97, u=0.25 → ~0.92, u=0.50 → ~0.75, u=0.75 → ~0.58, u=1.00 → 0.50
+describe("audit: bounded hardness 0 feather profile", () => {
+  // Inverse-quadratic feather (1 - t²) over the fixed radius:
+  //   u=0.125 -> ~0.984, u=0.25 -> ~0.9375, u=0.50 -> 0.75,
+  //   u=0.75 -> ~0.4375, u=1.00 -> 0.
 
   it("hardness 0 keeps a dense center at 12.5% cursor radius", () => {
     const tip = createBrushTip({ size: 75, hardness: 0, curve: "soft" });
     const c = Math.floor(tip.width / 2);
-    expect(alphaAt(tip, c + Math.round(75 * 0.0625), c)).toBeGreaterThan(0.93);
+    expect(alphaAt(tip, c + Math.round(75 * 0.0625), c)).toBeGreaterThan(0.97);
     expect(alphaAt(tip, c + Math.round(75 * 0.0625), c)).toBeLessThanOrEqual(0.99);
   });
 
-  it("hardness 0 stays dense through 25% cursor radius (Photoshop soft round)", () => {
+  it("hardness 0 remains strong at 25% cursor radius", () => {
     const tip = createBrushTip({ size: 75, hardness: 0, curve: "soft" });
     const c = Math.floor(tip.width / 2);
-    expect(alphaAt(tip, c + Math.round(75 * 0.125), c)).toBeGreaterThan(0.85);
-    expect(alphaAt(tip, c + Math.round(75 * 0.125), c)).toBeLessThanOrEqual(0.95);
+    expect(alphaAt(tip, c + Math.round(75 * 0.125), c)).toBeGreaterThan(0.92);
+    expect(alphaAt(tip, c + Math.round(75 * 0.125), c)).toBeLessThanOrEqual(0.96);
   });
 
   it("hardness 0 fades through 50% cursor radius", () => {
     const tip = createBrushTip({ size: 75, hardness: 0, curve: "soft" });
     const c = Math.floor(tip.width / 2);
-    expect(alphaAt(tip, c + Math.round(75 * 0.25), c)).toBeGreaterThan(0.65);
-    expect(alphaAt(tip, c + Math.round(75 * 0.25), c)).toBeLessThanOrEqual(0.85);
+    expect(alphaAt(tip, c + Math.round(75 * 0.25), c)).toBeGreaterThan(0.70);
+    expect(alphaAt(tip, c + Math.round(75 * 0.25), c)).toBeLessThanOrEqual(0.80);
   });
 
-  it("hardness 0 stays dense through 75% cursor radius (visible body extends past 75%)", () => {
+  it("hardness 0 is faint at 75% cursor radius", () => {
     const tip = createBrushTip({ size: 75, hardness: 0, curve: "soft" });
     const c = Math.floor(tip.width / 2);
-    expect(alphaAt(tip, c + Math.round(75 * 0.375), c)).toBeGreaterThan(0.50);
-    expect(alphaAt(tip, c + Math.round(75 * 0.375), c)).toBeLessThanOrEqual(0.65);
+    expect(alphaAt(tip, c + Math.round(75 * 0.375), c)).toBeGreaterThan(0.35);
+    expect(alphaAt(tip, c + Math.round(75 * 0.375), c)).toBeLessThanOrEqual(0.50);
   });
 
   it("hardness 0 outer support edge fades to zero", () => {
@@ -114,10 +101,9 @@ describe("audit: Photrez soft hardness 0 dense-feather profile (calibration lock
 });
 
 describe("audit: mask monotonicity + hardness ordering invariants", () => {
-  // The new soft curve uses a smoothstep core+feather model rather than the
-  // GIMP gauss(pow(t, 0.4/(1-h))) formula. These tests lock the invariants
-  // that the new model preserves so any future tuning can drift intentionally
-  // without breaking silent regressions.
+  // The soft curve uses an inverse-quadratic (1-t²) core+feather model.
+  // These tests lock the invariants that the model preserves so any future
+  // tuning can drift intentionally without breaking silent regressions.
 
   it("alpha is monotonically non-increasing with distance for every hardness", () => {
     const radius = 50;
@@ -131,18 +117,12 @@ describe("audit: mask monotonicity + hardness ordering invariants", () => {
     }
   });
 
-  it("higher hardness yields equal or higher alpha in the inner region (allowing soft-tail edge inversion)", () => {
-    // Hardness ordering holds strictly inside the inner ~95% of the radius.
-    // Near the cursor edge, h=0's longer soft tail can briefly exceed h=0.5's
-    // mid-hardness alpha (matching Photoshop's behavior), so we only check
-    // d < 0.95 * radius for strict ordering.
+  it("higher hardness yields equal or higher alpha throughout the fixed radius", () => {
     const radius = 50;
-    const cutoff = Math.floor(radius * 0.95);
-    for (let d = 0; d < cutoff; d += 1) {
+    for (let d = 0; d <= radius; d += 1) {
       const soft = brushAlphaAtDistance(d, radius, 0, "soft");
       const mid = brushAlphaAtDistance(d, radius, 0.5, "soft");
       const hard = brushAlphaAtDistance(d, radius, 0.8, "soft");
-      // ponytail: allow a tiny float-error tolerance at the smoothstep kink
       expect(hard + 1e-6).toBeGreaterThanOrEqual(mid);
       expect(mid + 1e-6).toBeGreaterThanOrEqual(soft);
     }
@@ -155,32 +135,26 @@ describe("audit: mask monotonicity + hardness ordering invariants", () => {
     expect(brushAlphaAtDistance(50, 50, 1, "soft")).toBe(0);
   });
 
-it("hardness 0 produces a dense center with visible alpha at the cursor edge", () => {
-    // Photrez keeps paint visible at the cursor edge so the visual cursor
-    // aligns with where the brush actually reaches. With alphaAtEdge = 0.5,
-    // the brush "fills" the cursor visual size — at every hardness level.
+  it("hardness 0 feathers across the full radius and reaches zero at the edge", () => {
     expect(brushAlphaAtDistance(0, 50, 0, "soft")).toBe(1);
-    expect(brushAlphaAtDistance(12.5, 50, 0, "soft")).toBeGreaterThan(0.85);
-    expect(brushAlphaAtDistance(25, 50, 0, "soft")).toBeGreaterThan(0.65);
-    // At the cursor edge the paint is strongly visible (~50% alpha)
-    expect(brushAlphaAtDistance(50, 50, 0, "soft")).toBeGreaterThan(0.40);
-    expect(brushAlphaAtDistance(50, 50, 0, "soft")).toBeLessThan(0.60);
+    // 1 - (12.5/50)² = 1 - 0.0625 = 0.9375
+    expect(brushAlphaAtDistance(12.5, 50, 0, "soft")).toBeCloseTo(0.9375, 5);
+    // 1 - (25/50)² = 1 - 0.25 = 0.75
+    expect(brushAlphaAtDistance(25, 50, 0, "soft")).toBeCloseTo(0.75, 5);
+    expect(brushAlphaAtDistance(50, 50, 0, "soft")).toBe(0);
+    expect(brushAlphaAtDistance(51, 50, 0, "soft")).toBe(0);
   });
 
   it("hardness 0.8 keeps a mostly solid disk with a narrow feather rim", () => {
-    // Photoshop h=80 visual reference: mostly solid, narrow rim, little halo.
-    // Photrez h=0.8 keeps alpha=1 for most of the radius and only fades
-    // sharply in the outer rim. With alphaAtEdge = 0.5, the rim is highly
-    // visible (alpha 0.5 at cursor edge) so the brush "fills" the cursor.
+    // Hardness 0.8 keeps an 80% solid core, then feathers only inside
+    // the remaining 20% of the fixed radius.
     const radius = 50;
     expect(brushAlphaAtDistance(0, radius, 0.8, "soft")).toBe(1);
     expect(brushAlphaAtDistance(20, radius, 0.8, "soft")).toBe(1);
     expect(brushAlphaAtDistance(35, radius, 0.8, "soft")).toBe(1);
-    // Narrow feather rim: by 95% radius alpha is still ~0.58
-    expect(brushAlphaAtDistance(47.5, radius, 0.8, "soft")).toBeLessThan(0.65);
-    // At the cursor edge the rim is at the visible-edge alpha (~50%)
-    expect(brushAlphaAtDistance(50, radius, 0.8, "soft")).toBeGreaterThan(0.40);
-    expect(brushAlphaAtDistance(50, radius, 0.8, "soft")).toBeLessThan(0.60);
+    // t = (47.5-40)/10 = 0.75, alpha = 1 - 0.75² = 0.4375
+    expect(brushAlphaAtDistance(47.5, radius, 0.8, "soft")).toBeCloseTo(0.4375, 5);
+    expect(brushAlphaAtDistance(50, radius, 0.8, "soft")).toBe(0);
   });
 });
 
@@ -260,43 +234,30 @@ describe("audit: Photoshop-style per-dab source-over accumulation", () => {
   });
 });
 
-describe("audit: Photoshop soft round single-dab profile (40px @ hardness 0)", () => {
-  // Classic Photoshop soft round brush test: size 40, hardness 0, opacity 100%,
-  // flow 100%. Single click should produce a dense-mid soft dot with a faint
-  // tail just outside the cursor diameter.
+describe("audit: bounded soft round single-dab profile (40px @ hardness 0)", () => {
   it("single dab center alpha is full strength", () => {
     const tip = createBrushTip({ size: 40, hardness: 0, curve: "soft" });
     const c = Math.floor(tip.width / 2);
-    expect(alphaAt(tip, c, c)).toBe(1);
+    expect(alphaAt(tip, c, c)).toBeGreaterThan(0.99);
   });
 
-  it("single dab at 25% radius stays dense (Photoshop soft round calibration)", () => {
-    // Photrez soft round calibration: at 25% of cursor radius (≈ 5px from
-    // center for size 40), alpha sits in the 0.82-0.92 range. This matches
-    // Photoshop's soft round visual feel where the inner half of the brush
-    // remains dense before fading smoothly to zero at the edge.
+  it("single dab at 25% radius remains strong", () => {
     const tip = createBrushTip({ size: 40, hardness: 0, curve: "soft" });
     const c = Math.floor(tip.width / 2);
     const r = 20;
     const at25 = alphaAt(tip, c + Math.round(r * 0.25), c);
-    expect(at25).toBeGreaterThan(0.80);
-    expect(at25).toBeLessThan(0.95);
+    // 1-t² curve keeps higher alpha: at 25% of radius, alpha ≈ 0.9375
+    expect(at25).toBeGreaterThan(0.90);
+    expect(at25).toBeLessThan(0.97);
   });
 
-  it("single dab at the cursor edge has strong visible alpha (paint fills the cursor)", () => {
-    // Photrez keeps paint strongly visible at the cursor edge so the user's
-    // visual cursor matches the brush footprint. The brush "fills" the cursor
-    // visual size even at low hardness values.
+  it("single dab is bounded by the cursor radius", () => {
     const tip = createBrushTip({ size: 40, hardness: 0, curve: "soft" });
-    const c = Math.floor(tip.width / 2);
     const r = 20;
-    // At the cursor edge: strong visible alpha (~50%)
-    expect(alphaAt(tip, c + r, c)).toBeGreaterThan(0.40);
-    expect(alphaAt(tip, c + r, c)).toBeLessThan(0.60);
-    // Just past the cursor edge: feather overshoot (fainter but still visible)
-    const justPast = alphaAt(tip, c + r + 1, c);
-    expect(justPast).toBeGreaterThan(0);
-    expect(justPast).toBeLessThan(alphaAt(tip, c + r, c));
+    expect(tip.width).toBe(40);
+    expect(brushAlphaAtDistance(r - 1, r, 0, "soft")).toBeGreaterThan(0);
+    expect(brushAlphaAtDistance(r, r, 0, "soft")).toBe(0);
+    expect(brushAlphaAtDistance(r + 1, r, 0, "soft")).toBe(0);
   });
 
   it("single dab with hardness 100 produces a binary hard edge at size 40", () => {

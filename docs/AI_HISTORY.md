@@ -1,5 +1,60 @@
 # AI History — Photrez
 
+## [2026-06-20] BUG FIX - Brush Falloff Curve: Smoothstep → Inverse-Quadratic [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH-ERASER / PAINT-MASK
+
+**User Report:**
+Brush paint doesn't fill the indicator circle like professional image editors. Regardless of hardness settings, the visible painted area appears smaller than the cursor circle, unlike Photoshop/Krita where the brush always fills to the edge of the indicator.
+
+**Root Cause:**
+The `softFalloff` function in `brushTipMask.ts` used a `smoothstep01` (cubic Hermite S-curve: `t²(3-2t)`) for the feather zone. This curve drops alpha too aggressively — at 70% into the feather zone, alpha was only 0.22 (56/255), making the outer 30% of the brush circle essentially invisible when painting over existing image content.
+
+**Fix Rationale:**
+Replaced smoothstep with an **inverse-quadratic** falloff: `alpha = 1 - t²`. This curve keeps alpha values significantly higher throughout the feather zone:
+- At 25% feather: 0.9375 (was 0.84)
+- At 50% feather: 0.75 (was 0.50)
+- At 70% feather: 0.51 (was 0.22)
+- At 90% feather: 0.19 (was 0.028)
+
+The result: brush paint visually fills the entire cursor circle like Photoshop/Krita soft round brushes. The core/feather boundary still respects hardness — hardness controls where the solid core ends and the falloff begins.
+
+**Done:**
+- `apps/desktop/src/components/editor/brushTipMask.ts`: replaced `smoothstep01` + `softFalloff` with a single `softFalloff` function using `1 - t²` curve. Removed the now-unused `smoothstep01` function.
+- Updated test expectations in `brushTipMask.test.ts`, `brushReferenceAudit.test.ts`, and `paintStrokeRenderer.test.ts` to match the new falloff profile.
+
+**Verification:**
+- PASS: full frontend suite (86 files / 1261 tests).
+
+## [2026-06-20] BUG FIX - Fixed Brush/Eraser Footprint Across Hardness [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH-ERASER / MASK-GEOMETRY
+
+**User Report:**
+Brush/eraser Size should keep the same affected area at every hardness. Hardness and related settings should change the edge treatment around the solid body, not enlarge or shrink the brush footprint.
+
+**Root Cause:**
+The runtime `soft` tip expanded its support radius by up to 10% according to hardness and forced alpha 0.50 at the displayed cursor edge before fading outside it. Therefore hardness changed both the radial alpha profile and the geometric paint area.
+
+**Fix Rationale:**
+MyPaint's `render_dab_mask()` sets opacity to zero beyond normalized radius 1 and uses hardness only to shape the internal opacity segments. GIMP's generated brush likewise derives hardness from `d / radius` and zeros samples outside the radius. Photrez now follows the same bounded-support rule while retaining its smoothstep feather.
+
+**Done:**
+- `brushTipMask.ts`: removed hardness-dependent tail expansion and nonzero edge alpha; `getBrushTipOuterRadius()` now returns the Size radius for every curve and hardness.
+- Soft alpha is 1 inside `hardness * radius`, fades smoothly to 0 between the core and radius, and is 0 at or beyond radius.
+- Soft mask dimensions now equal Size instead of expanding for low hardness.
+- Updated brush-tip, reference-audit, and renderer tests to lock fixed geometry for hardness 0/20/50/80/100 and preserve only a one-level 8-bit antialiasing sample at the exact raster boundary.
+- Brush and eraser remain on the same mask-engine path, so both receive identical footprint semantics.
+
+**Verification:**
+- PASS: focused brush verification (4 files / 87 tests).
+- PASS: full frontend suite (86 files / 1261 tests).
+- PASS: `pnpm run type-check`.
+- PASS: `pnpm run build` (production build in 6.87s).
+- Visual browser preview was unavailable because the managed environment blocked starting the local background dev server; pixel-level mask and renderer tests provide the runtime evidence for this geometry-only change.
+
+---
+
 ## [2026-06-19] BUG FIX - Brush Body-Fill Alignment Pass [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH-ERASER / VISUAL-ALIGNMENT

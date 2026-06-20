@@ -164,7 +164,7 @@ describe("renderPaintStrokeToContext", () => {
     expect(ctx.globalCompositeOperation).toBe("destination-out");
   });
 
-  it("reduces alpha in soft eraser path", () => {
+  it("reduces alpha only inside the fixed soft eraser radius", () => {
     const mockImgData = createImageDataMock(40, 40);
     mockImgData.data.fill(0);
     for (let i = 3; i < mockImgData.data.length; i += 4) {
@@ -197,8 +197,11 @@ describe("renderPaintStrokeToContext", () => {
 
     const putData = (ctx.putImageData as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as ImageData;
     const alphas = putData.data.filter((_: number, i: number) => i % 4 === 3);
+    const alphaAt = (x: number, y: number) => putData.data[(y * putData.width + x) * 4 + 3];
     expect(alphas.some((a: number) => a < 200)).toBe(true);
     expect(alphas.some((a: number) => a > 0)).toBe(true);
+    expect(alphaAt(20, 20)).toBeLessThan(200);
+    expect(alphaAt(32, 20)).toBe(200);
   });
 
   it("sets source-over composite for brush", () => {
@@ -293,7 +296,7 @@ describe("renderPaintStrokeToContext", () => {
     expect((ctx as unknown as { shadowBlur: number }).shadowBlur).toBe(0);
   });
 
-  it("keeps hardness 0 visible past the normal brush cursor radius", () => {
+  it("keeps hardness 0 inside the fixed brush cursor radius", () => {
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),
@@ -331,13 +334,15 @@ describe("renderPaintStrokeToContext", () => {
     };
     // Center stays at full alpha
     expect(alphaAt(20, 20)).toBeGreaterThan(100);
-    // Mid-radius still dense (Photoshop soft round characteristic)
+    // Mid-radius remains visible while the feather stays inside Size.
     expect(alphaAt(25, 20)).toBeGreaterThan(25);
-    // Near the cursor edge, faint but nonzero (10% soft tail)
+    // Near the cursor edge, the feather is faint but nonzero.
     expect(alphaAt(29, 20)).toBeGreaterThan(0);
-    // Just past cursor radius: faint alpha visible
-    expect(alphaAt(30, 20)).toBeGreaterThan(0);
-    // Past the support edge: zero
+    // Bilinear sampling may leak alpha at the exact boundary.
+    // The 1-t² curve has higher alpha near the edge (0.19 at 90%),
+    // so bilinear interpolation bleeds more than smoothstep.
+    expect(alphaAt(30, 20)).toBeLessThanOrEqual(15);
+    // Beyond the antialiasing boundary, the brush has no support.
     expect(alphaAt(32, 20)).toBe(0);
   });
 

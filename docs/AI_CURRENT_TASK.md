@@ -4,6 +4,39 @@
 
 ## Current Tasks
 
+### [2026-06-20] BUG FIX - Fixed Brush/Eraser Footprint Across Hardness [COMPLETE]
+
+**Goal:**
+Make brush and eraser size define one fixed paint footprint at every hardness. Hardness must only move the solid-core boundary and reshape the feather inside that footprint; it must never expand paint beyond the size cursor.
+
+**Scope:**
+- [x] Compare the current mask with MyPaint and GIMP source implementations
+- [x] Identify the Photrez soft-tail and nonzero edge-alpha footprint expansion
+- [x] Remove hardness-dependent support-radius expansion
+- [x] Fade soft tips to zero at the fixed size radius
+- [x] Update pixel-profile and reference-audit regression tests
+- [x] Run the mandatory verification pipeline
+- [x] Update `AI_HISTORY.md`, `FEATURES.md`, and decision log
+
+**Root Cause:**
+The soft-tip path expands the support radius by up to 10% based on hardness and forces alpha 0.50 at the nominal cursor edge. As a result, hardness changes both the alpha profile and the geometric footprint, while soft tips can paint outside the Size diameter.
+
+**Fix Rationale:**
+Follow the bounded radial-mask model used by MyPaint and GIMP: normalize distance against one fixed radius, keep alpha 1 inside the hardness-defined core, feather from the core boundary to alpha 0 at the same fixed radius, and return alpha 0 at or beyond that radius.
+
+**Done:**
+- Removed the 10% soft support tail and 50% cursor-edge alpha.
+- Kept mask dimensions equal to Size for every hardness.
+- Applied one fixed smoothstep core-to-edge profile to both brush and eraser.
+
+**Verification:**
+- PASS: focused brush verification (4 files / 87 tests).
+- PASS: full frontend suite (86 files / 1261 tests).
+- PASS: `pnpm run type-check`.
+- PASS: `pnpm run build`.
+
+---
+
 ### [2026-06-19] BUG FIX - Brush Body-Fill Alignment Pass [COMPLETE]
 
 **Goal:**

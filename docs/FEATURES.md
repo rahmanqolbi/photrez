@@ -138,15 +138,15 @@
 | ✅ DONE      | Keyboard shortcuts — `[`/`]` for size, Shift+`[`/`]` for hardness |
 | ✅ DONE      | Brush visual calibration: Photoshop-like hardness 0 soft-round profile with broader dense center, dense soft spacing, subpixel bilinear stamping, opacity/flow-independent alpha scale, and pixel-profile regression tests |
 | ✅ DONE      | Photoshop-style hardness falloff — brush/eraser size remains the fixed outer diameter; hardness controls the fully opaque core and feather rim width inside that diameter |
-| ✅ DONE      | Photoshop-style soft brush normal cursor behavior — hardness 0 soft brush/eraser can paint a faint low-alpha tail just outside the displayed cursor circle, while hard/cosine brushes keep the exact radius cutoff |
+| ✅ DONE      | Fixed brush/eraser footprint — every hardness uses the exact displayed Size radius; softness is contained inside the cursor circle |
 | ✅ DONE      | Brush hardness curve retune — hardness 0 uses a lighter airier radial fade, while 80% hardness maps to a larger solid body with a narrow Photoshop-like feather rim |
 | ✅ DONE      | Alt-Hold Eyedropper modifier for sampling colors from active canvas |
 | ✅ DONE      | Shift-Click Straight Lines interpolation connecting last painted dab |
 | ✅ DONE      | Shift-Drag Axis Locking constraining stroke to horizontal/vertical |
 | ✅ DONE      | Regression guard: Brush/Eraser still paint/erase after Move Tool pasteboard deselect hides the transform box |
 | ✅ DONE      | Photoshop-style brush behavior — 25% × size dab spacing (visible individual dabs), hardness 100% routes through the mask engine (no `ctx.lineCap=round` shortcut), and per-dab pre-multiplied source-over accumulation so opacity/flow behave like Photoshop (multiple passes darken toward saturation) |
-| ✅ DONE      | Photoshop-style soft round mask — smoothstep core+feather model (dense mid-radius, narrow rim at high hardness) matching Photoshop/Krita/Procreate visual feel, with a 10% soft-tail for low hardness (Photoshop "normal cursor" behavior) |
-| ✅ DONE      | Brush cursor-paint alignment — soft brushes keep ~50% visible alpha at the cursor edge so the brush fills the entire cursor visual size, plus a 10% feather overshoot past the cursor when the brush touches an image boundary |
+| ✅ DONE      | Editor-style bounded soft round mask — smoothstep core+feather model with a fixed support radius; hardness changes the solid core and feather width without changing geometric area |
+| ✅ DONE      | Brush cursor-paint alignment — the sharp cursor circle marks the exact support boundary; soft alpha reaches zero at that boundary with only subpixel antialiasing on the boundary sample |
 | ✅ DONE      | Photoshop-style full-size brush cursor (experimental) — earlier tried an SVG soft filled circle (radial gradient matching the brush alpha profile) but reverted to a simple sharp stroke because the soft fill caused color-inversion artifacts (mix-blend-mode: difference) on the canvas. The paint behavior alone matches the brush size and feather profile, so the cursor just marks the boundary. |
 
 ---

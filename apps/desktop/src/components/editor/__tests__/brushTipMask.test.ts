@@ -184,51 +184,42 @@ describe("brushTipMask pixel profile", () => {
     return tip.data[(y * tip.width + x) * 4 + 3] / 255;
   }
 
-  it("hardness 0 uses a Photoshop-style cosine-smoothstep feather (dense mid-radius)", () => {
+  it("hardness 0 feathers from the center to zero at the fixed size radius", () => {
     const tip = createBrushTip({ size: 75, hardness: 0, curve: "soft" });
     const c = Math.floor(tip.width / 2);
 
     const center = alphaAt(tip, c, c);
-    // u=0.125 (12.5% of cursor radius): smoothstep at u/(T) ≈ 0.125/1.10 = 0.114 → ~0.86
     const r12 = alphaAt(tip, c + Math.round(75 * 0.0625), c);
-    // u=0.25 (25% of cursor radius): smoothstep at 0.25/1.10 = 0.227 → ~0.625
     const r25 = alphaAt(tip, c + Math.round(75 * 0.125), c);
-    // u=0.5 (50% of cursor radius): smoothstep at 0.5/1.10 = 0.455 → ~0.275
     const r50 = alphaAt(tip, c + Math.round(75 * 0.25), c);
-    // u=0.75 (75% of cursor radius): smoothstep at 0.75/1.10 = 0.682 → ~0.125
     const r75 = alphaAt(tip, c + Math.round(75 * 0.375), c);
     const edge = alphaAt(tip, tip.width - 1, c);
 
+    // Inverse-quadratic falloff (1-t²) keeps alpha higher throughout
+    // the feather zone, making the brush visually fill the cursor circle.
     expect(center).toBe(1);
-    expect(r12).toBeGreaterThan(0.95);
-    expect(r25).toBeGreaterThan(0.90);
+    expect(r12).toBeGreaterThan(0.97);
+    expect(r25).toBeGreaterThan(0.92);
     expect(r50).toBeGreaterThan(0.70);
-    expect(r75).toBeGreaterThan(0.55);
-    expect(edge).toBeLessThan(0.10);
+    expect(r50).toBeLessThan(0.80);
+    expect(r75).toBeGreaterThan(0.35);
+    expect(r75).toBeLessThan(0.50);
+    expect(edge).toBeLessThan(0.05);
   });
 
-it("keeps a soft feather tail outside the normal cursor radius (visible edge + feather overshoot)", () => {
+  it("keeps the support radius and mask dimensions fixed across hardness", () => {
     const size = 75;
     const radius = size / 2;
     const tip = createBrushTip({ size, hardness: 0, curve: "soft" });
-    const c = Math.floor(tip.width / 2);
 
-    expect(getBrushTipOuterRadius(radius, 0, "soft")).toBeGreaterThan(radius);
+    expect(getBrushTipOuterRadius(radius, 0, "soft")).toBe(radius);
+    expect(getBrushTipOuterRadius(radius, 0.5, "soft")).toBe(radius);
     expect(getBrushTipOuterRadius(radius, 1, "soft")).toBe(radius);
     expect(getBrushTipOuterRadius(radius, 0, "cosine")).toBe(radius);
-    expect(tip.width).toBeGreaterThan(size);
-
-    // At the cursor edge: strongly visible alpha (paint reaches the visual indicator)
-    const cursorEdge = alphaAt(tip, c + Math.round(radius), c);
-    expect(cursorEdge).toBeGreaterThan(0.40);
-    expect(cursorEdge).toBeLessThan(0.60);
-    // Just past the cursor edge: feather overshoot (fainter but still visible)
-    const outsideCircle = alphaAt(tip, c + Math.round(radius + 2), c);
-    expect(outsideCircle).toBeGreaterThan(0);
-    expect(outsideCircle).toBeLessThan(cursorEdge);
-    // At the support edge: zero
-    const supportEdge = alphaAt(tip, tip.width - 1, c);
-    expect(supportEdge).toBeLessThan(0.05);
+    expect(tip.width).toBe(size);
+    expect(tip.height).toBe(size);
+    expect(brushAlphaAtDistance(radius, radius, 0, "soft")).toBe(0);
+    expect(brushAlphaAtDistance(radius + 2, radius, 0, "soft")).toBe(0);
   });
 
   it("hardness 0.8 produces a mostly solid disk with a narrow feather rim (Photoshop-style)", () => {
@@ -241,7 +232,8 @@ it("keeps a soft feather tail outside the normal cursor radius (visible edge + f
     expect(at20).toBe(1);
     expect(at40).toBe(1);
 
-    // The feather rim is narrow: alpha drops sharply in the outer ~15%
+    // The feather rim is narrow: alpha drops in the outer ~20%
+    // With 1-t² curve, alpha stays higher in the feather zone
     const at70 = alphaAt(tip, c + Math.round(75 * 0.35), c);
     const at95 = alphaAt(tip, c + Math.round(75 * 0.475), c);
     expect(at70).toBeGreaterThan(0.50);
@@ -258,11 +250,13 @@ it("keeps a soft feather tail outside the normal cursor radius (visible edge + f
     expect(alphaAt(tip, c + 10, c)).toBe(1);
     expect(alphaAt(tip, c + 15, c)).toBe(1);
 
-    // Feather in the outer half — alpha stays visible (>= 0.5) up to the cursor edge
+    // Feather in the outer half fades to zero at the fixed size boundary.
+    // With 1-t² curve, alpha stays higher for more of the feather zone.
     const at20 = alphaAt(tip, c + 20, c);
     const at30 = alphaAt(tip, c + 30, c);
-    expect(at20).toBeGreaterThan(0.90);
-    expect(at30).toBeGreaterThan(0.50);
+    expect(at20).toBeGreaterThan(0.97);
+    expect(at30).toBeGreaterThan(0.55);
+    expect(at30).toBeLessThan(0.75);
   });
 });
 
