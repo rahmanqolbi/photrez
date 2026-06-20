@@ -1,5 +1,74 @@
 # AI History — Photrez
 
+## [2026-06-20] TEST INFRASTRUCTURE - Second-Pass Vitest Optimization [COMPLETE]
+
+### Kategori: TESTING / PERFORMANCE / VITEST / REGRESSION-SAFETY
+
+**Goal:**
+Bring the complete frontend test gate below the documented 60-second target without deleting tests, weakening assertions, or moving DOM/wiring coverage into an unrealistic environment.
+
+**Root Cause:**
+The first Node/jsdom split was intentionally conservative: 59 files / 915 tests still paid jsdom environment and per-file setup costs even though many `.test.ts` files used only pure TypeScript or explicitly mocked `OffscreenCanvas`/pixel buffers. Vitest reports setup files run before every file, and its official performance guide identifies isolated environments as a significant cost.
+
+**Fix Rationale:**
+- Empirically trial each remaining `.test.ts` file in Node instead of classifying by filename alone.
+- Keep TSX, Solid render, DOM events, RAF, real canvas/WebGL, and wiring tests in isolated jsdom.
+- Disable isolation only for the pure Node project, as supported by Vitest's project-level configuration; leave jsdom isolation untouched because this repository has prior shared-signal regressions.
+- Revert any optimization that does not improve measured wall time.
+
+**Done:**
+- Expanded `unit-node` from 27 files / 346 tests to 49 files / 783 tests.
+- Reduced `component-jsdom` from 59 files / 915 tests to 37 files / 478 tests while preserving all 86 files / 1261 tests overall.
+- Returned `viewportCamera.test.ts` to jsdom after the Node pilot exposed a real `DOMRect` dependency.
+- Added `isolate: false` only to `unit-node`; repeated runs remained green.
+- Trialed and reverted Tailwind/CSS bypass because it regressed component time (35.59s → 36.45s).
+- Updated the side-panel E2E viewport to 1000px so it exercises the toggle below the intentional 1024px breakpoint; assertions remain unchanged.
+
+**Measured Result:**
+- Original baseline: 228.33s.
+- First split: 82.87s–85.80s.
+- Final repeated full runs: 25.70s and 25.54s.
+- Net improvement: 88.8% versus original baseline and 70.2% versus the first split.
+
+**Verification:**
+- PASS: Vitest 86/86 files, 1261/1261 tests, twice.
+- PASS: Node lane 49/49 files, 783/783 tests, repeated at 6.39s and 6.60s.
+- PASS: Playwright 21/21 in 1.1m, including visible-pixel, pointer/wiring, undo/redo, cross-document drag, export, and responsive side-panel scenarios.
+- PASS: production build in 6.16s.
+- PASS: Rust core 85/85; workspace desktop 13/13.
+- Remaining noise: four pre-existing jsdom `HTMLCanvasElement.getContext()` warnings; no associated failure.
+
+**Final Safety Audit (supersedes the preliminary 25.54s benchmark above):**
+- A raw configuration audit found that the preliminary benchmark had `isolate: false` on `component-jsdom`; although all tests passed, that setting could conceal cross-file UI/Solid state leakage.
+- Moved `isolate: false` to `unit-node` only and restored Vitest's default per-file isolation for all jsdom component, wiring, pointer-chain, and canvas tests.
+- Final safety-validated result: PASS, 86/86 files and 1261/1261 tests in 37.48s — 83.6% faster than the 228.33s original baseline while retaining honest UI regression boundaries.
+
+---
+
+## [2026-06-20] FEATURE - Responsive RightDock Breakpoint Tuning [COMPLETE]
+
+### Kategori: FEATURE / UI-UX / LAYOUT / RESPONSIVENESS
+
+**Goal:**
+Lower the RightDock responsive breakpoint from 1280px (`xl`) to 1024px (`lg`), allowing properties and layers panels to sit side-by-side on medium-sized screens and restored windows, while only stacking vertically on extremely narrow widths.
+
+**Fix Rationale:**
+For users running a 1080p monitor with a restored/medium-sized window (around 1084px wide), the previous `xl` (1280px) breakpoint caused panels to stack vertically. Stacking vertically on window heights of ~600px - 700px split vertical space in half, leaving insufficient vertical space for both panels (Navigator and empty state fallback were cut off). Lowering the breakpoint to `lg` (1024px) allows side-by-side columns to be used on screens and windows wider than 1024px. The canvas retains at least 408px width, which is fully usable.
+
+**Done:**
+1. Modified `apps/desktop/src/components/editor/RightDock.tsx`:
+   - Replaced all `xl:` class prefixes with `lg:` for responsive properties.
+   - RightDock now transitions to side-by-side Columns at `>= 1024px` instead of `>= 1280px`.
+2. Modified `apps/desktop/src/components/editor/AppTitleBar.tsx`:
+   - Replaced `xl:hidden` with `lg:hidden` on the RightDock toggle button.
+3. Created/updated implementation plan, task list, and walkthrough artifacts.
+4. Ran full verification tests and production builds.
+
+**Verification:**
+- PASS: full Vitest suite (86 files / 1261 tests).
+- PASS: Rust workspace tests (core 85 + desktop 13 = 98 tests).
+- PASS: production build (`pnpm run build` compiled successfully in 40.98s).
+
 ## [2026-06-20] FEATURE - Responsive RightDock Layout [COMPLETE]
 
 ### Kategori: FEATURE / UI-UX / LAYOUT / RESPONSIVENESS

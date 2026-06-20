@@ -62,7 +62,7 @@ test.describe("editor browser smoke", () => {
   });
 
   test("toggles side panels without losing the active document", async ({ page }) => {
-    await page.setViewportSize({ width: 1100, height: 760 });
+    await page.setViewportSize({ width: 1000, height: 760 });
     await page.goto("/");
 
     await page.getByRole("button", { name: "Hide side panels" }).click();

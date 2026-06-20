@@ -39,6 +39,7 @@ export function LayersPanel() {
 
   const [editingLayerId, setEditingLayerId] = createSignal<string | null>(null);
   const [editName, setEditName] = createSignal("");
+  const [navigatorCollapsed, setNavigatorCollapsed] = createSignal(false);
 
   const activeLayer = () => {
     const id = activeLayerId();
@@ -451,86 +452,105 @@ export function LayersPanel() {
 
       {/* Navigator panel */}
       <div class="shrink-0 border-t border-editor-divider bg-editor-panel">
-        <div class="flex h-[46px] items-center justify-between border-b border-editor-divider px-4">
-          <h3 class="text-[13px] font-medium text-editor-text">Navigator</h3>
+        <div 
+          class={clsx(
+            "flex h-[46px] items-center justify-between px-4",
+            !navigatorCollapsed() && "border-b border-editor-divider"
+          )}
+        >
           <button
-            onClick={() => {
-              const engine = workspace.getActiveEngine();
-              if (engine) {
-                // Find main canvas container element to get container dimensions
-                const container = document.getElementById("canvas-container");
-                const rect = container?.getBoundingClientRect();
-                if (rect) {
-                  engine.fitToScreen(rect.width, rect.height);
-                  syncViewport();
-                  const dpr = window.devicePixelRatio || 1;
-                  renderer.resizeToViewport(rect.width, rect.height, dpr);
-                  scheduler.requestRender();
-                }
-              }
-            }}
-            class="text-editor-text-dim hover:text-editor-text transition-colors p-1 rounded hover:bg-white/5"
-            title="Fit Screen"
+            onClick={() => setNavigatorCollapsed(!navigatorCollapsed())}
+            class="flex items-center gap-1.5 text-[13px] font-medium text-editor-text hover:text-editor-text-dim transition-colors"
           >
-            <Icon name="maximize" class="size-3.5" strokeWidth={1.75} />
+            <Icon
+              name={navigatorCollapsed() ? "chevron-right" : "chevron-down"}
+              class="size-3.5 text-editor-text-dim"
+              strokeWidth={1.75}
+            />
+            <span>Navigator</span>
           </button>
+          <Show when={!navigatorCollapsed()}>
+            <button
+              onClick={() => {
+                const engine = workspace.getActiveEngine();
+                if (engine) {
+                  // Find main canvas container element to get container dimensions
+                  const container = document.getElementById("canvas-container");
+                  const rect = container?.getBoundingClientRect();
+                  if (rect) {
+                    engine.fitToScreen(rect.width, rect.height);
+                    syncViewport();
+                    const dpr = window.devicePixelRatio || 1;
+                    renderer.resizeToViewport(rect.width, rect.height, dpr);
+                    scheduler.requestRender();
+                  }
+                }
+              }}
+              class="text-editor-text-dim hover:text-editor-text transition-colors p-1 rounded hover:bg-white/5"
+              title="Fit Screen"
+            >
+              <Icon name="maximize" class="size-3.5" strokeWidth={1.75} />
+            </button>
+          </Show>
         </div>
         
-        <Navigator />
+        <Show when={!navigatorCollapsed()}>
+          <Navigator />
 
-        <div class={clsx("flex items-center gap-2.5 px-4 py-3", !activeDocumentId() && "opacity-50 pointer-events-none")}>
-          <button 
-            onClick={() => {
-              const engine = workspace.getActiveEngine();
-              if (engine) {
-                setViewportState({
-                  x: pan().x,
-                  y: pan().y,
-                  zoom: Math.max(0.05, zoom() - 0.1),
-                });
-                scheduler.requestRender();
-              }
-            }}
-            class="text-[12px] text-editor-text-dim hover:text-editor-text px-1"
-          >
-            -
-          </button>
-          <input
-            type="range"
-            min="5"
-            max="400"
-            value={Math.round(zoom() * 100)}
-            onInput={(e) => {
-              const engine = workspace.getActiveEngine();
-              if (engine) {
-                setViewportState({
-                  x: pan().x,
-                  y: pan().y,
-                  zoom: parseInt(e.target.value) / 100,
-                });
-                scheduler.requestRender();
-              }
-            }}
-            class="h-[3px] w-full accent-editor-accent bg-editor-field-border rounded-full appearance-none cursor-pointer"
-          />
-          <button 
-            onClick={() => {
-              const engine = workspace.getActiveEngine();
-              if (engine) {
-                setViewportState({
-                  x: pan().x,
-                  y: pan().y,
-                  zoom: Math.min(4.0, zoom() + 0.1),
-                });
-                scheduler.requestRender();
-              }
-            }}
-            class="text-[12px] text-editor-text-dim hover:text-editor-text px-1"
-          >
-            +
-          </button>
-          <span class="text-[12px] text-editor-text min-w-[36px] text-right">{Math.round(zoom() * 100)}%</span>
-        </div>
+          <div class={clsx("flex items-center gap-2.5 px-4 py-3", !activeDocumentId() && "opacity-50 pointer-events-none")}>
+            <button 
+              onClick={() => {
+                const engine = workspace.getActiveEngine();
+                if (engine) {
+                  setViewportState({
+                    x: pan().x,
+                    y: pan().y,
+                    zoom: Math.max(0.05, zoom() - 0.1),
+                  });
+                  scheduler.requestRender();
+                }
+              }}
+              class="text-[12px] text-editor-text-dim hover:text-editor-text px-1"
+            >
+              -
+            </button>
+            <input
+              type="range"
+              min="5"
+              max="400"
+              value={Math.round(zoom() * 100)}
+              onInput={(e) => {
+                const engine = workspace.getActiveEngine();
+                if (engine) {
+                  setViewportState({
+                    x: pan().x,
+                    y: pan().y,
+                    zoom: parseInt(e.target.value) / 100,
+                  });
+                  scheduler.requestRender();
+                }
+              }}
+              class="h-[3px] w-full accent-editor-accent bg-editor-field-border rounded-full appearance-none cursor-pointer"
+            />
+            <button 
+              onClick={() => {
+                const engine = workspace.getActiveEngine();
+                if (engine) {
+                  setViewportState({
+                    x: pan().x,
+                    y: pan().y,
+                    zoom: Math.min(4.0, zoom() + 0.1),
+                  });
+                  scheduler.requestRender();
+                }
+              }}
+              class="text-[12px] text-editor-text-dim hover:text-editor-text px-1"
+            >
+              +
+            </button>
+            <span class="text-[12px] text-editor-text min-w-[36px] text-right">{Math.round(zoom() * 100)}%</span>
+          </div>
+        </Show>
       </div>
       </Show>
     </section>

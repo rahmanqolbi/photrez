@@ -278,6 +278,7 @@
 | ✅ DONE      | Range slider (Photon Amber thumb)          |
 | ✅ DONE      | Panel headers                              |
 | ✅ DONE      | Docked Precision layout (panels flush to window edges, inner rounding only) |
+| ✅ DONE      | Responsive RightDock layout (stacks vertically below 1024px to preserve canvas, side-by-side columns above 1024px) |
 | ✅ DONE      | Visual De-cluttering & Airy/Lightweight UI Polishing |
 | ✅ DONE      | Flush-Left Anchor active tool indicator (Option A) |
 | ✅ DONE      | Segmented Transform matrix coordinate grid (Figma-style) |
@@ -315,7 +316,7 @@
 | ✅ DONE      | Unit tests (core crate) — 85 tests, 92 workspace total |
 | ✅ DONE      | Desktop shell contract tests — 8 Tauri command tests |
 | ✅ DONE      | Frontend tests — 1261 passing tests (86 files), latest recorded 2026-06-20 |
-| ✅ DONE      | Split Vitest feedback paths — 346 pure-Node tests (~7s), 915 jsdom tests, full 1261-test gate 85.80s (62% faster than 228.33s baseline) |
+| ✅ DONE      | Split Vitest feedback paths — 783 pure-Node tests (~6.5s), 478 isolated jsdom tests, full 1261-test gate 37.48s (83.6% faster than 228.33s baseline) |
 | ✅ DONE      | E2E browser tests — 21 Playwright tests    |
 | ✅ DONE      | E2E visible-pixel sampling compatible with `preserveDrawingBuffer: false` — checkerboard, brush/eraser, and selection undo/redo tests sample composited screenshots instead of an undefined default WebGL framebuffer |
 | ✅ DONE      | M6 Perf Gate (all metrics PASS)            |

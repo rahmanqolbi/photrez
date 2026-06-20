@@ -15,6 +15,8 @@
         "title": "Photrez",
         "width": 1280,
         "height": 832,
+        "minWidth": 960,
+        "minHeight": 640,
         "resizable": true,
         "decorations": false,
         "transparent": true

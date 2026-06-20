@@ -4,6 +4,68 @@
 
 ## Current Tasks
 
+### [2026-06-20] TEST INFRASTRUCTURE - Second-Pass Vitest Optimization [COMPLETE]
+
+**Goal:**
+Reduce the complete frontend Vitest gate from the current ~83s toward the documented <60s target while preserving all 86 files / 1261 tests and keeping DOM, wiring, CanvasViewport, and pointer-chain coverage in jsdom.
+
+**Scope:**
+- [x] Use official Vitest performance guidance to identify safe isolation/setup/CSS reductions
+- [x] Move additional empirically proven pure tests from jsdom into the Node project
+- [x] Benchmark frontend-only plugin/CSS bypass and revert it because it did not improve wall time
+- [x] Benchmark each candidate change and retain only improvements
+- [x] Run full Vitest, production build, Rust regression gates, and browser E2E
+- [x] Record measured results in `AI_HISTORY.md` and `FEATURES.md`
+
+**Constraints:**
+- No test deletion, skipping, assertion weakening, or wiring-test replacement with pure-function tests.
+- jsdom/Solid tests remain isolated because prior concurrent execution caused shared-state regressions.
+- Preserve unrelated working-tree changes, including the current responsive RightDock work.
+
+**Done:**
+- Expanded `unit-node` from 27 files / 346 tests to 49 files / 783 tests; reduced `component-jsdom` from 59 files / 915 tests to 37 files / 478 tests.
+- Kept every TSX component/wiring test plus explicit DOM, RAF, WebGL canvas, and Solid render tests in isolated jsdom.
+- `viewportCamera.test.ts` was trialed in Node, failed on real `DOMRect` use, and was returned to jsdom rather than mocked merely for speed.
+- Enabled `isolate: false` only for the pure Node project; two repeated Node runs passed (6.39s and 6.60s).
+- Trialed disabling Tailwind/CSS processing during Vitest; component time regressed from 35.59s to 36.45s, so the experiment was reverted.
+- Updated the responsive side-panel E2E viewport from 1100px to 1000px to match the intentional `lg` (1024px) breakpoint while preserving the complete toggle assertions.
+
+**Measured Result:**
+- Previous full gate after first optimization: 82.87s–85.80s.
+- Final safety-validated full gate: 37.48s for the same 86 files / 1261 tests, with jsdom file isolation enabled.
+- Improvement: 54.8% faster than the 82.87s second-pass baseline and 83.6% faster than the original 228.33s baseline.
+
+**Verification:**
+- PASS: final full Vitest — 1261/1261 in 37.48s with isolation disabled only for `unit-node`.
+- PASS: `test:unit` repeated — 783/783 in 6.39s and 6.60s.
+- PASS: full Playwright — 21/21 in 1.1m.
+- PASS: production build — 6.16s.
+- PASS: `cargo test -p photrez-core` — 85/85.
+- PASS: `cargo test --workspace` — core 85/85 + desktop 13/13.
+- NOTE: four pre-existing jsdom `HTMLCanvasElement.getContext()` warnings remain; no test or runtime assertion failed because of them.
+
+### [2026-06-20] UI RESPONSIVENESS - Responsive RightDock Breakpoint Tuning [COMPLETE]
+
+**Goal:**
+Tune the RightDock responsive breakpoint by lowering it from 1280px (`xl`) to 1024px (`lg`), allowing side-by-side columns on medium-sized screens and restored windows, while only stacking panels vertically on windows narrower than 1024px.
+
+**Scope:**
+- [x] Update RightDock.tsx styles to use `lg:` instead of `xl:` responsive class prefix
+- [x] Update AppTitleBar.tsx panel toggle button class from `xl:hidden` to `lg:hidden`
+- [x] Run frontend verification tests
+- [x] Verify local build succeeds
+- [x] Create/update walkthrough.md documentation
+
+**Done:**
+- Sidelined the `xl` (1280px) responsive breakpoint to `lg` (1024px) in `RightDock.tsx` and `AppTitleBar.tsx`.
+- Verified that on medium windows (>1024px), the Properties and Layers columns sit side-by-side, avoiding a cramped vertical stack.
+- Verified compilation and test results.
+
+**Verification:**
+- PASS: full Vitest suite (86 files / 1261 tests).
+- PASS: Rust workspace tests (98 tests).
+- PASS: production build (`pnpm run build`).
+
 ### [2026-06-20] UI RESPONSIVENESS - Responsive RightDock Layout [COMPLETE]
 
 **Goal:**

@@ -235,7 +235,7 @@ export function AppTitleBar(props: AppTitleBarProps) {
           </button>
           <div class="mx-1 h-3.5 w-px bg-editor-divider" />
           <button
-            class="flex size-7 items-center justify-center rounded-[4px] hover:bg-white/[0.045] hover:text-editor-text xl:hidden"
+            class="flex size-7 items-center justify-center rounded-[4px] hover:bg-white/[0.045] hover:text-editor-text lg:hidden"
             aria-label={props.isRightDockOpen ? "Hide side panels" : "Show side panels"}
             onClick={props.onToggleRightDock}
           >
