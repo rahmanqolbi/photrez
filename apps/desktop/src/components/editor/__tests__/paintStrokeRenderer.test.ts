@@ -296,7 +296,34 @@ describe("renderPaintStrokeToContext", () => {
     expect((ctx as unknown as { shadowBlur: number }).shadowBlur).toBe(0);
   });
 
-  it("keeps hardness 0 inside the fixed brush cursor radius", () => {
+  it("paints the calibrated hardness-0 tail beyond the nominal radius", () => {
+    const imageData = createImageDataMock(240, 240);
+    const ctx = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      globalCompositeOperation: "",
+      globalAlpha: 1,
+      canvas: { width: 240, height: 240 },
+      getImageData: vi.fn(() => imageData),
+      putImageData: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+
+    renderPaintStrokeToContext(
+      ctx,
+      [{ x: 120, y: 120 }],
+      { size: 100, hardness: 0, opacity: 1, flow: 1, smoothing: 0 },
+      "#ff0000",
+      false,
+    );
+
+    const written = (ctx.putImageData as unknown as ReturnType<typeof vi.fn>)
+      .mock.calls[0][0] as ImageData;
+    const alphaAt = (x: number, y: number) => written.data[(y * written.width + x) * 4 + 3];
+    expect(alphaAt(171, 120)).toBeGreaterThan(0);
+    expect(alphaAt(190, 120)).toBeGreaterThan(0);
+  });
+
+  it("uses one-pixel boundary AA below the calibrated reliability threshold", () => {
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),
@@ -334,15 +361,14 @@ describe("renderPaintStrokeToContext", () => {
     };
     // Center stays at full alpha
     expect(alphaAt(20, 20)).toBeGreaterThan(100);
-    // Mid-radius remains visible while the feather stays inside Size.
+    // Small tips bypass the calibrated curve and stay solid inside the circle.
     expect(alphaAt(25, 20)).toBeGreaterThan(25);
-    // Near the cursor edge, the feather is faint but nonzero.
+    // The final inner pixel remains covered.
     expect(alphaAt(29, 20)).toBeGreaterThan(0);
-    // Bilinear sampling may leak alpha at the exact boundary.
-    // The 1-t² curve has higher alpha near the edge (0.19 at 90%),
-    // so bilinear interpolation bleeds more than smoothstep.
-    expect(alphaAt(30, 20)).toBeLessThanOrEqual(15);
-    // Beyond the antialiasing boundary, the brush has no support.
+    // Exact nominal boundary gets half coverage from the one-pixel AA band.
+    expect(alphaAt(30, 20)).toBeGreaterThan(0);
+    expect(alphaAt(30, 20)).toBeLessThan(255);
+    // Beyond the one-pixel antialiasing boundary, the brush has no support.
     expect(alphaAt(32, 20)).toBe(0);
   });
 

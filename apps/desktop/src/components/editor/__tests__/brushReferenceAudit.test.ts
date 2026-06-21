@@ -16,145 +16,47 @@ function alphaAt(tip: BrushTip, x: number, y: number): number {
   return tip.data[(y * tip.width + x) * 4 + 3] / 255;
 }
 
-describe("audit: Photoshop hard-edge binary alpha inside cursor radius", () => {
-  it("hardness 100% returns alpha=1 for any distance inside the cursor radius", () => {
+describe("audit: measured Photoshop super-Gaussian profile", () => {
+  it("uses a literal hard edge from 97% hardness with an inclusive radius", () => {
     const radius = 30;
-    expect(brushAlphaAtDistance(0, radius, 1, "soft")).toBe(1);
-    expect(brushAlphaAtDistance(15, radius, 1, "soft")).toBe(1);
-    expect(brushAlphaAtDistance(29.99, radius, 1, "soft")).toBe(1);
+    expect(brushAlphaAtDistance(0, radius, 0.97, "soft")).toBe(1);
+    expect(brushAlphaAtDistance(radius, radius, 0.97, "soft")).toBe(1);
+    expect(brushAlphaAtDistance(radius + 0.001, radius, 0.97, "soft")).toBe(0);
   });
 
-  it("hardness 100% returns alpha=0 at or beyond the cursor radius", () => {
-    const radius = 30;
-    expect(brushAlphaAtDistance(radius, radius, 1, "soft")).toBe(0);
-    expect(brushAlphaAtDistance(radius + 1, radius, 1, "soft")).toBe(0);
-  });
-
-  it("hard brush tip data is fully 1.0 across the entire cursor diameter", () => {
-    // For an odd size (e.g. 41), the tip covers all pixels within radius from
-    // the center, so every generated pixel should be 1.
-    const tip = createBrushTip({ size: 41, hardness: 1, curve: "soft" });
-    const c = Math.floor(tip.width / 2);
-    // Center
-    expect(alphaAt(tip, c, c)).toBe(1);
-    // Mid-radius horizontally
-    expect(alphaAt(tip, c - 10, c)).toBe(1);
-    expect(alphaAt(tip, c + 10, c)).toBe(1);
-    // Just inside the rightmost cursor pixel (radius 20.5 → max in-bounds x = 40)
-    expect(alphaAt(tip, 40, c)).toBe(1);
-  });
-});
-
-describe("audit: fixed brush support radius", () => {
-  it("uses the same support radius and mask dimensions at every hardness", () => {
-    const size = 75;
-    const radius = size / 2;
-    for (const hardness of [0, 0.2, 0.5, 0.8, 1]) {
-      const tip = createBrushTip({ size, hardness, curve: "soft" });
-      expect(getBrushTipOuterRadius(radius, hardness, "soft")).toBe(radius);
-      expect(tip.width).toBe(size);
-      expect(tip.height).toBe(size);
-      expect(brushAlphaAtDistance(radius, radius, hardness, "soft")).toBe(0);
-      expect(brushAlphaAtDistance(radius + 1, radius, hardness, "soft")).toBe(0);
-    }
-  });
-});
-
-describe("audit: bounded hardness 0 feather profile", () => {
-  // Inverse-quadratic feather (1 - t²) over the fixed radius:
-  //   u=0.125 -> ~0.984, u=0.25 -> ~0.9375, u=0.50 -> 0.75,
-  //   u=0.75 -> ~0.4375, u=1.00 -> 0.
-
-  it("hardness 0 keeps a dense center at 12.5% cursor radius", () => {
-    const tip = createBrushTip({ size: 75, hardness: 0, curve: "soft" });
-    const c = Math.floor(tip.width / 2);
-    expect(alphaAt(tip, c + Math.round(75 * 0.0625), c)).toBeGreaterThan(0.97);
-    expect(alphaAt(tip, c + Math.round(75 * 0.0625), c)).toBeLessThanOrEqual(0.99);
-  });
-
-  it("hardness 0 remains strong at 25% cursor radius", () => {
-    const tip = createBrushTip({ size: 75, hardness: 0, curve: "soft" });
-    const c = Math.floor(tip.width / 2);
-    expect(alphaAt(tip, c + Math.round(75 * 0.125), c)).toBeGreaterThan(0.92);
-    expect(alphaAt(tip, c + Math.round(75 * 0.125), c)).toBeLessThanOrEqual(0.96);
-  });
-
-  it("hardness 0 fades through 50% cursor radius", () => {
-    const tip = createBrushTip({ size: 75, hardness: 0, curve: "soft" });
-    const c = Math.floor(tip.width / 2);
-    expect(alphaAt(tip, c + Math.round(75 * 0.25), c)).toBeGreaterThan(0.70);
-    expect(alphaAt(tip, c + Math.round(75 * 0.25), c)).toBeLessThanOrEqual(0.80);
-  });
-
-  it("hardness 0 is faint at 75% cursor radius", () => {
-    const tip = createBrushTip({ size: 75, hardness: 0, curve: "soft" });
-    const c = Math.floor(tip.width / 2);
-    expect(alphaAt(tip, c + Math.round(75 * 0.375), c)).toBeGreaterThan(0.35);
-    expect(alphaAt(tip, c + Math.round(75 * 0.375), c)).toBeLessThanOrEqual(0.50);
-  });
-
-  it("hardness 0 outer support edge fades to zero", () => {
-    const tip = createBrushTip({ size: 75, hardness: 0, curve: "soft" });
-    const c = Math.floor(tip.width / 2);
-    expect(alphaAt(tip, tip.width - 1, c)).toBeLessThan(0.05);
-  });
-});
-
-describe("audit: mask monotonicity + hardness ordering invariants", () => {
-  // The soft curve uses an inverse-quadratic (1-t²) core+feather model.
-  // These tests lock the invariants that the model preserves so any future
-  // tuning can drift intentionally without breaking silent regressions.
-
-  it("alpha is monotonically non-increasing with distance for every hardness", () => {
+  it("keeps hardness 0 continuously graded with measured bleed beyond radius", () => {
     const radius = 50;
-    for (const h of [0, 0.2, 0.5, 0.8, 1]) {
-      let prev = brushAlphaAtDistance(0, radius, h, "soft");
-      for (let d = 1; d <= radius * 1.1; d += 1) {
-        const cur = brushAlphaAtDistance(d, radius, h, "soft");
-        expect(cur).toBeLessThanOrEqual(prev + 1e-9);
-        prev = cur;
+    expect(brushAlphaAtDistance(0, radius, 0, "soft")).toBe(1);
+    expect(brushAlphaAtDistance(0.5, radius, 0, "soft")).toBeLessThan(1);
+    expect(brushAlphaAtDistance(radius, radius, 0, "soft"))
+      .toBeCloseTo(Math.exp(-Math.pow(1 / 0.661, 2)), 12);
+    expect(brushAlphaAtDistance(radius * 1.4, radius, 0, "soft")).toBeGreaterThan(0.01);
+  });
+
+  it("keeps 90% hardness solid through most of the radius before a sharp drop", () => {
+    const radius = 50;
+    expect(brushAlphaAtDistance(radius * 0.8, radius, 0.9, "soft")).toBeGreaterThan(0.99);
+    expect(brushAlphaAtDistance(radius, radius, 0.9, "soft")).toBeGreaterThan(0.4);
+    expect(brushAlphaAtDistance(radius * 1.1, radius, 0.9, "soft")).toBeLessThan(0.001);
+  });
+
+  it("allocates visible soft-tail support while keeping hard support nominal", () => {
+    const radius = 37.5;
+    expect(getBrushTipOuterRadius(radius, 0, "soft")).toBeGreaterThan(radius * 1.6);
+    expect(getBrushTipOuterRadius(radius, 0.5, "soft")).toBeGreaterThan(radius);
+    expect(getBrushTipOuterRadius(radius, 1, "soft")).toBe(radius);
+  });
+
+  it("is monotonically non-increasing with radial distance", () => {
+    const radius = 50;
+    for (const hardness of [0, 0.2, 0.5, 0.8, 0.9, 0.97, 1]) {
+      let previous = brushAlphaAtDistance(0, radius, hardness, "soft");
+      for (let distance = 1; distance <= radius * 1.7; distance += 1) {
+        const current = brushAlphaAtDistance(distance, radius, hardness, "soft");
+        expect(current).toBeLessThanOrEqual(previous + 1e-12);
+        previous = current;
       }
     }
-  });
-
-  it("higher hardness yields equal or higher alpha throughout the fixed radius", () => {
-    const radius = 50;
-    for (let d = 0; d <= radius; d += 1) {
-      const soft = brushAlphaAtDistance(d, radius, 0, "soft");
-      const mid = brushAlphaAtDistance(d, radius, 0.5, "soft");
-      const hard = brushAlphaAtDistance(d, radius, 0.8, "soft");
-      expect(hard + 1e-6).toBeGreaterThanOrEqual(mid);
-      expect(mid + 1e-6).toBeGreaterThanOrEqual(soft);
-    }
-  });
-
-  it("hardness 1.0 collapses to hard edge (alpha 1 inside, 0 at radius)", () => {
-    expect(brushAlphaAtDistance(0, 50, 1, "soft")).toBe(1);
-    expect(brushAlphaAtDistance(25, 50, 1, "soft")).toBe(1);
-    expect(brushAlphaAtDistance(49, 50, 1, "soft")).toBe(1);
-    expect(brushAlphaAtDistance(50, 50, 1, "soft")).toBe(0);
-  });
-
-  it("hardness 0 feathers across the full radius and reaches zero at the edge", () => {
-    expect(brushAlphaAtDistance(0, 50, 0, "soft")).toBe(1);
-    // 1 - (12.5/50)² = 1 - 0.0625 = 0.9375
-    expect(brushAlphaAtDistance(12.5, 50, 0, "soft")).toBeCloseTo(0.9375, 5);
-    // 1 - (25/50)² = 1 - 0.25 = 0.75
-    expect(brushAlphaAtDistance(25, 50, 0, "soft")).toBeCloseTo(0.75, 5);
-    expect(brushAlphaAtDistance(50, 50, 0, "soft")).toBe(0);
-    expect(brushAlphaAtDistance(51, 50, 0, "soft")).toBe(0);
-  });
-
-  it("hardness 0.8 keeps a mostly solid disk with a narrow feather rim", () => {
-    // Hardness 0.8 keeps an 80% solid core, then feathers only inside
-    // the remaining 20% of the fixed radius.
-    const radius = 50;
-    expect(brushAlphaAtDistance(0, radius, 0.8, "soft")).toBe(1);
-    expect(brushAlphaAtDistance(20, radius, 0.8, "soft")).toBe(1);
-    expect(brushAlphaAtDistance(35, radius, 0.8, "soft")).toBe(1);
-    // t = (47.5-40)/10 = 0.75, alpha = 1 - 0.75² = 0.4375
-    expect(brushAlphaAtDistance(47.5, radius, 0.8, "soft")).toBeCloseTo(0.4375, 5);
-    expect(brushAlphaAtDistance(50, radius, 0.8, "soft")).toBe(0);
   });
 });
 
@@ -234,40 +136,33 @@ describe("audit: Photoshop-style per-dab source-over accumulation", () => {
   });
 });
 
-describe("audit: bounded soft round single-dab profile (40px @ hardness 0)", () => {
-  it("single dab center alpha is full strength", () => {
+describe("audit: calibrated soft round single-dab profile", () => {
+  it("single dab center rounds to full strength", () => {
     const tip = createBrushTip({ size: 40, hardness: 0, curve: "soft" });
-    const c = Math.floor(tip.width / 2);
-    expect(alphaAt(tip, c, c)).toBeGreaterThan(0.99);
+    const center = Math.round((tip.width - 1) / 2);
+    expect(alphaAt(tip, center, center)).toBeGreaterThan(0.99);
   });
 
-  it("single dab at 25% radius remains strong", () => {
-    const tip = createBrushTip({ size: 40, hardness: 0, curve: "soft" });
-    const c = Math.floor(tip.width / 2);
-    const r = 20;
-    const at25 = alphaAt(tip, c + Math.round(r * 0.25), c);
-    // 1-t² curve keeps higher alpha: at 25% of radius, alpha ≈ 0.9375
-    expect(at25).toBeGreaterThan(0.90);
-    expect(at25).toBeLessThan(0.97);
+  it("single dab at 25% radius follows sigma 0.661 and n 2", () => {
+    expect(brushAlphaAtDistance(5, 20, 0, "soft"))
+      .toBeCloseTo(Math.exp(-Math.pow(0.25 / 0.661, 2)), 12);
   });
 
-  it("single dab is bounded by the cursor radius", () => {
+  it("single dab retains visible pixels beyond the nominal cursor radius", () => {
     const tip = createBrushTip({ size: 40, hardness: 0, curve: "soft" });
-    const r = 20;
-    expect(tip.width).toBe(40);
-    expect(brushAlphaAtDistance(r - 1, r, 0, "soft")).toBeGreaterThan(0);
-    expect(brushAlphaAtDistance(r, r, 0, "soft")).toBe(0);
-    expect(brushAlphaAtDistance(r + 1, r, 0, "soft")).toBe(0);
+    const center = (tip.width - 1) / 2;
+    const row = Math.round(center);
+    const beyondCursor = alphaAt(tip, Math.round(center + 22), row);
+    expect(tip.width).toBeGreaterThan(40);
+    expect(beyondCursor).toBeGreaterThan(0);
   });
 
-  it("single dab with hardness 100 produces a binary hard edge at size 40", () => {
+  it("single dab with hardness 100 produces a binary hard edge", () => {
     const tip = createBrushTip({ size: 41, hardness: 1, curve: "soft" });
-    const c = Math.floor(tip.width / 2);
-    const r = 20; // size 41 → radius 20.5, cursor diameter 41
-    // All pixels inside cursor diameter: alpha 1
-    expect(alphaAt(tip, c, c)).toBe(1);
-    expect(alphaAt(tip, c - r, c)).toBe(1);
-    expect(alphaAt(tip, c + r, c)).toBe(1);
+    const center = Math.floor(tip.width / 2);
+    expect(alphaAt(tip, center, center)).toBe(1);
+    expect(alphaAt(tip, center - 20, center)).toBe(1);
+    expect(alphaAt(tip, center + 20, center)).toBe(1);
   });
 });
 

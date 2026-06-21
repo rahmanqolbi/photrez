@@ -1,3 +1,9 @@
+import {
+  MIN_RELIABLE_BRUSH_DIAMETER_PX,
+  brushAlpha,
+  getBrushProfileSupportNorm,
+} from "./brushHardnessProfile";
+
 export type BrushFalloffCurve = "cosine" | "smoothstep" | "quadratic" | "soft";
 
 export interface BrushTipOptions {
@@ -38,28 +44,18 @@ export function falloff(x: number, curve: BrushFalloffCurve = "soft"): number {
 
 export function getBrushTipOuterRadius(
   radius: number,
-  _hardness: number,
-  _curve: BrushFalloffCurve = "soft",
+  hardness: number,
+  curve: BrushFalloffCurve = "soft",
 ): number {
+  if (curve === "soft") {
+    if (radius * 2 < MIN_RELIABLE_BRUSH_DIAMETER_PX) return radius + 0.5;
+    return radius * getBrushProfileSupportNorm(hardness);
+  }
   return radius;
 }
 
-function softFalloff(distance: number, radius: number, hardness: number): number {
-  // Size owns the fixed support radius. Hardness only moves the boundary
-  // between the solid core and the feather inside that radius.
-  // Uses inverse-quadratic falloff (1 - t²) which keeps alpha values
-  // significantly higher throughout the feather zone than smoothstep,
-  // making the painted area visually fill the entire cursor circle
-  // like Photoshop/Krita soft round brushes.
-  if (distance >= radius) return 0;
-  if (distance <= 0) return 1;
-  if (hardness >= 1) return 1;
-
-  const coreRadius = radius * hardness;
-  if (distance <= coreRadius) return 1;
-
-  const t = (distance - coreRadius) / (radius - coreRadius);
-  return 1 - t * t;
+function smallRoundAlpha(distance: number, radius: number): number {
+  return clamp01(radius - Math.max(distance, 0) + 0.5);
 }
 
 export function brushAlphaAtDistance(
@@ -70,11 +66,17 @@ export function brushAlphaAtDistance(
 ): number {
   if (radius <= 0) return 0;
   const h = clamp01(hardness);
+
+  if (curve === "soft") {
+    if (radius * 2 < MIN_RELIABLE_BRUSH_DIAMETER_PX) {
+      return smallRoundAlpha(distance, radius);
+    }
+    return brushAlpha(Math.max(distance, 0) / radius, h);
+  }
+
   const outerRadius = getBrushTipOuterRadius(radius, h, curve);
   if (distance >= outerRadius) return 0;
   if (h >= 1) return 1;
-
-  if (curve === "soft") return softFalloff(distance, outerRadius, h);
 
   const coreRadius = radius * h;
   if (distance <= coreRadius) return 1;

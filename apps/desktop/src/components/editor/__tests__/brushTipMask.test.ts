@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   brushAlphaAtDistance,
+  clearBrushTipCache,
   createBrushTip,
   falloff,
   getBrushDabSpacing,
   getBrushTipOuterRadius,
   getBrushTipCacheKey,
+  getBrushTip,
   interpolateDabs,
   stampBrushTip,
   compositeMaskToImageData,
@@ -56,6 +58,40 @@ describe("brushTipMask falloff", () => {
 
   it("rounds cache keys to stable values", () => {
     expect(getBrushTipCacheKey({ size: 20.2, hardness: 0.333, curve: "cosine" })).toBe("20:33:cosine");
+  });
+});
+
+describe("Photoshop-calibrated soft round raster", () => {
+  it("keeps hardness-0 alpha outside the nominal radius", () => {
+    const radius = 50;
+    expect(brushAlphaAtDistance(radius, radius, 0, "soft")).toBeGreaterThan(0.09);
+    expect(brushAlphaAtDistance(radius * 1.4, radius, 0, "soft")).toBeGreaterThan(0.01);
+  });
+
+  it("allocates soft support beyond size without changing nominal radius", () => {
+    const tip = createBrushTip({ size: 100, hardness: 0, curve: "soft" });
+    expect(tip.radius).toBe(50);
+    expect(tip.width).toBeGreaterThan(100);
+    expect(tip.height).toBe(tip.width);
+  });
+
+  it("uses a one-pixel antialiased boundary below 22 render pixels", () => {
+    const tip = createBrushTip({ size: 21, hardness: 0, curve: "soft" });
+    const center = Math.floor(tip.width / 2);
+    const centerAlpha = tip.data[(center * tip.width + center) * 4 + 3];
+    const boundaryAlpha = tip.data[(18 * tip.width + 18) * 4 + 3];
+
+    expect(centerAlpha).toBe(255);
+    expect(boundaryAlpha).toBeGreaterThan(0);
+    expect(boundaryAlpha).toBeLessThan(255);
+  });
+
+  it("reuses cached data until size or hardness changes", () => {
+    clearBrushTipCache();
+    const first = getBrushTip({ size: 100, hardness: 0.5, curve: "soft" });
+    expect(getBrushTip({ size: 100, hardness: 0.5, curve: "soft" })).toBe(first);
+    expect(getBrushTip({ size: 101, hardness: 0.5, curve: "soft" })).not.toBe(first);
+    expect(getBrushTip({ size: 100, hardness: 0.6, curve: "soft" })).not.toBe(first);
   });
 });
 
@@ -184,79 +220,35 @@ describe("brushTipMask pixel profile", () => {
     return tip.data[(y * tip.width + x) * 4 + 3] / 255;
   }
 
-  it("hardness 0 feathers from the center to zero at the fixed size radius", () => {
-    const tip = createBrushTip({ size: 75, hardness: 0, curve: "soft" });
-    const c = Math.floor(tip.width / 2);
-
-    const center = alphaAt(tip, c, c);
-    const r12 = alphaAt(tip, c + Math.round(75 * 0.0625), c);
-    const r25 = alphaAt(tip, c + Math.round(75 * 0.125), c);
-    const r50 = alphaAt(tip, c + Math.round(75 * 0.25), c);
-    const r75 = alphaAt(tip, c + Math.round(75 * 0.375), c);
-    const edge = alphaAt(tip, tip.width - 1, c);
-
-    // Inverse-quadratic falloff (1-t²) keeps alpha higher throughout
-    // the feather zone, making the brush visually fill the cursor circle.
-    expect(center).toBe(1);
-    expect(r12).toBeGreaterThan(0.97);
-    expect(r25).toBeGreaterThan(0.92);
-    expect(r50).toBeGreaterThan(0.70);
-    expect(r50).toBeLessThan(0.80);
-    expect(r75).toBeGreaterThan(0.35);
-    expect(r75).toBeLessThan(0.50);
-    expect(edge).toBeLessThan(0.05);
-  });
-
-  it("keeps the support radius and mask dimensions fixed across hardness", () => {
+  it("rasterizes the calibrated hardness-0 curve through and beyond the nominal radius", () => {
     const size = 75;
     const radius = size / 2;
     const tip = createBrushTip({ size, hardness: 0, curve: "soft" });
+    const center = (tip.width - 1) / 2;
+    const row = Math.round(center);
+    const atNominalRadius = alphaAt(tip, Math.round(center + radius), row);
+    const beyondRadius = alphaAt(tip, Math.round(center + radius * 1.4), row);
 
-    expect(getBrushTipOuterRadius(radius, 0, "soft")).toBe(radius);
-    expect(getBrushTipOuterRadius(radius, 0.5, "soft")).toBe(radius);
+    expect(tip.width).toBeGreaterThan(size);
+    expect(atNominalRadius).toBeGreaterThan(0.08);
+    expect(atNominalRadius).toBeLessThan(0.13);
+    expect(beyondRadius).toBeGreaterThan(0);
+    expect(beyondRadius).toBeLessThan(0.02);
+  });
+
+  it("uses dynamic support for calibrated tips and nominal support for hard tips", () => {
+    const radius = 37.5;
+    expect(getBrushTipOuterRadius(radius, 0, "soft")).toBeGreaterThan(radius * 1.6);
+    expect(getBrushTipOuterRadius(radius, 0.5, "soft")).toBeGreaterThan(radius);
     expect(getBrushTipOuterRadius(radius, 1, "soft")).toBe(radius);
     expect(getBrushTipOuterRadius(radius, 0, "cosine")).toBe(radius);
-    expect(tip.width).toBe(size);
-    expect(tip.height).toBe(size);
-    expect(brushAlphaAtDistance(radius, radius, 0, "soft")).toBe(0);
-    expect(brushAlphaAtDistance(radius + 2, radius, 0, "soft")).toBe(0);
   });
 
-  it("hardness 0.8 produces a mostly solid disk with a narrow feather rim (Photoshop-style)", () => {
-    const tip = createBrushTip({ size: 75, hardness: 0.8, curve: "soft" });
-    const c = Math.floor(tip.width / 2);
-
-    // Inner ~60% should remain at full alpha
-    const at20 = alphaAt(tip, c + Math.round(75 * 0.10), c);
-    const at40 = alphaAt(tip, c + Math.round(75 * 0.20), c);
-    expect(at20).toBe(1);
-    expect(at40).toBe(1);
-
-    // The feather rim is narrow: alpha drops in the outer ~20%
-    // With 1-t² curve, alpha stays higher in the feather zone
-    const at70 = alphaAt(tip, c + Math.round(75 * 0.35), c);
-    const at95 = alphaAt(tip, c + Math.round(75 * 0.475), c);
-    expect(at70).toBeGreaterThan(0.50);
-    expect(at95).toBeLessThan(0.60);
-  });
-
-  it("hardness 0.5 produces a solid core + outer feather (Photoshop-style)", () => {
-    const tip = createBrushTip({ size: 75, hardness: 0.5, curve: "soft" });
-    const c = Math.floor(tip.width / 2);
-
-    // Inner 50% of radius is solid (≤ ~19 pixels from center)
-    expect(alphaAt(tip, c, c)).toBe(1);
-    expect(alphaAt(tip, c + 5, c)).toBe(1);
-    expect(alphaAt(tip, c + 10, c)).toBe(1);
-    expect(alphaAt(tip, c + 15, c)).toBe(1);
-
-    // Feather in the outer half fades to zero at the fixed size boundary.
-    // With 1-t² curve, alpha stays higher for more of the feather zone.
-    const at20 = alphaAt(tip, c + 20, c);
-    const at30 = alphaAt(tip, c + 30, c);
-    expect(at20).toBeGreaterThan(0.97);
-    expect(at30).toBeGreaterThan(0.55);
-    expect(at30).toBeLessThan(0.75);
+  it("keeps high hardness visually solid until its sharp calibrated shoulder", () => {
+    const radius = 50;
+    expect(brushAlphaAtDistance(radius * 0.8, radius, 0.9, "soft")).toBeGreaterThan(0.99);
+    expect(brushAlphaAtDistance(radius, radius, 0.9, "soft")).toBeGreaterThan(0.4);
+    expect(brushAlphaAtDistance(radius * 1.1, radius, 0.9, "soft")).toBeLessThan(0.001);
   });
 });
 
