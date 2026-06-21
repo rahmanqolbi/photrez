@@ -1,0 +1,135 @@
+# Photoshop-Calibrated Round Brush Hardness Design
+
+**Status:** Approved by user on 2026-06-22; awaiting written-spec review  
+**Scope:** Brush and eraser round-tip alpha profile only
+
+## Goal
+
+Make Photrez's round brush hardness respond like the measured Adobe Photoshop samples supplied by the user. The implementation must preserve the supplied mathematical model rather than retune it by eye.
+
+This work changes the radial alpha profile and finite brush-tip allocation. It does not redesign the brush UI, cursor, spacing, flow accumulation, smoothing, or renderer abstraction.
+
+## Authoritative Calibration
+
+For nominal radius `R`, normalized radius `rNorm = r / R`, and hardness `h` clamped to `[0, 1]`:
+
+```text
+alpha(r) = exp(-((rNorm / sigma(h)) ^ n(h)))
+```
+
+`sigma(h)` and `n(h)` use monotone cubic Hermite interpolation through the exact supplied samples:
+
+| hardness | sigma | n |
+| ---: | ---: | ---: |
+| 0.00 | 0.661 | 2.00 |
+| 0.10 | 0.738 | 2.68 |
+| 0.25 | 0.830 | 4.07 |
+| 0.50 | 0.935 | 8.23 |
+| 0.75 | 0.990 | 20.22 |
+| 0.90 | 1.004 | 51.20 |
+| 1.00 | 1.006 | 60.00 |
+
+The interpolation algorithm and endpoint clamping will match the provided `MonotoneCubic` implementation. No fitted replacement constants, linear interpolation, smoothstep profile, or solid-core approximation may substitute for this model.
+
+## Special Cases
+
+1. At `h >= 0.97`, the profile is a literal circle: alpha is one at `rNorm <= 1` and zero outside it.
+2. At a render diameter below 22 pixels, the calibrated curve is bypassed. The tip uses a circle with a one-render-pixel antialiased boundary because the measured profile is not reliable at that sampling scale.
+3. The small-tip branch is based on render pixels, which currently equal the generated CPU mask pixels. A future zoom-dependent or native backend must pass its actual render diameter rather than reinterpret the calibration.
+
+## Finite Bitmap Support
+
+The calibrated function has an infinite mathematical tail, while the cached tip is an 8-bit bitmap. Photrez will allocate enough support to retain every sample that can round to a nonzero 8-bit alpha value, using the threshold `0.5 / 255`:
+
+```text
+supportNorm = sigma * (-ln(0.5 / 255)) ^ (1 / n)
+outerRadius = max(R, R * supportNorm)
+```
+
+This threshold only determines bitmap bounds. It does not modify, normalize, or taper the supplied alpha formula. Pixels are still evaluated with the exact formula and rounded to 8-bit alpha once. The nominal brush size and cursor remain `2R`; a soft tip may therefore paint a faint measured tail beyond the cursor.
+
+## Architecture
+
+### `brushHardnessProfile.ts`
+
+A focused pure module will own:
+
+- the seven calibration arrays;
+- monotone cubic interpolation;
+- hardness-to-`sigma`/`n` lookup;
+- the exact calibrated alpha function;
+- the quantization-aware support-radius calculation;
+- constants for the 97% hard-edge and 22px small-tip thresholds.
+
+The module has no DOM, Canvas, SolidJS, or renderer dependency.
+
+### `brushTipMask.ts`
+
+The existing production tip generator remains responsible for rasterization and caching. For the existing `soft` round curve it will:
+
+- use the new calibrated profile for diameters at least 22px and hardness below 97%;
+- allocate the dynamic support radius instead of clipping every hardness at `R`;
+- use the small-tip one-pixel AA branch below 22px;
+- use the literal hard-circle branch at or above 97%;
+- keep the existing cache key based on rounded size, hardness percentage, and curve.
+
+Legacy non-`soft` curves remain unchanged because they are test/support APIs, not the active round-brush production path.
+
+### Production Path
+
+`paintStrokeRenderer.ts` already obtains one cached tip with `getBrushTip()` before stamping the stroke. It will continue to stamp that precomputed bitmap for every dab. No exponential or interpolation work will occur per stamp or per stroke point.
+
+The same path serves Brush and Eraser, so both tools receive the calibrated profile without duplicating logic. The WebGL2 compositor remains unchanged because CPU-generated layer pixels are still uploaded through the existing renderer boundary.
+
+## Compatibility and UX
+
+- Brush size continues to mean nominal diameter and continues to control cursor geometry and dab spacing.
+- Hardness remains a normalized `[0, 1]` setting surfaced as 0-100% in the existing option bar/context menu.
+- Opacity, flow, source-over accumulation, smoothing, history, and stroke lifecycle are unchanged.
+- Low-hardness output intentionally invalidates old contracts that required zero alpha at `R` or fixed mask dimensions across hardness.
+- No persistent UI surface is added, removed, merged, or relocated.
+
+## Testing
+
+Implementation follows red-green-refactor.
+
+Pure profile tests will cover:
+
+- all seven exact calibration knots;
+- endpoint clamping and non-finite/input clamping behavior;
+- monotone `sigma` and `n` interpolation;
+- exact representative alpha values from the supplied formula;
+- the 97% discontinuous hard-edge branch;
+- quantization support retaining the last representable alpha and excluding the next samples.
+
+Raster and production tests will cover:
+
+- no flat plateau at hardness 0 for a reliable-size tip;
+- measurable alpha at and beyond nominal `R` for hardness 0;
+- high hardness remaining opaque through most of `R` and dropping sharply near the edge;
+- one-pixel boundary AA for diameters below 22px;
+- dynamic mask bounds for soft tips and nominal bounds for hard tips;
+- cache identity reuse for equal size/hardness and cache separation after either setting changes;
+- a real stamped dab proving the beyond-`R` tail reaches the document mask;
+- existing Brush/Eraser mounted pointer-chain coverage remaining green.
+
+A deterministic visual sanity artifact will compare radial profiles and rendered tips at 0%, 50%, 90%, and 100% hardness. It is verification evidence, not a new production UI.
+
+## Verification
+
+Before completion:
+
+1. Run focused profile, tip-mask, brush audit, stroke renderer, and CanvasViewport pointer-chain tests.
+2. Run `pnpm.cmd --filter photrez-desktop test`.
+3. Run `pnpm.cmd run build`.
+4. Run `cargo test -p photrez-core`.
+5. Run `cargo test --workspace`.
+6. Inspect the deterministic visual sanity output for the four locked hardness levels.
+7. Update `AI_CURRENT_TASK.md`, `AI_HISTORY.md`, and `FEATURES.md` without overwriting prior history.
+
+## Non-Goals
+
+- Recalibrating the supplied Photoshop data.
+- Adding pressure, tilt, texture, scatter, or brush presets.
+- Moving brush rasterization into Rust or a GPU shader.
+- Changing spacing, flow accumulation, cursor size, or UI layout.
