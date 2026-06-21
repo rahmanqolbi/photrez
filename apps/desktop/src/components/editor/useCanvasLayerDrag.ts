@@ -278,7 +278,7 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
           (currentLayer.transform.x !== d.startTransformX ||
             currentLayer.transform.y !== d.startTransformY);
         if (positionChanged || crossDocAdded) {
-          history.commit(d.preDragSnapshot);
+          history.commit(d.preDragSnapshot, "Move Layer");
         }
       }
     }

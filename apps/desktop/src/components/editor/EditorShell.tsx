@@ -100,7 +100,14 @@ export function EditorShell() {
   });
 
   return (
-    <EditorProvider workspace={workspace} renderer={renderer} scheduler={scheduler} camera={camera}>
+    <EditorProvider
+      workspace={workspace}
+      renderer={renderer}
+      scheduler={scheduler}
+      camera={camera}
+      rightDockOpen={rightDockOpen}
+      setRightDockOpen={setRightDockOpen}
+    >
       <GlobalDragDropHost />
       <EditorLayout
         rightDockOpen={rightDockOpen()}

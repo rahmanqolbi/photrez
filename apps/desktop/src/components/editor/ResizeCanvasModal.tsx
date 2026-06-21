@@ -68,7 +68,7 @@ export function ResizeCanvasModal() {
       return;
     }
 
-    history.commit(engine.snapshot());
+    history.commit(engine.snapshot(), "Resize Canvas");
     engine.resizeCanvas(newW, newH);
 
     const dpr = window.devicePixelRatio || 1;

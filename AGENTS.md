@@ -27,6 +27,13 @@ Build Photrez according to the locked MVP scope and architecture documents.
 - If user says wait for command, do not execute build implementation.
 - Keep decisions synchronized in `docs/decisions/id-decision-log.md`.
 
+## UI Preservation Guard
+
+- Existing persistent UI structure (tabs, dock hierarchy, panel ownership, and primary navigation) is locked unless the user explicitly requests a redesign.
+- Integrate new behavior into the existing production surface. Do not remove, merge, or relocate a surface because it appears duplicated without explicit user approval.
+- If a plan or design note conflicts with the current production UI, preserve the production structure and resolve the conflict before implementation.
+- Any intentional structural UI change requires a mounted regression test for the preserved/replacement navigation contract and an entry in `docs/decisions/id-decision-log.md`.
+
 ## Definition of Done for Any Delivery
 
 - Changes match locked scope.

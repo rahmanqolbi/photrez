@@ -52,7 +52,7 @@ export function MoveOptionBar() {
     const id = selectedLayerId();
     if (engine && id) {
       const history = workspace.getActiveHistory();
-      history?.commit(engine.snapshot());
+      history?.commit(engine.snapshot(), "Flip Layer");
       engine.flipLayer(id, axis);
       scheduler.requestRender();
     }
@@ -79,7 +79,7 @@ export function MoveOptionBar() {
         return;
       }
       const history = workspace.getActiveHistory();
-      history?.commit(engine.snapshot());
+      history?.commit(engine.snapshot(), "Reset Layer Transform");
       engine.transformLayer(id, {
         x: 0,
         y: 0,
@@ -104,7 +104,7 @@ export function MoveOptionBar() {
       // appear to do nothing because the snapshot matches current state.
       if (layer.transform[axis] === val) return;
       const history = workspace.getActiveHistory();
-      history?.commit(engine.snapshot());
+      history?.commit(engine.snapshot(), "Transform Layer");
       const next = { ...layer.transform };
       next[axis] = val;
       engine.transformLayer(id, next);
@@ -120,7 +120,7 @@ export function MoveOptionBar() {
       if (!layer || layer.locked) return;
       if (layer.transform.rotation === val) return;
       const history = workspace.getActiveHistory();
-      history?.commit(engine.snapshot());
+      history?.commit(engine.snapshot(), "Transform Layer");
       engine.transformLayer(id, { ...layer.transform, rotation: val });
       scheduler.requestRender();
     }
@@ -162,7 +162,7 @@ export function MoveOptionBar() {
       // Skip if alignment is a no-op (layer already at the requested edge).
       if (next.x === layer.transform.x && next.y === layer.transform.y) return;
       const history = workspace.getActiveHistory();
-      history?.commit(engine.snapshot());
+      history?.commit(engine.snapshot(), "Align Layer");
       engine.transformLayer(id, next);
       scheduler.requestRender();
     }

@@ -230,7 +230,7 @@ export function useBrushOverlay() {
       }
       commitPaintBitmap(
         { engine, history, uploader: renderer, requestRender: () => scheduler.requestRender() },
-        { layerId, bitmap: newBitmap },
+        { layerId, bitmap: newBitmap, label: "Brush Stroke" },
       );
       overlayCtx.clearRect(0, 0, w, h);
       prevStrokePointCount = 0;
@@ -267,7 +267,7 @@ export function useBrushOverlay() {
       }
       commitPaintBitmap(
         { engine, history, uploader: renderer, requestRender: () => scheduler.requestRender() },
-        { layerId, bitmap: newBitmap },
+        { layerId, bitmap: newBitmap, label: "Eraser" },
       );
       overlayCtx?.clearRect(0, 0, w, h);
       prevStrokePointCount = 0;

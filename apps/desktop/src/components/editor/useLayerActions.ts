@@ -30,7 +30,7 @@ export function useLayerActions() {
     const history = workspace.getActiveHistory();
     const activeId = activeLayerId();
     if (engine && history && activeId) {
-      history.commit(engine.snapshot());
+      history.commit(engine.snapshot(), "Duplicate Layer");
       const dup = engine.duplicateLayer(activeId);
       if (dup.imageBitmap) {
         renderer.uploadImage(dup.id, dup.imageBitmap);
@@ -75,7 +75,7 @@ export function useLayerActions() {
     const layer = engine?.getLayer(id);
     if (engine && layer) {
       const history = workspace.getActiveHistory();
-      history?.commit(engine.snapshot());
+      history?.commit(engine.snapshot(), "Toggle Visibility");
       engine.setLayerVisibility(id, !layer.visible);
       scheduler.requestRender();
     }
@@ -88,7 +88,7 @@ export function useLayerActions() {
     const layer = engine?.getLayer(id);
     if (engine && layer) {
       const history = workspace.getActiveHistory();
-      history?.commit(engine.snapshot());
+      history?.commit(engine.snapshot(), "Toggle Lock");
       engine.setLayerLocked(id, !layer.locked);
       scheduler.requestRender();
     }
@@ -101,7 +101,7 @@ export function useLayerActions() {
     const layer = engine?.getLayer(id);
     if (engine && layer) {
       const history = workspace.getActiveHistory();
-      history?.commit(engine.snapshot());
+      history?.commit(engine.snapshot(), "Toggle Lock");
       engine.setLayerLockTransparency(id, !layer.lockTransparency);
       scheduler.requestRender();
     }
@@ -114,7 +114,7 @@ export function useLayerActions() {
     const layer = engine?.getLayer(id);
     if (engine && layer) {
       const history = workspace.getActiveHistory();
-      history?.commit(engine.snapshot());
+      history?.commit(engine.snapshot(), "Toggle Lock");
       engine.setLayerLockPosition(id, !layer.lockPosition);
       scheduler.requestRender();
     }
@@ -127,7 +127,7 @@ export function useLayerActions() {
     const layer = engine?.getLayer(id);
     if (engine && layer) {
       const history = workspace.getActiveHistory();
-      history?.commit(engine.snapshot());
+      history?.commit(engine.snapshot(), "Toggle Lock");
       engine.setLayerLockRotation(id, !layer.lockRotation);
       scheduler.requestRender();
     }
@@ -140,7 +140,7 @@ export function useLayerActions() {
       const engine = workspace.getActiveEngine();
       const history = workspace.getActiveHistory();
       if (engine && history) {
-        history.commit(engine.snapshot());
+        history.commit(engine.snapshot(), "Reorder Layer");
         engine.reorderLayer(index, index - 1);
         scheduler.requestRender();
       }
@@ -154,7 +154,7 @@ export function useLayerActions() {
       const engine = workspace.getActiveEngine();
       const history = workspace.getActiveHistory();
       if (engine && history) {
-        history.commit(engine.snapshot());
+        history.commit(engine.snapshot(), "Reorder Layer");
         engine.reorderLayer(index, index + 1);
         scheduler.requestRender();
       }
@@ -166,7 +166,7 @@ export function useLayerActions() {
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (engine && history) {
-      history.commit(engine.snapshot());
+      history.commit(engine.snapshot(), "New Layer");
       engine.addLayer(`Layer ${engine.getLayers().length + 1}`);
       scheduler.requestRender();
     }
@@ -197,7 +197,7 @@ export function useLayerActions() {
         || currentEngine.getLayers().length <= 1
         || !currentEngine.getLayer(activeId)
       ) return;
-      currentHistory.commit(currentEngine.snapshot());
+      currentHistory.commit(currentEngine.snapshot(), "Delete Layer");
       currentEngine.deleteLayer(activeId);
       scheduler.requestRender();
     }

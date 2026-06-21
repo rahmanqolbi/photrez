@@ -10,7 +10,7 @@ export interface TransformSessionEngine {
 }
 
 export interface TransformSessionHistory {
-  commit(snapshot: DocumentModel): void;
+  commit(snapshot: DocumentModel, label?: string): void;
 }
 
 export function isSessionForEngine(
@@ -51,7 +51,7 @@ export function commitLayerTransformSession(
     return true;
   }
 
-  history.commit(session.originalSnapshot);
+  history.commit(session.originalSnapshot, "Transform Layer");
   return true;
 }
 

@@ -20,6 +20,8 @@ import { DragControllerProvider } from "./DragController";
 import { showToast as showToastImpl } from "./Toast";
 import { runToolSwitchCleanup } from "./toolLifecycle";
 import { DialogProvider } from "./DialogProvider";
+import type { HistoryItem } from "@/engine/history";
+import { cancelLayerTransformSession } from "./transformSession";
 
 
 
@@ -170,6 +172,17 @@ export interface EditorContextValue {
 
   // Toast notifications
   showToast: (message: string, severity?: "info" | "warn" | "error") => void;
+
+  // History panel UI
+  historyItems: Accessor<HistoryItem[]>;
+  activeHistoryIndex: Accessor<number>;
+  navigateHistory: (index: number) => void;
+  rightDockPanel: Accessor<"layers" | "history">;
+  setRightDockPanel: Setter<"layers" | "history">;
+
+  // Side dock state
+  rightDockOpen: Accessor<boolean>;
+  setRightDockOpen: (open: boolean) => void;
 }
 
 
@@ -203,12 +216,65 @@ export function EditorProvider(props: {
   renderer: WebGL2Backend;
   scheduler: RenderScheduler;
   camera?: ViewportCamera;
+  rightDockOpen?: Accessor<boolean>;
+  setRightDockOpen?: (open: boolean) => void;
   children: any;
 }) {
   const camera = props.camera || new ViewportCamera();
   const editorState = createEditorState();
   const cropState = createCropState();
   const modernCropState = createModernCropState();
+
+  const [historyItems, setHistoryItems] = createSignal<HistoryItem[]>([]);
+  const [activeHistoryIndex, setActiveHistoryIndex] = createSignal(0);
+  const [rightDockPanel, setRightDockPanel] = createSignal<"layers" | "history">("layers");
+
+  const [localRightDockOpen, setLocalRightDockOpen] = createSignal(true);
+  const rightDockOpen = props.rightDockOpen || localRightDockOpen;
+  const setRightDockOpen = props.setRightDockOpen || setLocalRightDockOpen;
+
+  const navigateHistory = (index: number) => {
+    const engine = props.workspace.getActiveEngine();
+    const history = props.workspace.getActiveHistory();
+    if (!engine || !history) return;
+
+    const activeIndex = history.getUndoCount();
+    const lastIndex = activeIndex + history.getRedoCount();
+    if (!Number.isInteger(index) || index < 0 || index > lastIndex) return;
+    const diff = index - activeIndex;
+
+    if (diff === 0) return;
+
+    if (
+      editorState.layerTransformSession()
+      && cancelLayerTransformSession(editorState.layerTransformSession(), engine)
+    ) {
+      editorState.setLayerTransformSession(null);
+    }
+
+    const previousLayerIds = new Set(engine.getLayers().map((layer) => layer.id));
+    let currentSnapshot = engine.snapshot();
+    const steps = Math.abs(diff);
+    for (let step = 0; step < steps; step++) {
+      const nextSnapshot = diff < 0
+        ? history.undo(currentSnapshot)
+        : history.redo(currentSnapshot);
+      if (!nextSnapshot) break;
+      currentSnapshot = nextSnapshot;
+    }
+
+    engine.restore(currentSnapshot);
+
+    const restoredLayerIds = new Set(engine.getLayers().map((layer) => layer.id));
+    for (const layerId of previousLayerIds) {
+      if (!restoredLayerIds.has(layerId)) props.renderer.destroyTexture(layerId);
+    }
+    for (const layer of engine.getLayers()) {
+      if (layer.imageBitmap) props.renderer.uploadImage(layer.id, layer.imageBitmap);
+    }
+    props.scheduler.requestRender();
+    props.workspace.notifyVisualChange();
+  };
 
   const setViewportState = (next: { x: number; y: number; zoom: number }) => {
     camera.setState(next);
@@ -245,6 +311,8 @@ export function EditorProvider(props: {
     setZoom: editorState.setZoom,
     setPan: editorState.setPan,
     scheduler: props.scheduler,
+    setHistoryItems,
+    setActiveHistoryIndex,
   });
 
   const handleOpenImage = () => openImage({
@@ -302,6 +370,13 @@ export function EditorProvider(props: {
     useGPUCameraForModernCrop,
     setUseGPUCameraForModernCrop,
     showToast: (message, severity = "info") => showToastImpl(message, severity),
+    historyItems,
+    activeHistoryIndex,
+    navigateHistory,
+    rightDockPanel,
+    setRightDockPanel,
+    rightDockOpen,
+    setRightDockOpen,
   };
 
   // Expose editor on window only in dev/test builds for E2E introspection.

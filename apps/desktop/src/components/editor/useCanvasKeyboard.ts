@@ -345,7 +345,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
             // Commit pre-action snapshot so the cut is undoable AND redoable.
             // Without this, the post-cut state was never pushed to the undo
             // stack and redo had no entry to replay.
-            history.commit(engine.snapshot());
+            history.commit(engine.snapshot(), "Cut");
             SelectionOperations.cutSelection(engine);
             // Re-upload the modified layer's bitmap to the renderer so the
             // canvas reflects the cut immediately (otherwise the GPU texture
@@ -379,7 +379,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
           e.preventDefault();
           e.stopPropagation();
           // Commit pre-action snapshot so the new layer is undoable/redoable.
-          history.commit(engine.snapshot());
+          history.commit(engine.snapshot(), "Paste");
           SelectionOperations.pasteSelection(engine);
           // Re-upload the newly-pasted layer's bitmap to the renderer. After
           // pasteSelection, engine.getActiveLayerId() points at the new
@@ -403,7 +403,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
           const sel = engine.getSelection();
           if (sel) {
             // Commit pre-action snapshot so the deletion is undoable/redoable.
-            history.commit(engine.snapshot());
+            history.commit(engine.snapshot(), "Delete Pixels");
             SelectionOperations.deleteSelection(engine);
             // Re-upload the modified layer's bitmap to the renderer so the
             // canvas reflects the deletion immediately.
@@ -448,7 +448,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         e.stopPropagation();
         const activeId = engine.getActiveLayerId();
         if (activeId) {
-          history.commit(engine.snapshot());
+          history.commit(engine.snapshot(), "Duplicate Layer");
           const dup = engine.duplicateLayer(activeId);
           if (dup.imageBitmap) {
             renderer.uploadImage(dup.id, dup.imageBitmap);
@@ -462,7 +462,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
       if (ctrl && e.shiftKey && key === "n") {
         e.preventDefault();
         e.stopPropagation();
-        history.commit(engine.snapshot());
+        history.commit(engine.snapshot(), "New Layer");
         engine.addLayer(`Layer ${engine.getLayers().length + 1}`);
         scheduler.requestRender();
         return;
@@ -476,7 +476,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         if (activeId) {
           const idx = engine.getLayers().findIndex((l) => l.id === activeId);
           if (idx > 0) {
-            history.commit(engine.snapshot());
+            history.commit(engine.snapshot(), "Reorder Layer");
             engine.reorderLayer(idx, idx - 1);
             scheduler.requestRender();
           }
@@ -493,7 +493,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
           const stack = engine.getLayers();
           const idx = stack.findIndex((l) => l.id === activeId);
           if (idx >= 0 && idx < stack.length - 1) {
-            history.commit(engine.snapshot());
+            history.commit(engine.snapshot(), "Reorder Layer");
             engine.reorderLayer(idx, idx + 1);
             scheduler.requestRender();
           }
@@ -509,7 +509,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         if (activeId) {
           const layer = engine.getLayer(activeId);
           if (layer && !layer.locked) {
-            history.commit(engine.snapshot());
+            history.commit(engine.snapshot(), "Flip Layer");
             engine.flipLayer(activeId, e.shiftKey ? "v" : "h");
             scheduler.requestRender();
           }
@@ -524,7 +524,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         if (activeId && engine.getLayers().length > 1) {
           e.preventDefault();
           e.stopPropagation();
-          history.commit(engine.snapshot());
+          history.commit(engine.snapshot(), "Delete Layer");
           engine.deleteLayer(activeId);
           scheduler.requestRender();
         }
@@ -543,7 +543,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
             const digit = e.key.charCodeAt(0) - 48;
             const opacity = digit === 0 ? 1.0 : digit / 10;
             if (layer.opacity === opacity) return;
-            history.commit(engine.snapshot());
+            history.commit(engine.snapshot(), "Layer Opacity");
             engine.setLayerOpacity(activeId, opacity);
             scheduler.requestRender();
             return;
@@ -675,7 +675,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         else if (e.key === "ArrowRight") dx = step;
 
         if (!e.repeat) {
-          history.commit(engine.snapshot());
+          history.commit(engine.snapshot(), "Move Layer");
         }
         engine.moveLayer(activeId, layer.transform.x + dx, layer.transform.y + dy);
         scheduler.requestRender();

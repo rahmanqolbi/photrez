@@ -81,7 +81,7 @@ export function applyCropPreview(params: {
   if (!engine || !rect) return;
 
   const history = params.workspace.getActiveHistory();
-  history?.commit(engine.snapshot());
+  history?.commit(engine.snapshot(), "Crop Canvas");
 
   const cropOptions: {
     deleteCroppedPixels: boolean;

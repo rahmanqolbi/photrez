@@ -343,7 +343,7 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
           layer.transform.x !== drag.startTransform.x ||
           layer.transform.y !== drag.startTransform.y;
         if (moved) {
-          history.commit(drag.pendingMoveSnapshot);
+          history.commit(drag.pendingMoveSnapshot, "Move Layer");
         }
       }
     }

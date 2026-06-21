@@ -210,7 +210,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
         const engine = editor.workspace.getActiveEngine();
         const history = editor.workspace.getActiveHistory();
         if (!engine?.getSelection() || !history) break;
-        history.commit(engine.snapshot());
+        history.commit(engine.snapshot(), "Cut");
         SelectionOperations.cutSelection(engine);
         uploadActiveLayerBitmap();
         editor.scheduler.requestRender();
@@ -225,7 +225,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
         const engine = editor.workspace.getActiveEngine();
         const history = editor.workspace.getActiveHistory();
         if (!engine || !history) break;
-        history.commit(engine.snapshot());
+        history.commit(engine.snapshot(), "Paste");
         SelectionOperations.pasteSelection(engine);
         uploadActiveLayerBitmap();
         editor.scheduler.requestRender();

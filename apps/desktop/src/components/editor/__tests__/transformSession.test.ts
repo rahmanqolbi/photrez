@@ -77,7 +77,7 @@ describe("transformSession helpers", () => {
     );
 
     expect(ok).toBe(true);
-    expect(history.commit).toHaveBeenCalledWith(originalSnapshot);
+    expect(history.commit).toHaveBeenCalledWith(originalSnapshot, "Transform Layer");
   });
 
   it("cancelLayerTransformSession calls engine.restore(originalSnapshot)", () => {

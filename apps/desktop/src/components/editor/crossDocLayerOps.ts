@@ -30,7 +30,7 @@ export interface EngineFacade {
 }
 
 export interface HistoryFacade {
-  commit(snapshot: DocumentModel): void;
+  commit(snapshot: DocumentModel, label?: string): void;
 }
 
 export interface WorkspaceFacade {
@@ -121,7 +121,7 @@ export function addLayerFromCrossDoc(
         })();
 
   const targetHistory = ws.getHistory(targetDocId);
-  if (targetHistory) targetHistory.commit(targetEngine.snapshot());
+  if (targetHistory) targetHistory.commit(targetEngine.snapshot(), "Drag Layer");
 
   const added = targetEngine.addLayer(sourceLayer.name, sourceLayer.width, sourceLayer.height);
   const newId = added.id;

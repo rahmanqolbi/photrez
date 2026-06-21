@@ -4,6 +4,55 @@
 
 ## Current Tasks
 
+### [2026-06-21] UI - History Panel UI [COMPLETE]
+
+**Goal:**
+Implement the interactive History Panel UI allowing users to view the list of past operations, visually track undo/redo states, and travel in time by selecting specific states.
+
+**Scope:**
+- [x] Add transition labels/metadata to `CommandHistory.commit()`
+- [x] Expose history stack metadata and navigation APIs in `CommandHistory` and `EditorContext`
+- [x] Create a reusable `<HistoryPanel>` component using the "Soft & Snappy" visual system (Zero-tint grays, Photon Amber accents, recessed list, compact typography)
+- [x] Integrate `<HistoryPanel>` into `LayersPanel` at the bottom, matching the collapsible style of `Navigator`
+- [x] Connect bottom status bar "History" button to toggle the panel and reopen the right dock
+- [x] Add unit, contract, and wiring tests for the new history states and panel interaction
+- [x] Run all verification pipeline gates
+
+**Strengthening pass (Codex):**
+- [x] Repair multi-step time travel so every undo/redo transition preserves the correct intermediate snapshot
+- [x] Remove the duplicate legacy History surface and keep one compact collapsible panel
+- [x] Fix History typing, icons, accessibility state, and mounted wiring coverage
+- [x] Re-run focused, frontend, build, and Rust verification gates
+
+**Verification:**
+- PASS: focused History unit/component/wiring coverage, 26/26.
+- PASS: keyboard history-label regression coverage, 45/45.
+- PASS: final full frontend suite, 97 files / 1310 tests in 58.69s.
+- PASS: root TypeScript type-check and production Vite build in 10.72s.
+- PASS: Rust core 85/85; full workspace 100/100 (85 core + 15 desktop).
+- PASS: `git diff --check` (line-ending conversion notices only, no whitespace errors).
+
+**UI structure recovery (COMPLETE):**
+- [x] Restore the locked `Layers | History` tab structure that existed before the strengthening pass
+- [x] Keep the hardened labeled history and multi-step time-travel implementation inside the restored History tab
+- [x] Route the status-bar History action to select the History tab and open the right dock
+- [x] Add a mounted regression contract proving both tabs remain present
+- [x] Add an explicit UI-preservation guard to `AGENTS.md` and supersede the incorrect panel-ownership decision
+- [x] Re-run focused, frontend, build, Rust, and documentation verification
+
+**Recovery verification:**
+- PASS: focused mounted History/Layers coverage, 3 files / 13 tests.
+- PASS: full frontend suite, 97 files / 1310 tests.
+- PASS: root TypeScript + production Vite build.
+- PASS: Rust core 85/85; full workspace 100/100 (85 core + 15 desktop).
+
+**History dock visual polish (IN PROGRESS):**
+- [/] Remove the full-height inset card and render History edge-to-edge in the dock
+- [/] Keep Navigator persistent beneath both Layers and History tab content
+- [/] Add a quiet baseline hint when the history contains only `Open`
+- [/] Unify the selected tab indicator with the Photon Amber state vocabulary
+- [ ] Add mounted visual-contract regression tests and run all verification gates
+
 ### [2026-06-21] UI - Tooltip System & Keyboard Shortcuts [COMPLETE]
 
 **Goal:**

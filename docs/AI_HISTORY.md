@@ -1,5 +1,28 @@
 # AI History — Photrez
 
+## [2026-06-21] BUG FIX - Restore Layers / History Dock Contract [COMPLETE]
+
+### Kategori: BUG FIX / UI-UX / REGRESSION-SAFETY
+
+**Root Cause:**
+The History strengthening pass treated the pre-existing `Layers | History` tabs as a duplicate surface and replaced them with a collapsible History section below Navigator. That changed a persistent navigation contract even though the requested scope was to implement and harden History behavior, not redesign the right dock.
+
+**Fix Rationale:**
+- Restored the original two-tab dock and placed the hardened `HistoryPanel` inside the History tab.
+- Replaced the collapsible-history signal with explicit shared `rightDockPanel` state so LayersPanel and BottomStatusBar use one production navigation path.
+- Made the status-bar History action reopen the dock and select History instead of creating/toggling a second surface.
+- Added a mounted regression test that asserts both tabs remain present, selection swaps correctly, and the Layers surface is preserved.
+- Added the `UI Preservation Guard` to `AGENTS.md`; persistent tabs, dock hierarchy, panel ownership, and primary navigation may no longer be removed or relocated without explicit user approval, a decision entry, and mounted regression coverage.
+- Corrected the History design plan and superseded the incorrect panel-ownership decision without discarding the audit trail.
+
+**Verification:**
+- PASS: focused mounted tests, 3 files / 13 tests.
+- PASS: full frontend suite, 97 files / 1310 tests.
+- PASS: root TypeScript compilation and production Vite build.
+- PASS: Rust core 85/85 and workspace 100/100.
+
+---
+
 ## [2026-06-21] UI - Tooltip System & Keyboard Shortcuts [COMPLETE]
 
 ### Kategori: FEATURE / UI-UX / ACCESSIBILITY / SHORTCUTS
@@ -7888,5 +7911,36 @@ Unify Resize Canvas and Export with the shared compact desktop dialog vocabulary
 - PASS: dedicated Playwright E2E dialog accessibility coverage, 3/3 (About, Delete Layer, Resize & Export).
 - PASS: production build and root type-check.
 - PASS: Rust core 85/85; workspace desktop 15/15.
+
+---
+
+## [2026-06-21] FEATURE / BUG FIX - Interactive History Panel [COMPLETE]
+
+### Kategori: UI / FRONTEND / HISTORY / ACCESSIBILITY / TEST
+
+**Goal:**
+Ship one compact History surface that shows meaningful document operations and supports reliable click-to-time-travel navigation.
+
+**Root Cause:**
+- Multi-step navigation repeatedly passed the unchanged live engine snapshot into `undo()`/`redo()`, which duplicated redo entries and skipped intermediate states.
+- A legacy Layers/History tab placeholder remained mounted alongside the new collapsible panel, creating two competing History interfaces.
+- The first implementation referenced unsupported icon names, left a facade signature stale, imported a nonexistent test helper, and lacked mounted status-bar wiring coverage.
+- Keyboard mutation paths still committed unlabeled snapshots, leaving visible `Unknown Operation` entries despite the new metadata API.
+
+**Fix Rationale:**
+1. Carry the returned snapshot into every subsequent traversal step, validate target bounds, cancel active transform previews, restore once at the target, destroy stale GPU textures, and upload restored bitmaps.
+2. Remove the duplicate tab placeholder and keep one collapsible History section below Navigator; the status-bar action expands it and reopens the right dock.
+3. Use existing typed icons, expose `aria-current`, `aria-expanded`, `aria-pressed`, and explicit past/current/future state metadata, with visible keyboard focus.
+4. Label keyboard, layer, selection, crop, resize, paint, transform, and cross-document mutation paths with human-readable operation names.
+5. Add multi-step regression, mounted panel, and status-bar wiring tests; update stale crop history expectations.
+
+**Verification:**
+- PASS: focused History unit/component/wiring coverage, 26/26.
+- PASS: keyboard history-label regression coverage, 45/45.
+- PASS: final full frontend suite, 97 files / 1310 tests in 58.69s.
+- PASS: TypeScript type-check and production Vite build in 10.72s.
+- PASS: `cargo test -p photrez-core`, 85/85.
+- PASS: `cargo test --workspace`, 100/100 (85 core + 15 desktop).
+- PASS: `git diff --check` with no whitespace errors.
 
 ---

@@ -106,7 +106,7 @@ export function useLayerDragReorder() {
           const engine = workspace.getActiveEngine();
           const history = workspace.getActiveHistory();
           if (engine && history) {
-            history.commit(engine.snapshot());
+            history.commit(engine.snapshot(), "Reorder Layer");
             let targetIdx = toIdx;
             if (pos === "below") {
               targetIdx = toIdx + 1;

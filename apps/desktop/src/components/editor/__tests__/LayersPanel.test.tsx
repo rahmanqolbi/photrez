@@ -252,21 +252,32 @@ describe("LayersPanel interactions", () => {
     dispose();
   });
 
-  it("switches the layer panel to a functional history view", async () => {
+  it("preserves the locked Layers and History tabs and renders history in its tab", async () => {
     const bitmap = { width: 800, height: 600, close: vi.fn() } as unknown as ImageBitmap;
     installCanvasMocks(bitmap);
 
     const { container, dispose } = renderLayersPanel();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const historyTab = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.trim() === "History") as HTMLButtonElement | undefined;
-    if (!historyTab) throw new Error("History tab was not rendered");
+    const tabs = container.querySelectorAll<HTMLButtonElement>("[role='tab']");
+    expect(tabs).toHaveLength(2);
+    expect(tabs[0]).toHaveTextContent("Layers");
+    expect(tabs[1]).toHaveTextContent("History");
+    expect(tabs[0]).toHaveAttribute("aria-selected", "true");
+    expect(tabs[1]).toHaveAttribute("aria-selected", "false");
+    expect(tabs[0]).toHaveClass("after:bg-editor-accent");
+    expect(container.querySelector("[data-layers-panel-content]")).not.toBeNull();
+    expect(container.querySelector("[data-navigator-panel]")).not.toBeNull();
 
-    historyTab.click();
+    tabs[1].click();
 
-    expect(container.textContent).toContain("Undo steps");
-    expect(container.textContent).toContain("Redo steps");
+    expect(tabs[0]).toHaveAttribute("aria-selected", "false");
+    expect(tabs[1]).toHaveAttribute("aria-selected", "true");
+    expect(tabs[1]).toHaveClass("after:bg-editor-accent");
+    expect(container.querySelector("[data-history-panel]")).not.toBeNull();
+    expect(container.querySelector("[data-layers-panel-content]")).toBeNull();
+    expect(container.querySelector("[data-navigator-panel]")).not.toBeNull();
+    expect(container.textContent).toContain("Open");
 
     dispose();
   });

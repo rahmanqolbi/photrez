@@ -89,7 +89,7 @@ export function SelectionOptionBar() {
     const h = historyGetter();
     if (e?.getSelection() && h) {
       // Commit pre-action snapshot so the cut is undoable AND redoable.
-      h.commit(e.snapshot());
+      h.commit(e.snapshot(), "Cut");
       SelectionOperations.cutSelection(e);
       uploadActiveLayerBitmap();
       scheduler.requestRender();
@@ -108,7 +108,7 @@ export function SelectionOptionBar() {
     const h = historyGetter();
     if (e && h) {
       // Commit pre-action snapshot so the new layer is undoable/redoable.
-      h.commit(e.snapshot());
+      h.commit(e.snapshot(), "Paste");
       SelectionOperations.pasteSelection(e);
       uploadActiveLayerBitmap();
       scheduler.requestRender();
@@ -120,7 +120,7 @@ export function SelectionOptionBar() {
     const h = historyGetter();
     if (e?.getSelection() && h) {
       // Commit pre-action snapshot so the deletion is undoable/redoable.
-      h.commit(e.snapshot());
+      h.commit(e.snapshot(), "Delete Pixels");
       SelectionOperations.deleteSelection(e);
       uploadActiveLayerBitmap();
       scheduler.requestRender();

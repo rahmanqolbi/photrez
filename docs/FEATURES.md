@@ -198,7 +198,7 @@
 | ✅ DONE      | Redo (Ctrl+Y / Ctrl+Shift+Z)               |
 | ✅ DONE      | Snapshot-based history (max 50)            |
 | ✅ DONE      | Redo branch discard on new mutation        |
-| 🗓️ PLANNED (POST-MVP) | History panel UI (list of operations)      |
+| ✅ DONE      | Interactive History panel — chronological labeled operations, current/future state styling, multi-step time travel inside the preserved `Layers | History` right-dock tabs, status-bar tab selection, and accessible state metadata |
 
 ---
 

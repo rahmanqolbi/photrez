@@ -9,6 +9,7 @@ import { LayerNode } from "@/engine/types";
 import type { DocumentModel } from "@/engine/types";
 import { BLEND_MODE_OPTIONS, isBlendMode } from "@/engine/blendModes";
 import { Navigator } from "./Navigator";
+import { HistoryPanel } from "./HistoryPanel";
 import { LayerItem } from "./LayerItem";
 import { useLayerDragReorder } from "./useLayerDragReorder";
 import { useLayerActions } from "./useLayerActions";
@@ -29,15 +30,15 @@ export function LayersPanel() {
     activeDocumentId,
     syncViewport,
     layerTransformSession,
-    setLayerTransformSession
+    setLayerTransformSession,
+    rightDockPanel,
+    setRightDockPanel,
   } = useEditor();
 
   const dragController = useDragController();
 
   const [showOpacitySlider, setShowOpacitySlider] = createSignal(false);
   const [opacityHistorySnapshot, setOpacityHistorySnapshot] = createSignal<DocumentModel | null>(null);
-  const [activePanel, setActivePanel] = createSignal<"layers" | "history">("layers");
-
   const [editingLayerId, setEditingLayerId] = createSignal<string | null>(null);
   const [editName, setEditName] = createSignal("");
   const [navigatorCollapsed, setNavigatorCollapsed] = createSignal(false);
@@ -157,18 +158,6 @@ export function LayersPanel() {
     setLayerListRef,
   } = useLayerDragReorder();
 
-  const historyStats = () => {
-    activeDocumentId();
-    layers();
-    const history = workspace.getActiveHistory();
-    return {
-      undo: history?.getUndoCount() ?? 0,
-      redo: history?.getRedoCount() ?? 0,
-      canUndo: history?.canUndo() ?? false,
-      canRedo: history?.canRedo() ?? false,
-    };
-  };
-
   const cancelActiveTransformSession = () => {
     const engine = workspace.getActiveEngine();
     if (cancelLayerTransformSession(layerTransformSession(), engine)) {
@@ -177,112 +166,46 @@ export function LayersPanel() {
     }
   };
 
-  const uploadCurrentLayerTextures = () => {
-    const engine = workspace.getActiveEngine();
-    if (!engine) return;
-    for (const layer of engine.getLayers()) {
-      if (layer.imageBitmap) {
-        renderer.uploadImage(layer.id, layer.imageBitmap);
-      }
-    }
-  };
-
-  const handleHistoryUndo = () => {
-    if (layerTransformSession()) {
-      cancelActiveTransformSession();
-    }
-    const engine = workspace.getActiveEngine();
-    const history = workspace.getActiveHistory();
-    if (!engine || !history || !history.canUndo()) return;
-    const previous = history.undo(engine.snapshot());
-    if (!previous) return;
-    // Default behavior preserves the user's current viewport (zoom/pan) so
-    // undo/redo don't cause zoom-popping (per docs/AI_HISTORY.md 2026-06-11
-    // fix). The drawing buffer is sized to the container via
-    // renderer.resizeToViewport() and stays valid for the restored state.
-    engine.restore(previous);
-    uploadCurrentLayerTextures();
-    scheduler.requestRender();
-  };
-
-  const handleHistoryRedo = () => {
-    if (layerTransformSession()) {
-      cancelActiveTransformSession();
-    }
-    const engine = workspace.getActiveEngine();
-    const history = workspace.getActiveHistory();
-    if (!engine || !history || !history.canRedo()) return;
-    const next = history.redo(engine.snapshot());
-    if (!next) return;
-    engine.restore(next);
-    uploadCurrentLayerTextures();
-    scheduler.requestRender();
-  };
-
-
-
   return (
     <section class="flex flex-1 shrink-0 flex-col overflow-hidden bg-editor-panel">
-      <div class="flex h-[46px] shrink-0 border-b border-editor-divider">
+      <div role="tablist" aria-label="Right dock panels" class="flex h-[46px] shrink-0 border-b border-editor-divider">
         <button
-          onClick={() => setActivePanel("layers")}
+          type="button"
+          role="tab"
+          data-right-dock-tab="layers"
+          aria-selected={rightDockPanel() === "layers"}
+          aria-controls="right-dock-layers-panel"
+          onClick={() => setRightDockPanel("layers")}
           class={clsx(
-            "relative flex h-full items-center px-6 text-[12px] font-medium transition-colors",
-            activePanel() === "layers"
-              ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[2px] after:bg-editor-text-dim"
-              : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
+            "relative flex h-full items-center px-6 text-[12px] font-medium text-editor-text-dim transition-colors hover:text-editor-text",
+            rightDockPanel() === "layers" && "text-editor-text after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:bg-editor-accent"
           )}
         >
           Layers
         </button>
         <button
-          onClick={() => setActivePanel("history")}
+          type="button"
+          role="tab"
+          data-right-dock-tab="history"
+          aria-selected={rightDockPanel() === "history"}
+          aria-controls="right-dock-history-panel"
+          onClick={() => setRightDockPanel("history")}
           class={clsx(
-            "relative flex h-full items-center px-6 text-[12px] font-medium transition-colors",
-            activePanel() === "history"
-              ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[2px] after:bg-editor-text-dim"
-              : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
+            "relative flex h-full items-center px-6 text-[12px] font-medium text-editor-text-dim transition-colors hover:text-editor-text",
+            rightDockPanel() === "history" && "text-editor-text after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:bg-editor-accent"
           )}
         >
           History
         </button>
       </div>
 
-      <Show when={activePanel() === "history"}>
-        <div class={clsx("flex flex-1 flex-col overflow-hidden", !activeDocumentId() && "opacity-50 pointer-events-none")}>
-          <div class="grid grid-cols-2 gap-2 border-b border-editor-divider px-3.5 py-3">
-            <div class="rounded-[4px] border border-editor-divider/70 bg-editor-field px-3 py-2">
-              <div class="text-[11px] uppercase tracking-wide text-editor-text-dim">Undo steps</div>
-              <div class="mt-1 font-mono text-[18px] text-editor-text">{historyStats().undo}</div>
-            </div>
-            <div class="rounded-[4px] border border-editor-divider/70 bg-editor-field px-3 py-2">
-              <div class="text-[11px] uppercase tracking-wide text-editor-text-dim">Redo steps</div>
-              <div class="mt-1 font-mono text-[18px] text-editor-text">{historyStats().redo}</div>
-            </div>
-          </div>
-          <div class="flex gap-2 border-b border-editor-divider px-3.5 py-3">
-            <button
-              disabled={!historyStats().canUndo}
-              onClick={handleHistoryUndo}
-              class="h-[28px] flex-1 rounded-[4px] border border-editor-field-border bg-editor-field text-[12px] text-editor-text hover:bg-white/[0.045] disabled:opacity-40"
-            >
-              Undo
-            </button>
-            <button
-              disabled={!historyStats().canRedo}
-              onClick={handleHistoryRedo}
-              class="h-[28px] flex-1 rounded-[4px] border border-editor-field-border bg-editor-field text-[12px] text-editor-text hover:bg-white/[0.045] disabled:opacity-40"
-            >
-              Redo
-            </button>
-          </div>
-          <div class="flex flex-1 items-center justify-center px-4 text-center text-[12px] leading-snug text-editor-text-dim">
-            Snapshot history is available for layer edits and canvas operations.
-          </div>
-        </div>
-      </Show>
-
-      <Show when={activePanel() === "layers"}>
+      <Show when={rightDockPanel() === "layers"}>
+        <div
+          id="right-dock-layers-panel"
+          role="tabpanel"
+          data-layers-panel-content
+          class="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
       <div class={clsx("flex items-center gap-2 px-3.5 pt-3 relative", !activeDocumentId() && "opacity-50 pointer-events-none")}>
         <select
           disabled={!activeLayer() || activeLayer()!.locked}
@@ -298,7 +221,7 @@ export function LayersPanel() {
                 cancelActiveTransformSession();
               }
               const history = workspace.getActiveHistory();
-              history?.commit(engine.snapshot());
+              history?.commit(engine.snapshot(), "Layer Blend Mode");
               engine.setLayerBlendMode(id, mode);
               scheduler.requestRender();
             }
@@ -358,7 +281,7 @@ export function LayersPanel() {
                   const history = workspace.getActiveHistory();
                   const snapshot = opacityHistorySnapshot();
                   if (history && snapshot) {
-                    history.commit(snapshot);
+                    history.commit(snapshot, "Layer Opacity");
                     setOpacityHistorySnapshot(null);
                   }
                 }}
@@ -547,9 +470,18 @@ export function LayersPanel() {
         </button>
       </div>
 
+        </div>
+      </Show>
+
+      <Show when={rightDockPanel() === "history"}>
+        <div id="right-dock-history-panel" role="tabpanel" class="flex min-h-0 flex-1 flex-col">
+          <HistoryPanel />
+        </div>
+      </Show>
+
       {/* Navigator panel */}
-      <div class="shrink-0 border-t border-editor-divider bg-editor-panel">
-        <div 
+      <div data-navigator-panel class="shrink-0 border-t border-editor-divider bg-editor-panel">
+        <div
           class={clsx(
             "flex h-[46px] items-center justify-between px-4",
             !navigatorCollapsed() && "border-b border-editor-divider"
@@ -649,7 +581,6 @@ export function LayersPanel() {
           </div>
         </Show>
       </div>
-      </Show>
     </section>
   );
 }

@@ -5,6 +5,12 @@ interface SnapshotEntry {
   snapshot: DocumentModel;
   timestamp: number;
   lastPaintCoords: { x: number; y: number } | null;
+  label?: string;
+}
+
+export interface HistoryItem {
+  label: string;
+  isRedo: boolean;
 }
 
 export class CommandHistory {
@@ -25,11 +31,12 @@ export class CommandHistory {
     return this.currentLastPaintCoords;
   }
 
-  commit(snapshot: DocumentModel): void {
+  commit(snapshot: DocumentModel, label?: string): void {
     this.undoStack.push({
       snapshot,
       timestamp: Date.now(),
       lastPaintCoords: this.currentLastPaintCoords,
+      label,
     });
 
     // Clear redo stack on new operation
@@ -55,12 +62,13 @@ export class CommandHistory {
     }
 
     const previousEntry = this.undoStack.pop()!;
-    
+
     // Save current to redo stack
     this.redoStack.push({
       snapshot: currentSnapshot,
       timestamp: Date.now(),
       lastPaintCoords: this.currentLastPaintCoords,
+      label: previousEntry.label,
     });
 
     this.currentLastPaintCoords = previousEntry.lastPaintCoords;
@@ -80,11 +88,37 @@ export class CommandHistory {
       snapshot: currentSnapshot,
       timestamp: Date.now(),
       lastPaintCoords: this.currentLastPaintCoords,
+      label: nextEntry.label,
     });
 
     this.currentLastPaintCoords = nextEntry.lastPaintCoords;
 
     return nextEntry.snapshot;
+  }
+
+  getHistoryStack(): HistoryItem[] {
+    const items: HistoryItem[] = [];
+
+    // Base/original state (active when undoStack is empty)
+    items.push({ label: "Open", isRedo: false });
+
+    // Undo stack items
+    for (const entry of this.undoStack) {
+      items.push({
+        label: entry.label || "Unknown Operation",
+        isRedo: false,
+      });
+    }
+
+    // Redo stack items (reverse order of redoStack array)
+    for (let i = this.redoStack.length - 1; i >= 0; i--) {
+      items.push({
+        label: this.redoStack[i].label || "Unknown Operation",
+        isRedo: true,
+      });
+    }
+
+    return items;
   }
 
   clear(): void {

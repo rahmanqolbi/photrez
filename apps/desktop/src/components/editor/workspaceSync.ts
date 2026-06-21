@@ -3,6 +3,7 @@ import type { WorkspaceManager } from "@/engine/workspace";
 import type { RenderScheduler } from "@/renderer/scheduler";
 import type { DocumentTabSummary, LayerNode, SelectionState } from "@/engine/types";
 import { ViewportCamera } from "@/viewport/viewportCamera";
+import type { HistoryItem } from "@/engine/history";
 
 interface SyncStateParams {
   workspace: WorkspaceManager;
@@ -19,6 +20,8 @@ interface SyncStateParams {
   setZoom: (zoom: number) => void;
   setPan: (pan: { x: number; y: number }) => void;
   scheduler: RenderScheduler;
+  setHistoryItems: (items: HistoryItem[]) => void;
+  setActiveHistoryIndex: (index: number) => void;
 }
 
 export function setupWorkspaceSync(params: SyncStateParams) {
@@ -47,6 +50,15 @@ export function setupWorkspaceSync(params: SyncStateParams) {
         params.setSelectedLayerId(null);
         params.setSelection(null);
         params.setSelectionEditMode(false);
+      }
+
+      const history = params.workspace.getActiveHistory();
+      if (history) {
+        params.setHistoryItems(history.getHistoryStack());
+        params.setActiveHistoryIndex(history.getUndoCount());
+      } else {
+        params.setHistoryItems([]);
+        params.setActiveHistoryIndex(0);
       }
     });
   };

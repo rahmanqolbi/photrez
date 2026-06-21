@@ -14,7 +14,6 @@ const createMockModel = (name: string, overrides: Partial<DocumentModel> = {}): 
   dirty: false,
   ...overrides,
 });
-
 describe('CommandHistory', () => {
   it('starts with empty stacks', () => {
     const history = new CommandHistory();
@@ -181,5 +180,58 @@ describe('CommandHistory', () => {
     expect(layer.transform).toEqual({ x: 10, y: 20, scaleX: 2, scaleY: 1.5, rotation: 45, flipH: false, flipV: false });
     expect(layer.opacity).toBe(0.8);
     expect(layer.blendMode).toBe('normal');
+  });
+
+  describe('labeled operations and history stack list', () => {
+    it('saves operation labels and maps them to getHistoryStack correctly', () => {
+      const history = new CommandHistory();
+      const state1 = createMockModel('State 1');
+      const state2 = createMockModel('State 2');
+      const state3 = createMockModel('State 3');
+
+      // Initial stack has just Open
+      expect(history.getHistoryStack()).toEqual([
+        { label: 'Open', isRedo: false }
+      ]);
+
+      // Commit 1 with custom label
+      history.commit(state1, 'Add Layer');
+      expect(history.getHistoryStack()).toEqual([
+        { label: 'Open', isRedo: false },
+        { label: 'Add Layer', isRedo: false }
+      ]);
+
+      // Commit 2 with default fallback
+      history.commit(state2);
+      expect(history.getHistoryStack()).toEqual([
+        { label: 'Open', isRedo: false },
+        { label: 'Add Layer', isRedo: false },
+        { label: 'Unknown Operation', isRedo: false }
+      ]);
+
+      // Undo once -> last action becomes Redo (future state)
+      history.undo(state3);
+      expect(history.getHistoryStack()).toEqual([
+        { label: 'Open', isRedo: false },
+        { label: 'Add Layer', isRedo: false },
+        { label: 'Unknown Operation', isRedo: true }
+      ]);
+
+      // Undo twice
+      history.undo(state2);
+      expect(history.getHistoryStack()).toEqual([
+        { label: 'Open', isRedo: false },
+        { label: 'Add Layer', isRedo: true },
+        { label: 'Unknown Operation', isRedo: true }
+      ]);
+
+      // Redo once
+      history.redo(state1);
+      expect(history.getHistoryStack()).toEqual([
+        { label: 'Open', isRedo: false },
+        { label: 'Add Layer', isRedo: false },
+        { label: 'Unknown Operation', isRedo: true }
+      ]);
+    });
   });
 });

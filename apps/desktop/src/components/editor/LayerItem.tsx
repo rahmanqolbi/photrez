@@ -43,7 +43,7 @@ export function LayerItem(props: LayerItemProps) {
     const engine = props.workspace.getActiveEngine();
     if (engine) {
       const history = props.workspace.getActiveHistory();
-      history?.commit(engine.snapshot());
+      history?.commit(engine.snapshot(), "Rename Layer");
       engine.setLayerName(props.layer.id, nextName);
       props.scheduler.requestRender();
     }

@@ -103,7 +103,7 @@ describe("cropToolActions", () => {
       recenterViewport,
     });
 
-    expect(history.commit).toHaveBeenCalledWith(snapshot);
+    expect(history.commit).toHaveBeenCalledWith(snapshot, "Crop Canvas");
     expect(engine.applyCrop).toHaveBeenCalledWith(10, 20, 100, 200, {
       deleteCroppedPixels: true,
       targetSize: { w: 300, h: 400 },

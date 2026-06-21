@@ -734,7 +734,7 @@ describe("history audit — transformSession apply with no change", () => {
     const ok = commitLayerTransformSession(session, engine, history);
     expect(ok).toBe(true);
     expect(history.commit).toHaveBeenCalledTimes(1);
-    expect(history.commit).toHaveBeenCalledWith(originalSnapshot);
+    expect(history.commit).toHaveBeenCalledWith(originalSnapshot, "Transform Layer");
   });
 
   it("each transform field change is detected: rotation, scale, flip", async () => {

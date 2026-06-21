@@ -16,7 +16,7 @@ export function mergeActiveLayerDown(
     return false;
   }
 
-  history.commit(engine.snapshot());
+  history.commit(engine.snapshot(), "Merge Down");
   engine.mergeDown(activeId);
   renderer.destroyTexture(activeId);
   renderer.destroyTexture(bottomLayer.id);
@@ -39,7 +39,7 @@ export function flattenAllLayers(
     return false;
   }
 
-  history.commit(engine.snapshot());
+  history.commit(engine.snapshot(), "Flatten Image");
   engine.flattenLayers();
 
   for (const id of oldLayerIds) {

@@ -15,6 +15,7 @@ export interface PaintBitmapCommitContext {
 export interface PaintBitmapCommit {
   layerId: string;
   bitmap: ImageBitmap;
+  label?: string;
 }
 
 function closeBitmap(bitmap: ImageBitmap): void {
@@ -31,7 +32,7 @@ export function commitPaintBitmap(context: PaintBitmapCommitContext, command: Pa
     return false;
   }
 
-  context.history.commit(context.engine.snapshot());
+  context.history.commit(context.engine.snapshot(), command.label);
   context.engine.setLayerImageBitmap(command.layerId, command.bitmap);
   context.uploader.uploadImage(command.layerId, command.bitmap);
   context.requestRender();
