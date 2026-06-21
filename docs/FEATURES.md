@@ -301,7 +301,7 @@
 | ✅ DONE      | Delete Cropped Pixels toggle (ON = destructive bitmap crop, OFF = offset-based) |
 | ✅ DONE      | Crop Enter/Esc keyboard shortcuts |
 | ✅ DONE      | General accessible context menu system — reusable clamped surface, keyboard focus/navigation, canvas actions, layer actions, and preserved Brush/Eraser settings menu |
-| 🗓️ PLANNED (POST-MVP) | Tooltip system                             |
+| ✅ DONE      | Accessible Tooltip System with keyboard focus, hover delay, warm start, and custom shortcuts |
 | ✅ DONE      | Precision Workbench dialog system — shared confirm/alert API, safe destructive focus, menu focus restoration, and automated browser QA |
 
 ---

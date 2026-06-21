@@ -4,7 +4,27 @@
 
 ## Current Tasks
 
+### [2026-06-21] UI - Tooltip System & Keyboard Shortcuts [COMPLETE]
+
+**Goal:**
+Implement a compact, accessible custom Tooltip System for Photrez and wire keyboard shortcuts for the remaining Left Tool Rail items.
+
+**Scope:**
+- [x] Add working keyboard shortcuts for Move (V), Selection (M), Crop (C), and Eyedropper (I) in `useCanvasKeyboard.ts`
+- [x] Create the reusable, accessible `<Tooltip>` component with hover delay (400ms), warm start (250ms), keyboard focus trigger, Escape key dismiss, and dynamic ARIA `aria-describedby` association
+- [x] Replace native `title` tooltips in `LeftToolRail` with the new `<Tooltip>` component
+- [x] Add focused unit, integration, and wiring tests for keyboard shortcuts and the tooltip component
+- [x] Run all verification pipeline gates (frontend tests, build, Rust tests)
+
+**Verification:**
+- PASS: focused component and wiring tests: `Tooltip.test.tsx` (5/5) and `LeftToolRailWiring.test.tsx` (1/1) and `ToolKeyboardShortcuts.test.tsx` (1/1).
+- PASS: full frontend Vitest suite (95 files / 1304 tests in 58.14s).
+- PASS: TypeScript compiler type-check (`pnpm run type-check`).
+- PASS: production Vite build (`pnpm run build` in 8.30s).
+- PASS: cargo workspace test suite (100/100, including 85 core + 15 desktop).
+
 ### [2026-06-21] UI - Precision Workbench Resize and Export Dialogs [COMPLETE]
+
 
 **Goal:**
 Unify Resize Canvas and Export with the shared compact desktop dialog vocabulary while keeping feedback tests fast and behaviorally strong, matching the strict visual design guidelines.

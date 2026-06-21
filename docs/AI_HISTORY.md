@@ -1,5 +1,29 @@
 # AI History — Photrez
 
+## [2026-06-21] UI - Tooltip System & Keyboard Shortcuts [COMPLETE]
+
+### Kategori: FEATURE / UI-UX / ACCESSIBILITY / SHORTCUTS
+
+**Goal:**
+Implement a custom Tooltip System for Photrez matching the compact, "Soft & Snappy" visual aesthetic, and add keyboard shortcuts for the remaining Left Tool Rail items (Move, Selection, Crop, Eyedropper) to ensure tooltip shortcut correctness.
+
+**Fix Rationale / Design Decisions:**
+- **Wrapper Component (`<Tooltip>`)**: Wraps elements using `display: contents` to prevent layout changes. Binds events (`mouseenter`, `mouseleave`, `focusin`, `focusout`) to the wrapped child on mount.
+- **Warm Start Behavior**: When a tooltip is closed, a global timestamp is set. If the user hovers over another tooltip target within `250ms`, the new tooltip opens instantly (0ms delay) instead of the default `400ms` hover delay.
+- **Keyboard Access & ARIA**: Gaining focus (`focusin`) opens the tooltip instantly. Pressing `Escape` hides it. Dynamically associates the target element to the tooltip ID via `aria-describedby`, ensuring full screen-reader accessibility.
+- **Shortcuts Mapping**: Mapped `v`, `m`, `c`, and `i` in `useCanvasKeyboard.ts` to select Move, Selection, Crop, and Eyedropper tools, and displayed them in the `<kbd>` badges within the tooltips.
+- **Visuals**: Styled the tooltip popup with a border (`border-white/10`), rounded corners (`rounded-[4px]`), dark solid background (`#181818`), and compact typography (`text-[11px]`).
+
+**Verification:**
+- PASS: `Tooltip.test.tsx` (5/5 tests covering hover delay, mouse-leave cancellation, focus trigger, Escape key down, and ARIA describedby).
+- PASS: `LeftToolRailWiring.test.tsx` (1/1 test verifying that tool rail buttons are wrapped in Tooltip and do not have browser-native title attributes).
+- PASS: `ToolKeyboardShortcuts.test.tsx` (1/1 test verifying that pressing `v`, `m`, `c`, `i` updates the active tool).
+- PASS: Full frontend test suite (95 files / 1304 tests).
+- PASS: Root type-check (`tsc --noEmit`) and production Vite build.
+- PASS: Cargo workspace tests (100/100 passed).
+
+---
+
 ## [2026-06-21] UI - Precision Workbench Resize and Export Dialogs Polish [COMPLETE]
 
 ### Kategori: FEATURE / UI-UX / LAYOUT / STYLING

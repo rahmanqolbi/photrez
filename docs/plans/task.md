@@ -18,3 +18,6 @@
 | Task 14 | Phase 6 — Overlay Coordinate Migration | done |
 | Task 15 | Phase 7 — Backward Compatibility | done |
 | Task 16 | Phase 8 — Testing & Verification | done |
+| Task 17 | Tooltip System & Keyboard Shortcuts Expansion | done |
+
+
