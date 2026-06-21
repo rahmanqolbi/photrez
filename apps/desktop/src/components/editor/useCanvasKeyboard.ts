@@ -566,6 +566,35 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         return;
       }
 
+      // Tool selection shortcuts
+      if (!ctrl && key === "v") {
+        e.preventDefault();
+        setActiveTool("move");
+        scheduler.requestRender();
+        return;
+      }
+
+      if (!ctrl && key === "m") {
+        e.preventDefault();
+        setActiveTool("selection");
+        scheduler.requestRender();
+        return;
+      }
+
+      if (!ctrl && key === "c") {
+        e.preventDefault();
+        setActiveTool("crop");
+        scheduler.requestRender();
+        return;
+      }
+
+      if (!ctrl && key === "i") {
+        e.preventDefault();
+        setActiveTool("eyedropper");
+        scheduler.requestRender();
+        return;
+      }
+
       if (!ctrl && (e.key === "[" || e.key === "]") && (activeTool() === "brush" || activeTool() === "eraser")) {
         e.preventDefault();
         if (e.shiftKey) {
