@@ -4,6 +4,25 @@
 
 ## Current Tasks
 
+### [2026-06-21] DOCUMENTATION - Photrez Visual Design System [COMPLETE]
+
+**Goal:**
+Capture the implemented Photrez visual language as a machine-readable, desktop-native design contract for future UI work.
+
+**Scope:**
+- [x] Extract canonical colors, typography, spacing, radii, elevation, and component patterns from production code
+- [x] Write root `DESIGN.md` using the Google Stitch-compatible six-section format
+- [x] Write `.impeccable/design.json` with extension metadata and representative desktop component previews
+- [x] Verify format, JSON validity, and documentation integrity
+
+**Creative North Star:**
+- Precision Workbench: mechanical, compact, professional, Windows-native, and focused on the image rather than the application chrome.
+
+**Verification:**
+- PASS: all six Stitch-compatible sections are present in the required order.
+- PASS: `.impeccable/design.json` parses as schema version 2 with six representative components.
+- PASS: documentation-only change; no runtime implementation or dependency changed.
+
 ### [2026-06-21] FEATURE - Native-Style Dialog System [IN PROGRESS]
 
 **Goal:**

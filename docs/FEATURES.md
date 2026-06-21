@@ -292,6 +292,7 @@
 | ✅ DONE      | LeftToolRail Reference Matching (continuous stack, monochrome active, ellipsis button) |
 | ✅ DONE      | photrez High-Fidelity Reference Slice (static SolidJS shell, exact 5x3 grid, fjord image viewport) |
 | ✅ DONE      | Style Guide & Design Tokens Synchronization (Tailwind v4, OKLCH, double-dock layout, custom sliders) |
+| ✅ DONE      | Root DESIGN.md — Precision Workbench visual contract + machine-readable Impeccable sidecar |
 | ✅ DONE      | UI/UX Polish: Diagonal Swatches, Tab Typography & LeftToolRail layout |
 | ✅ DONE      | Crop overlay dengan mask shield + 8 handles + corner brackets + interactive resize/move (+ guide lines: thirds/grid/diagonal/golden) |
 | ✅ DONE      | Crop mode Free (corner free by default, Shift = lock aspect) |

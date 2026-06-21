@@ -7769,3 +7769,24 @@ Add familiar right-click workflows to the canvas and layer stack while preservin
 - PARTIAL LIVE QA: agent-browser loaded the running app and captured its accessibility tree, then its automation session lost connectivity before New Canvas interaction; no runtime claim is based on that incomplete session.
 
 ---
+
+## [2026-06-21] DOCUMENTATION - Photrez Precision Workbench Design System [COMPLETE]
+
+### Kategori: DOCUMENTATION / UI / DESIGN SYSTEM / DESKTOP
+
+**Goal:**
+Create one authoritative visual contract that keeps future Photrez UI compact, familiar, color-neutral, and recognizably desktop-native.
+
+**Done:**
+1. Extracted the canonical OKLCH editor palette, system typography, compact spacing, radius hierarchy, shadows, and production component patterns from the current SolidJS and Tailwind v4 implementation.
+2. Defined the user-selected creative north star, `Precision Workbench`, with explicit rules for canvas authority, Windows behavior, Photon Amber restraint, zero-tint chrome, and structural elevation.
+3. Added root `DESIGN.md` in the Google Stitch-compatible frontmatter plus six-section format.
+4. Added `.impeccable/design.json` schema version 2 with tonal metadata, shadows, motion, breakpoints, narrative rules, and six self-contained component previews.
+5. Documented desktop-specific dialogs, application menus, context menus, fields, title-bar controls, tool buttons, status feedback, accessibility states, and anti-patterns.
+
+**Verification:**
+- PASS: required DESIGN.md section order, 6/6.
+- PASS: sidecar JSON parses successfully, schema version 2, 6 component previews.
+- PASS: documentation integrity check; no runtime or dependency changes.
+
+---
