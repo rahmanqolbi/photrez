@@ -5,6 +5,16 @@ import { TOOL_ITEMS } from "./editorData";
 import { useEditor } from "./EditorContext";
 import { cancelLayerTransformSession } from "./transformSession";
 import type { ToolId } from "./toolTypes";
+import { Tooltip } from "./Tooltip";
+
+const TOOL_SHORTCUTS: Record<ToolId, string> = {
+  move: "V",
+  selection: "M",
+  crop: "C",
+  eyedropper: "I",
+  brush: "B",
+  eraser: "E",
+};
 
 export function LeftToolRail(props: { disabled?: boolean }) {
   const { activeTool, setActiveTool, fgColor, setFgColor, bgColor, setBgColor, scheduler, workspace, layerTransformSession, setLayerTransformSession } = useEditor();
@@ -68,19 +78,20 @@ export function LeftToolRail(props: { disabled?: boolean }) {
       <For each={TOOL_ITEMS}>
         {(tool) => {
           return (
-            <button
-              onClick={() => handleToolChange(tool.id)}
-              class={clsx(
-                "flex size-9 shrink-0 items-center justify-center rounded-[5px] transition-all duration-100 relative focus-visible:!outline-none",
-                activeTool() === tool.id
-                  ? "bg-white/5 text-editor-text"
-                  : "text-editor-icon hover:bg-white/5 hover:text-editor-text"
-              )}
-              aria-label={tool.label}
-              title={tool.label}
-            >
-              <Icon name={tool.icon} class="size-[18px]" strokeWidth={1.6} />
-            </button>
+            <Tooltip content={tool.label} shortcut={TOOL_SHORTCUTS[tool.id]} placement="right">
+              <button
+                onClick={() => handleToolChange(tool.id)}
+                class={clsx(
+                  "flex size-9 shrink-0 items-center justify-center rounded-[5px] transition-all duration-100 relative focus-visible:!outline-none",
+                  activeTool() === tool.id
+                    ? "bg-white/5 text-editor-text"
+                    : "text-editor-icon hover:bg-white/5 hover:text-editor-text"
+                )}
+                aria-label={tool.label}
+              >
+                <Icon name={tool.icon} class="size-[18px]" strokeWidth={1.6} />
+              </button>
+            </Tooltip>
           );
         }}
       </For>
@@ -122,22 +133,24 @@ export function LeftToolRail(props: { disabled?: boolean }) {
         </div>
 
         {/* Diagonal Swap Micro-Arrow Trigger */}
-        <button
-          onClick={handleSwapColors}
-          class="absolute -top-1.5 -right-1.5 size-4 bg-editor-toolbar border border-editor-divider rounded-full flex items-center justify-center text-editor-icon hover:text-editor-text scale-0 group-hover:scale-100 transition-transform duration-150 shadow"
-          title="Swap Colors (X)"
-        >
-          <Icon name="rotate" class="size-2.5" />
-        </button>
+        <Tooltip content="Swap Colors" shortcut="X" placement="right">
+          <button
+            onClick={handleSwapColors}
+            class="absolute -top-1.5 -right-1.5 size-4 bg-editor-toolbar border border-editor-divider rounded-full flex items-center justify-center text-editor-icon hover:text-editor-text scale-0 group-hover:scale-100 transition-transform duration-150 shadow"
+          >
+            <Icon name="rotate" class="size-2.5" />
+          </button>
+        </Tooltip>
       </div>
 
-      <button
-        class="flex size-9 shrink-0 items-center justify-center rounded-[5px] text-editor-icon hover:bg-white/5"
-        aria-label="More tools"
-        title="More tools"
-      >
-        <Icon name="more" class="size-[18px]" strokeWidth={1.6} />
-      </button>
+      <Tooltip content="More tools" placement="right">
+        <button
+          class="flex size-9 shrink-0 items-center justify-center rounded-[5px] text-editor-icon hover:bg-white/5"
+          aria-label="More tools"
+        >
+          <Icon name="more" class="size-[18px]" strokeWidth={1.6} />
+        </button>
+      </Tooltip>
     </aside>
   );
 }
