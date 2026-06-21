@@ -4,21 +4,31 @@
 
 ## Current Tasks
 
-### [2026-06-21] UI - Precision Workbench Resize and Export Dialogs [IN PROGRESS]
+### [2026-06-21] UI - Precision Workbench Resize and Export Dialogs [COMPLETE]
 
 **Goal:**
-Unify Resize Canvas and Export with the shared compact desktop dialog vocabulary while keeping feedback tests fast and behaviorally strong.
+Unify Resize Canvas and Export with the shared compact desktop dialog vocabulary while keeping feedback tests fast and behaviorally strong, matching the strict visual design guidelines.
 
 **Scope:**
-- [ ] Extract minimal shared dialog frame, action, button, and field primitives
-- [ ] Migrate Resize Canvas and Export without changing their production mutation paths
-- [ ] Add focus trap/restoration, Escape, backdrop, labels, disabled, progress, success, and error contracts
-- [ ] Consolidate duplicate component tests and run focused tests before one final full regression gate
-- [ ] Run mandatory frontend, Rust, build, and documentation verification
+- [x] Extract minimal shared dialog frame, action, button, and field primitives
+- [x] Migrate Resize Canvas and Export without changing their production mutation paths
+- [x] Apply full style compliance with GEMINI.md & DESIGN.md (curated radii, elevation shadows, state highlights, input inset depth, segmented controls)
+- [x] Fix E2E test quality slider check in editor-smoke.spec.ts
+- [x] Consolidate duplicate component tests and run focused tests before one final full regression gate
+- [x] Run mandatory frontend, Rust, build, and documentation verification
 
 **Test Strategy:**
 - Run only the affected dialog files during iteration.
 - Run the complete frontend and Rust suites once after focused coverage is green.
+
+**Verification:**
+- PASS: focused component and mounted wiring tests, 16/16 (ExportDialog: 8, ResizeCanvasModal: 8).
+- PASS: full frontend suite, 92 files / 1297 tests in 55.57s.
+- PASS: cargo workspace test suite (100/100, including 85 core + 15 desktop).
+- PASS: TypeScript compiler type-check.
+- PASS: production Vite build in 13.34s.
+- PASS: full Playwright E2E suite (24/24).
+
 
 ### [2026-06-21] DOCUMENTATION - Photrez Visual Design System [COMPLETE]
 

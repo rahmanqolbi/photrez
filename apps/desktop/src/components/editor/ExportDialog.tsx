@@ -85,13 +85,13 @@ export function ExportDialog() {
           </>}
         >
           <Show when={donePath()}>
-            <div role="status" class="mb-3 rounded-[4px] border border-green-500/30 bg-green-500/10 px-2.5 py-2 text-[11px] text-green-400">
+            <div role="status" class="mb-3 rounded-[6px] border border-success/30 bg-success/10 px-2.5 py-2 text-[11px] text-success">
               Saved: {donePath()?.split(/[/\\]/).pop()}
             </div>
           </Show>
 
           <Show when={error()}>
-            <div role="alert" class="mb-3 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-400">
+            <div role="alert" class="mb-3 rounded-[6px] border border-danger/30 bg-danger/10 px-2.5 py-2 text-[11px] text-danger">
               {error()}
             </div>
           </Show>
@@ -99,7 +99,7 @@ export function ExportDialog() {
           <div class="flex flex-col gap-3.5">
             <div>
               <div id="export-format-label" class="mb-1.5 text-[11px] font-medium text-editor-text-dim">Format</div>
-              <div class="flex gap-1.5">
+              <div class="flex h-8 rounded-[6px] bg-editor-canvas p-[3px] border border-editor-field-border/60">
                 <For each={FORMATS}>{(f, index) => (
                   <button
                     type="button"
@@ -107,10 +107,10 @@ export function ExportDialog() {
                     aria-describedby="export-format-label"
                     data-dialog-initial-focus={index() === 0 ? "" : undefined}
                     onClick={() => setFormat(f.id)}
-                    class={`flex h-7 flex-1 items-center justify-center rounded-[4px] border text-[11px] font-medium outline-none transition-colors focus-visible:ring-1 focus-visible:ring-editor-accent/50 ${
+                    class={`flex h-full flex-1 items-center justify-center rounded-[4px] text-[11px] font-medium outline-none transition-all duration-75 focus-visible:ring-1 focus-visible:ring-editor-accent/50 ${
                       format() === f.id
-                        ? "border-editor-accent bg-editor-accent text-editor-bg"
-                        : "border-editor-field-border bg-editor-field text-editor-text-dim hover:border-editor-accent hover:text-editor-text"
+                        ? "bg-editor-panel text-editor-accent font-semibold border border-editor-field-border/40 shadow-sm"
+                        : "border border-transparent bg-transparent text-editor-text-dim hover:text-editor-text"
                     }`}
                   >
                     {f.label}

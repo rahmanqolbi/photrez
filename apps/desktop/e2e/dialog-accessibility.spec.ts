@@ -33,7 +33,7 @@ test.describe("Precision Workbench dialogs", () => {
     expect(geometry.width).toBeGreaterThanOrEqual(320);
     expect(geometry.width).toBeLessThanOrEqual(420);
     expect(geometry.titlebarHeight).toBe(36);
-    expect(geometry.radius).toBe("6px");
+    expect(geometry.radius).toBe("8px");
     expect(geometry.shadow).not.toBe("none");
     await dialog.screenshot({ path: testInfo.outputPath("about-dialog.png") });
 

@@ -287,11 +287,13 @@ test.describe("export dialog", () => {
 
     // JPEG shows quality slider
     await page.getByText("JPEG").click();
-    await expect(page.getByText("Quality: 90%")).toBeVisible();
+    await expect(page.getByText("Quality", { exact: true })).toBeVisible();
+    await expect(page.getByText("90%")).toBeVisible();
 
     // WebP shows quality slider
     await page.getByText("WebP").click();
-    await expect(page.getByText("Quality: 90%")).toBeVisible();
+    await expect(page.getByText("Quality", { exact: true })).toBeVisible();
+    await expect(page.getByText("90%")).toBeVisible();
 
     await page.getByText("Cancel").click();
     await expect(page.getByText("PNG")).toHaveCount(0);

@@ -83,7 +83,7 @@ export function DesktopDialog(props: DesktopDialogProps) {
         data-dialog-tone={props.tone ?? "default"}
         data-photrez-dialog
         class={clsx(
-          "fixed left-1/2 top-1/2 z-[90] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[6px] border border-editor-field-border bg-editor-panel shadow-[0_8px_24px_rgba(0,0,0,0.48)]",
+          "fixed left-1/2 top-1/2 z-[90] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[8px] border border-editor-field-border bg-editor-panel shadow-[0_18px_50px_rgba(0,0,0,0.55)]",
           props.widthClass ?? "w-[min(360px,calc(100vw-24px))]",
         )}
         onKeyDown={handleKeyDown}
@@ -137,10 +137,10 @@ export function DesktopDialogButton(props: DesktopDialogButtonProps) {
       type={props.type ?? "button"}
       disabled={props.disabled}
       class={clsx(
-        "h-7 min-w-16 rounded-[4px] border px-3 text-[11px] font-medium outline-none disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-1 focus-visible:ring-editor-accent/50",
+        "h-7 min-w-16 rounded-[6px] border px-3 text-[11px] font-medium outline-none transition-colors duration-75 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-1 focus-visible:ring-editor-accent/50",
         props.variant === "primary"
           ? "border-editor-accent bg-editor-accent text-editor-bg hover:bg-editor-accent/90"
-          : "border-editor-field-border bg-editor-field text-editor-text hover:bg-white/[0.06] focus-visible:border-editor-accent",
+          : "border-editor-field-border bg-editor-field text-editor-text hover:bg-white/[0.06] hover:border-editor-accent/50 focus-visible:border-editor-accent",
         props.class,
       )}
       onClick={props.onClick}
@@ -152,4 +152,4 @@ export function DesktopDialogButton(props: DesktopDialogButtonProps) {
 }
 
 export const desktopDialogFieldClass =
-  "h-7 w-full rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[12px] text-editor-text outline-none focus:border-editor-accent focus:ring-1 focus:ring-editor-accent/30 disabled:cursor-not-allowed disabled:opacity-40";
+  "h-7 w-full rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[12px] text-editor-text outline-none shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)] focus:border-editor-accent focus:ring-1 focus:ring-editor-accent/30 disabled:cursor-not-allowed disabled:opacity-40";

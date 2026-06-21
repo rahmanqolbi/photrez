@@ -1,5 +1,34 @@
 # AI History — Photrez
 
+## [2026-06-21] UI - Precision Workbench Resize and Export Dialogs Polish [COMPLETE]
+
+### Kategori: FEATURE / UI-UX / LAYOUT / STYLING
+
+**Goal:**
+Address visual design shortcomings of the Resize Canvas and Export Dialogs, ensuring alignment with strict styling tokens (radii, elevation shadows, state highlights, segmented controls, and input inset depth), and fix the associated E2E test quality check failure.
+
+**Root Cause (E2E Test):**
+The quality slider check in `editor-smoke.spec.ts` expected `Quality: 90%` as a single text node. Since the accessibility pass split this text into separate `<label>` and `<output>` elements, the E2E check failed to locate the combined string.
+
+**Fix Rationale:**
+- Polished the dialog panel container border-radius to `8px` (`--radius-lg` for outer panels) and elevated shadow to `shadow-[0_18px_50px_rgba(0,0,0,0.55)]` for dialog lift.
+- Refactored `DesktopDialogButton` rounding to `6px` (`--radius-md` for buttons/tabs) and added smooth transition effects + custom hover borders for secondary buttons.
+- Added input inset depth shadow (`shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]`) to `desktopDialogFieldClass`.
+- Styled the **Keep proportions** lock button to show a border, Photon Amber text, and subtle background accent in active (locked) state.
+- Redesigned the format buttons in `ExportDialog` into a segmented control button group using `bg-editor-canvas` / `bg-editor-panel` and custom border classes.
+- Standardized success/danger alert notifications to use `success` and `danger` theme colors instead of generic Tailwind values, with matching `6px` rounding.
+- Split E2E quality slider checks to verify the `Quality` label and the `90%` output separately, and corrected the dialog radius assertion in `dialog-accessibility.spec.ts` to `8px`.
+
+**Verification:**
+- PASS: focused component tests: `ResizeCanvasModal.test.tsx` and `ExportDialog.test.tsx` (16/16).
+- PASS: full frontend Vitest suite (92 files / 1297 tests).
+- PASS: cargo workspace test suite (100/100, including 85 core + 15 desktop).
+- PASS: TypeScript compiler type-check (`pnpm run type-check`).
+- PASS: production Vite build (`pnpm run build`).
+- PASS: full Playwright E2E suite (24/24).
+
+---
+
 ## [2026-06-20] TEST INFRASTRUCTURE - Second-Pass Vitest Optimization [COMPLETE]
 
 ### Kategori: TESTING / PERFORMANCE / VITEST / REGRESSION-SAFETY
@@ -7813,5 +7842,27 @@ Replace browser-like confirmation and toast-only information with one compact de
 - PASS: production build and root type-check.
 - PASS: Rust core 85/85; workspace desktop 15/15.
 - NOTE: agent-browser CLI offline doctor passed, but its Windows CDP launch channel closed. Playwright Chromium completed the same live browser workflow and screenshot capture successfully.
+
+---
+
+## [2026-06-21] UI - Precision Workbench Resize and Export Dialogs [COMPLETE]
+
+### Kategori: UI / FRONTEND / DIALOGS
+
+**Goal:**
+Unify Resize Canvas and Export with the shared compact desktop dialog vocabulary while keeping feedback tests fast and behaviorally strong.
+
+**Done:**
+1. Migrated `ResizeCanvasModal.tsx` and `ExportDialog.tsx` to use the new `DesktopDialog` (Precision Workbench Dialog System) component.
+2. Verified that dimensions, quality, and aspect lock settings follow the Precision Workbench design contract.
+3. Updated unit and integration tests (`ResizeCanvasModal.test.tsx` and `ExportDialog.test.tsx`) to match the new markup and behavior.
+4. Added browser automation in Playwright E2E (`dialog-accessibility.spec.ts`) to verify focus, Escape key closing, backdrop click dismissal, and output dimension updates for both dialogs.
+
+**Verification:**
+- PASS: focused component and mounted wiring tests, 16/16.
+- PASS: full frontend suite, 92 files / 1297 tests in 62.91s.
+- PASS: dedicated Playwright E2E dialog accessibility coverage, 3/3 (About, Delete Layer, Resize & Export).
+- PASS: production build and root type-check.
+- PASS: Rust core 85/85; workspace desktop 15/15.
 
 ---
