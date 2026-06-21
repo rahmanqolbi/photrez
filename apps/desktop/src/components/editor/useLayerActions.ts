@@ -1,8 +1,10 @@
 import { useEditor } from "./EditorContext";
 import { flattenAllLayers, mergeActiveLayerDown } from "./layerOperations";
 import { cancelLayerTransformSession } from "./transformSession";
+import { useDialog } from "./DialogProvider";
 
 export function useLayerActions() {
+  const dialog = useDialog();
   const {
     workspace,
     renderer,
@@ -170,18 +172,33 @@ export function useLayerActions() {
     }
   };
 
-  const handleDeleteActiveLayer = () => {
+  const handleDeleteActiveLayer = async () => {
     cancelActiveTransformSession();
     const engine = workspace.getActiveEngine();
-    const history = workspace.getActiveHistory();
     const activeId = activeLayerId();
-    if (engine && history && activeId) {
+    const documentId = workspace.getActiveDocumentId();
+    if (engine && activeId && documentId) {
       if (engine.getLayers().length <= 1) return;
       const layer = engine.getLayer(activeId);
       const name = layer?.name || "Untitled";
-      if (!confirm(`Delete layer "${name}"? This can be undone.`)) return;
-      history.commit(engine.snapshot());
-      engine.deleteLayer(activeId);
+      const accepted = await dialog.confirm({
+        title: "Delete Layer",
+        message: `Delete layer "${name}"? This action can be undone.`,
+        confirmLabel: "Delete",
+        tone: "danger",
+      });
+      if (!accepted || workspace.getActiveDocumentId() !== documentId) return;
+      const currentEngine = workspace.getActiveEngine();
+      const currentHistory = workspace.getActiveHistory();
+      if (
+        !currentEngine
+        || !currentHistory
+        || currentEngine.getActiveLayerId() !== activeId
+        || currentEngine.getLayers().length <= 1
+        || !currentEngine.getLayer(activeId)
+      ) return;
+      currentHistory.commit(currentEngine.snapshot());
+      currentEngine.deleteLayer(activeId);
       scheduler.requestRender();
     }
   };

@@ -1,7 +1,7 @@
 import type { IconName } from "./icons";
 import type { ToolId } from "./toolTypes";
 
-export type MenuItem = "File" | "Edit" | "Image" | "View" | "Window" | "Help";
+export type MenuItem = "File" | "Edit" | "Image" | "Layer" | "View" | "Window" | "Help";
 
 export type DocumentTab = {
   id: string;

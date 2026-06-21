@@ -13,6 +13,7 @@ export const MENU_ITEMS: readonly MenuItem[] = [
   "File",
   "Edit",
   "Image",
+  "Layer",
   "View",
   "Window",
   "Help",

@@ -4,6 +4,147 @@
 
 ## Current Tasks
 
+### [2026-06-21] FEATURE - Native-Style Dialog System [IN PROGRESS]
+
+**Goal:**
+Replace browser-native confirmation and toast-only informational flows with one accessible, compact dialog service shared by every command surface.
+
+**Scope:**
+- [ ] Add a centralized promise-based dialog provider with confirm and alert APIs
+- [ ] Add Portal rendering, ARIA dialog contracts, focus trap/restoration, Escape handling, backdrop dismissal, and safe default focus for destructive actions
+- [ ] Replace Delete Layer `window.confirm()` across footer, context menu, keyboard, custom menu, and native menu paths
+- [ ] Guard asynchronous destructive confirmation against document/layer changes while the dialog is open
+- [ ] Replace About toast with an informational Photrez dialog
+- [ ] Add component, wiring, cancellation, cleanup, and document-switch safety tests
+- [ ] Run all mandatory verification gates
+
+**UX Decision:**
+- Destructive dialogs focus Cancel by default. The surface is compact, neutral, and restrained; Photon Amber marks the destructive confirm action without decorative modal animation.
+
+### [2026-06-21] FEATURE - Canvas and Layers Context Menus [COMPLETE]
+
+**Goal:**
+Add familiar right-click menus to the canvas and layer rows without introducing a second mutation path.
+
+**Scope:**
+- [x] Add one reusable accessible context-menu surface with viewport clamping, focus management, keyboard navigation, Escape/Tab dismissal, and disabled/danger states
+- [x] Add a non-paint canvas menu for selection clipboard commands and viewport commands; preserve the existing Brush/Eraser settings menu
+- [x] Add a layer-row menu for rename, duplicate, visibility, lock, ordering, merge, and delete; right-click must activate the target layer first
+- [x] Route canvas commands through the existing `useEditorCommands` production handler and layer commands through `useLayerActions`
+- [x] Add component, wiring, state, and keyboard accessibility tests
+- [x] Run all mandatory verification gates
+
+**UX Decision:**
+- Context menus use the existing compact native-desktop visual vocabulary and Photon Amber only for focus/active feedback. No decorative motion or modal behavior.
+
+### [2026-06-21] BUG FIX - Deselect and Invert Selection Synchronization [COMPLETE]
+
+**Goal:**
+Make Deselect immediately remove the visible marquee and make Invert Selection represent the real complement of the current rectangular selection.
+
+**Root Cause:**
+- Menu/option-bar mutations update `DocumentEngine` and context selection, but `CanvasViewport` renders a separate pointer-tool `selectionBox` that is only refreshed by canvas keyboard/pointer callbacks.
+- `DocumentEngine.invertSelection()` currently toggles between `null` and full-canvas selection instead of representing the area outside the current rectangle.
+
+**Scope:**
+- [x] Synchronize the CanvasViewport marquee from the authoritative editor selection signal
+- [x] Add explicit inverted-selection state and complement-aware cut/copy/delete operations
+- [x] Render both the canvas boundary and excluded inner rectangle for inverted selection
+- [x] Disable rectangular transform handles for inverted selections
+- [x] Add regression, wiring, pixel-operation, and state-contract tests
+- [x] Run all mandatory verification gates
+
+### [2026-06-21] UI - Edit and Layer Application Menus [COMPLETE]
+
+**Goal:**
+Extend the functional application menu with selection-aware Edit commands and a dedicated Layer menu backed by existing production operations.
+
+**Scope:**
+- [x] Add Cut, Copy, Paste, Select All, Deselect, and Invert Selection to Edit
+- [x] Add a Layer menu for New, Duplicate, Delete, Merge Down, and Flatten Image
+- [x] Reuse existing selection/layer mutation paths with correct history and renderer synchronization
+- [x] Add command enablement, shortcuts, native Layer-menu parity, and mounted wiring tests
+- [x] Run all mandatory frontend, Rust, build, and runtime verification gates
+
+**Decision:**
+- Menu actions must reuse the existing `SelectionOperations`, `useLayerActions`, and shared `useEditorCommands` path. No second mutation implementation or inert entry is allowed.
+
+**Done:**
+- Added selection-aware Edit entries with clipboard, selection, and document-aware disabled states.
+- Added a seventh custom title-bar menu, Layer, backed by the same history-safe operations as `LayersPanel`.
+- Added the matching Tauri native Layer submenu and forwarded its stable command IDs through the existing native event bridge.
+- Added mounted wiring coverage for Select All/Deselect, Cut/Copy/Paste dispatch, layer duplication, and native Layer events.
+
+**Verification:**
+- PASS: focused menu/selection wiring, 32/32 before the final dedicated Cut/Copy/Paste wiring case; final `AppMenuBarWiring` file, 6/6.
+- PASS: final full frontend suite, 89 files / 1277 tests in 37.94s.
+- PASS: `pnpm run type-check` and `pnpm run build`.
+- PASS: `cargo test -p photrez-core`, 85/85.
+- PASS: `cargo test --workspace`, core 85/85 + desktop 15/15.
+- BLOCKED RUNTIME RETRY: `pnpm tauri dev` found the existing Vite/Tauri development instance on port 1420. It was not terminated to avoid losing user work; restart smoke remains required for the updated native Layer submenu.
+
+### [2026-06-21] UI - Functional Custom Application Menus [COMPLETE]
+
+**Goal:**
+Replace the custom title-bar menu placeholders with familiar, accessible dropdown menus whose entries execute real editor and window commands.
+
+**Scope:**
+- [x] Add dropdowns for File, Edit, Image, View, Window, and Help
+- [x] Route every visible menu item to a working shared command; no inert placeholder entries
+- [x] Support click-outside, Escape, arrow navigation, focus restoration, and disabled states
+- [x] Keep the existing restrained desktop-editor visual language and custom title-bar geometry
+- [x] Add mounted wiring and keyboard/accessibility tests
+- [x] Run the full frontend, Rust, build, and Tauri launch verification gates
+
+**Decision:**
+- The custom menus complement the Tauri native menu. Both surfaces reuse `useEditorCommands`; neither duplicates editor mutation logic.
+
+**Done:**
+- Added compact desktop-style dropdowns for all six custom title-bar menu headings.
+- Added real commands for New/Open/Export, Undo/Redo, Resize Canvas, Zoom In/Out, Actual Size, Fit Canvas, side panels, window controls, and About.
+- Added document-aware disabled states plus dynamic Hide/Show Side Panels copy.
+- Added click-outside dismissal, Escape focus restoration, Arrow/Home/End navigation, adjacent-menu switching, and ARIA menu semantics.
+- Expanded the Tauri native File and View menus with New Document and the four viewport commands for parity.
+
+**Verification:**
+- PASS: focused menu tests, 9/9; combined menu/title-bar/native wiring tests, 23/23.
+- PASS: full frontend suite, 89 files / 1273 tests in 37.29s.
+- PASS: production build and root type-check.
+- PASS: `cargo test -p photrez-core`, 85/85.
+- PASS: `cargo test --workspace`, core 85/85 + desktop 15/15.
+- PASS: active `photrez-desktop` runtime process is responsive; launch retry found the existing Vite server on port 1420 rather than starting a duplicate.
+
+### [2026-06-20] POST-MVP - Native Menu Integration [COMPLETE]
+
+**Goal:**
+Integrate a Tauri 2 native application menu that mirrors Photrez's existing custom menu and routes native menu actions through the same frontend command handlers.
+
+**Scope:**
+- [x] Build and install the native menu with current Tauri 2 Rust APIs
+- [x] Route File/Open, File/Export, Edit/Undo, Edit/Redo, Image/Resize, View/Side Panels, and Window actions to production handlers
+- [x] Preserve the existing custom title-bar menu rather than replacing or redesigning it
+- [x] Add Rust menu-construction tests and mounted frontend command-routing tests
+- [x] Run mandatory frontend, Rust workspace, build, and Tauri launch verification
+- [x] Record native Windows smoke evidence or clearly report it as pending
+
+**Decision:**
+- Native menu mirrors the custom menu. Shared frontend command routing is the source of truth for editor mutations; Rust owns native menu construction and forwards custom menu IDs as a typed Tauri event.
+
+**Done:**
+- Added six native submenus (File, Edit, Image, View, Window, Help) using Tauri 2 `MenuBuilder`, `SubmenuBuilder`, `MenuItemBuilder`, and native predefined items.
+- Added custom Windows-compatible Undo/Redo items because Tauri's predefined Undo/Redo items are unsupported on Windows.
+- Centralized editor actions in `useEditorCommands`; native events, keyboard shortcuts, custom menu buttons, and undo/redo buttons now share the same mutation path.
+- Added a real Rust menu-builder test plus mounted Solid/Tauri event wiring coverage for undo, resize, export, side-panel toggle, unknown IDs, and listener cleanup.
+
+**Verification:**
+- PASS: focused frontend tests — 15/15.
+- PASS: full frontend suite — 87 files / 1264 tests in 35.84s.
+- PASS: production build and root type-check.
+- PASS: `cargo test -p photrez-core` — 85/85.
+- PASS: `cargo test --workspace` — core 85/85 + desktop 15/15.
+- PASS: `pnpm tauri dev` compiled/launched and remained alive until the verification process was stopped.
+- PENDING MANUAL: NATIVE-009 visible Win32 menu click/accelerator smoke and screenshot evidence.
+
 ### [2026-06-20] TEST INFRASTRUCTURE - Second-Pass Vitest Optimization [COMPLETE]
 
 **Goal:**

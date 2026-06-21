@@ -5,6 +5,8 @@ interface SelectionRendererProps {
   selection: SelectionState | null;
   zoom: number;
   pan: { x: number; y: number };
+  canvasWidth?: number;
+  canvasHeight?: number;
   onHandlePointerDown?: (handleId: string) => void;
   onRotatePointerDown?: () => void;
   editMode?: boolean;
@@ -67,13 +69,31 @@ export function SelectionRenderer(props: SelectionRendererProps) {
         });
 
         return (
-          <g
-            transform={`rotate(${angle()}, ${centerX()}, ${centerY()})`}
-            data-selection-group
-            data-selection-active="true"
-            data-mode={editMode() ? "edit" : "base"}
-            style={{ "pointer-events": editMode() ? "auto" : "none" }}
-          >
+          <>
+            <Show when={sel().inverted && props.canvasWidth != null && props.canvasHeight != null}>
+              <rect
+                x={props.pan.x}
+                y={props.pan.y}
+                width={props.canvasWidth! * props.zoom}
+                height={props.canvasHeight! * props.zoom}
+                fill="none"
+                stroke="#E15A17"
+                stroke-width={1.5}
+                stroke-dasharray="5 3"
+                class="animate-dash"
+                vector-effect="non-scaling-stroke"
+                data-selection-inverted-boundary
+                style={{ "pointer-events": "none" }}
+              />
+            </Show>
+            <g
+              transform={`rotate(${angle()}, ${centerX()}, ${centerY()})`}
+              data-selection-group
+              data-selection-active="true"
+              data-selection-inverted={sel().inverted ? "true" : "false"}
+              data-mode={editMode() ? "edit" : "base"}
+              style={{ "pointer-events": editMode() && !sel().inverted ? "auto" : "none" }}
+            >
             {/* Main marquee rect - the boundary (always visible) */}
             <rect
               x={screenX()}
@@ -91,7 +111,7 @@ export function SelectionRenderer(props: SelectionRendererProps) {
             />
 
             {/* Edit-mode-only: rotation connector + handles */}
-            <Show when={editMode()}>
+            <Show when={editMode() && !sel().inverted}>
               {/* Rotation handle connector line */}
               <line
                 x1={centerX()}
@@ -175,7 +195,8 @@ export function SelectionRenderer(props: SelectionRendererProps) {
                 }}
               />
             </Show>
-          </g>
+            </g>
+          </>
         );
       }}
     </Show>

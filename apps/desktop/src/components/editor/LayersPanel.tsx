@@ -13,6 +13,7 @@ import { LayerItem } from "./LayerItem";
 import { useLayerDragReorder } from "./useLayerDragReorder";
 import { useLayerActions } from "./useLayerActions";
 import { cancelLayerTransformSession } from "./transformSession";
+import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
 
 export function LayersPanel() {
   const {
@@ -40,6 +41,12 @@ export function LayersPanel() {
   const [editingLayerId, setEditingLayerId] = createSignal<string | null>(null);
   const [editName, setEditName] = createSignal("");
   const [navigatorCollapsed, setNavigatorCollapsed] = createSignal(false);
+  const [layerContextMenu, setLayerContextMenu] = createSignal<{
+    x: number;
+    y: number;
+    layerId: string;
+    focusTarget: HTMLElement | null;
+  } | null>(null);
 
   const activeLayer = () => {
     const id = activeLayerId();
@@ -62,6 +69,84 @@ export function LayersPanel() {
     handleAddLayer,
     handleDeleteActiveLayer,
   } = useLayerActions();
+
+  const openLayerContextMenu = (event: MouseEvent, layer: LayerNode) => {
+    event.preventDefault();
+    event.stopPropagation();
+    handleSelectLayer(layer.id);
+    setLayerContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      layerId: layer.id,
+      focusTarget: event.currentTarget instanceof HTMLElement ? event.currentTarget : null,
+    });
+  };
+
+  const layerContextItems = (): ContextMenuEntry[] => {
+    const state = layerContextMenu();
+    const layer = state ? layers().find((candidate) => candidate.id === state.layerId) : null;
+    const index = layer ? layers().findIndex((candidate) => candidate.id === layer.id) : -1;
+    if (!layer) return [];
+    return [
+      { kind: "item", label: "New Layer", shortcut: "Ctrl+Shift+N", onSelect: handleAddLayer },
+      { kind: "item", label: "Duplicate Layer", shortcut: "Ctrl+J", onSelect: handleDuplicateActiveLayer },
+      {
+        kind: "item",
+        label: "Rename Layer",
+        disabled: layer.locked,
+        onSelect: () => {
+          setEditingLayerId(layer.id);
+          setEditName(layer.name);
+        },
+      },
+      { kind: "separator" },
+      {
+        kind: "item",
+        label: layer.visible ? "Hide Layer" : "Show Layer",
+        onSelect: (event) => handleToggleVisibility(event, layer.id),
+      },
+      {
+        kind: "item",
+        label: layer.locked ? "Unlock Layer" : "Lock Layer",
+        onSelect: (event) => handleToggleLock(event, layer.id),
+      },
+      { kind: "separator" },
+      {
+        kind: "item",
+        label: "Move Layer Up",
+        disabled: index <= 0,
+        onSelect: (event) => handleMoveUp(event, index),
+      },
+      {
+        kind: "item",
+        label: "Move Layer Down",
+        disabled: index < 0 || index >= layers().length - 1,
+        onSelect: (event) => handleMoveDown(event, index),
+      },
+      {
+        kind: "item",
+        label: "Merge Down",
+        shortcut: "Ctrl+E",
+        disabled: index < 0 || index >= layers().length - 1,
+        onSelect: handleMergeActiveLayerDown,
+      },
+      {
+        kind: "item",
+        label: "Flatten Image",
+        shortcut: "Ctrl+Shift+E",
+        disabled: layers().length <= 1,
+        onSelect: handleFlattenAllLayers,
+      },
+      { kind: "separator" },
+      {
+        kind: "item",
+        label: "Delete Layer",
+        danger: true,
+        disabled: layers().length <= 1,
+        onSelect: handleDeleteActiveLayer,
+      },
+    ];
+  };
 
   // ─── Pointer-based Drag Reorder (replaces HTML5 DnD for Tauri compatibility) ───
   const {
@@ -396,6 +481,7 @@ export function LayersPanel() {
                 setEditingLayerId={setEditingLayerId}
                 setEditName={setEditName}
                 onSelect={handleSelectLayer}
+                onContextMenu={openLayerContextMenu}
                 onPointerDragStart={handlePointerDragStart}
                 onToggleVisibility={handleToggleVisibility}
                 onToggleLock={handleToggleLock}
@@ -410,6 +496,17 @@ export function LayersPanel() {
           </For>
         </Show>
       </div>
+
+      <ContextMenu
+        open={layerContextMenu() !== null}
+        x={layerContextMenu()?.x ?? 0}
+        y={layerContextMenu()?.y ?? 0}
+        ariaLabel="Layer actions"
+        items={layerContextItems()}
+        restoreFocusTo={layerContextMenu()?.focusTarget}
+        onClose={() => setLayerContextMenu(null)}
+        testId="layer-context-menu"
+      />
 
       {/* Layer Actions footer */}
       <div class={clsx("flex shrink-0 items-center gap-5 border-t border-editor-divider bg-editor-panel px-4 py-2.5 text-editor-icon", !activeDocumentId() && "opacity-50 pointer-events-none")}>

@@ -7606,3 +7606,166 @@ Three upstream issues confirm pattern:
 - PASS: `cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml` (binary still builds, 0.82s incremental).
 - PENDING (manual, user-driven): Launch app, confirm titlebar buttons (minimize/maximize/close) respond to clicks, confirm window can be dragged by custom title bar, confirm window can be resized from edges. If user reports buttons still don't respond, hypothesis shifts to pre-existing intermittent webview2 DLL race (`NATIVE-001` documented; would not be caused by this fix).
 - NO COMMITS (per AGENTS.md).
+
+---
+
+## [2026-06-21] FEATURE - Tauri 2 Native Menu Integration [COMPLETE]
+
+### Kategori: POST-MVP / DESKTOP-SHELL / TAURI / COMMAND-ROUTING
+
+**Goal:**
+Add a real Tauri 2 application menu without removing or redesigning Photrez's existing custom title-bar menu, and ensure native menu actions reach the same production editor commands as buttons and keyboard shortcuts.
+
+**Done:**
+1. Verified the current Tauri 2 API with Context7 (`/websites/v2_tauri_app`): menus are installed with `app.set_menu`, menu events are registered with `App::on_menu_event`, and Rust-to-frontend routing uses `Emitter::emit` plus frontend `listen` cleanup.
+2. Added native File, Edit, Image, View, Window, and Help submenus in `main.rs`. File/Open, File/Export, Edit/Undo, Edit/Redo, Image/Resize Canvas, and View/Toggle Side Panels use stable custom IDs; native Quit, Cut/Copy/Paste/Select All, Minimize/Maximize/Close, and About use Tauri predefined items.
+3. Used custom `MenuItemBuilder` entries for Undo/Redo because Tauri 2 documents its predefined Undo/Redo items as unsupported on Windows.
+4. Added `useEditorCommands.ts` as the single editor command router. It preserves crop and transform-session undo semantics, document history restoration, renderer texture restoration, editable-field shortcut guards, and listener cleanup.
+5. Added production wiring coverage in `NativeMenuCommands.test.tsx`: a mounted `AppTitleBar` receives the mocked Tauri event and proves undo state mutation, resize/export signal mutation, side-panel routing, unknown-ID rejection, and unlisten cleanup.
+6. Added Rust tests that construct the real nested menu with Tauri's mock runtime and verify every forwarded editor ID plus the ID allowlist boundary.
+
+**Files Changed:**
+- `apps/desktop/src-tauri/src/main.rs`
+- `apps/desktop/src-tauri/Cargo.toml`
+- `apps/desktop/src/components/editor/AppTitleBar.tsx`
+- `apps/desktop/src/components/editor/useEditorCommands.ts`
+- `apps/desktop/src/components/editor/__tests__/NativeMenuCommands.test.tsx`
+- `docs/AI_CURRENT_TASK.md`
+- `docs/AI_HISTORY.md`
+- `docs/FEATURES.md`
+- `docs/decisions/id-decision-log.md`
+- `docs/faang-review-rejections/2026-06-18-native-runtime-smoke-checklist.md`
+
+**Verification:**
+- PASS: focused frontend menu/title-bar tests — 15/15.
+- PASS: full frontend suite — 87 files / 1264 tests in 35.84s (four pre-existing jsdom canvas warnings only).
+- PASS: `pnpm run build` and `pnpm run type-check`.
+- PASS: `cargo test -p photrez-core` — 85/85.
+- PASS: `cargo test --workspace` — core 85/85 + desktop 15/15.
+- PASS: `pnpm tauri dev` compiled/launched and remained alive until the verification process was stopped.
+- PENDING MANUAL: NATIVE-009 visible Windows native-menu click/accelerator smoke and screenshot evidence.
+
+---
+
+## [2026-06-21] FEATURE - Functional Custom Application Menus [COMPLETE]
+
+### Kategori: UI / FRONTEND / ACCESSIBILITY / COMMAND-ROUTING
+
+**Goal:**
+Turn the custom title-bar menu headings from direct-action placeholders into familiar image-editor dropdown menus where every visible entry performs a real command.
+
+**Done:**
+1. Added `AppMenuBar.tsx` with compact dropdowns for File, Edit, Image, View, Window, and Help while preserving the existing 46px custom title-bar geometry and restrained editor tokens.
+2. File now provides New Document, Open Image, and Export. Edit provides Undo and Redo. Image provides Resize Canvas. View provides Zoom In, Zoom Out, Actual Size, Fit Canvas, and dynamic Hide/Show Side Panels. Window provides Minimize, Maximize/Restore, and Close. Help provides About Photrez feedback.
+3. Extended `useEditorCommands` so custom dropdowns, native Tauri events, keyboard shortcuts, and title-bar buttons share one command implementation. Added document-aware enablement, blank-document creation, viewport camera operations, window actions, and About feedback.
+4. Expanded the native Tauri File and View menus with New Document and the four viewport commands, preserving parity between native and custom menu surfaces.
+5. Added accessible interaction contracts: ARIA menu roles, disabled items, Arrow/Home/End navigation, left/right adjacent-menu switching, Escape focus restoration, Tab dismissal, and click-outside cleanup.
+6. Added mounted wiring tests proving File > New Document mutates the real workspace, Image > Resize Canvas mutates the real dialog signal, and View > Actual Size updates the real viewport camera.
+
+**Files Changed:**
+- `apps/desktop/src/components/editor/AppMenuBar.tsx`
+- `apps/desktop/src/components/editor/AppTitleBar.tsx`
+- `apps/desktop/src/components/editor/useEditorCommands.ts`
+- `apps/desktop/src/components/editor/__tests__/AppMenuBar.test.tsx`
+- `apps/desktop/src/components/editor/__tests__/AppMenuBarWiring.test.tsx`
+- `apps/desktop/src-tauri/src/main.rs`
+- `docs/AI_CURRENT_TASK.md`
+- `docs/AI_HISTORY.md`
+- `docs/FEATURES.md`
+- `docs/decisions/id-decision-log.md`
+
+**Verification:**
+- PASS: focused menu tests, 9/9; combined menu/title-bar/native wiring tests, 23/23.
+- PASS: full frontend suite, 89 files / 1273 tests in 37.29s (four pre-existing jsdom canvas warnings only).
+- PASS: `pnpm run build` and `pnpm run type-check`.
+- PASS: `cargo test -p photrez-core`, 85/85.
+- PASS: `cargo test --workspace`, core 85/85 + desktop 15/15.
+- PASS: active `photrez-desktop` process at `target/debug/photrez-desktop.exe` reported `Responding: true`; a second `pnpm tauri dev` correctly refused the already-used Vite port 1420 instead of launching a duplicate server.
+
+---
+
+## [2026-06-21] FEATURE - Edit and Layer Application Menus [COMPLETE]
+
+### Kategori: UI / FRONTEND / SELECTION / LAYERS / TAURI
+
+**Goal:**
+Extend Photrez's application menus with working image-editor Edit operations and a dedicated Layer menu, without creating parallel mutation logic.
+
+**Done:**
+1. Expanded Edit with Cut, Copy, Paste, Select All, Deselect, and Invert Selection. Enablement reflects document, selection, active bitmap, and in-memory clipboard state.
+2. Added the Layer title-bar menu with New Layer, Duplicate Layer, Delete Layer, Merge Down, and Flatten Image.
+3. Routed selection commands through `SelectionOperations` and layer commands through `useLayerActions`, preserving history commits, renderer texture uploads/destruction, transform-session cancellation, delete confirmation, and render scheduling.
+4. Added `SelectionOperations.hasClipboard()` so Paste communicates its real availability instead of remaining an enabled no-op.
+5. Added a matching native Tauri Layer submenu with stable editor IDs and existing keyboard accelerators, verified against Tauri 2.9.5 documentation through Context7.
+6. Added mounted wiring tests proving Edit selection state mutation, Cut/Copy/Paste dispatch, layer duplication with undo history, and native Layer-event routing.
+
+**Files Changed:**
+- `apps/desktop/src/components/editor/AppMenuBar.tsx`
+- `apps/desktop/src/components/editor/useEditorCommands.ts`
+- `apps/desktop/src/components/editor/editorData.ts`
+- `apps/desktop/src/components/editor/types.ts`
+- `apps/desktop/src/features/selection/SelectionOperations.ts`
+- `apps/desktop/src-tauri/src/main.rs`
+- menu and selection tests
+- required AI, feature, shortcut, and decision documentation
+
+**Verification:**
+- PASS: focused menu and selection tests, 32/32; final dedicated menu wiring file, 6/6.
+- PASS: final full frontend suite, 89 files / 1277 tests in 37.94s.
+- PASS: `pnpm run type-check` and `pnpm run build`.
+- PASS: `cargo test -p photrez-core`, 85/85.
+- PASS: `cargo test --workspace`, core 85/85 + desktop 15/15.
+- BLOCKED RUNTIME RETRY: the existing development instance owns port 1420, so a second `pnpm tauri dev` correctly refused to start. The running app was not terminated to avoid losing user work; restart smoke for the native Layer submenu remains pending.
+
+---
+
+## [2026-06-21] BUG FIX - Deselect and Invert Selection Synchronization [COMPLETE]
+
+### Kategori: BUG FIX / SELECTION / FRONTEND / TEST
+
+**Root Cause:**
+- `CanvasViewport` rendered a pointer-tool-local `selectionBox`; menu and option-bar commands mutated `DocumentEngine` and the editor signal but never refreshed that local marquee.
+- `DocumentEngine.invertSelection()` implemented a placeholder null/full-canvas toggle, so it did not represent the complement of an existing rectangle.
+- Workspace synchronization queried whether a selection existed after it had already been cleared, leaving `selectionEditMode` vulnerable to stale state.
+
+**Fix Rationale:**
+1. Made the editor selection signal authoritative for the visible viewport marquee while preserving the local box for live pointer previews.
+2. Added optional `SelectionState.inverted`; inversion now toggles the complement of the stored bounds, while inverting an empty selection selects the full document.
+3. Made copy/cut/delete complement-aware. Copy preserves the full layer with a transparent excluded hole; delete/cut clear the four outer bands and preserve the excluded rectangle.
+4. Rendered an outer canvas boundary plus the inner excluded marquee for inverted state and disabled transform handles for that non-rectangular region.
+5. Explicitly exits selection edit mode on Deselect/Invert through menu, option bar, keyboard, and workspace synchronization.
+6. Added engine unit tests, pixel-operation tests, renderer tests, CanvasViewport integration tests, and mounted menu wiring assertions.
+
+**Verification:**
+- PASS: focused regression suite, 175/175.
+- PASS: full frontend suite, 89 files / 1284 tests.
+- PASS: `pnpm run type-check` and `pnpm run build`.
+- PASS: `cargo test -p photrez-core`, 85/85.
+- PASS: `cargo test --workspace`, core 85/85 + desktop 15/15.
+
+---
+
+## [2026-06-21] FEATURE - Canvas and Layers Context Menus [COMPLETE]
+
+### Kategori: FEATURE / UI / FRONTEND / ACCESSIBILITY / LAYERS
+
+**Goal:**
+Add familiar right-click workflows to the canvas and layer stack while preserving a single production mutation path.
+
+**Done:**
+1. Added a reusable Portal-based context-menu surface with viewport clamping, ARIA menu semantics, disabled/danger states, automatic focus, Arrow/Home/End navigation, Escape focus restoration, Tab dismissal, and outside-click dismissal.
+2. Added a canvas menu for Cut, Copy, Paste, Select All, Deselect, Invert Selection, Actual Size, and Fit Canvas. Brush/Eraser continue to use their existing parameter menu without competing listeners.
+3. Added a layer-row menu for New, Duplicate, Rename, Show/Hide, Lock/Unlock, Move Up/Down, Merge Down, Flatten Image, and guarded Delete. Right-click activates the target layer before any action.
+4. Added the typed `photrez://editor-command` frontend event bridge so canvas actions reach the existing `useEditorCommands` router instead of duplicating selection/history logic. Layer actions reuse `useLayerActions`.
+5. Added reusable component tests plus mounted canvas and LayersPanel wiring tests covering keyboard focus, dismissal, command dispatch, target selection, history-backed duplication, and inline rename.
+6. Consulted current SolidJS documentation through Context7 for delegated `contextmenu` event support, signal state, typed event handlers, and listener lifecycle.
+
+**Verification:**
+- PASS: focused context/menu/drag wiring suite, 41/41.
+- PASS: full frontend suite, 91 files / 1291 tests.
+- PASS: `pnpm run type-check` and `pnpm run build`.
+- PASS: `cargo test -p photrez-core`, 85/85.
+- PASS: `cargo test --workspace`, core 85/85 + desktop 15/15.
+- PARTIAL LIVE QA: agent-browser loaded the running app and captured its accessibility tree, then its automation session lost connectivity before New Canvas interaction; no runtime claim is based on that incomplete session.
+
+---

@@ -74,11 +74,13 @@ export function SelectionOptionBar() {
 
   const handleInvert = () => {
     engine()?.invertSelection();
+    setSelectionEditMode(false);
     scheduler.requestRender();
   };
 
   const handleDeselect = () => {
     engine()?.clearSelection();
+    setSelectionEditMode(false);
     scheduler.requestRender();
   };
 

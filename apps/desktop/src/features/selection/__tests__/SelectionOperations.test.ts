@@ -204,6 +204,7 @@ describe("SelectionOperations — real pixel operations", () => {
     });
 
     it("returns ImageData with correct dimensions when selection exists", () => {
+      expect(SelectionOperations.hasClipboard()).toBe(false);
       const layer = engine.addLayer("Layer 1", 100, 100);
       // Create a bitmap and set it on the layer
       const offscreen = new OffscreenCanvas(100, 100);
@@ -216,6 +217,7 @@ describe("SelectionOperations — real pixel operations", () => {
       engine.createSelection(10, 20, 50, 60);
       const result = SelectionOperations.copySelection(engine);
       expect(result).not.toBeNull();
+      expect(SelectionOperations.hasClipboard()).toBe(true);
       expect(result!.width).toBe(50);
       expect(result!.height).toBe(60);
     });
@@ -263,6 +265,24 @@ describe("SelectionOperations — real pixel operations", () => {
       const idx = 4 * (15 * 100 + 15);
       expect(c[idx + 2]).toBe(255); // B channel still 255
       expect(c[idx + 3]).toBe(255); // A channel still 255
+    });
+
+    it("copies an inverted selection as the full layer with a transparent excluded hole", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      engine.createSelection(10, 10, 20, 20);
+      engine.invertSelection();
+      const result = SelectionOperations.copySelection(engine)!;
+
+      expect(result.width).toBe(100);
+      expect(result.height).toBe(100);
+      expect(result.data[4 * (15 * 100 + 15) + 3]).toBe(0);
+      expect(result.data[4 * (50 * 100 + 50) + 3]).toBe(255);
     });
   });
 
@@ -324,6 +344,24 @@ describe("SelectionOperations — real pixel operations", () => {
       const outsideIdx = 4 * (50 * 100 + 50);
       expect(c[outsideIdx + 0]).toBe(255);
       expect(c[outsideIdx + 3]).toBe(255);
+    });
+
+    it("clears pixels outside the excluded bounds for an inverted selection", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      engine.createSelection(10, 10, 20, 20);
+      engine.invertSelection();
+      SelectionOperations.deleteSelection(engine);
+
+      const pixels = (engine.getLayerImageBitmap(layer.id) as any)._buffer;
+      expect(pixels[4 * (15 * 100 + 15) + 3]).toBe(255);
+      expect(pixels[4 * (50 * 100 + 50) + 3]).toBe(0);
+      expect(engine.getSelection()).toBeNull();
     });
   });
 

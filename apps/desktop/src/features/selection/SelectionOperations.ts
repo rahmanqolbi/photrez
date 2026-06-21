@@ -11,6 +11,10 @@ import { DocumentEngine } from "../../engine/document";
 export class SelectionOperations {
   private static clipboard: ImageData | null = null;
 
+  static hasClipboard(): boolean {
+    return SelectionOperations.clipboard !== null;
+  }
+
   static getSelectionBounds(engine: DocumentEngine): SelectionState | null {
     const sel = engine.getSelection();
     if (!sel) return null;
@@ -31,8 +35,11 @@ export class SelectionOperations {
     const bitmap = engine.getLayerImageBitmap(activeId);
     if (!bitmap) return null;
 
-    const w = Math.max(0, Math.round(sel.width));
-    const h = Math.max(0, Math.round(sel.height));
+    const layer = engine.getLayer(activeId);
+    if (!layer) return null;
+
+    const w = sel.inverted ? layer.width : Math.max(0, Math.round(sel.width));
+    const h = sel.inverted ? layer.height : Math.max(0, Math.round(sel.height));
     if (w === 0 || h === 0) return null;
 
     const sx = Math.round(sel.x);
@@ -43,11 +50,16 @@ export class SelectionOperations {
     if (!ctx) return null;
 
     try {
-      ctx.drawImage(
-        bitmap,
-        sx, sy, w, h,
-        0, 0, w, h,
-      );
+      if (sel.inverted) {
+        ctx.drawImage(bitmap, 0, 0);
+        ctx.clearRect(sx, sy, Math.round(sel.width), Math.round(sel.height));
+      } else {
+        ctx.drawImage(
+          bitmap,
+          sx, sy, w, h,
+          0, 0, w, h,
+        );
+      }
       const data = ctx.getImageData(0, 0, w, h);
       SelectionOperations.clipboard = data;
       return data;
@@ -150,9 +162,21 @@ export class SelectionOperations {
     const ctx = offscreen.getContext("2d");
     if (!ctx) return;
 
-    // Copy the entire layer bitmap, then clear the selection rectangle.
+    // Copy the entire layer bitmap, then clear either the selected rectangle
+    // or, for an inverted selection, the four bands outside the excluded rect.
     ctx.drawImage(bitmap, 0, 0);
-    ctx.clearRect(sx, sy, w, h);
+    if (sel.inverted) {
+      const left = Math.max(0, Math.min(layerW, sx));
+      const top = Math.max(0, Math.min(layerH, sy));
+      const right = Math.max(0, Math.min(layerW, sx + w));
+      const bottom = Math.max(0, Math.min(layerH, sy + h));
+      ctx.clearRect(0, 0, layerW, top);
+      ctx.clearRect(0, bottom, layerW, layerH - bottom);
+      ctx.clearRect(0, top, left, bottom - top);
+      ctx.clearRect(right, top, layerW - right, bottom - top);
+    } else {
+      ctx.clearRect(sx, sy, w, h);
+    }
 
     const newBitmap = offscreen.transferToImageBitmap();
     engine.setLayerImageBitmap(layer.id, newBitmap);

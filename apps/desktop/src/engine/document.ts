@@ -423,15 +423,13 @@ export class DocumentEngine {
 
   invertSelection(): void {
     if (this.model.selection) {
-      this.model.selection = null;
-    } else {
       this.model.selection = {
-        x: 0,
-        y: 0,
-        width: this.model.width,
-        height: this.model.height,
-        angle: 0,
+        ...this.model.selection,
+        inverted: !this.model.selection.inverted,
       };
+    } else {
+      this.selectAll();
+      return;
     }
     this.notifyChange();
   }

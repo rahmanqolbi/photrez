@@ -26,6 +26,7 @@
 | ✅ DONE      | Flatten All layers (Collapses layer stack)  |
 | ✅ DONE      | Contextual layer creation (inserts above active) |
 | ✅ DONE      | HTML5 Drag & Drop layer list reordering    |
+| ✅ DONE      | Layer row context menu — target activation, new/duplicate/rename, visibility, lock, ordering, merge/flatten, and guarded delete |
 | ✅ DONE      | Photoshop-style Opacity Popover Slider     |
 | ✅ DONE      | Inline double-click renaming input         |
 | ✅ DONE      | Live Canvas Row Thumbnails (checkerboard background) |
@@ -39,6 +40,7 @@
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Rectangular selection (marquee)            |
+| ✅ DONE      | True inverted selection — canvas-minus-rectangle state, complement-aware cut/copy/delete, dual-boundary marquee, and authoritative engine-to-viewport synchronization |
 | ✅ DONE      | Selection draw with Shift (constrain square) and Alt (draw from center) modifiers |
 | ✅ DONE      | Move selection boundary (click+drag inside marquee) |
 | ✅ DONE      | Rotate selection marquee (rotation handle drag) |
@@ -255,13 +257,14 @@
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Custom title bar                           |
 | ✅ DONE      | Window controls (minimize/maximize/close)  |
-| ✅ DONE      | Menu bar (File/Edit/View/Window/Help)      |
-| ✅ DONE      | File menu dropdown                         |
+| ✅ DONE      | Functional custom dropdown menus (File/Edit/Image/Layer/View/Window/Help) |
+| ✅ DONE      | Selection-aware Edit menu and history-safe Layer menu operations |
+| ✅ DONE      | Accessible menu lifecycle (keyboard, focus restore, click-outside, disabled states) |
 | ✅ DONE      | Status bar (dimensions, cursor pos, zoom, RAM) |
 | ✅ DONE      | Tauri bridge IPC (`invoke` → `#[tauri::command]`) |
 | ✅ DONE      | Response envelope contract (v2.0.0 Tauri shell runtime: ping, contract info, file read/write) |
 | ✅ DONE      | File open dialog (Ctrl+O)                  |
-| 🗓️ PLANNED (POST-MVP) | Native menu integration                    |
+| ✅ DONE      | Native menu integration (mirrors custom menu; shared command routing) |
 | ✅ DONE      | Window state persistence (size/position/maximized, manual core-API impl in `main.rs`) |
 
 ---
@@ -296,7 +299,7 @@
 | ✅ DONE      | Crop mode Size (target W/H constraint, Shift = free) + editable target W/H + Apply resizes canvas |
 | ✅ DONE      | Delete Cropped Pixels toggle (ON = destructive bitmap crop, OFF = offset-based) |
 | ✅ DONE      | Crop Enter/Esc keyboard shortcuts |
-| 🗓️ PLANNED (POST-MVP) | General context menu system                |
+| ✅ DONE      | General accessible context menu system — reusable clamped surface, keyboard focus/navigation, canvas actions, layer actions, and preserved Brush/Eraser settings menu |
 | 🗓️ PLANNED (POST-MVP) | Tooltip system                             |
 | 🗓️ PLANNED (POST-MVP) | Dialog system (modal)                      |
 
@@ -315,7 +318,7 @@
 | ✅ DONE      | CI pipeline (GitHub Actions: type-check, lint, frontend tests, build, browser E2E, Rust tests, dependency audit) |
 | ✅ DONE      | Unit tests (core crate) — 85 tests, 92 workspace total |
 | ✅ DONE      | Desktop shell contract tests — 8 Tauri command tests |
-| ✅ DONE      | Frontend tests — 1261 passing tests (86 files), latest recorded 2026-06-20 |
+| ✅ DONE      | Frontend tests — 1291 passing tests (91 files), latest recorded 2026-06-21 |
 | ✅ DONE      | Split Vitest feedback paths — 783 pure-Node tests (~6.5s), 478 isolated jsdom tests, full 1261-test gate 37.48s (83.6% faster than 228.33s baseline) |
 | ✅ DONE      | E2E browser tests — 21 Playwright tests    |
 | ✅ DONE      | E2E visible-pixel sampling compatible with `preserveDrawingBuffer: false` — checkerboard, brush/eraser, and selection undo/redo tests sample composited screenshots instead of an undefined default WebGL framebuffer |

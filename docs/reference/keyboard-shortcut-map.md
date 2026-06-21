@@ -81,6 +81,8 @@ Reference: Existing implementation in `aplikasi-cetak-massal` studio.
 | `Ctrl+[` | Move Layer Down | In layer stack |
 | `Ctrl+G` | Flip Horizontal | Flips selected layer horizontally |
 | `Ctrl+Shift+G` | Flip Vertical | Flips selected layer vertically |
+| `Ctrl+E` | Merge Down | Merges the active layer into the layer below |
+| `Ctrl+Shift+E` | Flatten Image | Flattens all document layers |
 | `0-9` (no modifier) | Set Layer Opacity | `0` = 100%, `1` = 10%, ..., `9` = 90% |
 
 ### View Operations

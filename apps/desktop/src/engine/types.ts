@@ -43,6 +43,8 @@ export interface SelectionState {
   width: number;
   height: number;
   angle: number;
+  /** When true, the selected pixels are everything outside these bounds. */
+  inverted?: boolean;
 }
 
 // ─── Viewport ───
@@ -114,4 +116,3 @@ export interface DocumentTabSummary {
 
 export const DEFAULT_DOCUMENT_WIDTH = 800;
 export const DEFAULT_DOCUMENT_HEIGHT = 600;
-

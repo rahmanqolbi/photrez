@@ -18,6 +18,7 @@ interface LayerItemProps {
   setEditingLayerId: (id: string | null) => void;
   setEditName: (name: string) => void;
   onSelect: (id: string) => void;
+  onContextMenu?: (event: MouseEvent, layer: LayerNode, idx: number) => void;
   onPointerDragStart: (e: PointerEvent, idx: number) => void;
   onToggleVisibility: (e: MouseEvent, id: string) => void;
   onToggleLock: (e: MouseEvent, id: string) => void;
@@ -79,6 +80,7 @@ export function LayerItem(props: LayerItemProps) {
       onDragStart={onLayerDragStart}
       onDragEnd={onLayerDragEnd}
       onClick={() => props.onSelect(props.layer.id)}
+      onContextMenu={(event) => props.onContextMenu?.(event, props.layer, props.idx)}
       onPointerDown={(e) => !props.layer.locked && props.onPointerDragStart(e, props.idx)}
       class={clsx(
         "flex h-[50px] items-center gap-2.5 px-3.5 cursor-grab select-none group border-b border-editor-divider/10 relative transition-all duration-100 touch-auto active:cursor-grabbing",

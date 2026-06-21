@@ -108,15 +108,25 @@ describe('DocumentEngine', () => {
     expect(engine.getSelection()).toBeNull();
   });
 
-  it('invertSelection toggles between null and full document', () => {
+  it('invertSelection toggles the complement of the current bounds', () => {
     const engine = new DocumentEngine('doc-1', 'My Document', 800, 600);
 
     engine.createSelection(10, 20, 100, 200);
     expect(engine.getSelection()).toEqual({ x: 10, y: 20, width: 100, height: 200, angle: 0 });
 
     engine.invertSelection();
-    expect(engine.getSelection()).toBeNull();
+    expect(engine.getSelection()).toEqual({
+      x: 10, y: 20, width: 100, height: 200, angle: 0, inverted: true,
+    });
 
+    engine.invertSelection();
+    expect(engine.getSelection()).toEqual({
+      x: 10, y: 20, width: 100, height: 200, angle: 0, inverted: false,
+    });
+  });
+
+  it('invertSelection selects the full document when there is no selection', () => {
+    const engine = new DocumentEngine('doc-1', 'My Document', 800, 600);
     engine.invertSelection();
     expect(engine.getSelection()).toEqual({ x: 0, y: 0, width: 800, height: 600, angle: 0 });
   });

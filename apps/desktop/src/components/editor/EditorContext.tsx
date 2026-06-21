@@ -19,6 +19,7 @@ import { ViewportCamera } from "../../viewport/viewportCamera";
 import { DragControllerProvider } from "./DragController";
 import { showToast as showToastImpl } from "./Toast";
 import { runToolSwitchCleanup } from "./toolLifecycle";
+import { DialogProvider } from "./DialogProvider";
 
 
 
@@ -311,9 +312,11 @@ export function EditorProvider(props: {
 
   return (
     <EditorContext.Provider value={value}>
-      <DragControllerProvider>
-        {props.children}
-      </DragControllerProvider>
+      <DialogProvider>
+        <DragControllerProvider>
+          {props.children}
+        </DragControllerProvider>
+      </DialogProvider>
     </EditorContext.Provider>
   );
 }

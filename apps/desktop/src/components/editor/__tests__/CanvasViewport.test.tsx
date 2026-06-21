@@ -304,6 +304,30 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     expect(container.querySelector("rect.animate-dash")).not.toBeNull();
   });
 
+  it("clears the visible marquee when the engine is deselected outside the pointer chain", async () => {
+    const { session } = renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("selection");
+
+    session.engine.createSelection(10, 20, 100, 80);
+    expect(container.querySelector("[data-selection-marquee]")).not.toBeNull();
+
+    session.engine.clearSelection();
+    expect(container.querySelector("[data-selection-marquee]")).toBeNull();
+  });
+
+  it("renders an inverted engine selection as canvas boundary plus excluded bounds", async () => {
+    const { session } = renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("selection");
+
+    session.engine.createSelection(10, 20, 100, 80);
+    session.engine.invertSelection();
+
+    expect(container.querySelector("[data-selection-inverted-boundary]")).not.toBeNull();
+    expect(container.querySelector("[data-selection-group]")?.getAttribute("data-selection-inverted")).toBe("true");
+  });
+
   it("selection marquee updates in real-time during drag (live preview)", async () => {
     renderViewport();
     await new Promise((resolve) => setTimeout(resolve, 0));

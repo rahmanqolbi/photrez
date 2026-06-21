@@ -1,11 +1,8 @@
-import { For, createSignal, onMount, onCleanup } from "solid-js";
 import { Icon } from "./icons";
-import { MENU_ITEMS } from "./editorData";
 import { runTauriWindowAction } from "@/lib/desktop";
 import { useEditor } from "./EditorContext";
-import { showOpenImageDialog, readFileBytes } from "@/tauri/native";
-import { WorkspaceManager } from "@/engine/workspace";
-import { cancelLayerTransformSession } from "./transformSession";
+import { useEditorCommands } from "./useEditorCommands";
+import { AppMenuBar } from "./AppMenuBar";
 
 type AppTitleBarProps = {
   isRightDockOpen: boolean;
@@ -13,167 +10,13 @@ type AppTitleBarProps = {
 };
 
 export function AppTitleBar(props: AppTitleBarProps) {
-  const { workspace, renderer, scheduler, activeDocumentId, documents, activeTool, undoLastCrop, canCropUndo, redoCrop, canCropRedo, setCropRect, setCropRotation, layerTransformSession, setLayerTransformSession, setShowResizeDialog, setShowExportDialog, syncViewport } = useEditor();
-
-  const cancelActiveTransformSession = (): boolean => {
-    const engine = workspace.getActiveEngine();
-    if (cancelLayerTransformSession(layerTransformSession(), engine)) {
-      setLayerTransformSession(null);
-      scheduler.requestRender();
-      return true;
-    }
-    return false;
-  };
+  const { activeDocumentId, documents } = useEditor();
+  const commands = useEditorCommands(props.onToggleRightDock);
 
   const activeDocName = () => {
     const id = activeDocumentId();
-    if (!id) return "No Document Open";
-    return documents().find((d) => d.id === id)?.displayName || "Untitled";
+    return documents().find((document) => document.id === id)?.displayName || "Untitled";
   };
-
-  const handleUndo = () => {
-    if (cancelActiveTransformSession()) return;
-    // Crop mode: use crop undo stack instead of document undo
-    if (activeTool() === "crop" && canCropUndo()) {
-      const state = undoLastCrop();
-      if (state) {
-        setCropRect(state.rect);
-        setCropRotation(state.rotation);
-        return;
-      }
-    }
-    // Fall through to document undo for non-crop or empty crop stack
-    try {
-      const engine = workspace.getActiveEngine();
-      const history = workspace.getActiveHistory();
-      if (engine && history && history.canUndo()) {
-        const prev = history.undo(engine.snapshot());
-        if (prev) {
-          // Default behavior preserves the user's current viewport (zoom/pan)
-          // so undo/redo don't cause zoom-popping (per docs/AI_HISTORY.md
-          // 2026-06-11 fix). The drawing buffer is sized to the container
-          // via renderer.resizeToViewport() in the createEffect, and that
-          // buffer remains valid for the restored engine state because the
-          // camera matrix and the buffer both refer to the viewport (not
-          // docW * zoom), so layer compositing is geometrically consistent.
-          engine.restore(prev);
-          for (const layer of engine.getLayers()) {
-            if (layer.imageBitmap) {
-              renderer.uploadImage(layer.id, layer.imageBitmap);
-            }
-          }
-          scheduler.requestRender();
-        }
-      }
-    } catch (err) {
-      console.error("Undo failed:", err);
-    }
-  };
-
-  const handleRedo = () => {
-    if (cancelActiveTransformSession()) return;
-    // Crop mode: use crop redo stack instead of document redo
-    if (activeTool() === "crop" && canCropRedo()) {
-      const state = redoCrop();
-      if (state) {
-        setCropRect(state.rect);
-        setCropRotation(state.rotation);
-        return;
-      }
-    }
-    // Fall through to document redo for non-crop or empty crop stack
-    try {
-      const engine = workspace.getActiveEngine();
-      const history = workspace.getActiveHistory();
-      if (engine && history && history.canRedo()) {
-        const next = history.redo(engine.snapshot());
-        if (next) {
-          // See handleUndo for the viewport-preservation rationale.
-          engine.restore(next);
-          for (const layer of engine.getLayers()) {
-            if (layer.imageBitmap) {
-              renderer.uploadImage(layer.id, layer.imageBitmap);
-            }
-          }
-          scheduler.requestRender();
-        }
-      }
-    } catch (err) {
-      console.error("Redo failed:", err);
-    }
-  };
-
-  const handleOpenImage = async () => {
-    try {
-      const paths = await showOpenImageDialog();
-      if (!paths || paths.length === 0) return;
-
-      for (const path of paths) {
-        if (workspace.isFull()) break;
-
-        const bytes = await readFileBytes(path);
-        const blob = new Blob([bytes as any]);
-        const bitmap = await createImageBitmap(blob);
-
-        const id = `doc-${crypto.randomUUID()}`;
-        const name = path.split(/[/\\]/).pop() || "Image";
-        const session = WorkspaceManager.createDocumentFromImage(id, name, bitmap);
-        
-        workspace.addDocument(session);
-
-        const bgLayerId = session.engine.getLayers()[0].id;
-        renderer.uploadImage(bgLayerId, bitmap);
-        scheduler.requestRender();
-      }
-    } catch (e) {
-      console.error("Failed to open image:", e);
-    }
-  };
-
-  const handleMenuClick = (item: string) => {
-    if (item === "File") {
-      handleOpenImage();
-    } else if (item === "Image") {
-      setShowResizeDialog(true);
-    }
-  };
-
-  const handleSave = () => {
-    if (activeDocumentId()) {
-      setShowExportDialog(true);
-    }
-  };
-
-  // Bind Ctrl+Z and Ctrl+Y shortcuts
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.defaultPrevented) return;
-    const active = document.activeElement;
-    if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;
-
-    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "z") {
-      e.preventDefault();
-      handleRedo();
-    } else if (e.ctrlKey && e.key.toLowerCase() === "z") {
-      e.preventDefault();
-      handleUndo();
-    } else if (e.ctrlKey && e.key.toLowerCase() === "y") {
-      e.preventDefault();
-      handleRedo();
-    } else if (e.ctrlKey && e.key.toLowerCase() === "o") {
-      e.preventDefault();
-      handleOpenImage();
-    } else if ((e.ctrlKey && e.key.toLowerCase() === "s")) {
-      e.preventDefault();
-      handleSave();
-    }
-  };
-
-  onMount(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    onCleanup(() => {
-      window.removeEventListener("keydown", handleKeyDown);
-    });
-  });
 
   return (
     <header class="relative flex h-[46px] shrink-0 items-center border-b border-editor-divider bg-editor-topbar select-none">
@@ -188,18 +31,11 @@ export function AppTitleBar(props: AppTitleBarProps) {
           </div>
         </div>
 
-        <nav class="hidden items-center gap-0.5 md:flex">
-          <For each={MENU_ITEMS}>
-            {(item) => (
-              <button
-                onClick={() => handleMenuClick(item)}
-                class="flex h-[26px] items-center justify-center rounded-[4px] px-2.5 text-[12.5px] tracking-wide text-editor-text/85 transition-colors hover:bg-white/[0.045] hover:text-editor-text"
-              >
-                {item}
-              </button>
-            )}
-          </For>
-        </nav>
+        <AppMenuBar
+          execute={commands.execute}
+          isEnabled={commands.isEnabled}
+          isRightDockOpen={props.isRightDockOpen}
+        />
       </div>
 
       <div
@@ -216,18 +52,17 @@ export function AppTitleBar(props: AppTitleBarProps) {
         </div>
       </div>
 
-      {/* Window Controls */}
       <div class="flex shrink-0 items-center">
         <div class="mr-3 flex items-center gap-0.5 text-editor-icon">
           <button
-            onClick={handleUndo}
+            onClick={commands.undo}
             class="flex size-7 items-center justify-center rounded-[4px] hover:bg-white/[0.045] hover:text-editor-text"
             aria-label="Undo"
           >
             <Icon name="undo" class="size-[16px]" strokeWidth={1.75} />
           </button>
           <button
-            onClick={handleRedo}
+            onClick={commands.redo}
             class="flex size-7 items-center justify-center rounded-[4px] hover:bg-white/[0.045] hover:text-editor-text"
             aria-label="Redo"
           >

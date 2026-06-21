@@ -299,6 +299,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
           e.preventDefault();
           e.stopPropagation();
           engine.clearSelection();
+          setSelectionEditMode(false);
           options.onSelectionChange?.();
           scheduler.requestRender();
           return;
@@ -309,6 +310,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
           e.preventDefault();
           e.stopPropagation();
           engine.invertSelection();
+          setSelectionEditMode(false);
           options.onSelectionChange?.();
           scheduler.requestRender();
           return;
@@ -329,6 +331,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         if (e.key === "Escape") {
           e.preventDefault();
           engine.clearSelection();
+          setSelectionEditMode(false);
           options.onSelectionChange?.();
           scheduler.requestRender();
           return;

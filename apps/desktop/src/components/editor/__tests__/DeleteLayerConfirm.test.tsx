@@ -91,30 +91,32 @@ describe("Delete layer confirmation", () => {
     vi.restoreAllMocks();
   });
 
-  it("delete button calls confirm with layer name", () => {
+  it("delete button shows the shared dialog with layer name and deletes after confirmation", async () => {
     const session = WorkspaceManager.createBlankDocument("test", "Test", 800, 600);
     const bitmap = { width: 800, height: 600, close: vi.fn() } as unknown as ImageBitmap;
     installCanvasMocks(bitmap);
 
     const { container, session: s, dispose } = renderLayersPanel(session);
 
-    const l1 = s.engine.getLayers()[0];
     const l2 = s.engine.addLayer("Layer 2");
-
-    vi.spyOn(window, "confirm").mockImplementation(() => true);
 
     const deleteBtn = container.querySelector<HTMLButtonElement>("button[title='Delete Layer']");
     expect(deleteBtn).toBeTruthy();
     deleteBtn!.click();
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    const dialog = document.querySelector<HTMLElement>('[role="alertdialog"]');
+    expect(dialog).toHaveTextContent(l2.name);
+    expect(document.activeElement).toBe(document.querySelector("[data-dialog-cancel]"));
+    document.querySelector<HTMLButtonElement>("[data-dialog-confirm]")!.click();
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
 
-    expect(window.confirm).toHaveBeenCalledWith(
-      expect.stringContaining(l2.name),
-    );
+    expect(s.engine.getLayers()).toHaveLength(1);
+    expect(s.engine.getLayers()[0].id).not.toBe(l2.id);
 
     dispose();
   });
 
-  it("cancelling confirm does not delete layer", () => {
+  it("cancelling the shared dialog does not delete layer", async () => {
     const session = WorkspaceManager.createBlankDocument("test", "Test", 800, 600);
     const bitmap = { width: 800, height: 600, close: vi.fn() } as unknown as ImageBitmap;
     installCanvasMocks(bitmap);
@@ -123,33 +125,50 @@ describe("Delete layer confirmation", () => {
 
     s.engine.addLayer("Layer 2");
 
-    vi.spyOn(window, "confirm").mockImplementation(() => false);
-
     const deleteBtn = container.querySelector<HTMLButtonElement>("button[title='Delete Layer']");
     expect(deleteBtn).toBeTruthy();
     deleteBtn!.click();
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    document.querySelector<HTMLButtonElement>("[data-dialog-cancel]")!.click();
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
 
     expect(s.engine.getLayers().length).toBe(2);
 
     dispose();
   });
 
-  it("confirm is not shown for last layer", () => {
+  it("dialog is not shown for last layer", () => {
     const session = WorkspaceManager.createBlankDocument("test", "Test", 800, 600);
     const bitmap = { width: 800, height: 600, close: vi.fn() } as unknown as ImageBitmap;
     installCanvasMocks(bitmap);
 
     const { container, session: s, dispose } = renderLayersPanel(session);
 
-    vi.spyOn(window, "confirm").mockImplementation(() => true);
-
     const deleteBtn = container.querySelector<HTMLButtonElement>("button[title='Delete Layer']");
     expect(deleteBtn).toBeTruthy();
     deleteBtn!.click();
 
-    expect(window.confirm).not.toHaveBeenCalled();
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull();
     expect(s.engine.getLayers().length).toBe(1);
 
+    dispose();
+  });
+
+  it("does not delete from the original document if the active document changes while open", async () => {
+    const first = WorkspaceManager.createBlankDocument("first", "First", 800, 600);
+    first.engine.addLayer("Layer 2");
+    const { ws, container, dispose } = renderLayersPanel(first);
+    const deleteBtn = container.querySelector<HTMLButtonElement>("button[title='Delete Layer']")!;
+    deleteBtn.click();
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+    const second = WorkspaceManager.createBlankDocument("second", "Second", 800, 600);
+    ws.addDocument(second);
+    document.querySelector<HTMLButtonElement>("[data-dialog-confirm]")!.click();
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+    expect(first.engine.getLayers()).toHaveLength(2);
+    expect(second.engine.getLayers()).toHaveLength(1);
     dispose();
   });
 });

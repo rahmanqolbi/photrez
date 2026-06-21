@@ -116,6 +116,40 @@ describe("LayersPanel interactions", () => {
     dispose();
   });
 
+  it("right-click selects the target layer and duplicates it through the production action", async () => {
+    const session = WorkspaceManager.createBlankDocument("context-test", "Context Test", 800, 600);
+    session.engine.addLayer("Top Layer");
+    const target = session.engine.getLayers()[1];
+    const { ws, container, dispose } = renderLayersPanel(session);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    container.querySelector<HTMLElement>('[data-layer-idx="1"]')!.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, clientX: 40, clientY: 50 }),
+    );
+    expect(session.engine.getActiveLayerId()).toBe(target.id);
+    const duplicate = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+      .find((button) => button.textContent?.includes("Duplicate Layer"))!;
+    duplicate.click();
+
+    expect(session.engine.getLayers()).toHaveLength(3);
+    expect(ws.getActiveHistory()?.canUndo()).toBe(true);
+    dispose();
+  });
+
+  it("starts inline rename from the target layer context menu", async () => {
+    const { container, dispose } = renderLayersPanel();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    container.querySelector<HTMLElement>('[data-layer-idx="0"]')!.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, clientX: 40, clientY: 50 }),
+    );
+    const rename = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+      .find((button) => button.textContent?.includes("Rename Layer"))!;
+    rename.click();
+
+    expect(container.querySelector('input[type="text"]')).not.toBeNull();
+    dispose();
+  });
+
   it("uploads the newly flattened bitmap after Flatten All Layers", async () => {
     const flattenedBitmap = { width: 800, height: 600, close: vi.fn() } as unknown as ImageBitmap;
     installCanvasMocks(flattenedBitmap);

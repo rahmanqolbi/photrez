@@ -24,6 +24,7 @@ import { ModernCropOverlay } from "./ModernCropOverlay";
 import { TransformHud } from "./TransformHud";
 import { SelectionRenderer } from "@/features/selection/SelectionRenderer";
 import { BrushContextMenu } from "./BrushContextMenu";
+import { CanvasContextMenu } from "./CanvasContextMenu";
 import { getPasteboardClickAction } from "./pasteboardClickPolicy";
 import {
   getDefaultModernCropFrame,
@@ -92,6 +93,7 @@ export function CanvasViewport() {
     moveAutoSelect,
     selectedLayerId,
     layerTransformSession,
+    selection,
     selectionEditMode,
     setSelectionEditMode,
     scheduler,
@@ -343,6 +345,25 @@ export function CanvasViewport() {
     moveSnapEnabled: () => moveSnapEnabled(),
   });
 
+  // The engine/context selection is authoritative. Pointer tools keep a local
+  // box for live drag previews, but menu and option-bar commands mutate the
+  // engine directly and must update (or clear) that same visible marquee.
+  createEffect(() => {
+    if (activeTool() !== "selection") {
+      setSelectionBoxSignal(null);
+      return;
+    }
+    const current = selection();
+    setSelectionBoxSignal(current ? {
+      x: current.x,
+      y: current.y,
+      w: current.width,
+      h: current.height,
+      angle: current.angle,
+      inverted: current.inverted,
+    } : null);
+  });
+
   const canvasLayerDrag = useCanvasLayerDrag({
     onSnapLinesChange: setSnapLines,
   });
@@ -460,7 +481,14 @@ export function CanvasViewport() {
       const engine = workspace.getActiveEngine();
       const sel = engine?.getSelection();
       if (sel) {
-        setSelectionBoxSignal({ x: sel.x, y: sel.y, w: sel.width, h: sel.height, angle: sel.angle });
+        setSelectionBoxSignal({
+          x: sel.x,
+          y: sel.y,
+          w: sel.width,
+          h: sel.height,
+          angle: sel.angle,
+          inverted: sel.inverted,
+        });
       } else {
         setSelectionBoxSignal(null);
       }
@@ -883,9 +911,12 @@ export function CanvasViewport() {
                     width: box().w,
                     height: box().h,
                     angle: box().angle ?? 0,
+                    inverted: box().inverted,
                   }}
                   zoom={zoom()}
                   pan={pan()}
+                  canvasWidth={docWidth()}
+                  canvasHeight={docHeight()}
                   editMode={selectionEditMode()}
                   onRotatePointerDown={() => startSelectionRotation()}
                 />
@@ -1139,6 +1170,7 @@ export function CanvasViewport() {
         </Show>
       </Show>
       <BrushContextMenu />
+      <CanvasContextMenu />
     </div>
   );
 }

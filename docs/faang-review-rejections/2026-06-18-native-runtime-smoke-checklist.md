@@ -1,6 +1,6 @@
 # Native Runtime Smoke Checklist
 
-Status: partial evidence collected 2026-06-20 (NATIVE-001 passed with a retry warning; NATIVE-002 through NATIVE-007 remain pending).
+Status: partial evidence collected 2026-06-21 (NATIVE-001 passed with a retry warning; automated native-menu launch/build passed; interactive rows remain pending).
 
 Browser E2E is useful for editor logic, but it does not prove OS drag/drop, native dialogs, installer behavior, or file-on-disk save semantics. Complete this checklist for each release candidate or attach automation output that proves the same behavior.
 
@@ -27,6 +27,7 @@ Browser E2E is useful for editor logic, but it does not prove OS drag/drop, nati
 | NATIVE-006 | Cancel export does not write | Open Export, cancel dialog, verify no new file appears at target location. | Target folder screenshot or shell listing before/after. | PENDING — native cancel path not executed. |
 | NATIVE-007 | Window controls and app close path work | Minimize, restore/maximize, close. Reopen app. | Short screen recording or screenshots. | PENDING — custom control clicks not executed. |
 | NATIVE-008 | Window state restored after restart | Launch app, resize/move/maximize the main window, close app, relaunch via `pnpm.cmd tauri dev` or installed app. Verify the window reopens at the same position, size, maximized state, and monitor. | Before/after screenshots showing identical geometry; inspect `%APPDATA%\com.photrez.app\.window-state.json` on Windows to confirm file exists and is non-empty. | PENDING — manual follow-up. |
+| NATIVE-009 | Native application menu routes commands | Launch the app and use both mouse and accelerators for Open, Export, Undo, Redo, Resize Canvas, Toggle Side Panels, Minimize/Maximize/Close, and Quit. Confirm the custom title-bar menu remains present. | Screenshot of the visible native menu plus before/after evidence for one editor mutation and one window action. | PENDING MANUAL — `pnpm tauri dev` compiled/launched and stayed alive; Rust builder tests and mounted frontend event-routing tests pass, but visible Win32 menu interaction was not captured. |
 
 ## Evidence — 2026-06-20
 

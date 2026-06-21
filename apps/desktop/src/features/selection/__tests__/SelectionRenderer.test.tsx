@@ -10,6 +10,8 @@ function renderComponent(props: {
   onHandlePointerDown?: (handleId: string) => void;
   onRotatePointerDown?: () => void;
   editMode?: boolean;
+  canvasWidth?: number;
+  canvasHeight?: number;
 }) {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -24,6 +26,8 @@ function renderComponent(props: {
         onHandlePointerDown={props.onHandlePointerDown ?? vi.fn()}
         onRotatePointerDown={props.onRotatePointerDown ?? vi.fn()}
         editMode={props.editMode ?? false}
+        canvasWidth={props.canvasWidth}
+        canvasHeight={props.canvasHeight}
       />
     ),
     svg,
@@ -80,6 +84,41 @@ describe("SelectionRenderer — base state (no edit mode)", () => {
     const group = container.querySelector("[data-selection-group]");
     expect(group).not.toBeNull();
     expect(group!.getAttribute("data-selection-active")).toBe("true");
+    dispose();
+  });
+});
+
+describe("SelectionRenderer — inverted selection", () => {
+  it("renders the canvas boundary plus the excluded inner marquee", () => {
+    const selection: SelectionState = {
+      x: 10, y: 20, width: 30, height: 40, angle: 0, inverted: true,
+    };
+    const { container, dispose } = renderComponent({
+      selection,
+      zoom: 2,
+      pan: { x: 5, y: 7 },
+      canvasWidth: 100,
+      canvasHeight: 80,
+    });
+
+    const boundary = container.querySelector("[data-selection-inverted-boundary]");
+    expect(boundary).not.toBeNull();
+    expect(boundary!.getAttribute("x")).toBe("5");
+    expect(boundary!.getAttribute("y")).toBe("7");
+    expect(boundary!.getAttribute("width")).toBe("200");
+    expect(boundary!.getAttribute("height")).toBe("160");
+    expect(container.querySelector("[data-selection-marquee]")).not.toBeNull();
+    expect(container.querySelector("[data-selection-group]")!.getAttribute("data-selection-inverted")).toBe("true");
+    dispose();
+  });
+
+  it("does not expose transform handles for a non-rectangular complement", () => {
+    const selection: SelectionState = {
+      x: 10, y: 20, width: 30, height: 40, angle: 0, inverted: true,
+    };
+    const { container, dispose } = renderComponent({ selection, editMode: true });
+    expect(container.querySelectorAll("[data-handle-id]")).toHaveLength(0);
+    expect(container.querySelector("[data-rotation-handle]")).toBeNull();
     dispose();
   });
 });

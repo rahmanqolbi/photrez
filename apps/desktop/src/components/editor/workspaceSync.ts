@@ -34,10 +34,9 @@ export function setupWorkspaceSync(params: SyncStateParams) {
         params.setActiveLayerId(engine.getActiveLayerId());
         params.setSelectedLayerId(engine.getActiveLayerId());
         const newSel = engine.getSelection() ? { ...engine.getSelection()! } : null;
-        const hadSelection = params.workspace.getActiveEngine()?.getSelection() != null;
         params.setSelection(newSel);
         // Auto-disable edit mode when selection is cleared
-        if (!newSel && hadSelection) {
+        if (!newSel) {
           params.setSelectionEditMode(false);
         }
         params.setDocWidth(engine.getWidth());

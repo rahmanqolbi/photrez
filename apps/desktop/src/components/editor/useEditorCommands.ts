@@ -1,0 +1,371 @@
+import { onCleanup, onMount } from "solid-js";
+import { listen } from "@tauri-apps/api/event";
+import { isEditableTarget } from "@/lib/dom";
+import { isTauriRuntime, runTauriWindowAction } from "@/lib/desktop";
+import { WorkspaceManager } from "@/engine/workspace";
+import { SelectionOperations } from "@/features/selection/SelectionOperations";
+import { useEditor } from "./EditorContext";
+import { useLayerActions } from "./useLayerActions";
+import { cancelLayerTransformSession } from "./transformSession";
+import { useDialog } from "./DialogProvider";
+
+export const NATIVE_MENU_EVENT = "photrez://native-menu";
+export const EDITOR_COMMAND_EVENT = "photrez://editor-command";
+
+export type EditorCommand =
+  | "file.new"
+  | "file.open"
+  | "file.export"
+  | "edit.undo"
+  | "edit.redo"
+  | "edit.cut"
+  | "edit.copy"
+  | "edit.paste"
+  | "edit.select-all"
+  | "edit.deselect"
+  | "edit.invert-selection"
+  | "image.resize"
+  | "layer.new"
+  | "layer.duplicate"
+  | "layer.delete"
+  | "layer.merge-down"
+  | "layer.flatten"
+  | "view.zoom-in"
+  | "view.zoom-out"
+  | "view.actual-size"
+  | "view.fit-canvas"
+  | "view.toggle-side-panels"
+  | "window.minimize"
+  | "window.toggle-maximize"
+  | "window.close"
+  | "help.about";
+
+const EDITOR_COMMANDS: ReadonlySet<string> = new Set<EditorCommand>([
+  "file.new",
+  "file.open",
+  "file.export",
+  "edit.undo",
+  "edit.redo",
+  "edit.cut",
+  "edit.copy",
+  "edit.paste",
+  "edit.select-all",
+  "edit.deselect",
+  "edit.invert-selection",
+  "image.resize",
+  "layer.new",
+  "layer.duplicate",
+  "layer.delete",
+  "layer.merge-down",
+  "layer.flatten",
+  "view.zoom-in",
+  "view.zoom-out",
+  "view.actual-size",
+  "view.fit-canvas",
+  "view.toggle-side-panels",
+  "window.minimize",
+  "window.toggle-maximize",
+  "window.close",
+  "help.about",
+]);
+
+export function isEditorCommand(value: string): value is EditorCommand {
+  return EDITOR_COMMANDS.has(value);
+}
+
+export function dispatchEditorCommand(command: EditorCommand): void {
+  window.dispatchEvent(new CustomEvent<EditorCommand>(EDITOR_COMMAND_EVENT, { detail: command }));
+}
+
+export function useEditorCommands(onToggleSidePanels: () => void) {
+  const editor = useEditor();
+  const dialog = useDialog();
+  const layerActions = useLayerActions();
+
+  const requiresDocument = (command: EditorCommand) => (
+    command === "file.export"
+    || command === "edit.undo"
+    || command === "edit.redo"
+    || command.startsWith("edit.")
+    || command === "image.resize"
+    || command.startsWith("layer.")
+    || command === "view.zoom-in"
+    || command === "view.zoom-out"
+    || command === "view.actual-size"
+    || command === "view.fit-canvas"
+  );
+
+  const isEnabled = (command: EditorCommand): boolean => {
+    if (command === "file.new") return !editor.workspace.isFull();
+    if (requiresDocument(command) && !editor.activeDocumentId()) return false;
+    if (command === "edit.undo") {
+      return editor.layerTransformSession() !== null
+        || (editor.activeTool() === "crop" && editor.canCropUndo())
+        || editor.workspace.getActiveHistory()?.canUndo() === true;
+    }
+    if (command === "edit.redo") {
+      return (editor.activeTool() === "crop" && editor.canCropRedo())
+        || editor.workspace.getActiveHistory()?.canRedo() === true;
+    }
+    const engine = editor.workspace.getActiveEngine();
+    if (command === "edit.cut" || command === "edit.copy") {
+      const activeId = engine?.getActiveLayerId();
+      return Boolean(engine?.getSelection() && activeId && engine.getLayerImageBitmap(activeId));
+    }
+    if (command === "edit.paste") return SelectionOperations.hasClipboard();
+    if (command === "edit.deselect") return engine?.getSelection() !== null;
+    if (command === "layer.new") return Boolean(engine);
+    if (command === "layer.duplicate") return Boolean(engine?.getActiveLayerId());
+    if (command === "layer.delete") {
+      return Boolean(engine && engine.getActiveLayerId() && engine.getLayers().length > 1);
+    }
+    if (command === "layer.merge-down") {
+      if (!engine) return false;
+      const activeId = engine.getActiveLayerId();
+      const activeIndex = engine.getLayers().findIndex((layer) => layer.id === activeId);
+      return activeIndex >= 0 && activeIndex < engine.getLayers().length - 1;
+    }
+    if (command === "layer.flatten") return (engine?.getLayers().length ?? 0) > 1;
+    return true;
+  };
+
+  const uploadActiveLayerBitmap = () => {
+    const engine = editor.workspace.getActiveEngine();
+    const activeId = engine?.getActiveLayerId();
+    if (!engine || !activeId) return;
+    const layer = engine.getLayer(activeId);
+    if (layer?.imageBitmap) editor.renderer.uploadImage(layer.id, layer.imageBitmap);
+  };
+
+  const cancelActiveTransformSession = (): boolean => {
+    const engine = editor.workspace.getActiveEngine();
+    if (!cancelLayerTransformSession(editor.layerTransformSession(), engine)) return false;
+    editor.setLayerTransformSession(null);
+    editor.scheduler.requestRender();
+    return true;
+  };
+
+  const restoreHistorySnapshot = (direction: "undo" | "redo") => {
+    if (cancelActiveTransformSession()) return;
+
+    if (editor.activeTool() === "crop") {
+      const state = direction === "undo"
+        ? (editor.canCropUndo() ? editor.undoLastCrop() : null)
+        : (editor.canCropRedo() ? editor.redoCrop() : null);
+      if (state) {
+        editor.setCropRect(state.rect);
+        editor.setCropRotation(state.rotation);
+        return;
+      }
+    }
+
+    try {
+      const engine = editor.workspace.getActiveEngine();
+      const history = editor.workspace.getActiveHistory();
+      if (!engine || !history) return;
+
+      const canRestore = direction === "undo" ? history.canUndo() : history.canRedo();
+      if (!canRestore) return;
+      const snapshot = direction === "undo"
+        ? history.undo(engine.snapshot())
+        : history.redo(engine.snapshot());
+      if (!snapshot) return;
+
+      engine.restore(snapshot);
+      for (const layer of engine.getLayers()) {
+        if (layer.imageBitmap) editor.renderer.uploadImage(layer.id, layer.imageBitmap);
+      }
+      editor.scheduler.requestRender();
+    } catch (error) {
+      console.error(`${direction === "undo" ? "Undo" : "Redo"} failed:`, error);
+    }
+  };
+
+  const execute = (command: EditorCommand) => {
+    if (!isEnabled(command)) return;
+
+    switch (command) {
+      case "file.new": {
+        const id = `doc-${crypto.randomUUID()}`;
+        const name = `Untitled-${editor.workspace.getDocumentCount() + 1}`;
+        editor.workspace.addDocument(
+          WorkspaceManager.createBlankDocument(id, name, 800, 600),
+        );
+        editor.scheduler.requestRender();
+        break;
+      }
+      case "file.open":
+        void editor.openImage();
+        break;
+      case "file.export":
+        if (editor.activeDocumentId()) editor.setShowExportDialog(true);
+        break;
+      case "edit.undo":
+        restoreHistorySnapshot("undo");
+        break;
+      case "edit.redo":
+        restoreHistorySnapshot("redo");
+        break;
+      case "edit.cut": {
+        const engine = editor.workspace.getActiveEngine();
+        const history = editor.workspace.getActiveHistory();
+        if (!engine?.getSelection() || !history) break;
+        history.commit(engine.snapshot());
+        SelectionOperations.cutSelection(engine);
+        uploadActiveLayerBitmap();
+        editor.scheduler.requestRender();
+        break;
+      }
+      case "edit.copy": {
+        const engine = editor.workspace.getActiveEngine();
+        if (engine) SelectionOperations.copySelection(engine);
+        break;
+      }
+      case "edit.paste": {
+        const engine = editor.workspace.getActiveEngine();
+        const history = editor.workspace.getActiveHistory();
+        if (!engine || !history) break;
+        history.commit(engine.snapshot());
+        SelectionOperations.pasteSelection(engine);
+        uploadActiveLayerBitmap();
+        editor.scheduler.requestRender();
+        break;
+      }
+      case "edit.select-all":
+        editor.workspace.getActiveEngine()?.selectAll();
+        editor.scheduler.requestRender();
+        break;
+      case "edit.deselect":
+        editor.workspace.getActiveEngine()?.clearSelection();
+        editor.setSelectionEditMode(false);
+        editor.scheduler.requestRender();
+        break;
+      case "edit.invert-selection":
+        editor.workspace.getActiveEngine()?.invertSelection();
+        editor.setSelectionEditMode(false);
+        editor.scheduler.requestRender();
+        break;
+      case "image.resize":
+        if (editor.activeDocumentId()) editor.setShowResizeDialog(true);
+        break;
+      case "layer.new":
+        layerActions.handleAddLayer();
+        break;
+      case "layer.duplicate":
+        layerActions.handleDuplicateActiveLayer();
+        break;
+      case "layer.delete":
+        layerActions.handleDeleteActiveLayer();
+        break;
+      case "layer.merge-down":
+        layerActions.handleMergeActiveLayerDown();
+        break;
+      case "layer.flatten":
+        layerActions.handleFlattenAllLayers();
+        break;
+      case "view.zoom-in":
+      case "view.zoom-out":
+      case "view.actual-size": {
+        const viewport = editor.camera.getViewportSize();
+        const currentZoom = editor.camera.getState().zoom;
+        const factor = command === "view.zoom-in"
+          ? 1.25
+          : command === "view.zoom-out"
+            ? 0.8
+            : 1 / currentZoom;
+        editor.camera.zoomToPoint(factor, viewport.width / 2, viewport.height / 2);
+        editor.syncFromCamera();
+        editor.scheduler.requestRender();
+        break;
+      }
+      case "view.fit-canvas": {
+        const engine = editor.workspace.getActiveEngine();
+        if (!engine) break;
+        engine.fitToScreen(editor.viewportWidth(), editor.viewportHeight());
+        editor.syncViewport();
+        editor.scheduler.requestRender();
+        break;
+      }
+      case "view.toggle-side-panels":
+        onToggleSidePanels();
+        break;
+      case "window.minimize":
+        void runTauriWindowAction("minimize");
+        break;
+      case "window.toggle-maximize":
+        void runTauriWindowAction("toggleMaximize");
+        break;
+      case "window.close":
+        void runTauriWindowAction("close");
+        break;
+      case "help.about":
+        void dialog.alert({
+          title: "About Photrez",
+          message: "Photrez 0.2.0\nA lightweight image editor for Windows.",
+          confirmLabel: "Close",
+        });
+        break;
+    }
+  };
+
+  onMount(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented
+        || isEditableTarget(event.target)
+        || isEditableTarget(document.activeElement)
+      ) return;
+
+      const commandKey = event.ctrlKey || event.metaKey;
+      const key = event.key.toLowerCase();
+      let command: EditorCommand | null = null;
+
+      if (commandKey && event.shiftKey && key === "z") command = "edit.redo";
+      else if (commandKey && key === "z") command = "edit.undo";
+      else if (commandKey && key === "y") command = "edit.redo";
+      else if (commandKey && key === "n") command = "file.new";
+      else if (commandKey && key === "o") command = "file.open";
+      else if (commandKey && key === "s") command = "file.export";
+      else if (commandKey && key === "1") command = "view.actual-size";
+
+      if (command) {
+        event.preventDefault();
+        execute(command);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    const handleDispatchedCommand = (event: Event) => {
+      const command = (event as CustomEvent<unknown>).detail;
+      if (typeof command === "string" && isEditorCommand(command)) execute(command);
+    };
+    window.addEventListener(EDITOR_COMMAND_EVENT, handleDispatchedCommand);
+
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    if (isTauriRuntime()) {
+      void listen<string>(NATIVE_MENU_EVENT, (event) => {
+        if (isEditorCommand(event.payload)) execute(event.payload);
+      }).then((disposeListener) => {
+        if (disposed) disposeListener();
+        else unlisten = disposeListener;
+      }).catch((error: unknown) => {
+        console.warn("Failed to register native menu listener:", error);
+      });
+    }
+
+    onCleanup(() => {
+      disposed = true;
+      unlisten?.();
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener(EDITOR_COMMAND_EVENT, handleDispatchedCommand);
+    });
+  });
+
+  return {
+    execute,
+    isEnabled,
+    undo: () => execute("edit.undo"),
+    redo: () => execute("edit.redo"),
+  };
+}

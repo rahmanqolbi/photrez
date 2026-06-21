@@ -165,6 +165,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     w: number;
     h: number;
     angle: number;
+    inverted?: boolean;
   } | null>(null);
 
   const [hudInfo, setHudInfoInner] = createSignal<HudData | null>(null);
