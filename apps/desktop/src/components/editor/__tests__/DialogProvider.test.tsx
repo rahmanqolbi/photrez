@@ -42,6 +42,10 @@ describe("DialogProvider", () => {
     const dialog = document.querySelector<HTMLElement>('[role="alertdialog"]')!;
     const cancel = document.querySelector<HTMLButtonElement>("[data-dialog-cancel]")!;
     expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(dialog).toHaveAttribute("data-dialog-tone", "danger");
+    expect(dialog.querySelector("[data-dialog-titlebar]")).not.toBeNull();
+    expect(dialog.querySelector("[data-dialog-body]")).not.toBeNull();
+    expect(dialog.querySelector("[data-dialog-actions]")).not.toBeNull();
     expect(dialog.textContent).toContain("Delete the active layer?");
     expect(document.activeElement).toBe(cancel);
 

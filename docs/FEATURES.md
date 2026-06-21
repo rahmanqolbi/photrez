@@ -302,7 +302,7 @@
 | ✅ DONE      | Crop Enter/Esc keyboard shortcuts |
 | ✅ DONE      | General accessible context menu system — reusable clamped surface, keyboard focus/navigation, canvas actions, layer actions, and preserved Brush/Eraser settings menu |
 | 🗓️ PLANNED (POST-MVP) | Tooltip system                             |
-| 🗓️ PLANNED (POST-MVP) | Dialog system (modal)                      |
+| ✅ DONE      | Precision Workbench dialog system — shared confirm/alert API, safe destructive focus, menu focus restoration, and automated browser QA |
 
 ---
 
@@ -319,9 +319,9 @@
 | ✅ DONE      | CI pipeline (GitHub Actions: type-check, lint, frontend tests, build, browser E2E, Rust tests, dependency audit) |
 | ✅ DONE      | Unit tests (core crate) — 85 tests, 92 workspace total |
 | ✅ DONE      | Desktop shell contract tests — 8 Tauri command tests |
-| ✅ DONE      | Frontend tests — 1291 passing tests (91 files), latest recorded 2026-06-21 |
+| ✅ DONE      | Frontend tests — 1297 passing tests (92 files), latest recorded 2026-06-21 |
 | ✅ DONE      | Split Vitest feedback paths — 783 pure-Node tests (~6.5s), 478 isolated jsdom tests, full 1261-test gate 37.48s (83.6% faster than 228.33s baseline) |
-| ✅ DONE      | E2E browser tests — 21 Playwright tests    |
+| ✅ DONE      | E2E browser tests — 23 Playwright tests, including dialog screenshots and keyboard/focus contracts |
 | ✅ DONE      | E2E visible-pixel sampling compatible with `preserveDrawingBuffer: false` — checkerboard, brush/eraser, and selection undo/redo tests sample composited screenshots instead of an undefined default WebGL framebuffer |
 | ✅ DONE      | M6 Perf Gate (all metrics PASS)            |
 | ✅ DONE      | Native Vite tsconfig paths (removed `vite-tsconfig-paths` plugin) |

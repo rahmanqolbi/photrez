@@ -166,7 +166,10 @@ describe("custom application menu wiring", () => {
     const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
     expect(dialog).toHaveTextContent("Photrez 0.2.0");
     expect(dialog).toHaveTextContent("lightweight image editor");
+    expect(document.activeElement).toBe(document.querySelector("[data-dialog-confirm]"));
     document.querySelector<HTMLButtonElement>("[data-dialog-confirm]")!.click();
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(document.activeElement).toBe(button(host.container, "Help"));
     host.dispose();
   });
 });

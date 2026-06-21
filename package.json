@@ -8,6 +8,7 @@
     "type-check": "pnpm --filter photrez-desktop type-check",
     "lint": "pnpm --filter photrez-desktop lint",
     "test:e2e": "pnpm --filter photrez-desktop test:e2e",
+    "test:dialogs": "pnpm --filter photrez-desktop test:dialogs",
     "audit": "pnpm audit --prod && cargo audit",
     "perf:paint-history": "pnpm --filter photrez-desktop perf:paint-history",
     "verify": "pnpm --filter photrez-desktop test --run && pnpm run build && cargo test -p photrez-core && cargo test --workspace",

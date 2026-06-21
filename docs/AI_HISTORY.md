@@ -7790,3 +7790,28 @@ Create one authoritative visual contract that keeps future Photrez UI compact, f
 - PASS: documentation integrity check; no runtime or dependency changes.
 
 ---
+
+## [2026-06-21] FEATURE - Precision Workbench Dialog System [COMPLETE]
+
+### Kategori: FEATURE / UI / ACCESSIBILITY / AUTOMATED-QA
+
+**Goal:**
+Replace browser-like confirmation and toast-only information with one compact desktop dialog surface that needs no manual QA for routine regression coverage.
+
+**Done:**
+1. Added a centralized Promise-based confirm/alert provider with FIFO queuing, Portal rendering, ARIA dialog semantics, focus trapping/restoration, Escape and backdrop cancellation, and cleanup-safe promise resolution.
+2. Replaced Delete Layer `window.confirm` across footer, keyboard, context-menu, title-bar menu, and native-menu command paths. The mutation revalidates document and layer identity after async confirmation.
+3. Replaced the About toast with a shared informational dialog.
+4. Applied the Precision Workbench contract: 360px compact surface, 36px title chrome, `pz` app mark, fixed 11–12px type, restrained 6px radius, structural dividers, 28px actions, Photon Amber destructive action, and reduced overlay shadow.
+5. Corrected application-menu activation order so dialogs capture and restore the stable menu trigger rather than a detached menu item.
+6. Added browser automation for dialog geometry, screenshot capture, Cancel default focus, Tab and Enter completion, Escape dismissal, focus restoration, and real layer deletion.
+
+**Verification:**
+- PASS: focused component and mounted wiring tests, 11/11.
+- PASS: full frontend suite, 92 files / 1297 tests in 53.55s.
+- PASS: dedicated Playwright dialog browser QA, 2/2.
+- PASS: production build and root type-check.
+- PASS: Rust core 85/85; workspace desktop 15/15.
+- NOTE: agent-browser CLI offline doctor passed, but its Windows CDP launch channel closed. Playwright Chromium completed the same live browser workflow and screenshot capture successfully.
+
+---

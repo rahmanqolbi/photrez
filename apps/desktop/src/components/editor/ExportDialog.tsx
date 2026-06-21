@@ -1,6 +1,8 @@
-import { Show, createSignal, createMemo, onMount, onCleanup } from "solid-js";
+import { For, Show, createSignal } from "solid-js";
+import { Portal } from "solid-js/web";
 import { useEditor } from "./EditorContext";
 import { exportActiveDocument } from "./exportDocument";
+import { DesktopDialog, DesktopDialogButton } from "./DesktopDialog";
 
 type ExportFormat = "png" | "jpeg" | "webp";
 
@@ -26,16 +28,6 @@ export function ExportDialog() {
   const [error, setError] = createSignal<string | null>(null);
 
   const hasQuality = () => format() !== "png";
-
-  onMount(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && showExportDialog()) {
-        setShowExportDialog(false);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    onCleanup(() => window.removeEventListener("keydown", handler));
-  });
 
   const handleExport = async () => {
     const engine = workspace.getActiveEngine();
@@ -70,87 +62,83 @@ export function ExportDialog() {
 
   return (
     <Show when={showExportDialog()}>
-      <div
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-        onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
-      >
-        <div
-          class="w-[320px] rounded-[8px] bg-editor-panel p-5 shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
+      <Portal mount={document.body}>
+        <DesktopDialog
+          title="Export Image"
+          kind="export"
+          manageFocus
+          dismissible={!exporting()}
+          onDismiss={handleClose}
+          onBackdropPointerDown={() => { if (!exporting()) handleClose(); }}
+          actions={<>
+            <DesktopDialogButton onClick={handleClose} disabled={exporting()}>
+              {donePath() ? "Close" : "Cancel"}
+            </DesktopDialogButton>
+            <Show when={!donePath()}>
+              <DesktopDialogButton variant="primary" onClick={handleExport} disabled={exporting()}>
+                <Show when={exporting()}>
+                  <span aria-hidden="true" class="mr-1.5 inline-block size-3 animate-spin rounded-full border-2 border-editor-bg/30 border-t-editor-bg" />
+                </Show>
+                {exporting() ? "Exporting..." : "Export"}
+              </DesktopDialogButton>
+            </Show>
+          </>}
         >
-          <h2 class="mb-4 text-[14px] font-medium text-editor-text">Export</h2>
-
           <Show when={donePath()}>
-            <div class="mb-4 rounded-[4px] bg-green-900/20 px-3 py-2 text-[12px] text-green-400">
+            <div role="status" class="mb-3 rounded-[4px] border border-green-500/30 bg-green-500/10 px-2.5 py-2 text-[11px] text-green-400">
               Saved: {donePath()?.split(/[/\\]/).pop()}
             </div>
           </Show>
 
           <Show when={error()}>
-            <div class="mb-4 rounded-[4px] bg-red-900/20 px-3 py-2 text-[12px] text-red-400">
+            <div role="alert" class="mb-3 rounded-[4px] border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-[11px] text-red-400">
               {error()}
             </div>
           </Show>
 
-          <div class="flex flex-col gap-3">
+          <div class="flex flex-col gap-3.5">
             <div>
-              <label class="mb-1 block text-[12px] text-editor-text-dim">Format</label>
+              <div id="export-format-label" class="mb-1.5 text-[11px] font-medium text-editor-text-dim">Format</div>
               <div class="flex gap-1.5">
-                {FORMATS.map((f) => (
+                <For each={FORMATS}>{(f, index) => (
                   <button
+                    type="button"
+                    aria-pressed={format() === f.id}
+                    aria-describedby="export-format-label"
+                    data-dialog-initial-focus={index() === 0 ? "" : undefined}
                     onClick={() => setFormat(f.id)}
-                    class={`flex h-[28px] flex-1 items-center justify-center rounded-[4px] text-[12px] font-medium transition-colors ${
+                    class={`flex h-7 flex-1 items-center justify-center rounded-[4px] border text-[11px] font-medium outline-none transition-colors focus-visible:ring-1 focus-visible:ring-editor-accent/50 ${
                       format() === f.id
-                        ? "bg-editor-accent text-white"
-                        : "border border-editor-field-border bg-editor-field text-editor-text-dim hover:border-editor-accent"
+                        ? "border-editor-accent bg-editor-accent text-editor-bg"
+                        : "border-editor-field-border bg-editor-field text-editor-text-dim hover:border-editor-accent hover:text-editor-text"
                     }`}
                   >
                     {f.label}
                   </button>
-                ))}
+                )}</For>
               </div>
             </div>
 
             <Show when={hasQuality()}>
               <div>
-                <label class="mb-1 block text-[12px] text-editor-text-dim">
-                  Quality: {quality()}%
-                </label>
+                <div class="mb-1.5 flex items-center justify-between text-[11px] text-editor-text-dim">
+                  <label for="export-quality" class="font-medium">Quality</label>
+                  <output for="export-quality" class="font-mono tabular-nums text-editor-text">{quality()}%</output>
+                </div>
                 <input
+                  id="export-quality"
                   type="range"
                   min={1}
                   max={100}
                   value={quality()}
                   onInput={(e) => setQuality(parseInt(e.currentTarget.value, 10))}
-                  class="h-1 w-full appearance-none rounded-full bg-editor-field-border accent-editor-accent"
+                  class="h-4 w-full appearance-none bg-transparent accent-editor-accent focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-editor-accent"
                 />
               </div>
             </Show>
           </div>
-
-          <div class="mt-5 flex justify-end gap-2">
-            <button
-              onClick={handleClose}
-              disabled={exporting()}
-              class="flex h-[28px] items-center rounded-[4px] border border-editor-field-border bg-editor-field px-3 text-[12px] text-editor-text-dim hover:bg-editor-field-border hover:text-editor-text disabled:opacity-40"
-            >
-              {donePath() ? "Close" : "Cancel"}
-            </button>
-            <Show when={!donePath()}>
-              <button
-                onClick={handleExport}
-                disabled={exporting()}
-                class="flex h-[28px] items-center gap-1.5 rounded-[4px] bg-editor-accent px-3 text-[12px] font-medium text-white hover:brightness-110 disabled:opacity-50"
-              >
-                <Show when={exporting()}>
-                  <span class="inline-block size-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                </Show>
-                {exporting() ? "Exporting..." : "Export"}
-              </button>
-            </Show>
-          </div>
-        </div>
-      </div>
+        </DesktopDialog>
+      </Portal>
     </Show>
   );
 }

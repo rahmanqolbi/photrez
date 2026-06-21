@@ -3,228 +3,138 @@ import { render } from "solid-js/web";
 import { EditorProvider, useEditor } from "../EditorContext";
 import { ResizeCanvasModal } from "../ResizeCanvasModal";
 import { WorkspaceManager } from "@/engine/workspace";
-import { createSignal } from "solid-js";
 
-function tick(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
+const tick = () => new Promise<void>((resolve) => queueMicrotask(resolve));
+let setShowDialog: (value: boolean) => void = () => {};
+
+function TestConsumer() {
+  setShowDialog = useEditor().setShowResizeDialog;
+  return null;
 }
 
-let setShowDialog: (v: boolean) => void = () => {};
-let getWidth: () => number = () => 0;
-let getHeight: () => number = () => 0;
-
-const TestConsumer = () => {
-  const editor = useEditor();
-  setShowDialog = editor.setShowResizeDialog;
-  getWidth = editor.docWidth;
-  getHeight = editor.docHeight;
-  return null;
-};
-
-function renderModal(show: boolean) {
-  const ws = new WorkspaceManager();
-  const session = WorkspaceManager.createBlankDocument("test", "Test Doc", 800, 600);
-  ws.addDocument(session);
-
-  const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn(), resize: vi.fn(), resizeToViewport: vi.fn() };
+function renderModal(show = true, width = 800, height = 600) {
+  const workspace = new WorkspaceManager();
+  const session = WorkspaceManager.createBlankDocument("test", "Test Doc", width, height);
+  workspace.addDocument(session);
+  const renderer = {
+    uploadImage: vi.fn(),
+    destroyTexture: vi.fn(),
+    resize: vi.fn(),
+    resizeToViewport: vi.fn(),
+  };
   const scheduler = { requestRender: vi.fn() };
+  const trigger = document.createElement("button");
   const container = document.createElement("div");
-  document.body.appendChild(container);
+  document.body.append(trigger, container);
+  trigger.focus();
 
-  const dispose = render(
+  const disposeRoot = render(
     () => (
-      <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+      <EditorProvider workspace={workspace} renderer={renderer as any} scheduler={scheduler as any}>
         <ResizeCanvasModal />
         <TestConsumer />
       </EditorProvider>
     ),
     container,
   );
-
-  if (show) {
-    setShowDialog(true);
-  }
+  if (show) setShowDialog(true);
 
   return {
-    ws,
     session,
     renderer,
     scheduler,
-    container,
+    trigger,
+    dialog: () => document.querySelector<HTMLElement>('[data-dialog-kind="resize-canvas"]'),
     dispose: () => {
-      dispose();
-      container.parentNode?.removeChild(container);
+      disposeRoot();
+      trigger.remove();
+      container.remove();
     },
   };
 }
 
+const button = (dialog: HTMLElement, label: string) => Array.from(dialog.querySelectorAll("button"))
+  .find((candidate) => candidate.textContent?.trim() === label) as HTMLButtonElement;
+
 describe("ResizeCanvasModal", () => {
   afterEach(() => {
-    vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    document.querySelectorAll("[data-photrez-dialog], [data-dialog-backdrop]").forEach((node) => node.remove());
   });
 
-  it("renders nothing when showResizeDialog is false", () => {
-    const { container, dispose } = renderModal(false);
-    expect(container.textContent).toBe("");
-    dispose();
+  it("stays unmounted until requested", () => {
+    const view = renderModal(false);
+    expect(view.dialog()).toBeNull();
+    view.dispose();
   });
 
-  it("renders dialog with current document dimensions pre-filled", () => {
-    const { container, dispose } = renderModal(true);
-    const inputs = container.querySelectorAll<HTMLInputElement>("input[type=number]");
-    expect(inputs.length).toBe(2);
-    expect(inputs[0].value).toBe("800");
-    expect(inputs[1].value).toBe("600");
-    dispose();
-  });
-
-  it("shows aspect ratio lock as active by default", () => {
-    const { container, dispose } = renderModal(true);
-    const lockBtn = container.querySelector("button[title]");
-    expect(lockBtn).toBeTruthy();
-    expect(lockBtn!.getAttribute("title")).toBe("Lock aspect ratio");
-    dispose();
-  });
-
-  it("toggles aspect ratio lock on button click", async () => {
-    const { container, dispose } = renderModal(true);
-    const lockBtn = container.querySelector("button[title]");
-    expect(lockBtn!.getAttribute("title")).toBe("Lock aspect ratio");
-
-    (lockBtn as HTMLButtonElement).click();
+  it("opens as the shared desktop dialog with current dimensions and initial focus", async () => {
+    const view = renderModal(true, 1024, 768);
     await tick();
-
-    expect(lockBtn!.getAttribute("title")).toBe("Unlock aspect ratio");
-    dispose();
+    const dialog = view.dialog()!;
+    const inputs = dialog.querySelectorAll<HTMLInputElement>('input[type="number"]');
+    expect(dialog.getAttribute("role")).toBe("dialog");
+    expect(dialog.textContent).toContain("Resize Canvas");
+    expect([...inputs].map((input) => input.value)).toEqual(["1024", "768"]);
+    expect(document.activeElement).toBe(inputs[0]);
+    expect(dialog.querySelector('[aria-pressed="true"]')).toHaveAttribute("title", "Unlock aspect ratio");
+    view.dispose();
   });
 
-  it("Apply button renders and triggers engine resize logic when clicked", async () => {
-    const session = WorkspaceManager.createBlankDocument("resize-test", "Resize Test", 800, 600);
-    session.engine.addLayer("Layer 2");
-
-    const ws = new WorkspaceManager();
-    ws.addDocument(session);
-
-    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn(), resize: vi.fn(), resizeToViewport: vi.fn() };
-    const scheduler = { requestRender: vi.fn() };
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-
-    const dispose = render(
-      () => (
-        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
-          <ResizeCanvasModal />
-          <TestConsumer />
-        </EditorProvider>
-      ),
-      container,
-    );
-
-    setShowDialog(true);
-
-    // Verify Apply button is present
-    const applyBtn = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent?.includes("Image Size"),
-    );
-    expect(applyBtn).toBeTruthy();
-
-    // Verify the engine.resizeCanvas contract directly
-    const engine = session.engine;
-    expect(engine.getWidth()).toBe(800);
-    expect(engine.getHeight()).toBe(600);
-
-    engine.resizeCanvas(400, 300);
-    expect(engine.getWidth()).toBe(400);
-    expect(engine.getHeight()).toBe(300);
-
-    dispose();
-  });
-
-  it("Cancel closes dialog without changes", async () => {
-    const { container, renderer, dispose } = renderModal(true);
-
-    const cancelBtn = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent === "Cancel",
-    );
-    expect(cancelBtn).toBeTruthy();
-    (cancelBtn as HTMLButtonElement).click();
-    await tick();
-
-    expect(renderer.resize).not.toHaveBeenCalled();
-    dispose();
-  });
-
-  it("Escape key closes dialog", async () => {
-    const { container, renderer, dispose } = renderModal(true);
-
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
-    await tick();
-
-    expect(container.textContent).toBe("");
-    expect(renderer.resize).not.toHaveBeenCalled();
-    dispose();
-  });
-
-  it("resize canvas is undoable", () => {
-    const session = WorkspaceManager.createBlankDocument("undo-test", "Undo Test", 800, 600);
-
-    const engine = session.engine;
-    const history = session.history;
-
-    history.commit(engine.snapshot());
-    engine.resizeCanvas(400, 300);
-    expect(engine.getWidth()).toBe(400);
-    expect(engine.getHeight()).toBe(300);
-
-    const prev = history.undo(engine.snapshot());
-    if (prev) {
-      engine.restore(prev);
-    }
-    expect(engine.getWidth()).toBe(800);
-    expect(engine.getHeight()).toBe(600);
-  });
-
-  it("Apply with unchanged dimensions does NOT commit history and closes dialog", async () => {
-    const { container, renderer, dispose } = renderModal(true);
-    await tick();
-
-    const applyBtn = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent?.includes("Image Size"),
-    );
-    expect(applyBtn).toBeTruthy();
-
-    const initialUndo = getWidth();
-    void initialUndo;
-
-    (applyBtn as HTMLButtonElement).click();
-    await tick();
-
-    expect(renderer.resize).not.toHaveBeenCalled();
-    expect(container.textContent).toBe("");
-
-    dispose();
-  });
-
-  it("Apply with changed dimensions DOES commit history", async () => {
-    const { container, renderer, dispose } = renderModal(true);
-    await tick();
-
-    const applyBtn = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent?.includes("Image Size"),
-    );
-
-    const inputs = container.querySelectorAll<HTMLInputElement>("input[type=number]");
-    inputs[0].value = "1024";
+  it("updates linked dimensions and allows unlocking the aspect ratio", () => {
+    const view = renderModal();
+    const dialog = view.dialog()!;
+    const inputs = dialog.querySelectorAll<HTMLInputElement>('input[type="number"]');
+    inputs[0].value = "400";
     inputs[0].dispatchEvent(new Event("input", { bubbles: true }));
-    inputs[0].dispatchEvent(new Event("change", { bubbles: true }));
+    expect(inputs[1].value).toBe("300");
+    button(dialog, "Keep proportions").click();
+    expect(dialog.querySelector('[aria-pressed="false"]')).toBeTruthy();
+    inputs[0].value = "200";
+    inputs[0].dispatchEvent(new Event("input", { bubbles: true }));
+    expect(inputs[1].value).toBe("300");
+    view.dispose();
+  });
+
+  it("resizes through the production path and preserves undo", () => {
+    const view = renderModal();
+    const dialog = view.dialog()!;
+    const width = dialog.querySelector<HTMLInputElement>("#resize-canvas-width")!;
+    width.value = "400";
+    width.dispatchEvent(new Event("input", { bubbles: true }));
+    button(dialog, "Resize").click();
+    expect(view.session.engine.getWidth()).toBe(400);
+    expect(view.session.engine.getHeight()).toBe(300);
+    expect(view.renderer.resizeToViewport).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), 1);
+    expect(view.scheduler.requestRender).toHaveBeenCalledOnce();
+    expect(view.dialog()).toBeNull();
+    const previous = view.session.history.undo(view.session.engine.snapshot());
+    expect(previous).not.toBeNull();
+    view.session.engine.restore(previous!);
+    expect([view.session.engine.getWidth(), view.session.engine.getHeight()]).toEqual([800, 600]);
+    view.dispose();
+  });
+
+  it("closes unchanged without renderer work", () => {
+    const view = renderModal();
+    button(view.dialog()!, "Resize").click();
+    expect(view.dialog()).toBeNull();
+    expect(view.renderer.resizeToViewport).not.toHaveBeenCalled();
+    expect(view.scheduler.requestRender).not.toHaveBeenCalled();
+    view.dispose();
+  });
+
+  it.each(["Cancel", "Escape", "Backdrop"])("dismisses via %s and restores focus", async (method) => {
+    const view = renderModal();
     await tick();
-
-    (applyBtn as HTMLButtonElement).click();
+    const dialog = view.dialog()!;
+    if (method === "Cancel") button(dialog, "Cancel").click();
+    if (method === "Escape") document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    if (method === "Backdrop") document.querySelector("[data-dialog-backdrop]")?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
     await tick();
-
-    expect(renderer.resizeToViewport).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), 1);
-
-    dispose();
+    expect(view.dialog()).toBeNull();
+    expect(view.renderer.resizeToViewport).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(view.trigger);
+    view.dispose();
   });
 });

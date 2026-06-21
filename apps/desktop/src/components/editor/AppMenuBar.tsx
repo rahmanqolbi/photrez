@@ -142,8 +142,10 @@ export function AppMenuBar(props: AppMenuBarProps) {
 
   const activate = (command: EditorCommand) => {
     if (!props.isEnabled(command)) return;
-    props.execute(command);
+    const current = openMenu();
     close();
+    if (current) triggerRefs.get(current)?.focus();
+    props.execute(command);
   };
 
   onMount(() => {

@@ -4,121 +4,128 @@ import { EditorProvider, useEditor } from "../EditorContext";
 import { ExportDialog } from "../ExportDialog";
 import { WorkspaceManager } from "@/engine/workspace";
 
-let setShowExport: (v: boolean) => void = () => {};
+const exportActiveDocumentMock = vi.hoisted(() => vi.fn());
+vi.mock("../exportDocument", () => ({ exportActiveDocument: exportActiveDocumentMock }));
 
-const TestConsumer = () => {
-  const editor = useEditor();
-  setShowExport = editor.setShowExportDialog;
+const tick = () => new Promise<void>((resolve) => queueMicrotask(resolve));
+let setShowExport: (value: boolean) => void = () => {};
+
+function TestConsumer() {
+  setShowExport = useEditor().setShowExportDialog;
   return null;
-};
+}
 
-function renderDialog(show: boolean) {
-  const ws = new WorkspaceManager();
-  const session = WorkspaceManager.createBlankDocument("test", "Test Doc", 800, 600);
-  ws.addDocument(session);
-
+function renderDialog(show = true) {
+  const workspace = new WorkspaceManager();
+  workspace.addDocument(WorkspaceManager.createBlankDocument("test", "Test Doc", 800, 600));
   const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn(), resize: vi.fn() };
   const scheduler = { requestRender: vi.fn() };
+  const trigger = document.createElement("button");
   const container = document.createElement("div");
-  document.body.appendChild(container);
-
-  const dispose = render(
+  document.body.append(trigger, container);
+  trigger.focus();
+  const disposeRoot = render(
     () => (
-      <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+      <EditorProvider workspace={workspace} renderer={renderer as any} scheduler={scheduler as any}>
         <ExportDialog />
         <TestConsumer />
       </EditorProvider>
     ),
     container,
   );
-
-  if (show) {
-    setShowExport(true);
-  }
-
+  if (show) setShowExport(true);
   return {
-    ws,
-    session,
-    renderer,
     scheduler,
-    container,
+    trigger,
+    dialog: () => document.querySelector<HTMLElement>('[data-dialog-kind="export"]'),
     dispose: () => {
-      dispose();
-      container.parentNode?.removeChild(container);
+      disposeRoot();
+      trigger.remove();
+      container.remove();
     },
   };
 }
 
+const button = (dialog: HTMLElement, label: string) => Array.from(dialog.querySelectorAll("button"))
+  .find((candidate) => candidate.textContent?.trim() === label) as HTMLButtonElement;
+
 describe("ExportDialog", () => {
   afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
+    exportActiveDocumentMock.mockReset();
+    document.querySelectorAll("[data-photrez-dialog], [data-dialog-backdrop]").forEach((node) => node.remove());
   });
 
-  it("renders nothing when showExportDialog is false", () => {
-    const { container, dispose } = renderDialog(false);
-    expect(container.textContent).toBe("");
-    dispose();
+  it("stays unmounted until requested", () => {
+    const view = renderDialog(false);
+    expect(view.dialog()).toBeNull();
+    view.dispose();
   });
 
-  it("renders dialog with format buttons when visible", () => {
-    const { container, dispose } = renderDialog(true);
-    expect(container.textContent).toContain("Export");
-    expect(container.textContent).toContain("PNG");
-    expect(container.textContent).toContain("JPEG");
-    expect(container.textContent).toContain("WebP");
-    dispose();
+  it("uses the shared dialog and reveals quality only for lossy formats", async () => {
+    const view = renderDialog();
+    await tick();
+    const dialog = view.dialog()!;
+    expect(dialog.textContent).toContain("Export Image");
+    expect(button(dialog, "PNG").getAttribute("aria-pressed")).toBe("true");
+    expect(document.activeElement).toBe(button(dialog, "PNG"));
+    expect(dialog.querySelector('input[type="range"]')).toBeNull();
+    button(dialog, "JPEG").click();
+    expect(button(dialog, "JPEG").getAttribute("aria-pressed")).toBe("true");
+    expect(dialog.querySelector<HTMLInputElement>('#export-quality')?.value).toBe("90");
+    view.dispose();
   });
 
-  it("defaults to PNG format", () => {
-    const { container, dispose } = renderDialog(true);
-    const buttons = container.querySelectorAll("button");
-    const pngBtn = Array.from(buttons).find((b) => b.textContent === "PNG");
-    expect(pngBtn).toBeTruthy();
-    // PNG should have the accent class (default selected)
-    expect(pngBtn!.className).toContain("bg-editor-accent");
-    dispose();
+  it("exports through the production handler and reports the saved file", async () => {
+    exportActiveDocumentMock.mockResolvedValue("C:\\Pictures\\result.webp");
+    const view = renderDialog();
+    const dialog = view.dialog()!;
+    button(dialog, "WebP").click();
+    button(dialog, "Export").click();
+    await tick();
+    expect(exportActiveDocumentMock).toHaveBeenCalledWith(expect.anything(), "Test Doc", "webp", 90);
+    expect(view.dialog()?.querySelector('[role="status"]')?.textContent).toContain("result.webp");
+    expect(view.scheduler.requestRender).toHaveBeenCalledOnce();
+    expect(button(view.dialog()!, "Close")).toBeTruthy();
+    view.dispose();
   });
 
-  it("switches quality visibility based on format", () => {
-    const { container, dispose } = renderDialog(true);
-
-    // PNG: no quality slider
-    let slider = container.querySelector<HTMLInputElement>("input[type=range]");
-    expect(slider).toBeNull();
-
-    // Switch to JPEG
-    const jpegBtn = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent === "JPEG",
-    );
-    expect(jpegBtn).toBeTruthy();
-    (jpegBtn as HTMLButtonElement).click();
-
-    slider = container.querySelector<HTMLInputElement>("input[type=range]");
-    expect(slider).toBeTruthy();
-    expect(slider!.value).toBe("90");
-
-    dispose();
+  it("keeps the dialog open and exposes export errors accessibly", async () => {
+    exportActiveDocumentMock.mockRejectedValue(new Error("Disk full"));
+    const view = renderDialog();
+    button(view.dialog()!, "Export").click();
+    await tick();
+    expect(view.dialog()?.querySelector('[role="alert"]')?.textContent).toContain("Disk full");
+    expect(button(view.dialog()!, "Export").disabled).toBe(false);
+    view.dispose();
   });
 
-  it("Cancel closes dialog", () => {
-    const { container, dispose } = renderDialog(true);
-
-    const cancelBtn = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent === "Cancel",
-    );
-    expect(cancelBtn).toBeTruthy();
-    (cancelBtn as HTMLButtonElement).click();
-
-    expect(container.textContent).toBe("");
-    dispose();
+  it("locks dismissal and actions while an export is running", async () => {
+    let finish!: (value: string | null) => void;
+    exportActiveDocumentMock.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    const view = renderDialog();
+    button(view.dialog()!, "Export").click();
+    await tick();
+    const dialog = view.dialog()!;
+    expect(button(dialog, "Exporting...").disabled).toBe(true);
+    expect(button(dialog, "Cancel").disabled).toBe(true);
+    dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(view.dialog()).not.toBeNull();
+    finish(null);
+    await tick();
+    expect(button(view.dialog()!, "Export").disabled).toBe(false);
+    view.dispose();
   });
 
-  it("Escape key closes dialog", () => {
-    const { container, dispose } = renderDialog(true);
-
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
-    expect(container.textContent).toBe("");
-    dispose();
+  it.each(["Cancel", "Escape", "Backdrop"])("dismisses via %s and restores focus", async (method) => {
+    const view = renderDialog();
+    await tick();
+    const dialog = view.dialog()!;
+    if (method === "Cancel") button(dialog, "Cancel").click();
+    if (method === "Escape") document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    if (method === "Backdrop") document.querySelector("[data-dialog-backdrop]")?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    await tick();
+    expect(view.dialog()).toBeNull();
+    expect(document.activeElement).toBe(view.trigger);
+    view.dispose();
   });
 });

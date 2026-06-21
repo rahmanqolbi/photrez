@@ -4,6 +4,22 @@
 
 ## Current Tasks
 
+### [2026-06-21] UI - Precision Workbench Resize and Export Dialogs [IN PROGRESS]
+
+**Goal:**
+Unify Resize Canvas and Export with the shared compact desktop dialog vocabulary while keeping feedback tests fast and behaviorally strong.
+
+**Scope:**
+- [ ] Extract minimal shared dialog frame, action, button, and field primitives
+- [ ] Migrate Resize Canvas and Export without changing their production mutation paths
+- [ ] Add focus trap/restoration, Escape, backdrop, labels, disabled, progress, success, and error contracts
+- [ ] Consolidate duplicate component tests and run focused tests before one final full regression gate
+- [ ] Run mandatory frontend, Rust, build, and documentation verification
+
+**Test Strategy:**
+- Run only the affected dialog files during iteration.
+- Run the complete frontend and Rust suites once after focused coverage is green.
+
 ### [2026-06-21] DOCUMENTATION - Photrez Visual Design System [COMPLETE]
 
 **Goal:**
@@ -23,22 +39,33 @@ Capture the implemented Photrez visual language as a machine-readable, desktop-n
 - PASS: `.impeccable/design.json` parses as schema version 2 with six representative components.
 - PASS: documentation-only change; no runtime implementation or dependency changed.
 
-### [2026-06-21] FEATURE - Native-Style Dialog System [IN PROGRESS]
+### [2026-06-21] FEATURE - Native-Style Dialog System [COMPLETE]
 
 **Goal:**
 Replace browser-native confirmation and toast-only informational flows with one accessible, compact dialog service shared by every command surface.
 
 **Scope:**
-- [ ] Add a centralized promise-based dialog provider with confirm and alert APIs
-- [ ] Add Portal rendering, ARIA dialog contracts, focus trap/restoration, Escape handling, backdrop dismissal, and safe default focus for destructive actions
-- [ ] Replace Delete Layer `window.confirm()` across footer, context menu, keyboard, custom menu, and native menu paths
-- [ ] Guard asynchronous destructive confirmation against document/layer changes while the dialog is open
-- [ ] Replace About toast with an informational Photrez dialog
-- [ ] Add component, wiring, cancellation, cleanup, and document-switch safety tests
-- [ ] Run all mandatory verification gates
+- [x] Add a centralized promise-based dialog provider with confirm and alert APIs
+- [x] Add Portal rendering, ARIA dialog contracts, focus trap/restoration, Escape handling, backdrop dismissal, and safe default focus for destructive actions
+- [x] Replace Delete Layer `window.confirm()` across footer, context menu, keyboard, custom menu, and native menu paths
+- [x] Guard asynchronous destructive confirmation against document/layer changes while the dialog is open
+- [x] Replace About toast with an informational Photrez dialog
+- [x] Apply the Precision Workbench desktop visual contract to the shared dialog surface
+- [x] Add component, wiring, cancellation, cleanup, and document-switch safety tests
+- [x] Add automated browser QA for dialog geometry, screenshots, keyboard behavior, focus restoration, and destructive confirmation
+- [x] Run all mandatory verification gates
 
 **UX Decision:**
 - Destructive dialogs focus Cancel by default. The surface is compact, neutral, and restrained; Photon Amber marks the destructive confirm action without decorative modal animation.
+
+**Verification:**
+- PASS: focused component and mounted wiring tests, 11/11.
+- PASS: full frontend suite, 92 files / 1297 tests in 53.55s.
+- PASS: dedicated Playwright dialog QA, 2/2, including About and Delete Layer screenshot capture.
+- PASS: `pnpm run type-check` and `pnpm run build`.
+- PASS: `cargo test -p photrez-core`, 85/85.
+- PASS: `cargo test --workspace`, core 85/85 + desktop 15/15.
+- NOTE: agent-browser CLI passed its offline doctor but its Windows CDP channel closed during launch; Playwright Chromium completed the same live browser QA successfully.
 
 ### [2026-06-21] FEATURE - Canvas and Layers Context Menus [COMPLETE]
 

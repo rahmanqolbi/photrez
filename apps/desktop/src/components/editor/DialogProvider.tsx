@@ -9,7 +9,7 @@ import {
   type ParentProps,
 } from "solid-js";
 import { Portal } from "solid-js/web";
-import { clsx } from "clsx";
+import { DesktopDialog, DesktopDialogButton } from "./DesktopDialog";
 
 export interface ConfirmDialogOptions {
   title: string;
@@ -139,60 +139,39 @@ export function DialogProvider(props: ParentProps) {
       <Show when={current()}>
         {(request) => (
           <Portal mount={document.body}>
-            <div
-              class="fixed inset-0 z-[89] bg-black/55"
-              data-dialog-backdrop
-              onPointerDown={() => complete(false)}
-            />
-            <div
-              ref={dialogRef}
+            <DesktopDialog
+              dialogRef={(element) => { dialogRef = element; }}
               role={isDangerRequest(request()) ? "alertdialog" : "dialog"}
-              aria-modal="true"
-              aria-labelledby="photrez-dialog-title"
-              aria-describedby="photrez-dialog-description"
-              data-dialog-kind={request().kind}
-              class="fixed left-1/2 top-1/2 z-[90] w-[min(390px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[6px] border border-editor-divider bg-editor-panel shadow-[0_18px_50px_rgba(0,0,0,0.55)]"
+              title={request().options.title}
+              kind={request().kind}
+              tone={isDangerRequest(request()) ? "danger" : "default"}
+              bodyClass="min-h-[68px] whitespace-pre-line"
+              onBackdropPointerDown={() => complete(false)}
               onKeyDown={handleKeyDown}
-            >
-              <div class="border-b border-editor-divider px-5 py-4">
-                <h2 id="photrez-dialog-title" class="text-[14px] font-semibold text-editor-text">
-                  {request().options.title}
-                </h2>
-              </div>
-              <p
-                id="photrez-dialog-description"
-                class="whitespace-pre-line px-5 py-4 text-[12px] leading-5 text-editor-text-dim"
-              >
-                {request().options.message}
-              </p>
-              <div class="flex items-center justify-end gap-2 border-t border-editor-divider bg-editor-field/35 px-4 py-3">
+              actions={<>
                 <Show when={request().kind === "confirm"}>
-                  <button
-                    ref={cancelRef}
-                    type="button"
+                  <DesktopDialogButton
+                    ref={(element) => { cancelRef = element; }}
                     data-dialog-cancel
-                    class="min-h-7 rounded-[4px] border border-editor-field-border bg-editor-field px-3 text-[12px] text-editor-text outline-none hover:bg-white/[0.06] focus-visible:border-editor-accent"
                     onClick={() => complete(false)}
                   >
                     {cancelLabelFor(request())}
-                  </button>
+                  </DesktopDialogButton>
                 </Show>
-                <button
-                  ref={confirmRef}
-                  type="button"
+                <DesktopDialogButton
+                  ref={(element) => { confirmRef = element; }}
                   data-dialog-confirm
-                  class={clsx(
-                    "min-h-7 rounded-[4px] border px-3 text-[12px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-editor-accent/45",
-                    isDangerRequest(request())
-                      ? "border-editor-accent bg-editor-accent text-white hover:bg-editor-accent/90"
-                      : "border-editor-field-border bg-editor-field text-editor-text hover:bg-white/[0.06]",
-                  )}
+                  variant={isDangerRequest(request()) ? "primary" : "secondary"}
                   onClick={() => complete(true)}
                 >
                   {request().options.confirmLabel ?? "OK"}
-                </button>
-              </div>
-            </div>
+                </DesktopDialogButton>
+              </>}
+            >
+              <p>
+                {request().options.message}
+              </p>
+            </DesktopDialog>
           </Portal>
         )}
       </Show>

@@ -1,6 +1,8 @@
-import { Show, createSignal, onMount, onCleanup } from "solid-js";
+import { Show, createEffect, createSignal, on } from "solid-js";
+import { Portal } from "solid-js/web";
 import { useEditor } from "./EditorContext";
 import { Icon } from "./icons";
+import { DesktopDialog, DesktopDialogButton, desktopDialogFieldClass } from "./DesktopDialog";
 
 export function ResizeCanvasModal() {
   const {
@@ -30,15 +32,9 @@ export function ResizeCanvasModal() {
     setAspectLocked(true);
   };
 
-  onMount(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && showResizeDialog()) {
-        setShowResizeDialog(false);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    onCleanup(() => window.removeEventListener("keydown", handler));
-  });
+  createEffect(on(showResizeDialog, (visible) => {
+    if (visible) openDialog();
+  }));
 
   const handleWChange = (val: string) => {
     const nw = parseInt(val, 10);
@@ -95,68 +91,64 @@ export function ResizeCanvasModal() {
 
   return (
     <Show when={showResizeDialog()}>
-      <div
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-        onClick={(e) => { if (e.target === e.currentTarget) handleCancel(); }}
-      >
-        <div
-          class="w-[320px] rounded-[8px] bg-editor-panel p-5 shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
+      <Portal mount={document.body}>
+        <DesktopDialog
+          title="Resize Canvas"
+          kind="resize-canvas"
+          manageFocus
+          onDismiss={handleCancel}
+          onBackdropPointerDown={handleCancel}
+          actions={<>
+            <DesktopDialogButton onClick={handleCancel}>Cancel</DesktopDialogButton>
+            <DesktopDialogButton variant="primary" onClick={handleApply}>Resize</DesktopDialogButton>
+          </>}
         >
-          <h2 class="mb-4 text-[14px] font-medium text-editor-text">Image Size</h2>
-
-          <div class="flex flex-col gap-3">
+          <div class="flex flex-col gap-2.5">
+            <p class="mb-1 text-[11px] text-editor-text-dim">
+              Set the canvas dimensions. Existing layer content keeps its top-left position.
+            </p>
             <div class="flex items-center gap-2">
-              <label class="w-[52px] text-[12px] text-editor-text-dim">Width:</label>
+              <label for="resize-canvas-width" class="w-[52px] text-[11px] font-medium text-editor-text-dim">Width</label>
               <input
+                id="resize-canvas-width"
                 type="number"
                 min={1}
                 value={w()}
                 onInput={(e) => handleWChange(e.currentTarget.value)}
-                class="h-[26px] flex-1 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[12px] text-editor-text outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                data-dialog-initial-focus
+                class={`${desktopDialogFieldClass} flex-1 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
               />
               <span class="text-[11px] text-editor-text-dim">px</span>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex h-6 items-center pl-[60px]">
               <button
+                type="button"
                 onClick={() => setAspectLocked(!aspectLocked())}
-                class="flex size-[26px] items-center justify-center rounded-[4px] text-editor-text-dim hover:bg-editor-field-border hover:text-editor-text"
-                title={aspectLocked() ? "Lock aspect ratio" : "Unlock aspect ratio"}
+                aria-pressed={aspectLocked()}
+                class="flex h-6 items-center gap-1.5 rounded-[4px] px-1.5 text-[11px] text-editor-text-dim outline-none hover:bg-white/[0.05] hover:text-editor-text focus-visible:ring-1 focus-visible:ring-editor-accent/50"
+                title={aspectLocked() ? "Unlock aspect ratio" : "Lock aspect ratio"}
               >
                 <Icon name={aspectLocked() ? "link" : "unlock"} class="size-3.5" strokeWidth={1.75} />
+                Keep proportions
               </button>
             </div>
 
             <div class="flex items-center gap-2">
-              <label class="w-[52px] text-[12px] text-editor-text-dim">Height:</label>
+              <label for="resize-canvas-height" class="w-[52px] text-[11px] font-medium text-editor-text-dim">Height</label>
               <input
+                id="resize-canvas-height"
                 type="number"
                 min={1}
                 value={h()}
                 onInput={(e) => handleHChange(e.currentTarget.value)}
-                class="h-[26px] flex-1 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[12px] text-editor-text outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                class={`${desktopDialogFieldClass} flex-1 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
               />
               <span class="text-[11px] text-editor-text-dim">px</span>
             </div>
           </div>
-
-          <div class="mt-5 flex justify-end gap-2">
-            <button
-              onClick={handleCancel}
-              class="flex h-[28px] items-center rounded-[4px] border border-editor-field-border bg-editor-field px-3 text-[12px] text-editor-text-dim hover:bg-editor-field-border hover:text-editor-text"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleApply}
-              class="flex h-[28px] items-center rounded-[4px] bg-editor-accent px-3 text-[12px] font-medium text-white hover:brightness-110"
-            >
-              Image Size
-            </button>
-          </div>
-        </div>
-      </div>
+        </DesktopDialog>
+      </Portal>
     </Show>
   );
 }
