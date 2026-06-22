@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   brushAlphaAtDistance,
   clearBrushTipCache,
@@ -13,6 +13,7 @@ import {
   stampTerminalBrushTip,
   compositeMaskToImageData,
   paintMaskToContext,
+  paintTransientBrushTipToContext,
   getEffectiveFlowMultiplier,
   type BrushTip,
 } from "../brushTipMask";
@@ -153,6 +154,57 @@ describe("brushTipMask dabs", () => {
 
     expect(stampTerminalBrushTip(mask, 30, 5, tip, endpoint, endpoint, 0.5)).toBe(false);
     expect(mask[endpoint.y * 30 + endpoint.x]).toBe(terminalAlpha);
+  });
+
+  it("composites a transient endpoint only inside its clipped tip region", () => {
+    const tip = createBrushTip({ size: 20, hardness: 1, curve: "soft" });
+    const getImageData = vi.fn((_x: number, _y: number, width: number, height: number) => ({
+      width,
+      height,
+      data: new Uint8ClampedArray(width * height * 4),
+      colorSpace: "srgb",
+    } as ImageData));
+    const putImageData = vi.fn();
+    const ctx = {
+      canvas: { width: 100, height: 80 },
+      getImageData,
+      putImageData,
+    } as unknown as CanvasRenderingContext2D;
+
+    expect(paintTransientBrushTipToContext(
+      ctx,
+      tip,
+      { x: 92, y: 40 },
+      { x: 80, y: 40 },
+      1,
+      "#ff0000",
+      false,
+    )).toBe(true);
+
+    expect(getImageData).toHaveBeenCalledWith(82, 30, 18, 21);
+    const written = putImageData.mock.calls[0][0] as ImageData;
+    expect(written.data[(10 * written.width + 10) * 4 + 3]).toBeGreaterThan(0);
+  });
+
+  it("skips a transient endpoint already occupied by the last regular dab", () => {
+    const tip = createBrushTip({ size: 20, hardness: 1, curve: "soft" });
+    const ctx = {
+      canvas: { width: 100, height: 80 },
+      getImageData: vi.fn(),
+      putImageData: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+    const endpoint = { x: 40, y: 30 };
+
+    expect(paintTransientBrushTipToContext(
+      ctx,
+      tip,
+      endpoint,
+      endpoint,
+      0.5,
+      "#ff0000",
+      false,
+    )).toBe(false);
+    expect(ctx.getImageData).not.toHaveBeenCalled();
   });
 
   it("accumulates dabs toward saturation (Photoshop-like source-over)", () => {

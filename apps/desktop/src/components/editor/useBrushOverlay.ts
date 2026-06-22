@@ -11,6 +11,7 @@ import {
   stampBrushTip,
   stampTerminalBrushTip,
   paintMaskToContext,
+  paintTransientBrushTipToContext,
   getEffectiveFlowMultiplier,
 } from "./brushTipMask";
 
@@ -164,11 +165,34 @@ export function useBrushOverlay() {
           eraserPreviewCtx.drawImage(layer.imageBitmap, 0, 0);
         }
         paintMaskToContext(eraserPreviewCtx, paintSession.maskData, layer.width, layer.height, "rgba(0,0,0,1)", true);
+        if (!isFinal && paintSession.lastPoint) {
+          paintTransientBrushTipToContext(
+            eraserPreviewCtx,
+            tip,
+            paintSession.lastPoint,
+            paintSession.lastDab,
+            alphaScale,
+            "rgba(0,0,0,1)",
+            true,
+          );
+        }
         uploadEraserPreview(activeEngine, activeId, layer.width, layer.height);
       }
     } else {
       overlayCtx.clearRect(0, 0, layer.width, layer.height);
       paintMaskToContext(overlayCtx, paintSession.maskData, layer.width, layer.height, paintSession.color, false);
+
+      if (!isFinal && paintSession.lastPoint) {
+        paintTransientBrushTipToContext(
+          overlayCtx,
+          tip,
+          paintSession.lastPoint,
+          paintSession.lastDab,
+          alphaScale,
+          paintSession.color,
+          false,
+        );
+      }
 
       if (layer.lockTransparency && layer.imageBitmap) {
         overlayCtx.globalCompositeOperation = "destination-in";

@@ -239,6 +239,18 @@ export function stampBrushTip(
   }
 }
 
+export function brushPointsEqual(
+  a: BrushPoint | null,
+  b: BrushPoint | null,
+): boolean {
+  return Boolean(
+    a
+    && b
+    && Math.abs(a.x - b.x) <= 0.0001
+    && Math.abs(a.y - b.y) <= 0.0001,
+  );
+}
+
 export function stampTerminalBrushTip(
   mask: Uint8ClampedArray,
   maskWidth: number,
@@ -248,11 +260,7 @@ export function stampTerminalBrushTip(
   lastDab: BrushPoint | null,
   alphaScale: number,
 ): boolean {
-  if (
-    lastDab
-    && Math.abs(lastDab.x - endpoint.x) <= 0.0001
-    && Math.abs(lastDab.y - endpoint.y) <= 0.0001
-  ) {
+  if (brushPointsEqual(lastDab, endpoint)) {
     return false;
   }
 
@@ -347,4 +355,44 @@ export function paintMaskToContext(
   const imageData = ctx.getImageData(0, 0, width, height);
   compositeMaskToImageData(imageData, mask, color, isEraser);
   ctx.putImageData(imageData, 0, 0);
+}
+
+export function paintTransientBrushTipToContext(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  tip: BrushTip,
+  endpoint: BrushPoint,
+  lastDab: BrushPoint | null,
+  alphaScale: number,
+  color: string,
+  isEraser: boolean,
+): boolean {
+  if (brushPointsEqual(lastDab, endpoint)) return false;
+
+  const canvasWidth = ctx.canvas.width;
+  const canvasHeight = ctx.canvas.height;
+  const cx = (tip.width - 1) / 2;
+  const cy = (tip.height - 1) / 2;
+  const minX = Math.max(0, Math.floor(endpoint.x - cx));
+  const maxX = Math.min(canvasWidth - 1, Math.ceil(endpoint.x + cx));
+  const minY = Math.max(0, Math.floor(endpoint.y - cy));
+  const maxY = Math.min(canvasHeight - 1, Math.ceil(endpoint.y + cy));
+  if (maxX < minX || maxY < minY) return false;
+
+  const width = maxX - minX + 1;
+  const height = maxY - minY + 1;
+  const mask = new Uint8ClampedArray(width * height);
+  stampBrushTip(
+    mask,
+    width,
+    height,
+    tip,
+    endpoint.x - minX,
+    endpoint.y - minY,
+    alphaScale,
+  );
+
+  const imageData = ctx.getImageData(minX, minY, width, height);
+  compositeMaskToImageData(imageData, mask, color, isEraser);
+  ctx.putImageData(imageData, minX, minY);
+  return true;
 }
