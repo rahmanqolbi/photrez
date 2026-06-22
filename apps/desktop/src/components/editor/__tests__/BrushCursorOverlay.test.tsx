@@ -6,11 +6,11 @@ import * as EditorContextModule from "../EditorContext";
 import { ViewportCamera } from "../../../viewport/viewportCamera";
 
 describe("BrushCursorOverlay", () => {
-  it("uses brush size and hardness for the cursor rings", () => {
+  it("reacts to brush hardness with one calibrated cursor ring", () => {
     const [activeTool, setActiveTool] = createSignal("brush");
     const [zoom] = createSignal(1);
     const [brushSize] = createSignal(24);
-    const [brushHardness] = createSignal(0.5);
+    const [brushHardness, setBrushHardness] = createSignal(0);
 
     vi.spyOn(EditorContextModule, "useEditor").mockReturnValue({
       activeTool,
@@ -29,15 +29,19 @@ describe("BrushCursorOverlay", () => {
     document.body.appendChild(root);
     const dispose = render(() => <BrushCursorOverlay forceVisibleForTest cursorPosForTest={{ x: 10, y: 10 }} />, root);
 
-    expect(root.querySelector("[data-paint-cursor-outer]")?.getAttribute("r")).toBe("12");
+    const softRadius = Number(root.querySelector("[data-paint-cursor-outer]")?.getAttribute("r"));
+    expect(softRadius).toBeCloseTo(12 * 0.661 * Math.sqrt(-Math.log(0.2)), 10);
     expect(root.querySelector("[data-paint-cursor-hardness]")).toBeNull();
+
+    setBrushHardness(0.97);
+    expect(root.querySelector("[data-paint-cursor-outer]")?.getAttribute("r")).toBe("12");
 
     dispose();
     root.remove();
     vi.restoreAllMocks();
   });
 
-  it("uses eraser size when eraser is active", () => {
+  it("uses eraser size and hardness when eraser is active", () => {
     const [activeTool, setActiveTool] = createSignal("eraser");
     const [zoom] = createSignal(1);
     const [eraserSize] = createSignal(40);
@@ -51,7 +55,7 @@ describe("BrushCursorOverlay", () => {
       brushHardness: () => 0.5,
       brushOpacity: () => 1,
       eraserSize,
-      eraserHardness: () => 1,
+      eraserHardness: () => 0,
       eraserOpacity: () => 1,
     } as any);
 
@@ -59,7 +63,8 @@ describe("BrushCursorOverlay", () => {
     document.body.appendChild(root);
     const dispose = render(() => <BrushCursorOverlay forceVisibleForTest cursorPosForTest={{ x: 10, y: 10 }} />, root);
 
-    expect(root.querySelector("[data-paint-cursor-outer]")?.getAttribute("r")).toBe("20");
+    const radius = Number(root.querySelector("[data-paint-cursor-outer]")?.getAttribute("r"));
+    expect(radius).toBeCloseTo(20 * 0.661 * Math.sqrt(-Math.log(0.2)), 10);
 
     dispose();
     root.remove();
@@ -76,7 +81,7 @@ describe("BrushCursorOverlay", () => {
       zoom,
       camera: new ViewportCamera(),
       brushSize,
-      brushHardness: () => 0.5,
+      brushHardness: () => 0.97,
       brushOpacity: () => 1,
       eraserSize: () => 40,
       eraserHardness: () => 1,

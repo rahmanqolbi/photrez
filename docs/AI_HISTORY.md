@@ -1,5 +1,120 @@
 # AI History — Photrez
 
+## [2026-06-22] FEATURE - Hardness-Aware Brush/Eraser Cursor [COMPLETE]
+
+### Kategori: FEATURE / BRUSH / ERASER / CURSOR / FRONTEND / TEST
+
+**Goal:**
+Represent the measured low-hardness bleed with the single paint cursor ring shrinking along the calibrated profile instead of changing the already validated paint output.
+
+**Done:**
+- Added a shared 20% alpha-contour cursor scale to the pure super-Gaussian hardness module.
+- Capped the contour at nominal radius because the measured high-hardness `sigma > 1` knots would otherwise enlarge the cursor before the 97% literal-circle branch.
+- Wired the existing one-ring SVG overlay to active Brush/Eraser hardness while preserving size, zoom, center crosshair, mask support, spacing, and renderer behavior.
+- Added numeric, clamping, monotonicity, live Solid signal, Brush, Eraser, zoom, mounted UX, and CanvasViewport regression coverage.
+
+**Verification:**
+- PASS: five missing-behavior assertions failed before implementation and passed afterward.
+- PASS: focused profile, mounted overlay, UX, and CanvasViewport coverage, 4 files / 116 tests.
+- PASS: full frontend suite, 99 files / 1331 tests in 47.82s.
+- PASS: TypeScript type-check and production Vite build in 5.99s.
+- PASS: Rust core 85/85 and workspace 100/100.
+
+---
+
+## [2026-06-22] UI FIX - History Dock Visual Anatomy [COMPLETE]
+
+### Kategori: BUG FIX / UI-UX / HISTORY / REGRESSION-SAFETY
+
+**Root Cause:**
+The restored History tab wrapped a single baseline row in a padded, rounded, bordered container stretched across the available dock height. At the same time, Navigator lived inside the Layers-only tab content. Switching tabs therefore changed the dock's geometry and removed a canvas-level utility, producing a large framed void that looked unfinished.
+
+**Fix Rationale:**
+- Render History as an edge-to-edge row list using structural dividers instead of a nested full-height card.
+- Keep Navigator outside the mutually exclusive Layers/History content region so the dock anatomy stays stable.
+- Show quiet `Edits appear here` guidance only while `Open` is the sole history state.
+- Use Photon Amber for the selected tab indicator while retaining neutral row surfaces.
+- Lock the visual contract with mounted tests for list geometry, baseline guidance, active-tab styling, and persistent Navigator ownership.
+
+**Verification:**
+- PASS: regression tests observed failing before implementation for the expected missing contracts.
+- PASS: focused component coverage, 2 files / 13 tests.
+- PASS: full frontend suite, 97 files / 1311 tests.
+- PASS: TypeScript type-check and production Vite build.
+- PASS: Rust core 85/85 and workspace 100/100.
+
+---
+
+## [2026-06-22] BUG FIX - Live Terminal Dab Preview [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / ERASER / PREVIEW / PERFORMANCE / TEST
+
+**Root Cause:**
+The terminal endpoint correction intentionally stamped only during finalization. While the pointer remained down, the preview still showed only fixed-spacing dabs, so the cursor could lead the visible cap by almost one spacing interval before the release-time dab appeared.
+
+**Fix Rationale:**
+- Keep the permanent stroke mask event-rate independent: initial dab, regular spaced dabs, and one finalized endpoint only.
+- After repainting the persistent preview, composite one transient endpoint directly into the preview context when the latest point differs from the last regular dab.
+- Limit temporary work to the clipped tip rectangle rather than cloning or clearing a second full-layer mask.
+- Rebuild Brush and Eraser previews from their persistent source every update, so old transient positions disappear instead of accumulating opacity/flow.
+- Skip the transient pass when a regular dab already occupies the endpoint, and preserve lock-transparency processing after both brush passes.
+
+**Verification:**
+- PASS: three transient-preview contracts failed before implementation and passed afterward.
+- PASS: focused production-path coverage, 5 files / 164 tests.
+- PASS: full frontend suite, 99 files / 1328 tests in 44.21s.
+- PASS: TypeScript type-check and production Vite build in 5.97s.
+- PASS: Rust core 85/85 and workspace 100/100.
+
+---
+
+## [2026-06-22] BUG FIX - Brush Terminal Dab Cursor Landing [COMPLETE]
+
+### Kategori: BUG FIX / BRUSH / ERASER / INPUT / TEST
+
+**Root Cause:**
+The regular brush interpolator correctly emits dabs at fixed 25%-of-size spacing and retains leftover distance as carry. Stroke completion then committed that spaced mask without forcing the final sampled coordinate. At Size 95 the last dab could therefore remain almost 24 document pixels behind the pointer—about 59 screen pixels at 246% zoom. Pointer-up also reused the previous move samples instead of appending its final constrained/smoothed coordinate.
+
+**Fix Rationale:**
+- Preserve fixed path spacing and its event-rate-independent carry behavior.
+- Forward the final pointer-up coordinate with an explicit finalization flag.
+- Track the last emitted dab and stamp the terminal coordinate only when it differs, preventing duplicate flow/opacity accumulation on spacing-grid endpoints.
+- Apply the same finalization contract to Brush, Eraser, Shift-connected strokes, pointer cancel, lost capture, and the deterministic stroke renderer.
+- Leave the calibrated hardness formula, cursor geometry, and normal in-drag sampling unchanged.
+
+**Verification:**
+- PASS: five regression behaviors were observed failing before their corresponding production changes.
+- PASS: focused production-path coverage, 4 files / 160 tests.
+- PASS: full frontend suite, 98 files / 1324 tests in 43.86s.
+- PASS: TypeScript type-check and production Vite build in 5.88s.
+- PASS: Rust core 85/85 and workspace 100/100.
+
+---
+
+## [2026-06-22] FEATURE - Photoshop-Calibrated Round Brush Hardness [COMPLETE]
+
+### Kategori: FEATURE / BRUSH / ERASER / FRONTEND / TEST
+
+**Goal:**
+Make Photrez round-brush hardness reproduce the supplied Photoshop calibration instead of approximating it with a bounded core-and-feather curve.
+
+**Done:**
+- Added the exact seven hardness/sigma/n calibration knots, monotone-cubic interpolation, and super-Gaussian radial alpha formula.
+- Added the supplied hardness >=97% literal hard-edge branch and a deterministic one-pixel AA fallback below 22px diameter.
+- Expanded only the cached tip bitmap to quantization-aware support at half an 8-bit alpha level, preserving Size as the nominal cursor diameter and allowing measured low-hardness bleed.
+- Kept brush and eraser on the same cached production mask path; radial alpha is evaluated during tip creation, never per dab.
+- Replaced obsolete bounded-profile audit expectations with measured calibration, raster-tail, cache, renderer, and pointer-wiring contracts.
+
+**Verification:**
+- PASS: TDD RED observed before both the calibration module and raster integration existed.
+- PASS: focused production-path coverage, 5 files / 182 tests.
+- PASS: full frontend suite, 98 files / 1319 tests in 43.65s.
+- PASS: TypeScript type-check and production Vite build in 6.00s.
+- PASS: Rust core 85/85 and workspace 100/100.
+- PASS: production-formula visual sheet inspected at 0%, 50%, 90%, and 100% hardness.
+
+---
+
 ## [2026-06-21] BUG FIX - Restore Layers / History Dock Contract [COMPLETE]
 
 ### Kategori: BUG FIX / UI-UX / REGRESSION-SAFETY

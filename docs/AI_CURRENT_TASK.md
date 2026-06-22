@@ -4,6 +4,91 @@
 
 ## Current Tasks
 
+### [2026-06-22] FEATURE - Hardness-Aware Brush/Eraser Cursor [COMPLETE]
+
+**Goal:**
+Shrink the single Brush/Eraser cursor ring along the calibrated 20% alpha contour at soft hardness while preserving nominal paint size, spacing, and output.
+
+**Current status:**
+- [x] Reconcile the supplied conversation and final single-ring correction
+- [x] Lock the 0.20 alpha-contour design and minimal implementation plan
+- [x] Add failing pure-profile and mounted cursor wiring tests
+- [x] Implement the shared cursor scale helper and overlay wiring
+- [x] Run all focused and mandatory verification gates
+
+**Verification:**
+- PASS: TDD RED observed for the missing contour helper and nominal-only Brush/Eraser overlay.
+- PASS: focused profile, mounted overlay, UX, and CanvasViewport coverage, 4 files / 116 tests.
+- PASS: full frontend suite, 99 files / 1331 tests in 47.82s.
+- PASS: root TypeScript type-check and production Vite build in 5.99s.
+- PASS: Rust core 85/85; full workspace 100/100 (85 core + 15 desktop).
+
+### [2026-06-22] BUG FIX - Live Terminal Dab Preview [COMPLETE]
+
+**Goal:**
+Keep the visible brush/eraser cap attached to the cursor during drag without permanently accumulating pointer-event samples or changing fixed dab spacing, flow, or hardness.
+
+**Current status:**
+- [x] Confirm the release-time endpoint fix causes a visible preview pop
+- [x] Approve a transient region-scoped terminal dab rendered only on the preview canvas
+- [x] Add failing transient-render and production-preview regression tests
+- [x] Implement transient preview for brush and eraser
+- [x] Run focused and complete verification gates
+
+**Verification:**
+- PASS: TDD RED observed for the missing region compositor, duplicate suppression, and non-final production preview pass.
+- PASS: focused mask, overlay, pointer, renderer, and CanvasViewport coverage, 5 files / 164 tests.
+- PASS: full frontend suite, 99 files / 1328 tests in 44.21s.
+- PASS: root TypeScript type-check and production Vite build in 5.97s.
+- PASS: Rust core 85/85; full workspace 100/100 (85 core + 15 desktop).
+
+### [2026-06-22] BUG FIX - Brush Terminal Dab Cursor Landing [COMPLETE]
+
+**Goal:**
+Ensure a completed freehand or Shift-connected brush/eraser stroke places its terminal dab exactly at the final document coordinate shown by the cursor, without changing the 25% path spacing or calibrated hardness profile.
+
+**Current status:**
+- [x] Trace the mismatch through pointer input, dab interpolation, and commit
+- [x] Confirm the root cause: leftover spacing carry is committed without a terminal endpoint dab
+- [x] Receive user approval for endpoint-only finalization
+- [x] Add failing terminal-dab and mounted pointer-chain regression tests
+- [x] Implement the minimal endpoint finalization path
+- [x] Run focused and complete verification gates
+
+**Verification:**
+- PASS: TDD RED observed for non-grid mask landing, pointer-up forwarding, renderer landing, pointer cancel, and lost capture.
+- PASS: focused mask, renderer, modifier/wiring, and CanvasViewport coverage, 4 files / 160 tests.
+- PASS: full frontend suite, 98 files / 1324 tests in 43.86s.
+- PASS: root TypeScript type-check and production Vite build in 5.88s.
+- PASS: Rust core 85/85; full workspace 100/100 (85 core + 15 desktop).
+
+### [2026-06-22] FEATURE - Photoshop-Calibrated Round Brush Hardness [COMPLETE]
+
+**Goal:**
+Replace the bounded inverse-quadratic soft-round profile with the user-provided Photoshop calibration: monotone-cubic interpolation of sigma/n and a super-Gaussian radial alpha profile, including measured low-hardness bleed, the >=97% hard-edge branch, and the <22px raster-AA branch.
+
+**Current status:**
+- [x] Read the calibration task and prior measurement discussion
+- [x] Audit the existing cached brush-tip production path and conflicting fixed-support tests
+- [x] Agree on a quantization-aware finite bitmap support that does not alter the provided alpha formula
+- [x] Receive user approval for the implementation design
+- [x] Write and review the implementation plan
+- [x] Implement through TDD, update brush audit contracts, and verify production wiring
+- [x] Run the complete frontend, build, Rust, and visual sanity gates
+
+**Locked behavior:**
+- The seven user-provided hardness/sigma/n calibration points and formula are authoritative.
+- Brush size remains the nominal cursor diameter; low-hardness alpha may render beyond that cursor radius.
+- The existing size+hardness brush-tip cache remains the only production stamp source.
+
+**Verification:**
+- PASS: TDD RED observed for the missing calibration module and for the previous bounded raster behavior.
+- PASS: focused calibration, mask, renderer, reference-audit, and pointer-chain coverage, 5 files / 182 tests.
+- PASS: full frontend suite, 98 files / 1319 tests in 43.65s.
+- PASS: root TypeScript type-check and production Vite build in 6.00s.
+- PASS: Rust core 85/85; full workspace 100/100 (85 core + 15 desktop).
+- PASS: production-profile visual sanity sheet inspected at 0%, 50%, 90%, and 100% hardness.
+
 ### [2026-06-21] UI - History Panel UI [COMPLETE]
 
 **Goal:**
@@ -46,12 +131,19 @@ Implement the interactive History Panel UI allowing users to view the list of pa
 - PASS: root TypeScript + production Vite build.
 - PASS: Rust core 85/85; full workspace 100/100 (85 core + 15 desktop).
 
-**History dock visual polish (IN PROGRESS):**
-- [/] Remove the full-height inset card and render History edge-to-edge in the dock
-- [/] Keep Navigator persistent beneath both Layers and History tab content
-- [/] Add a quiet baseline hint when the history contains only `Open`
-- [/] Unify the selected tab indicator with the Photon Amber state vocabulary
-- [ ] Add mounted visual-contract regression tests and run all verification gates
+**History dock visual polish (COMPLETE):**
+- [x] Remove the full-height inset card and render History edge-to-edge in the dock
+- [x] Keep Navigator persistent beneath both Layers and History tab content
+- [x] Add a quiet baseline hint when the history contains only `Open`
+- [x] Unify the selected tab indicator with the Photon Amber state vocabulary
+- [x] Add mounted visual-contract regression tests and run all verification gates
+
+**Polish verification:**
+- PASS: TDD RED confirmed for missing edge-to-edge list, persistent Navigator, and amber tab state.
+- PASS: focused mounted coverage, 2 files / 13 tests.
+- PASS: full frontend suite, 97 files / 1311 tests.
+- PASS: TypeScript type-check and production Vite build.
+- PASS: Rust core 85/85; full workspace 100/100 (85 core + 15 desktop).
 
 ### [2026-06-21] UI - Tooltip System & Keyboard Shortcuts [COMPLETE]
 

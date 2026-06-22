@@ -121,14 +121,14 @@
 | ✅ DONE      | Eraser stroke                              |
 | ✅ DONE      | Brush and eraser separate settings (size, hardness, strength) |
 | ✅ DONE      | Interactive BrushOptionBar with real setting controls |
-| ✅ DONE      | Brush/eraser cursor preview reflects active size and hardness |
+| ✅ DONE      | Brush/eraser cursor preview reflects active size and the calibrated hardness contour (single ring at 20% alpha; ~84% nominal radius at hardness 0, capped at nominal radius) |
 | ✅ DONE      | Brush/eraser active-size shortcuts (`[` / `]`) |
 | ✅ DONE      | Paint blocked-state feedback for locked, hidden, and protected layers |
 | ✅ DONE      | Soft edge rendering via deterministic per-pixel distance-field alpha mask (within-stroke max-alpha, no accumulation, bounds-clipped) |
 | ✅ DONE      | Brush-tip mask engine replacement for faster editor-like soft brush UX |
 | ✅ DONE      | Hard brush (hardness=100%) solid fill (no gradient) |
 | ✅ DONE      | Cursor overlay accounts for viewport pan and zoom |
-| ✅ DONE      | Cursor radius matches stroke at any zoom level |
+| ✅ DONE      | Cursor radius follows the calibrated 20% alpha contour at any zoom level while paint Size remains nominal |
 | ✅ DONE      | Pointer cancel / lost capture commits partial stroke |
 | ✅ DONE      | Document-to-layer-local coordinate conversion for transformed layers |
 | ✅ DONE      | Flow control — per-dab alpha multiplier (opacity × flow, 0–100%) |
@@ -139,18 +139,19 @@
 | ✅ DONE      | Right-click context menu — Size/Hardness/Strength sliders, preset grid, Reset button, close on Escape/outside click |
 | ✅ DONE      | Keyboard shortcuts — `[`/`]` for size, Shift+`[`/`]` for hardness |
 | ✅ DONE      | Brush visual calibration: Photoshop-like hardness 0 soft-round profile with broader dense center, dense soft spacing, subpixel bilinear stamping, opacity/flow-independent alpha scale, and pixel-profile regression tests |
-| ✅ DONE      | Photoshop-style hardness falloff — brush/eraser size remains the fixed outer diameter; hardness controls the fully opaque core and feather rim width inside that diameter |
-| ✅ DONE      | Fixed brush/eraser footprint — every hardness uses the exact displayed Size radius; softness is contained inside the cursor circle |
-| ✅ DONE      | Inverse-quadratic soft feather — after the hardness-defined solid core, alpha follows `1 - t²` to the fixed zero-alpha Size boundary so the visible feather fills more of the cursor without expanding its footprint |
-| ✅ DONE      | Brush hardness curve retune — hardness 0 uses a lighter airier radial fade, while 80% hardness maps to a larger solid body with a narrow Photoshop-like feather rim |
+| ↪ SUPERSEDED | Bounded core/feather hardness models (`1 - t²`, smoothstep, and fixed cursor support) — replaced by the measured Photoshop calibration below |
+| ✅ DONE      | Photoshop-calibrated round hardness — exact seven-point monotone-cubic sigma/n interpolation drives `exp(-((r / sigma)^n))`; hardness ≥97% is a literal hard disk and diameters below 22px use deterministic one-pixel raster AA |
+| ✅ DONE      | Photoshop soft-tail semantics — Size remains the nominal cursor diameter while low-hardness quantized alpha may extend beyond the cursor; finite cached bitmap support ends below half an 8-bit alpha level |
 | ✅ DONE      | Alt-Hold Eyedropper modifier for sampling colors from active canvas |
 | ✅ DONE      | Shift-Click Straight Lines interpolation connecting last painted dab |
 | ✅ DONE      | Shift-Drag Axis Locking constraining stroke to horizontal/vertical |
 | ✅ DONE      | Regression guard: Brush/Eraser still paint/erase after Move Tool pasteboard deselect hides the transform box |
 | ✅ DONE      | Photoshop-style brush behavior — 25% × size dab spacing (visible individual dabs), hardness 100% routes through the mask engine (no `ctx.lineCap=round` shortcut), and per-dab pre-multiplied source-over accumulation so opacity/flow behave like Photoshop (multiple passes darken toward saturation) |
-| ✅ DONE      | Editor-style bounded soft round mask — smoothstep core+feather model with a fixed support radius; hardness changes the solid core and feather width without changing geometric area |
-| ✅ DONE      | Brush cursor-paint alignment — the sharp cursor circle marks the exact support boundary; soft alpha reaches zero at that boundary with only subpixel antialiasing on the boundary sample |
-| ✅ DONE      | Photoshop-style full-size brush cursor (experimental) — earlier tried an SVG soft filled circle (radial gradient matching the brush alpha profile) but reverted to a simple sharp stroke because the soft fill caused color-inversion artifacts (mix-blend-mode: difference) on the canvas. The paint behavior alone matches the brush size and feather profile, so the cursor just marks the boundary. |
+| ✅ DONE      | Exact terminal dab landing — freehand, Shift-connected, cancel, and lost-capture completion stamp one endpoint dab at the final cursor coordinate when the 25% spacing grid did not already emit it; duplicate terminal accumulation is suppressed |
+| ✅ DONE      | Live terminal dab preview — while dragging, one non-destructive region-scoped dab follows the cursor; previous transient positions never enter the permanent mask, and pointer-up promotes the endpoint exactly once |
+| ↪ SUPERSEDED | Editor-style bounded smoothstep mask and exact cursor-support alignment — retained only as implementation history; runtime now follows measured Photoshop bleed |
+| ✅ DONE      | Brush cursor semantics — one sharp ring follows the shared 20% calibrated alpha contour below 97% hardness and the nominal Size radius at the hard edge; no duplicate support ring or filled gradient |
+| ✅ DONE      | Photoshop-style hardness-aware brush cursor — an earlier SVG soft fill was reverted because it caused color-inversion artifacts; the retained sharp ring now changes geometry only, shared by Brush and Eraser |
 
 ---
 
@@ -198,7 +199,7 @@
 | ✅ DONE      | Redo (Ctrl+Y / Ctrl+Shift+Z)               |
 | ✅ DONE      | Snapshot-based history (max 50)            |
 | ✅ DONE      | Redo branch discard on new mutation        |
-| ✅ DONE      | Interactive History panel — chronological labeled operations, current/future state styling, multi-step time travel inside the preserved `Layers | History` right-dock tabs, status-bar tab selection, and accessible state metadata |
+| ✅ DONE      | Interactive History panel — chronological labeled operations, current/future state styling, multi-step time travel inside the preserved `Layers | History` tabs, edge-to-edge list geometry, persistent Navigator, baseline guidance, status-bar tab selection, and accessible state metadata |
 
 ---
 

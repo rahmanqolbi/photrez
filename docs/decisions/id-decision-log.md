@@ -115,6 +115,13 @@ Jika nama final berubah nanti, seluruh dokumen `docs/` harus disinkronkan.
 | Soft brush visible edge alpha | The soft curve keeps `alpha = 0.50` (strongly visible) at the cursor edge so the visual cursor indicator matches where the brush actually paints and the brush footprint fills the entire cursor visual size. After the cursor edge the alpha fades linearly to 0 over `SOFT_BRUSH_TAIL_RATIO = 0.10` (feather overshoot past the cursor). The combination of strong edge alpha + the cursor being rendered as a soft filled circle (matching the paint profile) means the user perceives the brush body and cursor as the same shape. | Locked 2026-06-19 |
 | Brush cursor visual = simple sharp stroke | The cursor is rendered as a sharp stroked circle (dark + white, two concentric strokes plus a crosshair) at the brush size. The user prefers the original clean stroke over a soft filled preview because soft fills caused visible color-inversion artifacts (mix-blend-mode: difference) on the canvas. The paint behavior already matches the brush size and feather profile, so the cursor just needs to mark the boundary. Locked 2026-06-19 (revert). | Locked 2026-06-19 |
 
+## Tambahan Keputusan 2026-06-22
+
+| Area | Keputusan | Status |
+| ---- | --------- | ------ |
+| Photoshop-calibrated round hardness | Runtime `soft` brush and eraser use the user-supplied seven sigma/n calibration knots, monotone-cubic interpolation, and `exp(-((r / sigma)^n))`. Hardness >= 0.97 is a literal disk. This supersedes the fixed-support, inverse-quadratic, perceptual-core, smoothstep, fixed-tail-ratio, and cursor-edge-alpha decisions dated 2026-06-19. | Locked 2026-06-22 |
+| Quantized soft-tip support | Size remains the nominal cursor diameter. For reliable diameters (>=22px), the cached bitmap expands only until the calibrated alpha falls below half an 8-bit alpha unit; smaller tips use deterministic one-pixel raster AA. The radial formula itself is not truncated or altered. | Locked 2026-06-22 |
+
 ## Tambahan Keputusan 2026-06-20
 
 | Area | Keputusan | Status |
@@ -132,3 +139,4 @@ Jika nama final berubah nanti, seluruh dokumen `docs/` harus disinkronkan.
 | Dialog ownership and visual contract | `DialogProvider` is the single Promise-based owner for confirm/alert surfaces. It follows the Precision Workbench desktop contract, focuses Cancel for destructive actions, restores the invoking stable control, and guards async layer deletion against document/layer changes before mutation. Browser-native `window.confirm` is forbidden for editor commands. | Locked 2026-06-21 |
 | History panel ownership | History has one collapsible surface below Navigator in the right dock. The status bar only toggles that surface and reopens the dock. Every mutating production path supplies a human-readable history label; multi-step time travel carries intermediate snapshots through each undo/redo transition before restoring the final state. | Locked 2026-06-21 |
 | History panel ownership (supersedes the row above) | Preserve the pre-existing `Layers | History` tab contract. History owns the History tab; the status-bar action opens the right dock and selects that tab. The hardened labels and intermediate-snapshot traversal remain unchanged. Persistent UI structure must not be removed or relocated without explicit user approval and a mounted regression contract. | Locked 2026-06-21 |
+| History dock anatomy | Layers and History own only the mutually exclusive primary content region. Navigator is a persistent canvas utility beneath both tabs. History uses an edge-to-edge row list with structural dividers, quiet baseline guidance, and no full-height inset card. | Locked 2026-06-22 |

@@ -160,3 +160,19 @@ Release-time terminal finalization fixed the committed endpoint but exposed a vi
 - Brush and Eraser use identical transient source-over/destination-out math, including opacity and flow.
 - If a regular dab already lands at the current endpoint, no duplicate transient dab is drawn.
 - Pointer-up still promotes exactly one terminal dab into the permanent mask using the existing finalization contract.
+
+## Approved Addendum: Hardness-Aware Paint Cursor
+
+The user supplied a final visual comparison showing that the single normal paint cursor shrinks modestly as hardness falls. The calibrated brush/eraser alpha and nominal dab size remain unchanged; only the visible cursor contour changes.
+
+- Brush and Eraser use the same hardness-aware cursor calculation.
+- Below the 97% hard-edge threshold, the cursor follows the calibrated super-Gaussian alpha contour at `alpha = 0.20`:
+
+  ```text
+  cursorRadius = nominalRadius * min(1, sigma(h) * (-ln(0.20)) ^ (1 / n(h)))
+  ```
+
+- At hardness 0%, this yields about `0.838 * nominalRadius`. The scale is capped at one so the measured `sigma > 1` knots cannot enlarge the cursor; at or above 97%, the cursor uses the full nominal radius.
+- The overlay renders one cursor ring, not an additional inner/outer pair.
+- The nominal brush size, dab spacing, mask support, painted output, terminal preview, and center crosshair remain unchanged.
+- The cursor helper lives beside the calibrated profile so rendering and cursor geometry share the same interpolation and threshold contract without duplicating constants.

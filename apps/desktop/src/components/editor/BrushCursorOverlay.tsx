@@ -1,6 +1,7 @@
 import { createSignal, onMount, onCleanup, Show, createEffect, createMemo } from "solid-js";
 import { useEditor } from "./EditorContext";
 import { getActivePaintToolSettings } from "./brushToolState";
+import { getBrushCursorRadiusScale } from "./brushHardnessProfile";
 
 export function BrushCursorOverlay(props?: {
   forceVisibleForTest?: boolean;
@@ -39,7 +40,12 @@ export function BrushCursorOverlay(props?: {
     eraserSmoothing: 0,
   });
 
-  const radius = () => (settings().size / 2) * zoom();
+  const radius = () => {
+    const activeSettings = settings();
+    return (activeSettings.size / 2)
+      * getBrushCursorRadiusScale(activeSettings.hardness)
+      * zoom();
+  };
 
   let lastClientX = 0;
   let lastClientY = 0;

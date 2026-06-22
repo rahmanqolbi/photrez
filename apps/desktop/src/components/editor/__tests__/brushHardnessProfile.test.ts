@@ -1,8 +1,10 @@
 import { describe, expect, it, test } from "vitest";
 import {
+  BRUSH_CURSOR_ALPHA_CONTOUR,
   BRUSH_HARD_EDGE_THRESHOLD,
   MIN_RELIABLE_BRUSH_DIAMETER_PX,
   brushAlpha,
+  getBrushCursorRadiusScale,
   getBrushProfileParameters,
   getBrushProfileSupportNorm,
 } from "../brushHardnessProfile";
@@ -52,6 +54,33 @@ describe("Photoshop-calibrated brush profile", () => {
     expect(BRUSH_HARD_EDGE_THRESHOLD).toBe(0.97);
     expect(brushAlpha(1, BRUSH_HARD_EDGE_THRESHOLD)).toBe(1);
     expect(brushAlpha(1.000001, BRUSH_HARD_EDGE_THRESHOLD)).toBe(0);
+  });
+
+  it("maps the paint cursor to the calibrated 20% alpha contour", () => {
+    expect(BRUSH_CURSOR_ALPHA_CONTOUR).toBe(0.2);
+    expect(getBrushCursorRadiusScale(0)).toBeCloseTo(
+      0.661 * Math.pow(-Math.log(0.2), 1 / 2),
+      12,
+    );
+    expect(getBrushCursorRadiusScale(0.5)).toBeCloseTo(
+      0.935 * Math.pow(-Math.log(0.2), 1 / 8.23),
+      12,
+    );
+  });
+
+  it("clamps cursor hardness and restores nominal radius at the hard edge", () => {
+    expect(getBrushCursorRadiusScale(-1)).toBe(getBrushCursorRadiusScale(0));
+    expect(getBrushCursorRadiusScale(BRUSH_HARD_EDGE_THRESHOLD)).toBe(1);
+    expect(getBrushCursorRadiusScale(2)).toBe(1);
+  });
+
+  it("grows the cursor contour monotonically with hardness", () => {
+    let previous = getBrushCursorRadiusScale(0);
+    for (let step = 1; step <= 100; step += 1) {
+      const current = getBrushCursorRadiusScale(step / 100);
+      expect(current).toBeGreaterThanOrEqual(previous);
+      previous = current;
+    }
   });
 
   it("retains every alpha that can survive 8-bit rounding", () => {

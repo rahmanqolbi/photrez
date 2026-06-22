@@ -1,4 +1,5 @@
 export const BRUSH_HARD_EDGE_THRESHOLD = 0.97;
+export const BRUSH_CURSOR_ALPHA_CONTOUR = 0.2;
 export const MIN_RELIABLE_BRUSH_DIAMETER_PX = 22;
 export const MIN_VISIBLE_ALPHA_8BIT = 0.5 / 255;
 
@@ -88,6 +89,17 @@ export function brushAlpha(rNorm: number, hardness: number): number {
   const { sigma, n } = getBrushProfileParameters(h);
   const x = Math.max(rNorm, 0) / sigma;
   return Math.exp(-Math.pow(x, n));
+}
+
+export function getBrushCursorRadiusScale(hardness: number): number {
+  const h = clampHardness(hardness);
+  if (h >= BRUSH_HARD_EDGE_THRESHOLD) return 1;
+
+  const { sigma, n } = getBrushProfileParameters(h);
+  return Math.min(
+    1,
+    sigma * Math.pow(-Math.log(BRUSH_CURSOR_ALPHA_CONTOUR), 1 / n),
+  );
 }
 
 export function getBrushProfileSupportNorm(hardness: number): number {
