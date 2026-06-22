@@ -133,3 +133,18 @@ Before completion:
 - Adding pressure, tilt, texture, scatter, or brush presets.
 - Moving brush rasterization into Rust or a GPU shader.
 - Changing spacing, flow accumulation, cursor size, or UI layout.
+
+## Approved Addendum: Terminal Dab Cursor Landing
+
+The user reported that completed drag and Shift-connected strokes visibly stop before the cursor indicator. Investigation confirmed that the 25%-of-size spacing interpolator intentionally retains leftover distance, while commit reuses the existing sampled path without stamping its terminal coordinate. For Size 95 this can leave the final dab almost 24 document pixels—or about 59 screen pixels at 246% zoom—behind the cursor.
+
+The approved correction is endpoint-only finalization:
+
+- keep regular path dabs and their spacing carry unchanged during pointer movement;
+- preserve the exact calibrated hardness profile and nominal cursor geometry;
+- on pointer-up, include the final constrained/smoothed document coordinate in the stroke;
+- before commit, stamp one terminal dab at that exact coordinate only when the regular spacing sequence did not already place one there;
+- apply the same rule to Brush, Eraser, freehand drag, Shift-click straight lines, pointer cancel, and lost capture;
+- never change `interpolateDabs()` to append every pointer sample, because that would make density event-rate dependent.
+
+Regression coverage must prove both endpoint landing and duplicate suppression when an endpoint already lies on the spacing grid.
