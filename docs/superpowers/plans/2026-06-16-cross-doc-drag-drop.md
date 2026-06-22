@@ -4,7 +4,7 @@
 
 **Goal:** Implement cross-document layer drag (Copy default, Alt = Move) and OS file drop (Tauri 2) for Photrez, with hover-to-switch on document tabs (500ms) and minimal toast notifications.
 
-**Architecture:** No new IPC commands, no Rust changes. HTML5 Drag and Drop API for in-app layer drag (preserves existing pointer-based reorder). Tauri 2 `onDragDropEvent` for OS file drop. SolidJS `DragController` context for shared state. Per-doc history (Photoshop convention).
+**Architecture:** No new IPC commands, no Rust changes. HTML5 Drag and Drop API for in-app layer drag (preserves existing pointer-based reorder). Tauri 2 `onDragDropEvent` for OS file drop. SolidJS `DragController` context for shared state. Per-doc history (established editor convention).
 
 **Tech Stack:** Tauri 2.x (`getCurrentWebview().onDragDropEvent`), SolidJS context API, HTML5 Drag and Drop API (`draggable`, `dataTransfer`), Vitest, Playwright.
 

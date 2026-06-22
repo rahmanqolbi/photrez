@@ -11,7 +11,7 @@
 Rectangle Selection tool allows users to create rectangular selections on the canvas, move selection boundaries, rotate selection boundaries, and perform operations (cut/copy/paste/delete) on selected pixels.
 
 ### Goals
-- Solve real pain points from other editors (Photoshop, GIMP, Photopea)
+- Solve real pain points from other editors (established image editors)
 - Scalable and maintainable architecture
 - Isolated module — bugs in selection tool don't affect other tools
 - Document-level selection (industry standard)
@@ -349,9 +349,9 @@ create(x, y, w, h, angle): void {
 
 ### External References
 
-- Photoshop selection tools
-- GIMP selection tools
-- Photopea selection tools
+- selection-tool references
+- established image editor selection tools
+- established web image editor selection tools
 
 ---
 

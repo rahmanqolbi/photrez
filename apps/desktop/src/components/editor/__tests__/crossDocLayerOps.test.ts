@@ -223,7 +223,7 @@ describe("addLayerFromCrossDoc — position", () => {
     expect(transform.y).toBe(444);
   });
 
-  it("uses cursor pos when target is tab (Photoshop-like: user aims the landing position)", () => {
+  it("uses cursor pos when target is tab (editor-standard: user aims the landing position)", () => {
     const sourceEngine = makeEngine({ id: "doc-A" });
     const targetEngine = makeEngine({ id: "doc-B", width: 800, height: 600 });
     const ws = makeWorkspace({ "doc-A": sourceEngine, "doc-B": targetEngine });

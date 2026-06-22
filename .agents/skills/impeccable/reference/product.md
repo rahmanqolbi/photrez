@@ -4,7 +4,7 @@ When design SERVES the product: app UIs, admin dashboards, settings panels, data
 
 ## The product slop test
 
-Not "would someone say AI made this." Familiarity is often a feature here. The test is: would a user fluent in the category's best tools (Linear, Figma, Notion, Raycast, Stripe come to mind) sit down and trust this interface, or pause at every subtly-off component?
+Not "would someone say AI made this." Familiarity is often a feature here. The test is: would a user fluent in the category's best tools (Linear, professional design tool, Notion, Raycast, Stripe come to mind) sit down and trust this interface, or pause at every subtly-off component?
 
 Product UI's failure mode isn't flatness, it's strangeness without purpose: over-decorated buttons, mismatched form controls, gratuitous motion, display fonts where labels should be, invented affordances for standard tasks. The bar is earned familiarity. The tool should disappear into the task.
 

@@ -21,7 +21,7 @@ Implement a compact, responsive, and fully accessible tooltip system matching Ph
 
 ### Interaction & Lifecycle (Focus/Hover)
 - **Hover Delay (400ms)**: Tooltips must not flicker instantly as the user drags their cursor across the UI. A `400ms` show delay is applied when entering the target.
-- **Snappy Warm-Start**: If another tooltip was visible recently (within `< 250ms`), subsequent tooltips on other elements will activate **instantly** (0ms delay). This mirrors professional editor (VS Code, Photoshop) behavior.
+- **Snappy Warm-Start**: If another tooltip was visible recently (within `< 250ms`), subsequent tooltips on other elements will activate **instantly** (0ms delay). This mirrors professional tools behavior.
 - **Keyboard Focus (Instant)**: Gaining focus (`focusin`) on the target element shows the tooltip instantly (0ms delay) since keyboard action indicates clear intent. Losing focus (`focusout`) hides it instantly.
 - **Escape Key Dismissal**: Pressing the `Escape` key immediately closes any active tooltip.
 - **Clean Exit**: Leaving the element, blurring it, or unmounting the component immediately cancels any active timers and cleans up DOM nodes and event listeners.

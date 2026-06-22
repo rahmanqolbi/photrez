@@ -1,8 +1,8 @@
-# Photoshop-Calibrated Round Brush Hardness Implementation Plan
+# Reference-Calibrated Round Brush Hardness Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace Photrez's bounded inverse-quadratic soft round tip with the exact user-supplied Photoshop-calibrated super-Gaussian profile while preserving cached stamping, nominal cursor size, and existing stroke behavior.
+**Goal:** Replace Photrez's bounded inverse-quadratic soft round tip with the exact user-supplied reference-calibrated super-Gaussian profile while preserving cached stamping, nominal cursor size, and existing stroke behavior.
 
 **Architecture:** A pure `brushHardnessProfile.ts` module owns calibration, monotone interpolation, exact alpha evaluation, and finite 8-bit support. The existing `brushTipMask.ts` remains the sole raster/cache boundary and adds only the two supplied raster special cases; `paintStrokeRenderer.ts` continues consuming one cached tip per stroke.
 
@@ -14,7 +14,7 @@
 - Create `apps/desktop/src/components/editor/__tests__/brushHardnessProfile.test.ts`: numeric contracts.
 - Modify `apps/desktop/src/components/editor/brushTipMask.ts`: calibrated soft rasterization through the existing cache.
 - Modify `apps/desktop/src/components/editor/__tests__/brushTipMask.test.ts`: raster, small-AA, and cache contracts.
-- Modify `apps/desktop/src/components/editor/__tests__/brushReferenceAudit.test.ts`: measured Photoshop behavior.
+- Modify `apps/desktop/src/components/editor/__tests__/brushReferenceAudit.test.ts`: measured reference behavior.
 - Modify `apps/desktop/src/components/editor/__tests__/paintStrokeRenderer.test.ts`: production tail stamping.
 - Modify `docs/AI_CURRENT_TASK.md`, `docs/FEATURES.md`, and `docs/AI_HISTORY.md`: results and evidence.
 
@@ -39,7 +39,7 @@ const knots = [
   [1.00, 1.006, 60.00],
 ] as const;
 
-test.each(knots)("returns the Photoshop knot at hardness %f", (hardness, sigma, n) => {
+test.each(knots)("returns the calibration knot at hardness %f", (hardness, sigma, n) => {
   expect(getBrushProfileParameters(hardness).sigma).toBeCloseTo(sigma, 12);
   expect(getBrushProfileParameters(hardness).n).toBeCloseTo(n, 12);
 });
@@ -106,7 +106,7 @@ Run the same focused test; expect all cases PASS.
 
 ```powershell
 git add -- apps/desktop/src/components/editor/brushHardnessProfile.ts apps/desktop/src/components/editor/__tests__/brushHardnessProfile.test.ts
-git commit -m "feat(brush): add Photoshop hardness calibration"
+git commit -m "feat(brush): add measured hardness calibration"
 ```
 
 ## Task 2: Integrate Rasterization into the Existing Cache
@@ -230,7 +230,7 @@ Expected: every selected test passes, including existing real pointer-chain Brus
 
 ```powershell
 git add -- apps/desktop/src/components/editor/__tests__/brushReferenceAudit.test.ts apps/desktop/src/components/editor/__tests__/paintStrokeRenderer.test.ts
-git commit -m "test(brush): audit Photoshop-calibrated stamping"
+git commit -m "test(brush): audit reference-calibrated stamping"
 ```
 
 ## Task 4: Generate and Inspect Visual Evidence

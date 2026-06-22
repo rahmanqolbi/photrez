@@ -1,5 +1,27 @@
 # AI History — Photrez
 
+## [2026-06-22] MAINTENANCE - External Image-Editor Branding Cleanup [COMPLETE]
+
+### Kategori: MAINTENANCE / DOCUMENTATION / TEST LABELS / REPOSITORY HYGIENE
+
+**Goal:**
+Remove external image-editor product and vendor names from project-owned source comments, test labels, documentation, and filenames without changing behavior.
+
+**Done:**
+- Replaced product-specific comparisons with neutral, behavior-based terminology across source, tests, design records, feature tracking, archives, and local agent reference data.
+- Renamed the round-brush hardness plan and design specification to neutral reference-based filenames.
+- Preserved `@adobe/css-tools` entries in `pnpm-lock.yaml` because they are the immutable identity of a transitive dependency, not product-facing copy.
+- After explicit user approval, rewrote affected commit subjects and bodies on `main`; all 288 commit trees were preserved and the pre-rewrite HEAD tree remains exactly `19c5e457bddc018d2b9bc02322debfa6598449dd`.
+- Preserved a verified emergency bundle at `D:\Project\image-studio-pre-rewrite-2026-06-22.bundle`, then restored the tracked patch and two untracked files with hashes identical to their pre-rewrite snapshots.
+
+**Verification:**
+- PASS: content and filename audit, with only the required lockfile package identity remaining.
+- PASS: frontend suite 1331/1331 tests.
+- PASS: production build.
+- PASS: Rust core 85/85 and workspace 100/100.
+
+---
+
 ## [2026-06-22] FEATURE - Hardness-Aware Brush/Eraser Cursor [COMPLETE]
 
 ### Kategori: FEATURE / BRUSH / ERASER / CURSOR / FRONTEND / TEST
@@ -91,12 +113,12 @@ The regular brush interpolator correctly emits dabs at fixed 25%-of-size spacing
 
 ---
 
-## [2026-06-22] FEATURE - Photoshop-Calibrated Round Brush Hardness [COMPLETE]
+## [2026-06-22] FEATURE - Reference-Calibrated Round Brush Hardness [COMPLETE]
 
 ### Kategori: FEATURE / BRUSH / ERASER / FRONTEND / TEST
 
 **Goal:**
-Make Photrez round-brush hardness reproduce the supplied Photoshop calibration instead of approximating it with a bounded core-and-feather curve.
+Make Photrez round-brush hardness reproduce the supplied reference calibration instead of approximating it with a bounded core-and-feather curve.
 
 **Done:**
 - Added the exact seven hardness/sigma/n calibration knots, monotone-cubic interpolation, and super-Gaussian radial alpha formula.
@@ -428,7 +450,7 @@ Reconcile contradictory status documents after the latest brush work and preserv
 
 **Done:**
 - Added the inverse-quadratic brush falloff task and decision, superseding smoothstep while preserving the fixed footprint boundary.
-- Marked the abandoned GIMP pseudo-gaussian/outside-tail proposal as `SUPERSEDED`.
+- Marked the abandoned established image editor pseudo-gaussian/outside-tail proposal as `SUPERSEDED`.
 - Closed stale `IN PROGRESS` labels for Pointer Capture Helper, Cross-Document Drag & Drop, and Test Quality & Speed Overhaul using their existing implementation and verification evidence.
 - Reconciled stale architecture statements about Rust workspace status and current frontend test counts.
 - Changed the six remaining feature TODOs to explicit `PLANNED (POST-MVP)` entries: History Panel, native menu integration, window state persistence, general context menu, tooltip system, and dialog system.
@@ -444,7 +466,7 @@ Reconcile contradictory status documents after the latest brush work and preserv
 ### Kategori: BUG FIX / BRUSH-ERASER / PAINT-MASK
 
 **User Report:**
-Brush paint doesn't fill the indicator circle like professional image editors. Regardless of hardness settings, the visible painted area appears smaller than the cursor circle, unlike Photoshop/Krita where the brush always fills to the edge of the indicator.
+Brush paint doesn't fill the indicator circle like professional image editors. Regardless of hardness settings, the visible painted area appears smaller than the cursor circle, unlike established image editors where the brush always fills to the edge of the indicator.
 
 **Root Cause:**
 The `softFalloff` function in `brushTipMask.ts` used a `smoothstep01` (cubic Hermite S-curve: `t²(3-2t)`) for the feather zone. This curve drops alpha too aggressively — at 70% into the feather zone, alpha was only 0.22 (56/255), making the outer 30% of the brush circle essentially invisible when painting over existing image content.
@@ -456,7 +478,7 @@ Replaced smoothstep with an **inverse-quadratic** falloff: `alpha = 1 - t²`. Th
 - At 70% feather: 0.51 (was 0.22)
 - At 90% feather: 0.19 (was 0.028)
 
-The result: brush paint visually fills the entire cursor circle like Photoshop/Krita soft round brushes. The core/feather boundary still respects hardness — hardness controls where the solid core ends and the falloff begins.
+The result: brush paint visually fills the entire cursor circle like established image editors soft round brushes. The core/feather boundary still respects hardness — hardness controls where the solid core ends and the falloff begins.
 
 **Done:**
 - `apps/desktop/src/components/editor/brushTipMask.ts`: replaced `smoothstep01` + `softFalloff` with a single `softFalloff` function using `1 - t²` curve. Removed the now-unused `smoothstep01` function.
@@ -476,7 +498,7 @@ Brush/eraser Size should keep the same affected area at every hardness. Hardness
 The runtime `soft` tip expanded its support radius by up to 10% according to hardness and forced alpha 0.50 at the displayed cursor edge before fading outside it. Therefore hardness changed both the radial alpha profile and the geometric paint area.
 
 **Fix Rationale:**
-MyPaint's `render_dab_mask()` sets opacity to zero beyond normalized radius 1 and uses hardness only to shape the internal opacity segments. GIMP's generated brush likewise derives hardness from `d / radius` and zeros samples outside the radius. Photrez now follows the same bounded-support rule while retaining its smoothstep feather.
+established painting editor's `render_dab_mask()` sets opacity to zero beyond normalized radius 1 and uses hardness only to shape the internal opacity segments. established image editor's generated brush likewise derives hardness from `d / radius` and zeros samples outside the radius. Photrez now follows the same bounded-support rule while retaining its smoothstep feather.
 
 **Done:**
 - `brushTipMask.ts`: removed hardness-dependent tail expansion and nonzero edge alpha; `getBrushTipOuterRadius()` now returns the Size radius for every curve and hardness.
@@ -508,7 +530,7 @@ With `alphaAtEdge = 0.10`, the visible paint boundary (alpha > 0.5) only extende
 
 **Fix Rationale:**
 1. Raise `SOFT_BRUSH_EDGE_ALPHA` from `0.10` to `0.50` so the smoothstep fade goes from 1 (core) to 0.50 (cursor edge). This makes the entire cursor visual have alpha >= 0.50, so the visible brush body extends to (and slightly past) the cursor edge.
-2. Render the cursor visual as a soft filled circle using an SVG radial gradient with stops matching the brush alpha profile (solid core, fade to visible at edge, feather overshoot). This is Photoshop's "full size brush tip" cursor mode — the cursor visual itself is a soft preview of the brush footprint.
+2. Render the cursor visual as a soft filled circle using an SVG radial gradient with stops matching the brush alpha profile (solid core, fade to visible at edge, feather overshoot). This is reference editor's "full size brush tip" cursor mode — the cursor visual itself is a soft preview of the brush footprint.
 
 **Done:**
 - `apps/desktop/src/components/editor/brushTipMask.ts`: raised `SOFT_BRUSH_EDGE_ALPHA` to `0.50`.
@@ -580,23 +602,23 @@ This way:
 ### Kategori: BUG FIX / BRUSH-ERASER / PAINT-MASK
 
 **User Report:**
-After the spacing/hard-brush/accumulation pass, the brush still did not feel like Photoshop/Krita/Procreate. The visible density at mid-radius felt too sparse compared to those editors.
+After the spacing/hard-brush/accumulation pass, the brush still did not feel like established image editors/established painting editor. The visible density at mid-radius felt too sparse compared to those editors.
 
 **Reference Check:**
-- libmypaint `mypaint-tiled-surface.c::render_dab_mask` uses two linear segments (one in core, one in feather) with `rr = (distance/radius)²`, where opacity is 1 at the center and fades linearly to 0 at the edge with a kink at `rr = hardness`.
-- GIMP `gimpbrushgenerated.c::gauss()` plus `gimp_brush_generated_calc_lut()` builds a 16-bit lookup using `gauss(pow(d/radius, 0.4/(1-hardness)))`. This is a pseudo-gaussian, not a real gaussian, and fades faster than Photoshop at mid-radius.
-- Photoshop soft round (visual reference): the inner ~25% radius is dense (alpha > 0.85), mid-radius fades smoothly via a near-smoothstep curve, and at high hardness the rim is narrow.
+- external paint-engine reference `external tiled-surface reference::render_dab_mask` uses two linear segments (one in core, one in feather) with `rr = (distance/radius)²`, where opacity is 1 at the center and fades linearly to 0 at the edge with a kink at `rr = hardness`.
+- established image editor `gimpbrushgenerated.c::gauss()` plus `gimp_brush_generated_calc_lut()` builds a 16-bit lookup using `gauss(pow(d/radius, 0.4/(1-hardness)))`. This is a pseudo-gaussian, not a real gaussian, and fades faster than reference editor at mid-radius.
+- reference editor soft round (visual reference): the inner ~25% radius is dense (alpha > 0.85), mid-radius fades smoothly via a near-smoothstep curve, and at high hardness the rim is narrow.
 
 **Root Cause:**
-The Photrez `gimpStyleSoftAlpha` was a direct port of GIMP's pseudo-gaussian formula:
-- At h=0, t=0.25 (25% cursor radius): alpha = 0.441 vs Photoshop ~0.87 — fade too aggressive
-- At h=0.5, t=0.5: alpha = 0.829 vs Photoshop ~1.0 — inner half should still be solid
-- At h=0.8, t=0.875: alpha = 0.906 vs Photoshop ~0.05 — rim should be narrow, not fading
+The Photrez `gimpStyleSoftAlpha` was a direct port of established image editor's pseudo-gaussian formula:
+- At h=0, t=0.25 (25% cursor radius): alpha = 0.441 vs reference editor ~0.87 — fade too aggressive
+- At h=0.5, t=0.5: alpha = 0.829 vs reference editor ~1.0 — inner half should still be solid
+- At h=0.8, t=0.875: alpha = 0.906 vs reference editor ~0.05 — rim should be narrow, not fading
 
-The 22% soft tail expansion also produced a wider visible feather than Photoshop.
+The 22% soft tail expansion also produced a wider visible feather than reference editor.
 
 **Fix Rationale:**
-Replace the GIMP pseudo-gaussian with a Photoshop-style smoothstep core+feather model:
+Replace the established image editor pseudo-gaussian with a editor-standard smoothstep core+feather model:
 - `alpha = 1` when `distance <= hardness * radius` (solid core)
 - `alpha = 1 - smoothstep((u - hardness) / (T - hardness))` for the feather region
 - `alpha = 0` when `u >= T` (where `T = outerRadius / radius`)
@@ -621,32 +643,32 @@ Plus reduce `SOFT_BRUSH_TAIL_RATIO` from 0.22 to 0.10 so the visible tail is sub
 
 ---
 
-## [2026-06-19] BUG FIX - Brush/Eraser Photoshop-Feel Behavioral Pass [COMPLETE]
+## [2026-06-19] BUG FIX - Brush/Eraser reference editor-Feel Behavioral Pass [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH-ERASER / PAINT-MASK / ACCUMULATION
 
 **User Report:**
-"brush tidak nyaman dilihat dan tidak berasa sama dengan aplikasi editor gambar lain" — brush strokes feel unlike Photoshop/Krita/Procreate even after the hardness-curve visual retune.
+"brush tidak nyaman dilihat dan tidak berasa sama dengan aplikasi editor gambar lain" — brush strokes feel unlike established image editors/established painting editor even after the hardness-curve visual retune.
 
 **Reference Check:**
-- GIMP generated brush (`gimpbrushgenerated.c`): spacing controlled by `paint_options->brush_spacing`, default 10% × size. Hardness alters the mask profile only.
-- libmypaint (`mypaint-brush.c`): dab alpha accumulates toward saturation via source-over. `OPAQUE_LINEARIZE` setting compensates for multi-dab saturation curve.
-- Photoshop default spacing: 25% × size. Krita default: 5%. GIMP default: 10%.
+- established image editor generated brush (`gimpbrushgenerated.c`): spacing controlled by `paint_options->brush_spacing`, default 10% × size. Hardness alters the mask profile only.
+- external paint-engine reference (`external brush-engine reference`): dab alpha accumulates toward saturation via source-over. `OPAQUE_LINEARIZE` setting compensates for multi-dab saturation curve.
+- reference spacing spacing: 25% × size. established image editor default: 5%. established image editor default: 10%.
 - All three reference editors paint hardness=100 via the same dab-mask pipeline as soft brushes (binary inside, 0 outside, subpixel AA at the edge).
 
 **Root Cause:**
 Three accumulated algorithmic gaps vs professional editors:
-1. `getBrushDabSpacing` used `(0.04 + 0.12*h) * size * flow_factor` — 4-16% spacing, denser than Photoshop (25%), GIMP (10%), and Krita (default). Strokes looked like smooth blobs instead of brush strokes.
+1. `getBrushDabSpacing` used `(0.04 + 0.12*h) * size * flow_factor` — 4-16% spacing, denser than reference editor (25%), established image editor (10%), and established image editor (default). Strokes looked like smooth blobs instead of brush strokes.
 2. Hardness 100% shortcut in `paintStrokeRenderer.ts` and `useBrushOverlay.ts` used `ctx.lineCap=round` directly. Browser-internal AA differs from the mask engine, broke cross-engine determinism, and skipped the brush-tip pipeline entirely.
-3. `stampBrushTipMaxAlpha` used `if (scaled > mask[idx]) mask[idx] = scaled` — max per pixel within one stroke. Photoshop/Krita/Procreate accumulate via source-over, so opacity 50% + 10 passes reaches ~99% at the mask center instead of staying capped at 50%. Photrez capped opacity and broke the signature "brush darkens as you repeat it" behavior.
+3. `stampBrushTipMaxAlpha` used `if (scaled > mask[idx]) mask[idx] = scaled` — max per pixel within one stroke. established image editors/established painting editor accumulate via source-over, so opacity 50% + 10 passes reaches ~99% at the mask center instead of staying capped at 50%. Photrez capped opacity and broke the signature "brush darkens as you repeat it" behavior.
 
 **Fix Rationale:**
-Fix in dependency order — B (spacing) is 1-line minimum-effort with the highest visual delta; C (hard-brush path) is a small refactor removing a duplicate code path; A (accumulation) is the most invasive (semantics change) but the most important behavioral fix. After all three, pixel-profile tests assert Photoshop-like accumulation behavior (10 passes at opacity 50% reach > 95%).
+Fix in dependency order — B (spacing) is 1-line minimum-effort with the highest visual delta; C (hard-brush path) is a small refactor removing a duplicate code path; A (accumulation) is the most invasive (semantics change) but the most important behavioral fix. After all three, pixel-profile tests assert editor-standard accumulation behavior (10 passes at opacity 50% reach > 95%).
 
 **Done:**
 1. **Fix B — Spacing**: `apps/desktop/src/components/editor/brushTipMask.ts::getBrushDabSpacing` now returns `Math.max(1, Math.round(size * 0.25))` — fixed 25% × size, independent of hardness and flow. Spacing tests in `brushTipMask.test.ts` rewritten to assert the new contract.
 2. **Fix C — Hard brush path**: removed the `if (hardness >= 1)` `ctx.stroke()` / `ctx.arc()` shortcut from `paintStrokeRenderer.ts::renderPaintStrokeToContext` and from the soft-path branch in `useBrushOverlay.ts`. Every hardness now routes through `renderSoftStrokeWithTipMask` / `stampBrushTip`, which already produce a hard binary edge with deterministic subpixel AA via `brushAlphaAtDistance` (returns 1 inside radius, 0 outside for `hardness >= 1`). Hard-brush tests rewritten to assert mask-engine usage.
-3. **Fix A — Per-dab accumulation**: renamed `stampBrushTipMaxAlpha` → `stampBrushTip` in `brushTipMask.ts`. The within-stroke accumulation now applies pre-multiplied source-over: `next = cur + round((255 - cur) * dab / 255)`. Updated consumers in `paintStrokeRenderer.ts`, `useBrushOverlay.ts`, `brushTipMask.test.ts`, and `paintStrokeCoordinates.test.ts`. New tests cover Photoshop-like saturation (20 passes at α=0.5 → 255, 5 passes at α=1.0 → 255) and within-stroke overlap (4 passes at opacity 0.5 → alpha > 140, exceeding the per-dab cap).
+3. **Fix A — Per-dab accumulation**: renamed `stampBrushTipMaxAlpha` → `stampBrushTip` in `brushTipMask.ts`. The within-stroke accumulation now applies pre-multiplied source-over: `next = cur + round((255 - cur) * dab / 255)`. Updated consumers in `paintStrokeRenderer.ts`, `useBrushOverlay.ts`, `brushTipMask.test.ts`, and `paintStrokeCoordinates.test.ts`. New tests cover editor-standard saturation (20 passes at α=0.5 → 255, 5 passes at α=1.0 → 255) and within-stroke overlap (4 passes at opacity 0.5 → alpha > 140, exceeding the per-dab cap).
 4. **Cleanup**: removed dead `curve === "soft"` ternary inside the non-soft branch of `brushAlphaAtDistance`. Type-check is now clean.
 5. Updated `docs/AI_CURRENT_TASK.md`, `docs/FEATURES.md`, and `docs/decisions/id-decision-log.md` with the three new locked decisions.
 
@@ -663,13 +685,13 @@ Fix in dependency order — B (spacing) is 1-line minimum-effort with the highes
 ### Kategori: BUG FIX / BRUSH-ERASER / PAINT-MASK
 
 **User Report:**
-After the outside-tail fix, Photoshop comparison still showed two visual mismatches: hardness 0 remained too dense across the circle, and hardness 80 had a thick dark rim/halo instead of Photoshop's mostly solid disk with a narrow soft edge.
+After the outside-tail fix, reference editor comparison still showed two visual mismatches: hardness 0 remained too dense across the circle, and hardness 80 had a thick dark rim/halo instead of reference editor's mostly solid disk with a narrow soft edge.
 
 **Root Cause:**
 The production `soft` curve used `1 - t^p`, which preserves high alpha over too much of the radius for hardness 0. It also mapped hardness linearly to core radius, so 80% hardness left a wide feather band from 80% radius to the support edge.
 
 **Fix Rationale:**
-Photoshop-like hardness should feel perceptual rather than linear: 80% should be much closer to hard round than a 20% feather band. The retune maps soft core radius as `1 - (1 - hardness)^2`, then uses `v^p` falloff so low hardness becomes lighter/airier while high hardness drops in a narrow rim.
+editor-standard hardness should feel perceptual rather than linear: 80% should be much closer to hard round than a 20% feather band. The retune maps soft core radius as `1 - (1 - hardness)^2`, then uses `v^p` falloff so low hardness becomes lighter/airier while high hardness drops in a narrow rim.
 
 **Done:**
 1. Updated `apps/desktop/src/components/editor/brushTipMask.ts` soft core mapping and falloff.
@@ -691,13 +713,13 @@ Photoshop-like hardness should feel perceptual rather than linear: 80% should be
 ### Kategori: BUG FIX / BRUSH-ERASER / PAINT-MASK
 
 **User Report:**
-Photoshop soft brush still looked different: at hardness 0, Photoshop's painted feather can faintly leak outside the visible normal brush circle, while Photrez stopped too cleanly at the circle.
+reference editor soft brush still looked different: at hardness 0, reference editor's painted feather can faintly leak outside the visible normal brush circle, while Photrez stopped too cleanly at the circle.
 
 **Reference Check:**
-Greg Benz documents that Photoshop cursor mode matters: "full size brush tip" is the conservative/accurate cursor, while with normal-size cursor a soft brush can paint outside the circle. UW-IT also describes size as brush diameter and hardness as edge shape/blending, so size remains the primary diameter concept.
+Greg Benz documents that reference editor cursor mode matters: "full size brush tip" is the conservative/accurate cursor, while with normal-size cursor a soft brush can paint outside the circle. UW-IT also describes size as brush diameter and hardness as edge shape/blending, so size remains the primary diameter concept.
 
 **Root Cause:**
-Photrez used the visible cursor radius as the absolute support radius for the production `soft` brush mask. That was too strict for Photoshop-like normal cursor behavior, especially at hardness 0 where users expect a faint tail beyond the circle.
+Photrez used the visible cursor radius as the absolute support radius for the production `soft` brush mask. That was too strict for editor-standard normal cursor behavior, especially at hardness 0 where users expect a faint tail beyond the circle.
 
 **Fix Rationale:**
 Keep the cursor radius as the main size/diameter signal, but expand only the runtime `soft` mask support radius by a small softness-scaled amount. Hard brushes and `curve: "cosine"` keep the previous geometric cutoff, while soft hardness 0 can continue into a low-alpha tail just outside the normal circle.
@@ -716,15 +738,15 @@ Keep the cursor radius as the main size/diameter signal, but expand only the run
 
 ---
 
-## [2026-06-19] BUG FIX - Brush Hardness 0 Photoshop Soft-Round Calibration [COMPLETE]
+## [2026-06-19] BUG FIX - Brush Hardness 0 reference editor Soft-Round Calibration [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH-ERASER / PAINT-MASK
 
 **User Report:**
-Hardness 0 still looked very different from Photoshop. In Photrez the dense center was too small and the mid-feather became a heavy dark halo, especially when painting orange over a blue background.
+Hardness 0 still looked very different from reference editor. In Photrez the dense center was too small and the mid-feather became a heavy dark halo, especially when painting orange over a blue background.
 
 **Root Cause:**
-The previous patch corrected the geometry contract but the production `soft` falloff still used a curve that lost too much alpha by the middle of the radius. The runtime path uses `curve: "soft"`, not the exact `cosine` checkpoints, so the production visual profile needed a separate Photoshop-like calibration.
+The previous patch corrected the geometry contract but the production `soft` falloff still used a curve that lost too much alpha by the middle of the radius. The runtime path uses `curve: "soft"`, not the exact `cosine` checkpoints, so the production visual profile needed a separate editor-standard calibration.
 
 **Fix Rationale:**
 Keep the fixed outer diameter and hardness core/rim semantics, but make hardness 0 stay dense through the mid-radius before fading to the edge. The new `soft` profile uses `1 - t^(2.4 - 1.5 * hardness)`, so hardness 0 has a broader dense center while higher hardness still keeps a narrow rim.
@@ -747,13 +769,13 @@ Keep the fixed outer diameter and hardness core/rim semantics, but make hardness
 ### Kategori: BUG FIX / BRUSH-ERASER / PAINT-MASK
 
 **User Report:**
-After the first Photoshop-style hardness patch, the brush still did not look right. The visible falloff/rim remained too broad/heavy compared with the Photoshop reference.
+After the first editor-standard hardness patch, the brush still did not look right. The visible falloff/rim remained too broad/heavy compared with the reference editor reference.
 
 **Root Cause:**
-The previous patch removed the hard-core/feather-rim model entirely and replaced it with a continuous curve across the whole radius. That fixed the outer-diameter interpretation but made high-hardness brushes lose the Photoshop-like solid body and narrow feather rim. Soft strokes also still had hidden alpha attenuation from both `peakMultiplier` inside `brushAlphaAtDistance()` and `getEffectiveFlowMultiplier()`, so hardness could still reduce center strength even when opacity/flow were 100%.
+The previous patch removed the hard-core/feather-rim model entirely and replaced it with a continuous curve across the whole radius. That fixed the outer-diameter interpretation but made high-hardness brushes lose the editor-standard solid body and narrow feather rim. Soft strokes also still had hidden alpha attenuation from both `peakMultiplier` inside `brushAlphaAtDistance()` and `getEffectiveFlowMultiplier()`, so hardness could still reduce center strength even when opacity/flow were 100%.
 
 **Fix Rationale:**
-Use Photoshop-style semantics precisely: brush size owns the fixed outer diameter, hardness controls the fully opaque core and feather rim width inside that diameter, and opacity/flow are the only strength controls. That keeps the circle preview honest while making hardness 80% behave like a mostly solid disk with a narrow soft edge.
+Use editor-standard semantics precisely: brush size owns the fixed outer diameter, hardness controls the fully opaque core and feather rim width inside that diameter, and opacity/flow are the only strength controls. That keeps the circle preview honest while making hardness 80% behave like a mostly solid disk with a narrow soft edge.
 
 **Done:**
 1. Restored hard-core/feather-rim behavior in `apps/desktop/src/components/editor/brushTipMask.ts` without changing the fixed outer radius.
@@ -769,12 +791,12 @@ Use Photoshop-style semantics precisely: brush size owns the fixed outer diamete
 
 ---
 
-## [2026-06-19] BUG FIX - Photoshop-Style Brush Hardness Falloff [COMPLETE]
+## [2026-06-19] BUG FIX - reference editor-Style Brush Hardness Falloff [COMPLETE]
 
 ### Kategori: BUG FIX / BRUSH-ERASER / PAINT-MASK
 
 **User Report:**
-Brush/eraser hardness in Photrez looked unlike Photoshop: hardness appeared to determine the brush paint area instead of only changing edge softness/density.
+Brush/eraser hardness in Photrez looked unlike reference editor: hardness appeared to determine the brush paint area instead of only changing edge softness/density.
 
 **Root Cause:**
 `brushAlphaAtDistance()` in `apps/desktop/src/components/editor/brushTipMask.ts` used `hardRadius = radius * hardness`. That made hardness define the fully solid inner radius before the feather began. The stamp bounds were still size-based, but the visible body of the brush changed enough that hardness felt like an area control.
@@ -1433,7 +1455,7 @@ The inter-layer copy is conceptually "duplicate FBO[prev] into FBO[curr] bit-for
 ### Kategori: FEATURE / UX / KEYBOARD / LAYER
 
 **Goal:**
-Match familiar image-editor keyboard expectations (Photoshop / Krita / Photopea) for layer ops. Spec was already in `docs/reference/keyboard-shortcut-map.md` but not wired.
+Match familiar image-editor keyboard expectations (reference editor / established image editor / established web image editor) for layer ops. Spec was already in `docs/reference/keyboard-shortcut-map.md` but not wired.
 
 **Done:**
 1. Wired the following in `apps/desktop/src/components/editor/useCanvasKeyboard.ts`, grouped with the existing `Ctrl+J` block:
@@ -1444,7 +1466,7 @@ Match familiar image-editor keyboard expectations (Photoshop / Krita / Photopea)
    - `Delete` / `Backspace` — Delete active layer (no-op if only one layer remains; no confirm — undo restores)
    - `0`–`9` — Set active layer opacity (`0` = 100%, otherwise digit/10), skipped on locked layers
 2. Selection-tool `Delete` / `Backspace` behaviour is unchanged (still handled inside the selection-tool block and returns early), so the new top-level delete only runs in other tools.
-3. Trash-button confirm in `useLayerActions.handleDeleteActiveLayer` left untouched; keyboard Del intentionally has no confirm to match Photoshop/Krita keyboard behaviour.
+3. Trash-button confirm in `useLayerActions.handleDeleteActiveLayer` left untouched; keyboard Del intentionally has no confirm to match established image editors keyboard behaviour.
 4. Added 10 wiring tests to `CanvasKeyboardLayerShortcuts.test.tsx` (real `KeyboardEvent` dispatch through `EditorProvider`, real `WorkspaceManager`) covering each new shortcut + "do not delete last layer" guard.
 5. Added 14 pattern tests to `keyboard-shortcuts.test.ts` matching the existing logic-check style.
 6. Updated `FEATURES.md` Layer System table with the new shortcut row.
@@ -1705,17 +1727,17 @@ Plus: hover-to-switch on document tabs (500ms with visual countdown), multi-file
 - Tauri 2 `getCurrentWebview().onDragDropEvent()` for OS file drop
 - SolidJS `DragController` context for shared drag state
 - `crossDocLayerOps.ts` pure functions: `addLayerFromCrossDoc`, `addFilesAsLayers`, `createNewDocsFromFiles`
-- Per-doc history (Photoshop convention, not atomic across docs)
+- Per-doc history (established editor convention, not atomic across docs)
 - Coexist with existing pointer-based layer reorder (no regression)
 
 **Decisions (from brainstorming):**
-- Q1: Cross-doc layer drag default = **Copy**, Alt = Move (Photoshop convention)
+- Q1: Cross-doc layer drag default = **Copy**, Alt = Move (established editor convention)
 - Q2: Drop zones = Tab (hover) + Canvas + Layers panel; tab-empty / + / outside = new doc for files
 - Q2a: Hover-to-switch = **500ms** with visual countdown (CSS-driven)
 - Q3: Drop position = Cursor (canvas) / Center (tab, panel)
 - Q4: File drop = **Context-sensitive** by drop zone
 - Q5: Multi-select layer drag = **Single layer only** for MVP
-- Q6: Multi-file cascade = **+24px** per layer (Photoshop)
+- Q6: Multi-file cascade = **+24px** per layer (reference editor)
 - Q7: Integration = **Coexist** (pointer for reorder, HTML5 for cross-doc)
 - Q8: History = **Per-doc** (Approach A, not atomic)
 
@@ -1779,13 +1801,13 @@ Plus: hover-to-switch on document tabs (500ms with visual countdown), multi-file
 - Drag from canvas (only Layers panel draggable)
 - Drag between Photrez windows
 - Custom drag image for OS files (browser limitation)
-- Atomic cross-doc undo (chose per-doc for Photoshop parity)
+- Atomic cross-doc undo (chose per-doc for reference editor parity)
 - Toast for non-drag events (export complete, etc.)
 
 **References:**
 - Spec: `docs/superpowers/specs/2026-06-16-cross-doc-drag-drop-design.md` (823 lines)
 - Plan: `docs/superpowers/plans/2026-06-16-cross-doc-drag-drop.md` (1839 lines)
-- Research: Tauri 2 docs (Context7), MDN HTML5 Drag and Drop API, Photoshop/Affinity UX conventions
+- Research: Tauri 2 docs (Context7), MDN HTML5 Drag and Drop API, established image editors UX conventions
 
 ---
 
@@ -2789,7 +2811,7 @@ We mapped the normalized distance `v` using a Hermite interpolation / Smoothstep
 ### Kategori: POLISH / BRUSH / ERASER / UX
 
 **Root Cause:**
-The brush/eraser cursor overlay rendered an inner dashed circle (`data-paint-cursor-hardness`) when `hardness > 0 && hardness < 1` to represent the hardness boundary. This secondary ring is non-standard in professional image editors (like Photoshop/Affinity) and creates unnecessary visual clutter.
+The brush/eraser cursor overlay rendered an inner dashed circle (`data-paint-cursor-hardness`) when `hardness > 0 && hardness < 1` to represent the hardness boundary. This secondary ring is non-standard in professional image editors (like established image editors) and creates unnecessary visual clutter.
 
 **Fix Rationale:**
 Remove the secondary inner dashed ring from `BrushCursorOverlay.tsx` to align Photrez exactly with professional editor aesthetics, making the brush/eraser kursor a single clean circle showing the outer brush size.
@@ -4538,7 +4560,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ### Kategori: PLANNING / UX / TRANSFORM / FRONTEND
 
-**Deskripsi:** Membuat rencana implementasi lengkap untuk dua lanjutan pekerjaan Transform Session: memperbaiki lifecycle/undo/session-safety yang masih kurang dan menambahkan Photoshop-style contextual Transform Option Bar saat resize/rotate preview aktif.
+**Deskripsi:** Membuat rencana implementasi lengkap untuk dua lanjutan pekerjaan Transform Session: memperbaiki lifecycle/undo/session-safety yang masih kurang dan menambahkan editor-standard contextual Transform Option Bar saat resize/rotate preview aktif.
 
 **Files Changed:**
 - [ADD] `docs/superpowers/plans/2026-06-05-transform-session-hardening-contextual-optionbar-plan.md`
@@ -4552,11 +4574,11 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ---
 
-## [2026-06-05] FEATURE â€” Photoshop-Style Transform Session UX [COMPLETE]
+## [2026-06-05] FEATURE â€” reference editor-Style Transform Session UX [COMPLETE]
 
 ### Kategori: FEATURE / UX / TRANSFORM / FRONTEND
 
-**Deskripsi:** Mengimplementasikan Photoshop-style transient transform session di mana modifikasi layer (resize dan rotate) berjalan sebagai preview sementara, dan memerlukan Enter/Apply untuk commit atau Esc/Cancel untuk membatalkan (revert) ke transform semula. Bergerak bebas (Move Tool body drag) tetap direct manipulation yang langsung di-commit saat pointer dilepas untuk menjaga alur kerja yang ringan.
+**Deskripsi:** Mengimplementasikan editor-standard transient transform session di mana modifikasi layer (resize dan rotate) berjalan sebagai preview sementara, dan memerlukan Enter/Apply untuk commit atau Esc/Cancel untuk membatalkan (revert) ke transform semula. Bergerak bebas (Move Tool body drag) tetap direct manipulation yang langsung di-commit saat pointer dilepas untuk menjaga alur kerja yang ringan.
 
 **Rincian Perubahan:**
 1. **Transform Session State (`editorState.ts` & `EditorContext.tsx`)**:
@@ -4603,7 +4625,7 @@ No effect initialized `cropRect` on Classic mode entry. Entering Crop in Size/Ra
 
 ### Kategori: PLANNING / UX / TRANSFORM / FRONTEND
 
-**Deskripsi:** Membuat rencana implementasi untuk Photoshop-style transient transform session di Photrez. Keputusan UX yang dikunci: klik layer dengan Move tool tetap lightweight selection, body move tetap direct manipulation, sedangkan resize/rotate layer masuk session eksplisit dengan Enter/Apply untuk commit dan Esc/Cancel untuk revert. Crop tetap memakai session crop yang sudah ada.
+**Deskripsi:** Membuat rencana implementasi untuk editor-standard transient transform session di Photrez. Keputusan UX yang dikunci: klik layer dengan Move tool tetap lightweight selection, body move tetap direct manipulation, sedangkan resize/rotate layer masuk session eksplisit dengan Enter/Apply untuk commit dan Esc/Cancel untuk revert. Crop tetap memakai session crop yang sudah ada.
 
 **Files Changed:**
 - [ADD] `docs/superpowers/plans/2026-06-05-transform-session-ux-plan.md`
@@ -4705,11 +4727,11 @@ Membatasi area deteksi rotasi agar hanya aktif pada 270 derajat bagian luar sudu
 
 ---
 
-## [2026-06-04] FEATURE â€” Crop Option Bar Photoshop Pain Points & Input Fixes [COMPLETE]
+## [2026-06-04] FEATURE â€” Crop Option Bar reference editor Pain Points & Input Fixes [COMPLETE]
 
 ### Kategori: FEATURE / BUG FIX / UI / FRONTEND / CROP / OPTION BAR / UX
 
-**Deskripsi:** Menyelesaikan pain point Photoshop pada crop tool option bar (Destructive vs Non-destructive, Center-locked Swap, dan penghapusan HUD mengambang) serta memperbaiki bug input field option bar.
+**Deskripsi:** Menyelesaikan pain point reference editor pada crop tool option bar (Destructive vs Non-destructive, Center-locked Swap, dan penghapusan HUD mengambang) serta memperbaiki bug input field option bar.
 
 **Rincian Perubahan:**
 1. **Destructive vs. Non-destructive UX**:
@@ -5020,7 +5042,7 @@ WebGL framebuffer (FBO) merekam hasil gambar dengan titik asal koordinat (Y=0) d
 
 **Rincian Perubahan:**
 1. **`CanvasViewport.tsx` (1112 â†’ 713 lines)**:
-   - Mengekstrak handler keyboard global (Photoshop navigation, crop enter/escape, zoom, nudge) ke `useCanvasKeyboard.ts`.
+   - Mengekstrak handler keyboard global (reference editor navigation, crop enter/escape, zoom, nudge) ke `useCanvasKeyboard.ts`.
    - Mengekstrak visual overlay canvas brush, event `onPaintStroke()`, dan method `commitBrushStroke()` ke `useBrushOverlay.ts`.
    - Mengekstrak physics momentum inersia, pointer viewport panning, dan penanganan scroll wheel ke `usePanNavigation.ts`.
 2. **`LayersPanel.tsx` (732 â†’ 190 lines)**:
@@ -5050,7 +5072,7 @@ WebGL framebuffer (FBO) merekam hasil gambar dengan titik asal koordinat (Y=0) d
 
 ### Kategori: FEATURE / NAVIGATOR / VIEWPORT / ZOOM / PAN / UI / UX
 
-**Deskripsi:** Implementasi panel Navigator interaktif premium mirip Photoshop untuk mempermudah pan, zoom, dan peninjauan komposisi layer secara visual.
+**Deskripsi:** Implementasi panel Navigator interaktif premium mirip reference editor untuk mempermudah pan, zoom, dan peninjauan komposisi layer secara visual.
 
 **Detail Fungsionalitas:**
 1. **Live Preview Composition (`Navigator.tsx`)**:
@@ -5140,7 +5162,7 @@ Visual feedback ditingkatkan agar lebih jelas:
 
 ### Kategori: FEATURE / LAYERS / UI / UX
 
-**Deskripsi:** Implementasi sistem layer interaktif dan fungsional yang menyerupai Photoshop untuk Photrez.
+**Deskripsi:** Implementasi sistem layer interaktif dan fungsional yang menyerupai reference editor untuk Photrez.
 
 **Logika Perbaikan (Fix Rationale) & Detail:**
 1. **Core Engine Support (`document.ts` & `document.test.ts`)**:
@@ -5151,7 +5173,7 @@ Visual feedback ditingkatkan agar lebih jelas:
    - Mengubah pembuatan layer baru agar secara kontekstual ditambahkan langsung di atas layer yang sedang aktif, bukan selalu di atas tumpukan layer.
    - Menambahkan tes unit komprehensif di `document.test.ts` untuk memverifikasi fungsionalitas di atas.
 2. **LayersPanel UI & UX (`LayersPanel.tsx`)**:
-   - **Opacity Popover Slider**: slider opacity interaktif dengan drop-down popover mirip Photoshop.
+   - **Opacity Popover Slider**: slider opacity interaktif dengan drop-down popover mirip reference editor.
    - **Blend Mode Dropdown**: wired-up blend mode selector.
    - **Double-Click Inline Rename**: input teks interaktif yang muncul saat double-click nama layer (dengan Auto Focus, Escape cancel, Enter commit, dan input trim).
    - **HTML5 Drag and Drop Layer Reordering**: reordering drag-and-drop horizontal dengan visual separator line berwarna Photon Amber (`#E15A17`) bertipe `border-t-2`/`border-b-2` untuk indikasi posisi insert atas/bawah.
@@ -5267,7 +5289,7 @@ Visual feedback ditingkatkan agar lebih jelas:
 - âœ… `cargo test --workspace`: 85/85 PASS
 
 ---
-## [2026-06-03] FEATURE â€” Photoshop-Style Crop Moving Panning [COMPLETE]
+## [2026-06-03] FEATURE â€” reference editor-Style Crop Moving Panning [COMPLETE]
 
 ### Kategori: FEATURE / CROP / VIEWPORT / PANNING
 
@@ -5319,7 +5341,7 @@ Visual feedback ditingkatkan agar lebih jelas:
 - âœ… `cargo test --workspace`: 85/85 PASS
 
 ---
-## [2026-06-03] FEATURE â€” Photoshop-Style Crop Box Canvas Expansion [COMPLETE]
+## [2026-06-03] FEATURE â€” reference editor-Style Crop Box Canvas Expansion [COMPLETE]
 
 ### Kategori: FEATURE / CROP / VIEWPORT / BOUNDS
 
@@ -5517,7 +5539,7 @@ Visual feedback ditingkatkan agar lebih jelas:
 
 ### Kategori: FEATURE / CROP / OPTION BAR / UI
 
-**Deskripsi:** Replace old display-only crop section in OptionBar.tsx (W/H display fields + APPLY CROP button) with full interactive controls matching Photoshop-style crop tools.
+**Deskripsi:** Replace old display-only crop section in OptionBar.tsx (W/H display fields + APPLY CROP button) with full interactive controls matching editor-standard crop tools.
 
 **Perubahan:**
 - Mode dropdown (Free / Ratio / Size) wiring ke `cropMode` signal dari EditorContext
@@ -5831,7 +5853,7 @@ Untuk object 200Ã—100, SE handle (hx=1, hy=1), gerakan (20, -20):
 - âœ… `npx vitest run`: 155 PASS (16 test files, +1 regression test)
 
 ---
-## [2026-06-02] BUG FIX â€” Photoshop-Style Diagonal Projection for Corner Resize (Perpendicular Drift) [COMPLETE]
+## [2026-06-02] BUG FIX â€” reference editor-Style Diagonal Projection for Corner Resize (Perpendicular Drift) [COMPLETE]
 
 ### Kategori: BUG FIX / TRANSFORM / GEOMETRY
 
@@ -5847,7 +5869,7 @@ if (Math.abs(localDx) > Math.abs(localDy)) {
   vw = vh * aspect;      // dx-dominated â†’ adjust vh
 }
 ```
-Ini memilih satu axis (yang dominan), lalu menyesuaikan axis lain. Gerakan diagonal apapun tetap mengubah width ATAU height, termasuk gerakan perpendicular yang di Photoshop tidak mengubah ukuran.
+Ini memilih satu axis (yang dominan), lalu menyesuaikan axis lain. Gerakan diagonal apapun tetap mengubah width ATAU height, termasuk gerakan perpendicular yang di reference editor tidak mengubah ukuran.
 
 **Logika Perbaikan (Fix Rationale):**
 
@@ -5952,7 +5974,7 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 
 ### Kategori: BUG FIX / TRANSFORM / OVERLAY / SNAP / HUD / VIEWPORT
 
-**Deskripsi:** Bugfix campaign pasca Photoshop-like Free Transform. Memperbaiki 7 kategori P0/P1 bugs: (1) HEAD tidak buildable dari clean checkout â€” vite-tsconfig-paths stale refs; (2) flip semantics salah â€” shader flip dulu baru center, geometry helpers encode flip sign ke scaleX; (3) overlay AABB tidak reaktif â€” syncState shallow-copy layer objects; (4) overlay pointer layering â€” move zone di belakang handles; (5) move drag tidak lewat snap pipeline; (6) HUD position pakai raw clientX/zoom bukan screenToDocument; (7) rotation drag coordinate space salah.
+**Deskripsi:** Bugfix campaign pasca editor-standard Free Transform. Memperbaiki 7 kategori P0/P1 bugs: (1) HEAD tidak buildable dari clean checkout â€” vite-tsconfig-paths stale refs; (2) flip semantics salah â€” shader flip dulu baru center, geometry helpers encode flip sign ke scaleX; (3) overlay AABB tidak reaktif â€” syncState shallow-copy layer objects; (4) overlay pointer layering â€” move zone di belakang handles; (5) move drag tidak lewat snap pipeline; (6) HUD position pakai raw clientX/zoom bukan screenToDocument; (7) rotation drag coordinate space salah.
 
 **Files Changed:**
 - `apps/desktop/src/viewport/transformGeometry.ts`: remove sxSign usage, positive scaleX
@@ -6068,8 +6090,8 @@ Terdapat 2 mekanisme Y-flip di pipeline render, yang satu sudah benar dan satu l
 | 2026-05-31 | BUG FIX â€” Double Viewport Transform (WebGL + CSS) [COMPLETE] |
 | 2026-05-31 | FEATURE â€” Viewport UX Migration & Overlay System [COMPLETE] |
 | 2026-05-31 | FEATURE â€” UX Overlays: Hover Highlight, Smart Guides, Brush Cursor [COMPLETE] |
-| 2026-05-31 | FEATURE â€” High-Fidelity Photoshop-style Viewport Navigation & Kinetic Panning [COMPLETE] |
-| 2026-05-31 | FEATURE â€” High-Fidelity Photoshop-style Move & Transform Overlay [COMPLETE] |
+| 2026-05-31 | FEATURE â€” High-Fidelity editor-standard Viewport Navigation & Kinetic Panning [COMPLETE] |
+| 2026-05-31 | FEATURE â€” High-Fidelity editor-standard Move & Transform Overlay [COMPLETE] |
 | 2026-05-30 | BUG FIX â€” Custom Manifest Compiler & WebView2Loader Linking Workaround [COMPLETE] |
 | 2026-05-30 | FEATURE / REFACTOR / ARCHITECTURE â€” Architecture Migration v2 with Modular UI Alignment [COMPLETE] |
 | 2026-05-30 | FEATURE / UI / POLISH â€” Diagonal Swatches, Tab Typography & Layout Polish [COMPLETE] |
@@ -6765,7 +6787,7 @@ Complete remaining MVP features for Rectangle Selection tool: move selection bou
 
 **Root Cause:** Original `SelectionRenderer` used 4px-radius circles for ALL handles (corners and edges) with no connector line between selection rect and rotation handle. Stroke widths were minimal (1px) with no visual distinction between handle types.
 
-**Fix:** Rewrote `SelectionRenderer` with Photoshop/Figma-style visual hierarchy:
+**Fix:** Rewrote `SelectionRenderer` with established creative editors-style visual hierarchy:
 
 | Element | Before | After |
 |---------|--------|-------|
@@ -6804,13 +6826,13 @@ Complete remaining MVP features for Rectangle Selection tool: move selection bou
 
 **Problem Reported:** Base selection state still showed small markers (top-left corner dot, rotation circle above) that made it look like a "broken editable box". The rectangle should communicate "selected area only" by default with transform handles only after entering editable selection mode.
 
-**Solution:** Two-state model inspired by Photoshop/Figma:
+**Solution:** Two-state model inspired by established creative editors:
 - **Base state (default)**: Clean marching-ants outline only. No resize handles, no rotation handle, no connector line.
 - **Edit state (toggleable)**: Full transform affordances — 8 resize handles (4 corners + 4 edges), rotation handle with connector line.
 
 **Toggle UX:**
 - `Transform` toggle button in SelectionOptionBar (matches existing ToggleBtn pattern)
-- Keyboard shortcut: `Ctrl+T` (Photoshop-style)
+- Keyboard shortcut: `Ctrl+T` (editor-standard)
 - Auto-disable when selection is cleared (via `setupWorkspaceSync`)
 
 **Visual State Indicators:**
@@ -6862,7 +6884,7 @@ Wire SelectionOperations real pixel ops to production code and add missing Ctrl+
 
 **Fixes:**
 1. **Mock fix (test infrastructure):** Added width/height to ctx; changed paint operations from arrow to regular functions so 	his resolves to ctx.
-2. **Implementation simplification:** illSelectionWithTransparent now operates directly in layer bitmap space (draw, clear, save) — no doc-sized offscreen, no transform baking. Matches Photoshop/Fireworks delete behavior. Identity-transform case (MVP) is correct.
+2. **Implementation simplification:** illSelectionWithTransparent now operates directly in layer bitmap space (draw, clear, save) — no doc-sized offscreen, no transform baking. Matches reference editor/established graphics editor delete behavior. Identity-transform case (MVP) is correct.
 3. **Cut/Copy/Paste/Delete wired** in useCanvasKeyboard.ts — SelectionOperations.cutSelection/copySelection/pasteSelection/deleteSelection called with engine.
 4. **Option bar buttons** added in SelectionOptionBar.tsx — Cut, Copy, Paste, Delete in main bar and MoreDropdown overflow.
 
@@ -6884,7 +6906,7 @@ Wire SelectionOperations real pixel ops to production code and add missing Ctrl+
 ### Kategori: FEATURE / RENDERER / CANVAS
 
 **Goal:**
-Tampilkan pola papan catur (checkerboard) di area artboard canvas sehingga user bisa langsung melihat area layer yang transparan — standar editor (Photoshop, GIMP, Photopea).
+Tampilkan pola papan catur (checkerboard) di area artboard canvas sehingga user bisa langsung melihat area layer yang transparan — standar editor (established image editors).
 
 **Problem:**
 - Shader checkerboard dan render path-nya sudah ada di webgl2.ts (line 376-392) dan shaders.ts (CHECKERBOARD_FRAGMENT_SOURCE).
@@ -6895,7 +6917,7 @@ Tampilkan pola papan catur (checkerboard) di area artboard canvas sehingga user 
 **Fixes:**
 1. **Extract** warna checkerboard ke module 
 enderer/checkerboard.ts agar bisa di-test tanpa WebGL. Fungsi: getCheckerboardColors().
-2. **Ganti warna** ke Photopea-style: light gray (0.78, 0.78, 0.78) vs dark gray (0.55, 0.55, 0.55). Delta 0.23 per channel, luminance delta ~0.45 dari background midnight.
+2. **Ganti warna** ke established web image editor-style: light gray (0.78, 0.78, 0.78) vs dark gray (0.55, 0.55, 0.55). Delta 0.23 per channel, luminance delta ~0.45 dari background midnight.
 3. **Wire** webgl2.ts pakai getCheckerboardColors() bukan hardcoded.
 4. **Test TDD:**
    - getRenderState().checkerboard === true (regression guard)

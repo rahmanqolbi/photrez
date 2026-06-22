@@ -8,7 +8,7 @@ import {
   type BrushTip,
 } from "../brushTipMask";
 
-// Behavioral audit: Photrez brush vs Photoshop / GIMP / Krita / MyPaint.
+// Behavioral audit: Photrez brush vs established image editors.
 // Each test locks a named behavioral contract so future regressions against
 // a known editor surface as a named contract failure.
 
@@ -16,7 +16,7 @@ function alphaAt(tip: BrushTip, x: number, y: number): number {
   return tip.data[(y * tip.width + x) * 4 + 3] / 255;
 }
 
-describe("audit: measured Photoshop super-Gaussian profile", () => {
+describe("audit: measured reference super-Gaussian profile", () => {
   it("uses a literal hard edge from 97% hardness with an inclusive radius", () => {
     const radius = 30;
     expect(brushAlphaAtDistance(0, radius, 0.97, "soft")).toBe(1);
@@ -60,15 +60,15 @@ describe("audit: measured Photoshop super-Gaussian profile", () => {
   });
 });
 
-describe("audit: Photoshop-style 25% dab spacing", () => {
-  it("25% × size matches Photoshop default across sizes", () => {
+describe("audit: editor-standard 25% dab spacing", () => {
+  it("25% × size matches reference spacing across sizes", () => {
     for (const size of [10, 30, 75, 200, 800]) {
       expect(getBrushDabSpacing(size, 0, 1)).toBe(Math.max(1, Math.round(size * 0.25)));
       expect(getBrushDabSpacing(size, 1, 1)).toBe(Math.max(1, Math.round(size * 0.25)));
     }
   });
 
-  it("spacing is independent of hardness and flow (Photoshop-style)", () => {
+  it("spacing is independent of hardness and flow (editor-standard)", () => {
     const a = getBrushDabSpacing(100, 0, 0.1);
     const b = getBrushDabSpacing(100, 0.5, 0.5);
     const c = getBrushDabSpacing(100, 1, 1);
@@ -82,7 +82,7 @@ describe("audit: Photoshop-style 25% dab spacing", () => {
   });
 });
 
-describe("audit: Photoshop-style per-dab source-over accumulation", () => {
+describe("audit: editor-standard per-dab source-over accumulation", () => {
   it("opacity 50% + 10 passes saturates toward 100% (1 - 0.5^10 = 99.9%)", () => {
     const tip = createBrushTip({ size: 3, hardness: 1, curve: "cosine" });
     const mask = new Uint8ClampedArray(9);
@@ -92,7 +92,7 @@ describe("audit: Photoshop-style per-dab source-over accumulation", () => {
     expect(mask[4]).toBeGreaterThanOrEqual(253);
   });
 
-  it("opacity 100% saturates on first dab (Photoshop flow = 100%)", () => {
+  it("opacity 100% saturates on first dab (per-dab flow = 100%)", () => {
     const tip = createBrushTip({ size: 3, hardness: 1, curve: "cosine" });
     const mask = new Uint8ClampedArray(9);
     stampBrushTip(mask, 3, 3, tip, 1, 1, 1);
@@ -166,8 +166,8 @@ describe("audit: calibrated soft round single-dab profile", () => {
   });
 });
 
-describe("audit: spacing across a stroked segment matches Photoshop default", () => {
-  // Photoshop at 25% spacing and a 40px brush places dabs every 10px along
+describe("audit: spacing across a stroked segment matches reference spacing", () => {
+  // a 25%-spacing reference and a 40px brush places dabs every 10px along
   // the stroke. For a 30px segment at that spacing, we expect ~3-4 dabs.
   it("a 30px segment at size 40 produces 3-4 dabs (excluding the first point stamp)", () => {
     // Size 40 → spacing 10. For a 30px segment, expected non-first dabs: floor(30/10) = 3.

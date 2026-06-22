@@ -26,7 +26,7 @@ Photrez is a multi-document desktop image editor (Tauri 2 + SolidJS). Users curr
 - Use OS copy/paste or file manager to move assets between projects
 
 This friction breaks the creative flow. Adding native drag-drop:
-- Aligns Photrez with Photoshop/Affinity/Krita/Figma UX conventions (industry standard)
+- Aligns Photrez with established creative editors UX conventions (industry standard)
 - Enables fast asset composition across projects
 - Eliminates the dialog round-trip for file import
 - Makes layer reuse between docs natural (the common "import logo to all variants" workflow)
@@ -44,16 +44,16 @@ This friction breaks the creative flow. Adding native drag-drop:
 
 | # | Decision | Value | Rationale |
 |---|---|---|---|
-| Q1 | Cross-doc layer drag default | **Copy**, Alt = Move | Photoshop/Affinity/Krita convention: copy by default between docs (source unchanged). Alt = move. |
+| Q1 | Cross-doc layer drag default | **Copy**, Alt = Move | established image editors convention: copy by default between docs (source unchanged). Alt = move. |
 | Q2 | Drop zones (layer drag) | Tab (after hover) + Canvas + Layers panel | Maximum flexibility. Tab enables drop to inactive doc; canvas/panel enable drop to active doc. |
 | Q2 | Drop zones (file drag) | + Tab empty area / + button / outside = **new doc** | User said: "kalau dragnya ke area kosong tab atau tombol tambah tab atau diluar document maka membuka document baru" |
 | Q2a | Hover-to-switch timer | **500ms** with visual countdown | Standard UX delay (balance responsiveness vs accidental). Visual countdown gives feedback. |
 | Q3 | Drop position (x/y on canvas) | **Cursor** if dropped on Canvas; **Doc center** if dropped on Tab or Layers panel | User said "landing di cursor saja". For drops NOT on canvas (tab/panel), use doc center since cursor is not on canvas. |
 | Q4 | File drop behavior | **Context-sensitive** by drop zone | Empty workspace → N new docs; inside doc → N new layers; outside → N new docs. |
 | Q5 | Multi-select layer drag | **Single layer only** for MVP | Simpler. Multi-select drag adds complexity (group handling, ordering preservation) without blocking core feature. |
-| Q6 | Multi-file cascade | **+24px per layer** | Photoshop/Affinity convention. Provides visual feedback that multiple files were dropped. |
+| Q6 | Multi-file cascade | **+24px per layer** | established image editors convention. Provides visual feedback that multiple files were dropped. |
 | Q7 | Integration strategy | **Coexist** (pointer events for reorder + HTML5 for cross-doc) | Existing pointer-based reorder is preserved (no regression risk). HTML5 drag handles cross-doc with richer `dataTransfer` payload. |
-| Q8 | History | **Per-doc** (Approach A, not atomic across docs) | Photoshop/Figma convention. Simpler. Trade-off: move (Alt) is 2 undo entries (1 per doc). User accepted. |
+| Q8 | History | **Per-doc** (Approach A, not atomic across docs) | established creative editors convention. Simpler. Trade-off: move (Alt) is 2 undo entries (1 per doc). User accepted. |
 
 ### Drop Zone Matrix (final)
 
@@ -136,7 +136,7 @@ This friction breaks the creative flow. Adding native drag-drop:
 
 4. **`DragController` context** holds all transient drag state. Components subscribe via a `useDragController()` hook. Avoids prop drilling through 4+ components.
 
-5. **Per-doc history** (existing pattern). Cross-doc move (Alt+drag) creates 2 history entries (1 in source for delete, 1 in target for add). Copy creates 1 entry (target only). Matches Photoshop/Figma behavior.
+5. **Per-doc history** (existing pattern). Cross-doc move (Alt+drag) creates 2 history entries (1 in source for delete, 1 in target for add). Copy creates 1 entry (target only). Matches established creative editors behavior.
 
 6. **No Rust changes** to `photrez-core` or new `#[tauri::command]`. Frontend orchestrates everything via existing IPC.
 
@@ -314,7 +314,7 @@ const isMove = payload.isAltPressed;
 const isCopy = !payload.isAltPressed;
 ```
 
-**Trade-off:** if user presses/releases Alt during drag, the initial state at dragstart wins. This is standard browser behavior and matches Photoshop.
+**Trade-off:** if user presses/releases Alt during drag, the initial state at dragstart wins. This is standard browser behavior and matches the established interaction.
 
 ### 5.7 Validation rules (in drop handlers)
 
@@ -486,7 +486,7 @@ For each file (i = 0..N-1):
   - history.commit(snapshotBefore) on target doc
 ```
 
-**Note on history:** Each layer add is a separate history entry. Ctrl+Z in target removes the most recently added layer. Multi-file drop = N history entries (matches Photoshop).
+**Note on history:** Each layer add is a separate history entry. Ctrl+Z in target removes the most recently added layer. Multi-file drop = N history entries (matches the established interaction).
 
 ### 6.5 Cross-doc layer add/move (core logic)
 
@@ -829,4 +829,4 @@ Deferred to future specs (not blocking MVP):
 - `docs/AI_HISTORY.md §[2026-06-14] TEST OVERHAUL` (contract test pattern)
 - Tauri 2 docs (Context7): `onDragDropEvent`, `dragDropEnabled`
 - MDN: HTML5 Drag and Drop API, File drag and drop
-- Photoshop/Affinity Photo/Krita UX conventions (cross-doc layer drag behavior)
+- established image editors UX conventions (cross-doc layer drag behavior)

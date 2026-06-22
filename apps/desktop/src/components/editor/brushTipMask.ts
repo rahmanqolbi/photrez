@@ -139,7 +139,7 @@ export function getEffectiveFlowMultiplier(_hardness: number): number {
 }
 
 export function getBrushDabSpacing(size: number, hardness: number, flow: number): number {
-  // ponytail: fixed 25% × size spacing matches Photoshop default and produces
+  // ponytail: fixed 25% × size spacing matches reference spacing and produces
   // visible individual dabs (brush-stroke character) instead of a smooth blob.
   // Hardness already controls the soft profile inside the mask, so spacing
   // stays geometry-agnostic across the hardness range. Flow remains a stroke
@@ -182,7 +182,7 @@ export function stampBrushTip(
   // ponytail: pre-multiplied source-over accumulation per dab so multiple
   // dabs on the same pixel accumulate toward saturation as
   //   1 - (1 - alpha)^N
-  // matching Photoshop / Krita / Procreate. Opacity and flow act as the
+  // matching established image editors. Opacity and flow act as the
   // per-dab alpha cap, so flow=50% + ~10 passes reaches ~99% at the mask
   // center. Replaces the previous max-within-stroke semantics which made
   // brush strokes stop accumulating after the first pass.

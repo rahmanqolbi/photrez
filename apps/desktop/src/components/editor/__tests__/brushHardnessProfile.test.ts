@@ -20,7 +20,7 @@ const calibrationKnots = [
 ] as const;
 
 test.each(calibrationKnots)(
-  "returns the Photoshop knot at hardness %f",
+  "returns the calibration knot at hardness %f",
   (hardness, sigma, n) => {
     const parameters = getBrushProfileParameters(hardness);
     expect(parameters.sigma).toBeCloseTo(sigma, 12);
@@ -28,7 +28,7 @@ test.each(calibrationKnots)(
   },
 );
 
-describe("Photoshop-calibrated brush profile", () => {
+describe("reference-calibrated brush profile", () => {
   it("interpolates sigma and n monotonically between calibration knots", () => {
     let previous = getBrushProfileParameters(0);
     for (let step = 1; step <= 100; step += 1) {

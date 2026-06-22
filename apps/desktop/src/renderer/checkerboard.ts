@@ -3,7 +3,7 @@
  *
  * The pattern shows through any transparent pixel of the active layer stack
  * so the user can tell at a glance where the artboard ends and where the
- * layer has alpha = 0. Standard editor behavior (Photoshop, GIMP, Photopea).
+ * layer has alpha = 0. Standard editor behavior (established image editors).
  *
  * Colors are exposed as a pure function so they can be unit-tested for
  * contrast and luminance without booting WebGL.

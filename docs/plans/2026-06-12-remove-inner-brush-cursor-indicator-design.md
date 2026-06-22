@@ -1,7 +1,7 @@
 # Design Doc: Remove Inner Brush Cursor Hardness Indicator Ring
 
 ## Context
-The brush/eraser cursor overlay previously rendered an inner dashed circle (`data-paint-cursor-hardness`) when `hardness > 0 && hardness < 1`. This secondary ring is non-standard compared to major image editing applications (like Adobe Photoshop and Affinity Photo) and causes visual clutter and confusion.
+The brush/eraser cursor overlay previously rendered an inner dashed circle (`data-paint-cursor-hardness`) when `hardness > 0 && hardness < 1`. This secondary ring is non-standard compared to major image editing applications (among major image editing applications) and causes visual clutter and confusion.
 
 ## Proposed Changes
 We will remove the secondary inner dashed ring entirely from `BrushCursorOverlay.tsx`.

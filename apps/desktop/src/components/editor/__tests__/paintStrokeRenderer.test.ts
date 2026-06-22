@@ -457,7 +457,7 @@ describe("renderPaintStrokeToContext", () => {
     expect(written.data[centerIdx]).toBeLessThan(135);
   });
 
-  it("accumulates alpha across overlapping dabs in one stroke (Photoshop-like)", () => {
+  it("accumulates alpha across overlapping dabs in one stroke (editor-standard)", () => {
     const ctx = {
       save: vi.fn(),
       restore: vi.fn(),

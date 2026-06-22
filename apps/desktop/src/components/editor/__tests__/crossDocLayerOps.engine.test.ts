@@ -147,7 +147,7 @@ describe("addLayerFromCrossDoc — real engine integration", () => {
     expect(cloned.height).toBe(600);
   });
 
-  it("places layer at cursor pos for tab drop (Photoshop-like: user aims the landing position)", () => {
+  it("places layer at cursor pos for tab drop (editor-standard: user aims the landing position)", () => {
     addLayerFromCrossDoc(
       basePayload,
       { type: "tab", docId: targetDocId },

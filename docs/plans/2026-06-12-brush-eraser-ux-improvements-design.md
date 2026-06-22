@@ -3,7 +3,7 @@
 This document outlines the design for introducing professional image editor UX behaviors to the Brush and Eraser tools in Photrez, specifically supporting the Alt-Hold Eyedropper, Shift-Click Straight Lines, and Shift-Drag Axis Locking.
 
 ## Problem Statement
-Currently, Photrez lacks key interactive modifiers for its painting tools that exist in industry-standard software (Photoshop, Affinity Photo):
+Currently, Photrez lacks key interactive modifiers for its painting tools that exist in industry-standard image-editing software:
 1. Drawing straight lines (Shift + Click) to connect paint dab endpoints is unsupported.
 2. Constraining brush/eraser strokes to horizontal/vertical axes (Shift + Drag) is unsupported.
 3. Quickly sampling colors from the canvas (Alt-Hold) requires switching tools manually (`I` -> click -> `B`), which disrupts the painting workflow.

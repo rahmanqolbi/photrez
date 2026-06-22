@@ -63,7 +63,7 @@ describe("brushTipMask falloff", () => {
   });
 });
 
-describe("Photoshop-calibrated soft round raster", () => {
+describe("reference-calibrated soft round raster", () => {
   it("keeps hardness-0 alpha outside the nominal radius", () => {
     const radius = 50;
     expect(brushAlphaAtDistance(radius, radius, 0, "soft")).toBeGreaterThan(0.09);
@@ -98,7 +98,7 @@ describe("Photoshop-calibrated soft round raster", () => {
 });
 
 describe("brushTipMask dabs", () => {
-  it("uses fixed 25% size spacing (Photoshop default) regardless of hardness", () => {
+  it("uses fixed 25% size spacing (reference spacing) regardless of hardness", () => {
     expect(getBrushDabSpacing(100, 0, 1)).toBe(25);
     expect(getBrushDabSpacing(100, 1, 1)).toBe(25);
     expect(getBrushDabSpacing(100, 0.5, 1)).toBe(25);
@@ -207,7 +207,7 @@ describe("brushTipMask dabs", () => {
     expect(ctx.getImageData).not.toHaveBeenCalled();
   });
 
-  it("accumulates dabs toward saturation (Photoshop-like source-over)", () => {
+  it("accumulates dabs toward saturation (editor-standard source-over)", () => {
     const tip = createBrushTip({ size: 3, hardness: 1, curve: "cosine" });
     const mask = new Uint8ClampedArray(9);
     stampBrushTip(mask, 3, 3, tip, 1, 1, 0.5);

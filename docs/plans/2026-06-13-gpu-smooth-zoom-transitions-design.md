@@ -91,7 +91,7 @@ Photrez menggunakan **CSS transform-based viewport**:
 | Canvas sizing | Viewport-fixed | Menghilangkan VRAM exhaustion, canvas hanya sebesar layar |
 | Zoom/pan application | WebGL projection matrix | GPU-native, zero layout thrashing |
 | Overlay positioning | Manual JS via camera | Backward compatible, bisa incremental |
-| Animation timing | 150ms easeOutCubic (keyboard/fit), instan (scroll) | Best practice Figma/tldraw |
+| Animation timing | 150ms easeOutCubic (keyboard/fit), instan (scroll) | Best practice professional design tool/established canvas tool |
 | Modern Crop | Tetap CSS transform (Phase 2) | Risiko regresi terlalu tinggi |
 
 ---

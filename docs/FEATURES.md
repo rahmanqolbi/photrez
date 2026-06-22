@@ -6,6 +6,14 @@
 
 ---
 
+## 🧹 Project Hygiene
+
+| Status       | Fitur                                      |
+|--------------|--------------------------------------------|
+| ✅ DONE      | External image-editor branding removed from project-owned source comments, test labels, documentation, local agent references, and filenames; behavior remains unchanged |
+
+---
+
 ## 🎨 Layer System
 
 | Status       | Fitur                                      |
@@ -27,10 +35,10 @@
 | ✅ DONE      | Contextual layer creation (inserts above active) |
 | ✅ DONE      | HTML5 Drag & Drop layer list reordering    |
 | ✅ DONE      | Layer row context menu — target activation, new/duplicate/rename, visibility, lock, ordering, merge/flatten, and guarded delete |
-| ✅ DONE      | Photoshop-style Opacity Popover Slider     |
+| ✅ DONE      | editor-standard Opacity Popover Slider     |
 | ✅ DONE      | Inline double-click renaming input         |
 | ✅ DONE      | Live Canvas Row Thumbnails (checkerboard background) |
-| ✅ DONE      | Canvas checkerboard pattern (transparent-pixel indicator behind layers — Photopea-style light/dark gray grid, always on, no toggle) |
+| ✅ DONE      | Canvas checkerboard pattern (transparent-pixel indicator behind layers — editor-standard light/dark gray grid, always on, no toggle) |
 | ✅ DONE      | Layer keyboard shortcuts — Ctrl+Shift+N (new layer), Ctrl+J (duplicate), Ctrl+E / Ctrl+Shift+E (merge down / flatten), Ctrl+] / Ctrl+[ (move up / down stack), Ctrl+G / Ctrl+Shift+G (flip H / V), Delete / Backspace (delete active layer), 0–9 (set opacity, 0=100%) |
 
 ---
@@ -138,20 +146,20 @@
 | ✅ DONE      | Enhanced option bar — Flow input, Smoothing input, Preset dropdown |
 | ✅ DONE      | Right-click context menu — Size/Hardness/Strength sliders, preset grid, Reset button, close on Escape/outside click |
 | ✅ DONE      | Keyboard shortcuts — `[`/`]` for size, Shift+`[`/`]` for hardness |
-| ✅ DONE      | Brush visual calibration: Photoshop-like hardness 0 soft-round profile with broader dense center, dense soft spacing, subpixel bilinear stamping, opacity/flow-independent alpha scale, and pixel-profile regression tests |
-| ↪ SUPERSEDED | Bounded core/feather hardness models (`1 - t²`, smoothstep, and fixed cursor support) — replaced by the measured Photoshop calibration below |
-| ✅ DONE      | Photoshop-calibrated round hardness — exact seven-point monotone-cubic sigma/n interpolation drives `exp(-((r / sigma)^n))`; hardness ≥97% is a literal hard disk and diameters below 22px use deterministic one-pixel raster AA |
-| ✅ DONE      | Photoshop soft-tail semantics — Size remains the nominal cursor diameter while low-hardness quantized alpha may extend beyond the cursor; finite cached bitmap support ends below half an 8-bit alpha level |
+| ✅ DONE      | Brush visual calibration: editor-standard hardness 0 soft-round profile with broader dense center, dense soft spacing, subpixel bilinear stamping, opacity/flow-independent alpha scale, and pixel-profile regression tests |
+| ↪ SUPERSEDED | Bounded core/feather hardness models (`1 - t²`, smoothstep, and fixed cursor support) — replaced by the measured reference calibration below |
+| ✅ DONE      | reference-calibrated round hardness — exact seven-point monotone-cubic sigma/n interpolation drives `exp(-((r / sigma)^n))`; hardness ≥97% is a literal hard disk and diameters below 22px use deterministic one-pixel raster AA |
+| ✅ DONE      | reference editor soft-tail semantics — Size remains the nominal cursor diameter while low-hardness quantized alpha may extend beyond the cursor; finite cached bitmap support ends below half an 8-bit alpha level |
 | ✅ DONE      | Alt-Hold Eyedropper modifier for sampling colors from active canvas |
 | ✅ DONE      | Shift-Click Straight Lines interpolation connecting last painted dab |
 | ✅ DONE      | Shift-Drag Axis Locking constraining stroke to horizontal/vertical |
 | ✅ DONE      | Regression guard: Brush/Eraser still paint/erase after Move Tool pasteboard deselect hides the transform box |
-| ✅ DONE      | Photoshop-style brush behavior — 25% × size dab spacing (visible individual dabs), hardness 100% routes through the mask engine (no `ctx.lineCap=round` shortcut), and per-dab pre-multiplied source-over accumulation so opacity/flow behave like Photoshop (multiple passes darken toward saturation) |
+| ✅ DONE      | editor-standard brush behavior — 25% × size dab spacing (visible individual dabs), hardness 100% routes through the mask engine (no `ctx.lineCap=round` shortcut), and per-dab pre-multiplied source-over accumulation so opacity/flow behave like reference editor (multiple passes darken toward saturation) |
 | ✅ DONE      | Exact terminal dab landing — freehand, Shift-connected, cancel, and lost-capture completion stamp one endpoint dab at the final cursor coordinate when the 25% spacing grid did not already emit it; duplicate terminal accumulation is suppressed |
 | ✅ DONE      | Live terminal dab preview — while dragging, one non-destructive region-scoped dab follows the cursor; previous transient positions never enter the permanent mask, and pointer-up promotes the endpoint exactly once |
-| ↪ SUPERSEDED | Editor-style bounded smoothstep mask and exact cursor-support alignment — retained only as implementation history; runtime now follows measured Photoshop bleed |
+| ↪ SUPERSEDED | Editor-style bounded smoothstep mask and exact cursor-support alignment — retained only as implementation history; runtime now follows measured reference editor bleed |
 | ✅ DONE      | Brush cursor semantics — one sharp ring follows the shared 20% calibrated alpha contour below 97% hardness and the nominal Size radius at the hard edge; no duplicate support ring or filled gradient |
-| ✅ DONE      | Photoshop-style hardness-aware brush cursor — an earlier SVG soft fill was reverted because it caused color-inversion artifacts; the retained sharp ring now changes geometry only, shared by Brush and Eraser |
+| ✅ DONE      | editor-standard hardness-aware brush cursor — an earlier SVG soft fill was reverted because it caused color-inversion artifacts; the retained sharp ring now changes geometry only, shared by Brush and Eraser |
 
 ---
 
@@ -285,7 +293,7 @@
 | ✅ DONE      | Responsive RightDock layout (stacks vertically below 1024px to preserve canvas, side-by-side columns above 1024px) |
 | ✅ DONE      | Visual De-cluttering & Airy/Lightweight UI Polishing |
 | ✅ DONE      | Flush-Left Anchor active tool indicator (Option A) |
-| ✅ DONE      | Segmented Transform matrix coordinate grid (Figma-style) |
+| ✅ DONE      | Segmented Transform matrix coordinate grid (established design editor-style) |
 | ✅ DONE      | Segmented Tab Bar (Pill tabs) & Unified Properties |
 | ✅ DONE      | Right Inspector Recessed Compartments (Idea A sunken well) |
 | ✅ DONE      | Mockup UI Slicing (Compact, Flat Docked 5x3 Grid, Photon Amber) |

@@ -41,7 +41,7 @@ describe("projectDocumentScissor", () => {
 describe("getCheckerboardColors", () => {
   it("returns two distinct colors (each cell of the grid must be visually different)", () => {
     // Bug regression: if both checker colors are identical or near-identical the
-    // pattern is invisible. Standard editors (Photoshop, GIMP, Photopea) use a
+    // pattern is invisible. Standard editors (established image editors) use a
     // perceptual delta of at least ~0.10 luminance.
     const { color1, color2 } = getCheckerboardColors();
 

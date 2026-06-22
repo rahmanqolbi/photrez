@@ -1,11 +1,11 @@
-# Photoshop-Calibrated Round Brush Hardness Design
+# Reference-Calibrated Round Brush Hardness Design
 
 **Status:** Approved by user on 2026-06-22; awaiting written-spec review  
 **Scope:** Brush and eraser round-tip alpha profile only
 
 ## Goal
 
-Make Photrez's round brush hardness respond like the measured Adobe Photoshop samples supplied by the user. The implementation must preserve the supplied mathematical model rather than retune it by eye.
+Make Photrez's round brush hardness follow the measured reference samples supplied by the user. The implementation must preserve the supplied mathematical model rather than retune it by eye.
 
 This work changes the radial alpha profile and finite brush-tip allocation. It does not redesign the brush UI, cursor, spacing, flow accumulation, smoothing, or renderer abstraction.
 
@@ -129,7 +129,7 @@ Before completion:
 
 ## Non-Goals
 
-- Recalibrating the supplied Photoshop data.
+- Recalibrating the supplied reference data.
 - Adding pressure, tilt, texture, scatter, or brush presets.
 - Moving brush rasterization into Rust or a GPU shader.
 - Changing spacing, flow accumulation, cursor size, or UI layout.
