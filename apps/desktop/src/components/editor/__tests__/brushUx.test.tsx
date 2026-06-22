@@ -214,6 +214,82 @@ describe("Brush & Eraser UX modifiers (Alt / Shift)", () => {
     vi.restoreAllMocks();
   });
 
+  it("forwards the exact pointer-up coordinate as a final paint sample before commit", () => {
+    const { signals, dispose } = createMockEditor({ activeTool: "brush" });
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(signals as any);
+
+    const canvas = document.createElement("canvas");
+    canvas.setPointerCapture = vi.fn();
+    canvas.releasePointerCapture = vi.fn();
+    const onPaintStroke = vi.fn();
+    const commitBrushStroke = vi.fn();
+    const params = {
+      getCanvasContainerRef: () => document.createElement("div"),
+      getCanvasRef: () => canvas,
+      isSpacePressed: () => false,
+      isPanning: () => false,
+      isAltPressed: () => false,
+      stopMomentum: vi.fn(),
+      fitToScreenAndRender: vi.fn(),
+      commitBrushStroke,
+      onPaintStroke,
+    };
+
+    const { tools, dispose: disposeTools } = createPointerTools(params);
+    tools.onCanvasPointerDown({ button: 0, clientX: 10, clientY: 10, pointerId: 1 } as any);
+    tools.onCanvasPointerMove({ clientX: 20, clientY: 10, buttons: 1, pointerId: 1 } as any);
+    tools.onCanvasPointerUp({ clientX: 23, clientY: 10, pointerId: 1 } as any);
+
+    const finalCall = onPaintStroke.mock.calls.at(-1);
+    expect(finalCall?.[0].at(-1)).toEqual({ x: 23, y: 10 });
+    expect(finalCall?.[3]).toBe(true);
+    expect(onPaintStroke.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      commitBrushStroke.mock.invocationCallOrder[0],
+    );
+
+    disposeTools();
+    dispose();
+    vi.restoreAllMocks();
+  });
+
+  it.each(["onCanvasPointerCancel", "onCanvasLostPointerCapture"] as const)(
+    "%s finalizes the last sampled endpoint before committing",
+    (terminalHandler) => {
+      const { signals, dispose } = createMockEditor({ activeTool: "brush" });
+      vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(signals as any);
+
+      const canvas = document.createElement("canvas");
+      canvas.setPointerCapture = vi.fn();
+      canvas.releasePointerCapture = vi.fn();
+      const onPaintStroke = vi.fn();
+      const commitBrushStroke = vi.fn();
+      const { tools, dispose: disposeTools } = createPointerTools({
+        getCanvasContainerRef: () => document.createElement("div"),
+        getCanvasRef: () => canvas,
+        isSpacePressed: () => false,
+        isPanning: () => false,
+        isAltPressed: () => false,
+        stopMomentum: vi.fn(),
+        fitToScreenAndRender: vi.fn(),
+        commitBrushStroke,
+        onPaintStroke,
+      });
+
+      tools.onCanvasPointerDown({ button: 0, clientX: 10, clientY: 10, pointerId: 1 } as any);
+      tools.onCanvasPointerMove({ clientX: 23, clientY: 10, buttons: 1, pointerId: 1 } as any);
+      tools[terminalHandler]({ pointerId: 1 } as PointerEvent);
+
+      expect(onPaintStroke.mock.calls.at(-1)?.[3]).toBe(true);
+      expect(onPaintStroke.mock.invocationCallOrder.at(-1)).toBeLessThan(
+        commitBrushStroke.mock.invocationCallOrder[0],
+      );
+
+      disposeTools();
+      dispose();
+      vi.restoreAllMocks();
+    },
+  );
+
   it("synchronizes lastPaintCoords with active history on undo/redo actions", () => {
     let mockCoords: { x: number; y: number } | null = null;
     const mockHistory = {

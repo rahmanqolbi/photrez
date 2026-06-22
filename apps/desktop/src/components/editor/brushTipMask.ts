@@ -239,6 +239,27 @@ export function stampBrushTip(
   }
 }
 
+export function stampTerminalBrushTip(
+  mask: Uint8ClampedArray,
+  maskWidth: number,
+  maskHeight: number,
+  tip: BrushTip,
+  endpoint: BrushPoint,
+  lastDab: BrushPoint | null,
+  alphaScale: number,
+): boolean {
+  if (
+    lastDab
+    && Math.abs(lastDab.x - endpoint.x) <= 0.0001
+    && Math.abs(lastDab.y - endpoint.y) <= 0.0001
+  ) {
+    return false;
+  }
+
+  stampBrushTip(mask, maskWidth, maskHeight, tip, endpoint.x, endpoint.y, alphaScale);
+  return true;
+}
+
 export interface RgbaColor {
   r: number;
   g: number;

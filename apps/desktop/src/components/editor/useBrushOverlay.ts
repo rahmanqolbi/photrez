@@ -9,6 +9,7 @@ import {
   getBrushTip,
   interpolateDabs,
   stampBrushTip,
+  stampTerminalBrushTip,
   paintMaskToContext,
   getEffectiveFlowMultiplier,
 } from "./brushTipMask";
@@ -22,6 +23,7 @@ interface PaintStrokeSession {
   maskWidth: number;
   maskHeight: number;
   lastPoint: { x: number; y: number } | null;
+  lastDab: { x: number; y: number } | null;
   spacingCarry: number;
   dabCount: number;
 }
@@ -52,6 +54,7 @@ export function useBrushOverlay() {
     points: { x: number; y: number }[],
     isEraser: boolean,
     settings: PaintToolSettings,
+    isFinal = false,
   ) {
     const activeEngine = workspace.getActiveEngine();
     if (!activeEngine) return;
@@ -99,6 +102,7 @@ export function useBrushOverlay() {
         maskWidth: layer.width,
         maskHeight: layer.height,
         lastPoint: null,
+        lastDab: null,
         spacingCarry: 0,
         dabCount: 0,
       };
@@ -122,16 +126,35 @@ export function useBrushOverlay() {
 
       if (!paintSession.lastPoint) {
         stampBrushTip(paintSession.maskData, layer.width, layer.height, tip, localPt.x, localPt.y, alphaScale);
+        paintSession.lastDab = localPt;
         paintSession.dabCount += 1;
       } else {
         const result = interpolateDabs(paintSession.lastPoint, localPt, spacing, paintSession.spacingCarry);
         paintSession.spacingCarry = result.carry;
         for (const dab of result.dabs) {
           stampBrushTip(paintSession.maskData, layer.width, layer.height, tip, dab.x, dab.y, alphaScale);
+          paintSession.lastDab = dab;
           paintSession.dabCount += 1;
         }
       }
       paintSession.lastPoint = localPt;
+    }
+
+    if (
+      isFinal
+      && paintSession.lastPoint
+      && stampTerminalBrushTip(
+        paintSession.maskData,
+        layer.width,
+        layer.height,
+        tip,
+        paintSession.lastPoint,
+        paintSession.lastDab,
+        alphaScale,
+      )
+    ) {
+      paintSession.lastDab = paintSession.lastPoint;
+      paintSession.dabCount += 1;
     }
 
     if (isEraser) {

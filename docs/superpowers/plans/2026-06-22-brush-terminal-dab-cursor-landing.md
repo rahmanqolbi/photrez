@@ -11,12 +11,13 @@
 ### Task 1: Lock the terminal-dab contract
 
 - Modify: `apps/desktop/src/components/editor/__tests__/brushTipMask.test.ts`
-- Modify: `apps/desktop/src/components/editor/__tests__/CanvasViewport.test.tsx`
+- Modify: `apps/desktop/src/components/editor/__tests__/brushUx.test.tsx`
+- Modify: `apps/desktop/src/components/editor/__tests__/paintStrokeRenderer.test.ts`
 
-- [ ] Add a real mask test showing a non-grid endpoint is absent before finalization and present afterward.
-- [ ] Add a contract proving an endpoint already on the spacing grid is not stamped twice.
-- [ ] Add mounted pointer-chain coverage proving pointer-up forwards the final brush coordinate before commit.
-- [ ] Run the focused tests and verify they fail for the missing terminal behavior.
+- [x] Add a real mask test showing a non-grid endpoint is absent before finalization and present afterward.
+- [x] Add a contract proving an endpoint already on the spacing grid is not stamped twice.
+- [x] Add pointer-hook wiring coverage proving pointer-up forwards the final brush coordinate before commit.
+- [x] Run the focused tests and verify they fail for the missing terminal behavior.
 
 ### Task 2: Implement endpoint-only finalization
 
@@ -25,10 +26,10 @@
 - Modify: `apps/desktop/src/components/editor/useCanvasPointerTools.ts`
 - Modify: `apps/desktop/src/viewport/input-handler.ts`
 
-- [ ] Add the smallest terminal-stamp helper/state needed to compare the endpoint with the last emitted dab.
-- [ ] Forward the constrained/smoothed pointer-up coordinate through `onPaintStroke`.
-- [ ] Finalize the endpoint before brush or eraser bitmap commit, including cancel/lost-capture paths using their last known point.
-- [ ] Run focused tests and verify green.
+- [x] Add the smallest terminal-stamp helper/state needed to compare the endpoint with the last emitted dab.
+- [x] Forward the constrained/smoothed pointer-up coordinate through `onPaintStroke`.
+- [x] Finalize the endpoint before brush or eraser bitmap commit, including cancel/lost-capture paths using their last known point.
+- [x] Run focused tests and verify green.
 
 ### Task 3: Verify and document
 
@@ -36,7 +37,7 @@
 - Modify: `docs/AI_HISTORY.md`
 - Modify: `docs/FEATURES.md`
 
-- [ ] Run the complete frontend suite and production build.
-- [ ] Run Rust core and workspace tests.
-- [ ] Run `git diff --check` and audit the production call chain.
-- [ ] Record the root cause, fix rationale, and evidence without overwriting existing history.
+- [x] Run the complete frontend suite and production build.
+- [x] Run Rust core and workspace tests.
+- [x] Run `git diff --check` and audit the production call chain.
+- [x] Record the root cause, fix rationale, and evidence without overwriting existing history.

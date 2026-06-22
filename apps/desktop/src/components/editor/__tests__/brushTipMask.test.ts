@@ -10,6 +10,7 @@ import {
   getBrushTip,
   interpolateDabs,
   stampBrushTip,
+  stampTerminalBrushTip,
   compositeMaskToImageData,
   paintMaskToContext,
   getEffectiveFlowMultiplier,
@@ -129,6 +130,29 @@ describe("brushTipMask dabs", () => {
     const result = interpolateDabs({ x: 0, y: 0 }, { x: 15, y: 0 }, 10, 0);
     expect(result.dabs).toEqual([{ x: 10, y: 0 }]);
     expect(result.carry).toBe(5);
+  });
+
+  it("stamps a non-grid terminal endpoint exactly once", () => {
+    const tip = createBrushTip({ size: 3, hardness: 1, curve: "soft" });
+    const mask = new Uint8ClampedArray(30 * 5);
+    const start = { x: 2, y: 2 };
+    const endpoint = { x: 17, y: 2 };
+    stampBrushTip(mask, 30, 5, tip, start.x, start.y, 0.5);
+
+    const spaced = interpolateDabs(start, endpoint, 10, 0);
+    let lastDab = start;
+    for (const dab of spaced.dabs) {
+      stampBrushTip(mask, 30, 5, tip, dab.x, dab.y, 0.5);
+      lastDab = dab;
+    }
+
+    expect(mask[endpoint.y * 30 + endpoint.x]).toBe(0);
+    expect(stampTerminalBrushTip(mask, 30, 5, tip, endpoint, lastDab, 0.5)).toBe(true);
+    const terminalAlpha = mask[endpoint.y * 30 + endpoint.x];
+    expect(terminalAlpha).toBeGreaterThan(0);
+
+    expect(stampTerminalBrushTip(mask, 30, 5, tip, endpoint, endpoint, 0.5)).toBe(false);
+    expect(mask[endpoint.y * 30 + endpoint.x]).toBe(terminalAlpha);
   });
 
   it("accumulates dabs toward saturation (Photoshop-like source-over)", () => {

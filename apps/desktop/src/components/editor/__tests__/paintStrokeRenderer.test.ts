@@ -296,6 +296,31 @@ describe("renderPaintStrokeToContext", () => {
     expect((ctx as unknown as { shadowBlur: number }).shadowBlur).toBe(0);
   });
 
+  it("lands a non-grid stroke endpoint at the requested coordinate", () => {
+    const imageData = createImageDataMock(60, 40);
+    const ctx = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      globalCompositeOperation: "",
+      globalAlpha: 1,
+      canvas: { width: 60, height: 40 },
+      getImageData: vi.fn(() => imageData),
+      putImageData: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+
+    renderPaintStrokeToContext(
+      ctx,
+      [{ x: 20, y: 20 }, { x: 32, y: 20 }],
+      { size: 20, hardness: 1, opacity: 1, flow: 1, smoothing: 0 },
+      "#ff0000",
+      false,
+    );
+
+    const written = (ctx.putImageData as unknown as ReturnType<typeof vi.fn>)
+      .mock.calls[0][0] as ImageData;
+    expect(written.data[(20 * written.width + 41) * 4 + 3]).toBeGreaterThan(0);
+  });
+
   it("paints the calibrated hardness-0 tail beyond the nominal radius", () => {
     const imageData = createImageDataMock(240, 240);
     const ctx = {

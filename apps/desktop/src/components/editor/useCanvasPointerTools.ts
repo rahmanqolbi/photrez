@@ -33,7 +33,12 @@ interface UseCanvasPointerToolsParams {
   stopMomentum: () => void;
   fitToScreenAndRender: () => void;
   commitBrushStroke: (engine: DocumentEngine, history: CommandHistory, id: string, isEraser: boolean) => void;
-  onPaintStroke?: (points: { x: number; y: number }[], isEraser: boolean, settings: PaintToolSettings) => void;
+  onPaintStroke?: (
+    points: { x: number; y: number }[],
+    isEraser: boolean,
+    settings: PaintToolSettings,
+    isFinal?: boolean,
+  ) => void;
   cropSnapTargets?: () => CropSnapTargets | undefined;
   moveSnapEnabled?: () => boolean;
 }
@@ -581,11 +586,20 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     }
 
     setSnapLines([]);
-    const coords = getDocCoords(e);
+    let coords = getDocCoords(e);
+    if ((activeTool() === "brush" || activeTool() === "eraser") && e.shiftKey) {
+      const start = interactiveState.dragStart;
+      const dx = coords.x - start.x;
+      const dy = coords.y - start.y;
+      if (!axisLock && (Math.abs(dx) >= 5 || Math.abs(dy) >= 5)) {
+        axisLock = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
+      }
+      if (axisLock === "horizontal") coords = { x: coords.x, y: start.y };
+      if (axisLock === "vertical") coords = { x: start.x, y: coords.y };
+    }
     const smoothed = paintSmoother.addPoint(coords.x, coords.y);
     const tool = (interactiveState.dragTool ?? activeTool()) as ToolType;
     const hasPoints = (tool === "brush" || tool === "eraser") && interactiveState.strokePoints.length > 0;
-    const lastPt = hasPoints ? interactiveState.strokePoints.at(-1) : null;
 
     handlePointerUp(
       activeTool() as ToolType,
@@ -603,9 +617,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       const layerId = engine.getActiveLayerId();
       if (layerId) {
         params.commitBrushStroke(engine, history, layerId, tool === "eraser");
-        if (lastPt) {
-          setLastPaintCoords({ ...lastPt });
-        }
+        setLastPaintCoords({ ...smoothed });
       }
     }
 
@@ -779,6 +791,12 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     if (tool === "brush" || tool === "eraser") {
       const layerId = engine.getActiveLayerId();
       if (history && layerId && interactiveState.strokePoints.length > 0) {
+        interactiveState.onPaintStroke?.(
+          [...interactiveState.strokePoints],
+          tool === "eraser",
+          interactiveState.paintSettings,
+          true,
+        );
         params.commitBrushStroke(engine, history, layerId, tool === "eraser");
       }
     }
@@ -802,6 +820,12 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     if (tool === "brush" || tool === "eraser") {
       const layerId = engine.getActiveLayerId();
       if (history && layerId && interactiveState.strokePoints.length > 0) {
+        interactiveState.onPaintStroke?.(
+          [...interactiveState.strokePoints],
+          tool === "eraser",
+          interactiveState.paintSettings,
+          true,
+        );
         params.commitBrushStroke(engine, history, layerId, tool === "eraser");
       }
     }

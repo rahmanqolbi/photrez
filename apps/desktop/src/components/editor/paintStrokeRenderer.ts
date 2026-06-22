@@ -4,6 +4,7 @@ import {
   getBrushTip,
   interpolateDabs,
   stampBrushTip,
+  stampTerminalBrushTip,
   compositeMaskToImageData,
   parsePaintColor,
   type RgbaColor,
@@ -80,6 +81,7 @@ function renderSoftStrokeWithTipMask(
 
   // Always stamp the first point
   stampBrushTip(mask, canvas.width, canvas.height, tip, points[0].x, points[0].y, alphaScale);
+  let lastDab = points[0];
 
   if (points.length > 1) {
     let carry = 0;
@@ -88,8 +90,19 @@ function renderSoftStrokeWithTipMask(
       carry = result.carry;
       for (const dab of result.dabs) {
         stampBrushTip(mask, canvas.width, canvas.height, tip, dab.x, dab.y, alphaScale);
+        lastDab = dab;
       }
     }
+
+    stampTerminalBrushTip(
+      mask,
+      canvas.width,
+      canvas.height,
+      tip,
+      points[points.length - 1],
+      lastDab,
+      alphaScale,
+    );
   }
 
   compositeMaskToImageData(imageData, mask, color, isEraser);
@@ -116,5 +129,3 @@ export function renderPaintStrokeToContext(
 
   ctx.restore();
 }
-
-

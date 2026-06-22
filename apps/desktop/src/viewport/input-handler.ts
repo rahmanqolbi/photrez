@@ -35,6 +35,7 @@ export interface ToolContext {
     points: { x: number; y: number }[],
     isEraser: boolean,
     settings: PaintToolSettings,
+    isFinal?: boolean,
   ) => void;
   onHoverHandle?: (handle: string | null) => void;
   onComputeSnap?: (rect: SnapRect) => SnapResult;
@@ -294,7 +295,11 @@ export function handlePointerUp(
     context.dragMode = null;
   } else if (tool === "brush" || tool === "eraser") {
     if (context.selectedLayerId && context.strokePoints.length > 0) {
-      context.onPaintStroke?.([...context.strokePoints], tool === "eraser", context.paintSettings);
+      const lastPoint = context.strokePoints.at(-1);
+      if (!lastPoint || lastPoint.x !== docX || lastPoint.y !== docY) {
+        context.strokePoints.push({ x: docX, y: docY });
+      }
+      context.onPaintStroke?.([...context.strokePoints], tool === "eraser", context.paintSettings, true);
     }
     context.strokePoints = [];
   } else if (tool === "crop") {
