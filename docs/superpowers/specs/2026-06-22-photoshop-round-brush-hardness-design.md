@@ -148,3 +148,15 @@ The approved correction is endpoint-only finalization:
 - never change `interpolateDabs()` to append every pointer sample, because that would make density event-rate dependent.
 
 Regression coverage must prove both endpoint landing and duplicate suppression when an endpoint already lies on the spacing grid.
+
+## Approved Addendum: Live Terminal Dab Preview
+
+Release-time terminal finalization fixed the committed endpoint but exposed a visual pop: during drag the cursor may lead the last regular dab by almost one spacing interval, then the final cap appears only on pointer-up. The approved UX keeps one non-destructive terminal dab visually attached to the cursor while the pointer is down.
+
+- The permanent stroke mask continues to contain only the initial dab, regular 25%-spaced dabs, and the single finalized endpoint.
+- While a stroke is active and its last regular dab differs from the latest sampled point, a transient terminal dab is composited directly into the preview canvas.
+- The transient dab is region-scoped to the tip bounds; it does not clone or clear a full-layer mask.
+- Every preview refresh starts from the permanent mask/base bitmap, so the previous transient endpoint disappears rather than accumulating.
+- Brush and Eraser use identical transient source-over/destination-out math, including opacity and flow.
+- If a regular dab already lands at the current endpoint, no duplicate transient dab is drawn.
+- Pointer-up still promotes exactly one terminal dab into the permanent mask using the existing finalization contract.
