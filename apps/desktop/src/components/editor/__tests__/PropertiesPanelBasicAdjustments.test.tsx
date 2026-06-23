@@ -71,4 +71,49 @@ describe("PropertiesPanel basic adjustments", () => {
 
     dispose();
   });
+
+  it("submits transform edits from the Properties panel fields", async () => {
+    const workspace = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("transform-doc", "Transform Doc", 20, 10);
+    workspace.addDocument(session);
+    const layer = session.engine.getLayers()[0];
+
+    const transformSpy = vi.spyOn(session.engine, "transformLayer");
+    const history = workspace.getActiveHistory();
+    if (!history) throw new Error("Expected active history");
+    const commitSpy = vi.spyOn(history, "commit");
+
+    const renderer = {
+      uploadImage: vi.fn(),
+      destroyTexture: vi.fn(),
+      resize: vi.fn(),
+      resizeToViewport: vi.fn(),
+    };
+    const scheduler = { requestRender: vi.fn() };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={workspace} renderer={renderer as any} scheduler={scheduler as any}>
+          <PropertiesPanel />
+        </EditorProvider>
+      ),
+      container,
+    );
+    await tick();
+
+    const xField = container.querySelectorAll<HTMLInputElement>("input[type='text']")[0];
+    if (!xField) throw new Error("Transform X field was not rendered");
+    xField.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+    xField.value = "42";
+    xField.dispatchEvent(new InputEvent("input", { bubbles: true }));
+    xField.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+    expect(commitSpy).toHaveBeenCalledWith(expect.any(Object), "Transform Layer");
+    expect(transformSpy).toHaveBeenCalledWith(layer.id, expect.objectContaining({ x: 42 }));
+    expect(scheduler.requestRender).toHaveBeenCalled();
+
+    dispose();
+  });
 });

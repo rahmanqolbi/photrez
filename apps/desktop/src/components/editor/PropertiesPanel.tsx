@@ -1,10 +1,11 @@
 import { For, Show, createSignal } from "solid-js";
 import { Icon, type IconName } from "./icons";
-import { NumField, PropRow, SelectField, Slider } from "./primitives";
+import { EditableNumField, PropRow, SelectField, Slider } from "./primitives";
 import { useEditor } from "./EditorContext";
 import { SectionHeader } from "./SectionHeader";
 import { CanvasProperties } from "./CanvasProperties";
 import type { BasicAdjustment } from "@/engine/layerAdjustments";
+import type { Transform2D } from "@/engine/types";
 
 const COLLAPSED_SECTIONS: readonly {
   icon: IconName;
@@ -48,6 +49,58 @@ export function PropertiesPanel() {
       engine.setLayerOpacity(id, val / 100);
       scheduler.requestRender();
     }
+  };
+
+  const commitTransform = (patch: Partial<Transform2D>) => {
+    const engine = workspace.getActiveEngine();
+    const id = selectedLayerId();
+    if (!engine || !id) return false;
+    const layer = engine.getLayer(id);
+    if (!layer || layer.locked) return false;
+
+    const next = { ...layer.transform, ...patch };
+    if (
+      next.x === layer.transform.x &&
+      next.y === layer.transform.y &&
+      next.scaleX === layer.transform.scaleX &&
+      next.scaleY === layer.transform.scaleY &&
+      next.rotation === layer.transform.rotation &&
+      next.flipH === layer.transform.flipH &&
+      next.flipV === layer.transform.flipV
+    ) {
+      return false;
+    }
+
+    const history = workspace.getActiveHistory();
+    history?.commit(engine.snapshot(), "Transform Layer");
+    engine.transformLayer(id, next);
+    scheduler.requestRender();
+    workspace.notifyVisualChange();
+    return true;
+  };
+
+  const handlePositionField = (axis: "x" | "y") => (val: number) => {
+    const layer = activeLayer();
+    if (!layer || layer.lockPosition) return;
+    commitTransform({ [axis]: val });
+  };
+
+  const handleSizeField = (axis: "w" | "h") => (val: number) => {
+    const layer = activeLayer();
+    if (!layer || val <= 0) return;
+    const nextScale = axis === "w" ? val / layer.width : val / layer.height;
+    commitTransform(axis === "w" ? { scaleX: nextScale } : { scaleY: nextScale });
+  };
+
+  const handleRotationField = (val: number) => {
+    const layer = activeLayer();
+    if (!layer || layer.lockRotation) return;
+    commitTransform({ rotation: val });
+  };
+
+  const handleScaleField = (axis: "x" | "y") => (val: number) => {
+    if (val <= 0) return;
+    commitTransform(axis === "x" ? { scaleX: val / 100 } : { scaleY: val / 100 });
   };
 
   const previewBasicAdjustment = (next: BasicAdjustment) => {
@@ -136,19 +189,19 @@ export function PropertiesPanel() {
 
                 <div class="mt-3 flex flex-col gap-2.5">
                   <PropRow label="Position">
-                    <NumField label="X" value={`${Math.round(layer().transform.x)} px`} class="flex-1" />
-                    <NumField label="Y" value={`${Math.round(layer().transform.y)} px`} class="flex-1" />
+                    <EditableNumField label="X" value={layer().transform.x} suffix="px" onSubmit={handlePositionField("x")} disabled={layer().lockPosition || layer().locked} class="flex-1" />
+                    <EditableNumField label="Y" value={layer().transform.y} suffix="px" onSubmit={handlePositionField("y")} disabled={layer().lockPosition || layer().locked} class="flex-1" />
                   </PropRow>
                   <PropRow label="Size">
-                    <NumField label="W" value={`${Math.round(layer().width * layer().transform.scaleX)} px`} class="flex-1" />
-                    <NumField label="H" value={`${Math.round(layer().height * layer().transform.scaleY)} px`} class="flex-1" />
+                    <EditableNumField label="W" value={layer().width * layer().transform.scaleX} suffix="px" onSubmit={handleSizeField("w")} disabled={layer().locked} class="flex-1" />
+                    <EditableNumField label="H" value={layer().height * layer().transform.scaleY} suffix="px" onSubmit={handleSizeField("h")} disabled={layer().locked} class="flex-1" />
                   </PropRow>
                   <PropRow label="Rotation">
-                    <NumField value={`${layer().transform.rotation.toFixed(2)}°`} class="flex-1" />
+                    <EditableNumField label="R" value={layer().transform.rotation} suffix="deg" onSubmit={handleRotationField} disabled={layer().lockRotation || layer().locked} class="flex-1" />
                   </PropRow>
                   <PropRow label="Scale">
-                    <NumField label="X" value={`${Math.round(layer().transform.scaleX * 100)} %`} class="flex-1" />
-                    <NumField label="Y" value={`${Math.round(layer().transform.scaleY * 100)} %`} class="flex-1" />
+                    <EditableNumField label="X" value={layer().transform.scaleX * 100} suffix="%" onSubmit={handleScaleField("x")} disabled={layer().locked} class="flex-1" />
+                    <EditableNumField label="Y" value={layer().transform.scaleY * 100} suffix="%" onSubmit={handleScaleField("y")} disabled={layer().locked} class="flex-1" />
                     <button
                       class="flex size-[26px] shrink-0 items-center justify-center text-editor-accent"
                       aria-label="Lock scale"
