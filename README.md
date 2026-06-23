@@ -1,75 +1,95 @@
-# Photrez
+<p align="center">
+  <strong>Photrez</strong>
+</p>
 
-Photrez is a lightweight desktop image editor for practical image work. It is built with Tauri, SolidJS, TypeScript, and WebGL2, with Rust crates maintained for core domain logic and future renderer work.
+<p align="center">
+  A precise, lightweight desktop image editor built for practical image work.
+</p>
 
-Photrez is currently in active development. The editor has a working desktop shell, multi-document workspace, layer operations, selection and transform tools, crop and resize workflows, brush and eraser tools, export flows, and an automated regression suite. It is not yet a stable end-user release.
+<p align="center">
+  <a href="https://github.com/rahmanqolbi/photrez/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/rahmanqolbi/photrez/ci.yml?branch=main&label=ci&style=flat-square"></a>
+  <a href="https://github.com/rahmanqolbi/photrez/blob/main/LICENSE"><img alt="License: AGPL-3.0-or-later" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-E15A17?style=flat-square"></a>
+  <a href="https://github.com/rahmanqolbi/photrez/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/rahmanqolbi/photrez?style=flat-square"></a>
+  <a href="https://github.com/rahmanqolbi/photrez/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/rahmanqolbi/photrez?style=flat-square"></a>
+  <img alt="Tauri 2" src="https://img.shields.io/badge/Tauri-2-24C8DB?style=flat-square">
+  <img alt="SolidJS" src="https://img.shields.io/badge/SolidJS-TypeScript-2C4F7C?style=flat-square">
+</p>
 
-## Highlights
+---
 
-- Familiar desktop image-editor layout: tool rail, canvas, inspector, layers, history, menus, and status bar.
-- Layer workflow: create, duplicate, delete, reorder, opacity, visibility, lock, merge down, flatten, drag and drop.
-- Selection and transform tools: marquee selection, inverted selection, move, scale, rotate, flip, snapping, keyboard nudges.
-- Crop and resize workflows with classic and modern crop modes.
-- Brush and eraser tools with calibrated round-tip hardness, flow, smoothing, presets, and visual regression coverage.
-- Export to PNG, JPEG, and WebP through the desktop file flow.
-- Automated tests for engine logic, component wiring, pointer chains, dialogs, export, and browser-level editor smoke checks.
+Photrez is an open-source desktop image editor with a compact, familiar workflow: layers, selection, transform, crop, brush, eraser, export, history, and a WebGL2 canvas. It is built with Tauri, SolidJS, TypeScript, and Rust.
 
-## Project Status
+Photrez is currently **pre-release software**. The editor is usable in development, but APIs, document internals, and UI details may change before the first stable release.
 
-Photrez is pre-release software. APIs, document internals, and UI details may change before the first stable release.
+## Why Photrez
 
-Current focus:
+- **Lightweight desktop feel:** Tauri shell, compact editor chrome, and a tool-first workflow.
+- **Practical editing core:** Layers, transforms, crop, brush, eraser, color, export, and history.
+- **Fast feedback loop:** Focused unit, component, pointer-chain, browser, and Rust tests.
+- **Clear boundaries:** SolidJS owns UI, TypeScript owns the current MVP document engine, WebGL2 owns active rendering, and Rust crates track core domain work.
+- **Open-source first:** Public contribution, security, governance, issue, and pull request docs are included.
 
-- Polish public repository documentation.
-- Remove internal workflow artifacts from the public source tree.
-- Keep native desktop runtime smoke evidence current.
-- Improve first-run and empty-state polish before public showcase.
+## Current Capabilities
+
+| Area | Status |
+| --- | --- |
+| Desktop shell | Custom title bar, menus, dialogs, native window actions, file open/export |
+| Workspace | Multi-document tabs, drag and drop, cross-document layer movement |
+| Layers | Add, duplicate, delete, reorder, opacity, visibility, lock, merge down, flatten |
+| Selection | Rectangle selection, inverted selection, cut/copy/paste/delete |
+| Transform | Move, scale, rotate, flip, snapping, keyboard nudges |
+| Crop and resize | Classic and modern crop modes, canvas expansion, resize dialog |
+| Paint | Brush and eraser with calibrated round-tip hardness, flow, smoothing, presets |
+| Export | PNG, JPEG, and WebP |
+| Testing | Frontend, Rust, browser, export, dialog, pointer-chain, and paint regression coverage |
 
 ## Tech Stack
 
-- Desktop shell: Tauri 2
-- Frontend: SolidJS, TypeScript, Vite
-- Styling: Tailwind CSS v4
-- Current renderer: WebGL2
-- Current editor state: TypeScript document engine
-- Rust crates: `photrez-core` and `photrez-render`
+- **Desktop:** Tauri 2
+- **Frontend:** SolidJS, TypeScript, Vite
+- **Styling:** Tailwind CSS v4
+- **Renderer:** WebGL2 for the current MVP runtime
+- **Core:** TypeScript `DocumentEngine` for the current editor hot path
+- **Rust:** `photrez-core` and `photrez-render` crates
 
 ## Getting Started
 
-Requirements:
+### Requirements
 
-- Node.js and pnpm
+- Node.js
+- pnpm
 - Rust stable toolchain
-- Tauri platform prerequisites for your operating system
+- Tauri platform prerequisites for your OS
 
-Install dependencies:
+### Install
 
 ```bash
 pnpm install
 ```
 
-Run the desktop app in development:
+### Run the desktop app
 
 ```bash
 pnpm dev
 ```
 
-Build the frontend:
+### Build
 
 ```bash
 pnpm build
 ```
 
-Run the main verification gate:
+### Verify
 
 ```bash
 pnpm run verify
 ```
 
-Useful focused checks:
+Focused checks:
 
 ```bash
 pnpm --filter photrez-desktop test --run
+pnpm run build
 cargo test -p photrez-core
 cargo test --workspace
 ```
@@ -103,11 +123,27 @@ PRODUCT.md          Product context
 - [Contributing](CONTRIBUTING.md)
 - [Security Policy](SECURITY.md)
 
+## Roadmap
+
+Near-term work is focused on:
+
+- Public README screenshots and release notes.
+- First-run and empty workspace polish.
+- Native runtime smoke evidence.
+- UI cleanup for placeholder-looking surfaces.
+- Continued test coverage around real user wiring paths.
+
+See [Feature Status](docs/FEATURES.md) for the current implementation map.
+
 ## Contributing
 
-Photrez is open source and welcomes careful, scoped contributions. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+Photrez welcomes careful, scoped contributions. Good first contributions include documentation cleanup, reproducible bug reports, focused tests, accessibility fixes, and small UI polish that preserves the existing editor layout.
 
-High-value contributions right now include documentation cleanup, reproducible bug reports, focused tests, accessibility fixes, and small UI polish that preserves the existing editor layout.
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+## Security
+
+Please report security issues privately before public disclosure. See [SECURITY.md](SECURITY.md).
 
 ## License
 
