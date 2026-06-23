@@ -136,6 +136,24 @@ export function PropertiesPanel() {
     return adjustment.brightness !== 0 || adjustment.contrast !== 0 || adjustment.saturation !== 0;
   };
 
+  const transformStatusText = () => {
+    const layer = activeLayer();
+    if (!layer) return null;
+    if (layer.locked) return "Layer is locked. Unlock it in Layers to edit transform values.";
+    if (layer.lockPosition && layer.lockRotation) return "Position and rotation are locked for this layer.";
+    if (layer.lockPosition) return "Position fields are locked for this layer.";
+    if (layer.lockRotation) return "Rotation is locked for this layer.";
+    return null;
+  };
+
+  const basicStatusText = () => {
+    const layer = activeLayer();
+    if (!layer) return null;
+    if (layer.locked) return "Layer is locked. Unlock it before applying pixel adjustments.";
+    if (!layer.imageBitmap) return "This layer has no pixels yet. Add image pixels before adjusting tone.";
+    return null;
+  };
+
   const resetBasicAdjustment = () => {
     const engine = workspace.getActiveEngine();
     const base = adjustmentBase();
@@ -188,6 +206,9 @@ export function PropertiesPanel() {
                 />
 
                 <div class="mt-3 flex flex-col gap-2.5">
+                  <Show when={transformStatusText()}>
+                    {(message) => <StatusHint>{message()}</StatusHint>}
+                  </Show>
                   <PropRow label="Position">
                     <EditableNumField label="X" value={layer().transform.x} suffix="px" onSubmit={handlePositionField("x")} disabled={layer().lockPosition || layer().locked} class="flex-1" />
                     <EditableNumField label="Y" value={layer().transform.y} suffix="px" onSubmit={handlePositionField("y")} disabled={layer().lockPosition || layer().locked} class="flex-1" />
@@ -287,10 +308,8 @@ export function PropertiesPanel() {
               <p class="mt-1 text-[11px] leading-snug text-editor-text-dim">
                 Drag to preview directly on the active layer. Undo restores the previous pixels.
               </p>
-              <Show when={activeLayer() && !activeLayer()?.imageBitmap}>
-                <p class="text-[11px] leading-snug text-editor-text-dim">
-                  Add image pixels to this layer before applying adjustments.
-                </p>
+              <Show when={basicStatusText()}>
+                {(message) => <StatusHint>{message()}</StatusHint>}
               </Show>
             </div>
           </div>
@@ -307,6 +326,15 @@ export function PropertiesPanel() {
         </Show>
       </div>
     </section>
+  );
+}
+
+function StatusHint(props: { children: string }) {
+  return (
+    <div class="flex items-start gap-2 rounded-[4px] border border-editor-divider bg-editor-field px-2.5 py-2 text-[11px] leading-snug text-editor-text-dim">
+      <Icon name="sliders" class="mt-0.5 size-3.5 shrink-0 text-editor-text-dim" strokeWidth={1.75} />
+      <span>{props.children}</span>
+    </div>
   );
 }
 

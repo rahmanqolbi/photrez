@@ -42,6 +42,7 @@
 | ✅ DONE      | Layer keyboard shortcuts — Ctrl+Shift+N (new layer), Ctrl+J (duplicate), Ctrl+E / Ctrl+Shift+E (merge down / flatten), Ctrl+] / Ctrl+[ (move up / down stack), Ctrl+G / Ctrl+Shift+G (flip H / V), Delete / Backspace (delete active layer), 0–9 (set opacity, 0=100%) |
 | ✅ DONE      | Properties Basic adjustments — destructive per-layer Brightness, Contrast, and Saturation with live slider preview, reset restore, undo checkpoint, texture refresh, and wiring coverage |
 | ✅ DONE      | Properties Transform fields — editable X/Y, W/H, Rotation, and Scale controls with history checkpointing, lock guards, and mounted wiring coverage |
+| ✅ DONE      | Properties state hints — inline guidance for locked layers, position/rotation locks, and layers without pixel data |
 
 ---
 

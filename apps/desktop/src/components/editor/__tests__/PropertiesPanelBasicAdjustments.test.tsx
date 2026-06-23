@@ -8,6 +8,29 @@ function tick(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+function renderPropertiesPanel(workspace: WorkspaceManager) {
+  const renderer = {
+    uploadImage: vi.fn(),
+    destroyTexture: vi.fn(),
+    resize: vi.fn(),
+    resizeToViewport: vi.fn(),
+  };
+  const scheduler = { requestRender: vi.fn() };
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+
+  const dispose = render(
+    () => (
+      <EditorProvider workspace={workspace} renderer={renderer as any} scheduler={scheduler as any}>
+        <PropertiesPanel />
+      </EditorProvider>
+    ),
+    container,
+  );
+
+  return { container, dispose, renderer, scheduler };
+}
+
 describe("PropertiesPanel basic adjustments", () => {
   afterEach(() => {
     document.body.replaceChildren();
@@ -27,24 +50,7 @@ describe("PropertiesPanel basic adjustments", () => {
     if (!history) throw new Error("Expected active history");
     const commitSpy = vi.spyOn(history, "commit");
 
-    const renderer = {
-      uploadImage: vi.fn(),
-      destroyTexture: vi.fn(),
-      resize: vi.fn(),
-      resizeToViewport: vi.fn(),
-    };
-    const scheduler = { requestRender: vi.fn() };
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-
-    const dispose = render(
-      () => (
-        <EditorProvider workspace={workspace} renderer={renderer as any} scheduler={scheduler as any}>
-          <PropertiesPanel />
-        </EditorProvider>
-      ),
-      container,
-    );
+    const { container, dispose, renderer, scheduler } = renderPropertiesPanel(workspace);
     await tick();
 
     const brightness = container.querySelector<HTMLInputElement>("input[aria-label='Bright']");
@@ -83,24 +89,7 @@ describe("PropertiesPanel basic adjustments", () => {
     if (!history) throw new Error("Expected active history");
     const commitSpy = vi.spyOn(history, "commit");
 
-    const renderer = {
-      uploadImage: vi.fn(),
-      destroyTexture: vi.fn(),
-      resize: vi.fn(),
-      resizeToViewport: vi.fn(),
-    };
-    const scheduler = { requestRender: vi.fn() };
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-
-    const dispose = render(
-      () => (
-        <EditorProvider workspace={workspace} renderer={renderer as any} scheduler={scheduler as any}>
-          <PropertiesPanel />
-        </EditorProvider>
-      ),
-      container,
-    );
+    const { container, dispose, scheduler } = renderPropertiesPanel(workspace);
     await tick();
 
     const xField = container.querySelectorAll<HTMLInputElement>("input[type='text']")[0];
@@ -115,5 +104,29 @@ describe("PropertiesPanel basic adjustments", () => {
     expect(scheduler.requestRender).toHaveBeenCalled();
 
     dispose();
+  });
+
+  it("explains empty and locked layer states inline", async () => {
+    const emptyWorkspace = new WorkspaceManager();
+    const emptySession = WorkspaceManager.createBlankDocument("empty-doc", "Empty Doc", 20, 10);
+    emptyWorkspace.addDocument(emptySession);
+    const emptyRender = renderPropertiesPanel(emptyWorkspace);
+    await tick();
+
+    expect(emptyRender.container.textContent).toContain("This layer has no pixels yet");
+    emptyRender.dispose();
+
+    const lockedWorkspace = new WorkspaceManager();
+    const lockedSession = WorkspaceManager.createBlankDocument("locked-doc", "Locked Doc", 20, 10);
+    lockedWorkspace.addDocument(lockedSession);
+    const lockedLayer = lockedSession.engine.getLayers()[0];
+    lockedSession.engine.setLayerImageBitmap(lockedLayer.id, { width: 20, height: 10 } as ImageBitmap);
+    lockedSession.engine.setLayerLocked(lockedLayer.id, true);
+    const lockedRender = renderPropertiesPanel(lockedWorkspace);
+    await tick();
+
+    expect(lockedRender.container.textContent).toContain("Layer is locked. Unlock it in Layers to edit transform values.");
+    expect(lockedRender.container.textContent).toContain("Layer is locked. Unlock it before applying pixel adjustments.");
+    lockedRender.dispose();
   });
 });
