@@ -254,15 +254,49 @@ function AdjustmentSliderRow(props: {
   onInput: (value: number) => void;
 }) {
   const percent = () => props.value + 100;
+  const displayValue = () => props.value > 0 ? `+${props.value}` : `${props.value}`;
+  const trackFillStyle = () => {
+    const position = percent() / 2;
+    if (props.value >= 0) {
+      return {
+        left: "50%",
+        width: `${position - 50}%`,
+      };
+    }
+    return {
+      left: `${position}%`,
+      width: `${50 - position}%`,
+    };
+  };
 
   return (
-    <div class="flex items-center gap-2.5">
-      <span class="w-[58px] shrink-0 text-[12px] text-editor-text-dim">
+    <div class="flex min-h-[28px] items-center gap-2.5">
+      <span class="w-[58px] shrink-0 text-[12px] font-medium text-editor-text-dim">
         {props.label}
       </span>
       <div class="flex flex-1 items-center gap-2.5">
-        <div class="relative flex h-[14px] flex-1 items-center">
-          <Slider percent={percent() / 2} accent={props.value > 0} centerTick={true} />
+        <div class="relative flex h-[18px] flex-1 items-center">
+          <div
+            aria-hidden="true"
+            class="absolute left-0 right-0 top-1/2 h-[4px] -translate-y-1/2 rounded-full border border-black/30 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
+            style={{
+              "background-image": "linear-gradient(to right, rgba(59,130,246,0.56), rgba(114,114,122,0.56) 50%, rgba(245,158,11,0.58))",
+            }}
+          />
+          <div
+            aria-hidden="true"
+            class="absolute top-1/2 h-[4px] -translate-y-1/2 rounded-full bg-editor-accent shadow-[0_0_10px_rgba(74,144,226,0.28)]"
+            style={trackFillStyle()}
+          />
+          <div
+            aria-hidden="true"
+            class="absolute left-1/2 top-1/2 h-[12px] w-px -translate-x-1/2 -translate-y-1/2 bg-editor-text/45"
+          />
+          <div
+            aria-hidden="true"
+            class="absolute top-1/2 size-[12px] -translate-y-1/2 rounded-full border border-black/55 bg-[#d8dce2] shadow-[0_1px_2px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.18)]"
+            style={{ left: `calc(${percent() / 2}% - 6px)` }}
+          />
           <input
             aria-label={props.label}
             type="range"
@@ -270,11 +304,11 @@ function AdjustmentSliderRow(props: {
             max="100"
             value={props.value}
             onInput={(e) => props.onInput(parseInt(e.currentTarget.value, 10))}
-            class="absolute inset-0 h-[14px] w-full cursor-pointer opacity-0"
+            class="absolute inset-0 h-[18px] w-full cursor-pointer opacity-0"
           />
         </div>
-        <span class="w-[34px] shrink-0 text-right text-[12px] text-editor-text">
-          {props.value > 0 ? `+${props.value}` : props.value}
+        <span class="flex h-[22px] w-[40px] shrink-0 items-center justify-end rounded-[3px] border border-editor-field-border bg-editor-field px-1.5 text-right text-[11px] tabular-nums text-editor-text">
+          {displayValue()}
         </span>
       </div>
     </div>
