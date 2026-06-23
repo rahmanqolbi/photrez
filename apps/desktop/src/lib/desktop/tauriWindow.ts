@@ -18,7 +18,7 @@ export async function runTauriWindowAction(action: TauriWindowAction) {
   if (!isTauriRuntime()) return;
 
   try {
-    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    const { getCurrentWindow } = await import(/* @vite-ignore */ "@tauri-apps/api/window");
     await getCurrentWindow()[action]();
   } catch (error) {
     console.warn(`Failed to run Tauri window action: ${action}`, error);

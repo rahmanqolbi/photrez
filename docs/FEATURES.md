@@ -336,9 +336,9 @@
 | ✅ DONE      | CI pipeline (GitHub Actions: type-check, lint, frontend tests, build, browser E2E, Rust tests, dependency audit) |
 | ✅ DONE      | Unit tests (core crate) — 85 tests, 92 workspace total |
 | ✅ DONE      | Desktop shell contract tests — 8 Tauri command tests |
-| ✅ DONE      | Frontend tests — 1297 passing tests (92 files), latest recorded 2026-06-21 |
-| ✅ DONE      | Split Vitest feedback paths — 783 pure-Node tests (~6.5s), 478 isolated jsdom tests, full 1261-test gate 37.48s (83.6% faster than 228.33s baseline) |
-| ✅ DONE      | E2E browser tests — 23 Playwright tests, including dialog screenshots and keyboard/focus contracts |
+| ✅ DONE      | Frontend tests — 1356 passing tests (104 files), latest recorded 2026-06-23 |
+| ✅ DONE      | Split Vitest feedback paths — 783 pure-Node tests (~6.5s), 573 isolated jsdom tests, full 1356-test gate ~53s (76.8% faster than 228.33s baseline) |
+| ✅ DONE      | E2E browser tests — 24 Playwright tests, including dialog screenshots and keyboard/focus contracts |
 | ✅ DONE      | E2E visible-pixel sampling compatible with `preserveDrawingBuffer: false` — checkerboard, brush/eraser, and selection undo/redo tests sample composited screenshots instead of an undefined default WebGL framebuffer |
 | ✅ DONE      | M6 Perf Gate (all metrics PASS)            |
 | ✅ DONE      | Native Vite tsconfig paths (removed `vite-tsconfig-paths` plugin) |
