@@ -546,15 +546,16 @@ export class DocumentEngine {
     }
   }
 
-  applyBasicAdjustment(id: LayerId, adjustment: BasicAdjustment): void {
+  applyBasicAdjustment(id: LayerId, adjustment: BasicAdjustment, sourceBitmap?: ImageBitmap): void {
     const layer = this.getLayer(id);
     if (!layer || layer.locked || !layer.imageBitmap) return;
+    const bitmap = sourceBitmap ?? layer.imageBitmap;
 
     const canvas = new OffscreenCanvas(layer.width, layer.height);
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.drawImage(layer.imageBitmap, 0, 0);
+    ctx.drawImage(bitmap, 0, 0);
     const imageData = ctx.getImageData(0, 0, layer.width, layer.height);
     imageData.data.set(applyBasicAdjustmentToPixels(imageData.data, adjustment));
     ctx.putImageData(imageData, 0, 0);

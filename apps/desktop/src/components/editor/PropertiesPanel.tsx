@@ -29,6 +29,10 @@ export function PropertiesPanel() {
     contrast: 0,
     saturation: 0,
   });
+  const [adjustmentBase, setAdjustmentBase] = createSignal<{
+    layerId: string;
+    bitmap: ImageBitmap;
+  } | null>(null);
 
   const activeLayer = () => {
     const id = selectedLayerId();
@@ -46,8 +50,32 @@ export function PropertiesPanel() {
     }
   };
 
+  const previewBasicAdjustment = (next: BasicAdjustment) => {
+    const engine = workspace.getActiveEngine();
+    const history = workspace.getActiveHistory();
+    const layer = activeLayer();
+    if (!engine || !history || !layer?.imageBitmap || layer.locked) return;
+
+    let base = adjustmentBase();
+    if (!base || base.layerId !== layer.id) {
+      base = { layerId: layer.id, bitmap: layer.imageBitmap };
+      setAdjustmentBase(base);
+      history.commit(engine.snapshot(), "Basic Adjustment");
+    }
+
+    engine.applyBasicAdjustment(layer.id, next, base.bitmap);
+    const updated = engine.getLayer(layer.id);
+    if (updated?.imageBitmap) {
+      renderer.uploadImage(layer.id, updated.imageBitmap);
+    }
+    workspace.notifyVisualChange();
+    scheduler.requestRender();
+  };
+
   const setAdjustmentValue = (key: keyof BasicAdjustment, value: number) => {
-    setBasicAdjustment((current) => ({ ...current, [key]: value }));
+    const next = { ...basicAdjustment(), [key]: value };
+    setBasicAdjustment(next);
+    previewBasicAdjustment(next);
   };
 
   const hasPendingAdjustment = () => {
@@ -55,30 +83,17 @@ export function PropertiesPanel() {
     return adjustment.brightness !== 0 || adjustment.contrast !== 0 || adjustment.saturation !== 0;
   };
 
-  const canApplyBasicAdjustment = () => {
-    const layer = activeLayer();
-    return Boolean(layer?.imageBitmap && !layer.locked && hasPendingAdjustment());
-  };
-
   const resetBasicAdjustment = () => {
-    setBasicAdjustment({ brightness: 0, contrast: 0, saturation: 0 });
-  };
-
-  const applyBasicAdjustment = () => {
     const engine = workspace.getActiveEngine();
-    const history = workspace.getActiveHistory();
-    const layer = activeLayer();
-    if (!engine || !history || !layer?.imageBitmap || layer.locked || !hasPendingAdjustment()) return;
-
-    history.commit(engine.snapshot(), "Basic Adjustment");
-    engine.applyBasicAdjustment(layer.id, basicAdjustment());
-    const updated = engine.getLayer(layer.id);
-    if (updated?.imageBitmap) {
-      renderer.uploadImage(layer.id, updated.imageBitmap);
+    const base = adjustmentBase();
+    if (engine && base) {
+      engine.setLayerImageBitmap(base.layerId, base.bitmap);
+      renderer.uploadImage(base.layerId, base.bitmap);
+      workspace.notifyVisualChange();
+      scheduler.requestRender();
     }
-    workspace.notifyVisualChange();
-    scheduler.requestRender();
-    resetBasicAdjustment();
+    setAdjustmentBase(null);
+    setBasicAdjustment({ brightness: 0, contrast: 0, saturation: 0 });
   };
 
   return (
@@ -216,15 +231,9 @@ export function PropertiesPanel() {
                 value={basicAdjustment().saturation}
                 onInput={(value) => setAdjustmentValue("saturation", value)}
               />
-              <button
-                type="button"
-                data-basic-adjustment-apply
-                disabled={!canApplyBasicAdjustment()}
-                onClick={applyBasicAdjustment}
-                class="mt-1 flex h-[28px] items-center justify-center rounded-[4px] border border-editor-field-border bg-editor-field px-3 text-[12px] font-medium text-editor-text transition-colors hover:bg-white/[0.045] disabled:pointer-events-none disabled:opacity-45"
-              >
-                Apply to Layer
-              </button>
+              <p class="mt-1 text-[11px] leading-snug text-editor-text-dim">
+                Drag to preview directly on the active layer. Undo restores the previous pixels.
+              </p>
               <Show when={activeLayer() && !activeLayer()?.imageBitmap}>
                 <p class="text-[11px] leading-snug text-editor-text-dim">
                   Add image pixels to this layer before applying adjustments.

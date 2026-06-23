@@ -14,7 +14,7 @@ describe("PropertiesPanel basic adjustments", () => {
     vi.restoreAllMocks();
   });
 
-  it("commits history and applies adjustment to the active bitmap layer", async () => {
+  it("previews adjustment on the active bitmap layer as the slider changes", async () => {
     const workspace = new WorkspaceManager();
     const session = WorkspaceManager.createBlankDocument("adjust-doc", "Adjust Doc", 2, 1);
     workspace.addDocument(session);
@@ -51,17 +51,21 @@ describe("PropertiesPanel basic adjustments", () => {
     if (!brightness) throw new Error("Brightness slider was not rendered");
     brightness.value = "25";
     brightness.dispatchEvent(new InputEvent("input", { bubbles: true }));
-
-    const apply = container.querySelector<HTMLButtonElement>("[data-basic-adjustment-apply]");
-    if (!apply) throw new Error("Apply adjustment button was not rendered");
-    apply.click();
+    brightness.value = "40";
+    brightness.dispatchEvent(new InputEvent("input", { bubbles: true }));
 
     expect(commitSpy).toHaveBeenCalledWith(expect.any(Object), "Basic Adjustment");
-    expect(applySpy).toHaveBeenCalledWith(layer.id, {
-      brightness: 25,
-      contrast: 0,
-      saturation: 0,
-    });
+    expect(commitSpy).toHaveBeenCalledTimes(1);
+    expect(applySpy).toHaveBeenCalledWith(
+      layer.id,
+      {
+        brightness: 40,
+        contrast: 0,
+        saturation: 0,
+      },
+      fakeBitmap,
+    );
+    expect(applySpy).toHaveBeenCalledTimes(2);
     expect(renderer.uploadImage).toHaveBeenCalledWith(layer.id, fakeBitmap);
     expect(scheduler.requestRender).toHaveBeenCalled();
 
