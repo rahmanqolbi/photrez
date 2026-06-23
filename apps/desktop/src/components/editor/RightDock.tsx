@@ -1,9 +1,7 @@
-import { For } from "solid-js";
 import { clsx } from "clsx";
 import { Icon } from "./icons";
 import { LayersPanel } from "./LayersPanel";
 import { PropertiesPanel } from "./PropertiesPanel";
-import { INSPECTOR_TABS } from "./editorData";
 import { useEditor } from "./EditorContext";
 
 type RightDockProps = {
@@ -13,22 +11,10 @@ type RightDockProps = {
 
 function InspectorTabs() {
   return (
-    <nav class="flex h-full min-w-0 items-center overflow-hidden">
-      <For each={INSPECTOR_TABS}>
-        {(tab) => (
-          <button
-            class={clsx(
-              "relative flex h-full items-center px-6 text-[12px] font-medium transition-colors",
-              tab.active
-                ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[2px] after:bg-editor-text-dim"
-                : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
-            )}
-          >
-            {tab.label}
-          </button>
-        )}
-      </For>
-    </nav>
+    <div class="flex h-full min-w-0 items-center px-4">
+      <span class="text-[12px] font-semibold text-editor-text">Properties</span>
+      <span class="ml-2 text-[11px] text-editor-text-dim">Active layer and tool settings</span>
+    </div>
   );
 }
 

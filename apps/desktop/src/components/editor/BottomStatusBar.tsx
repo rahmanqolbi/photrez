@@ -91,10 +91,6 @@ export function BottomStatusBar() {
       </div>
 
       <div class={clsx("flex shrink-0 items-center gap-5", !activeDocumentId() && "opacity-50 pointer-events-none")}>
-        <button class="flex items-center gap-1 hover:text-editor-text">
-          <Icon name="camera" class="size-3.5" strokeWidth={1.75} />
-          <span>Snapshots</span>
-        </button>
         <button
           type="button"
           data-status-history-trigger
@@ -111,10 +107,6 @@ export function BottomStatusBar() {
         >
           <Icon name="history" class="size-3.5" strokeWidth={1.75} />
           <span>History</span>
-        </button>
-        <button class="flex items-center gap-1 hover:text-editor-text">
-          <Icon name="box" class="size-3.5" strokeWidth={1.75} />
-          <span>Assets</span>
         </button>
       </div>
     </footer>

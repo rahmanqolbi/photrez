@@ -235,6 +235,7 @@
 | ✅ DONE      | Dimension tooltip (px/in/cm/mm)            |
 | ✅ DONE      | Transformation HUD near cursor             |
 | ✅ DONE      | Status bar tool hints + zoom readout       |
+| ✅ DONE      | First impression polish — empty workspace uses real open/new-canvas actions, status bar hides inactive placeholders, and inspector header no longer advertises inactive tabs |
 | ✅ DONE      | HiDPI/Retina sharpness (canvas pixel buffer = docW × zoom × dpr) |
 | ✅ DONE      | Snappy, instant zoom & tool switching (keyboard zoom and Ctrl+0 are immediate; no CSS transition delay/jiggle) |
 | ✅ DONE      | View matrix bug fix (documentSize, not canvasSize) |
