@@ -1,5 +1,33 @@
 # AI History — Photrez
 
+## [2026-06-23] TEST - Automated Brush/Eraser Visual QA [COMPLETE]
+
+### Kategori: TEST / FRONTEND / BRUSH / ERASER / REGRESSION-SAFETY
+
+**Goal:**
+Replace the remaining manual Brush/Eraser spot-check checklist with deterministic automated coverage that exercises the existing CPU production mask path.
+
+**Done:**
+1. Added `brushVisualRegression.test.ts` as a compact buffer-level QA layer over `renderPaintStrokeToContext`.
+2. Covered large 100% hard-edge dab geometry: solid interior, fractional antialiased boundary, and zero exterior.
+3. Covered long hard-edge strokes so the centerline stays connected across the locked fixed dab spacing.
+4. Covered low-hardness soft-tail support beyond the nominal cursor radius so padded Float32 support cannot silently regress.
+5. Covered subpixel hard-edge placement and Brush/Eraser mask parity without introducing screenshot files, binary goldens, or a second rendering path.
+
+**Fix Rationale:**
+- Ponytail/YAGNI: numeric ImageData assertions are more stable and cheaper than screenshot goldens for this CPU brush-mask layer.
+- The test uses the existing production helper instead of a synthetic raster-only path, so it guards cache, stamping, accumulation, and composite behavior together.
+
+**Verification:**
+- PASS: new automated visual-regression file, 5/5 tests.
+- PASS: focused brush raster/mask/production visual coverage, 4 files / 80 tests.
+- PASS: full frontend suite, 101 files / 1346 tests.
+- PASS: `pnpm.cmd run build` after sandbox escalation for pnpm home/temp access.
+- PASS: `cargo test -p photrez-core`, 85/85.
+- PASS: `cargo test --workspace`, 100/100 (85 core + 15 desktop).
+
+---
+
 ## [2026-06-22] MAINTENANCE - External Image-Editor Branding Cleanup [COMPLETE]
 
 ### Kategori: MAINTENANCE / DOCUMENTATION / TEST LABELS / REPOSITORY HYGIENE
@@ -19,6 +47,53 @@ Remove external image-editor product and vendor names from project-owned source 
 - PASS: frontend suite 1331/1331 tests.
 - PASS: production build.
 - PASS: Rust core 85/85 and workspace 100/100.
+
+---
+
+## [2026-06-23] BUG FIX - Brush/Eraser Hard-Edge Raster Polish [COMPLETE]
+
+### Kategori: BUG FIX / FRONTEND / BRUSH / ERASER / RASTERIZATION
+
+**Root Cause:**
+- The calibrated hardness profile intentionally becomes a binary disk at 97%, but large tips copied that binary value from one pixel-center sample directly into the Float32 texture.
+- Bilinear subpixel stamping shifted/interpolated that binary texture but could not provide stable geometric pixel coverage, so large circular dabs showed visible stair steps at high zoom.
+
+**Fix Rationale:**
+1. Reuse the existing `smallRoundAlpha` one-pixel circle-coverage function for the calibrated hard-edge raster branch at hardness ≥97%; keep `brushAlpha`, nominal radius, support diameter, cache keys, and Float32 storage unchanged.
+2. Keep Brush and Eraser on the same cached mask path so both receive identical hard-edge coverage without touching overlay, commit, or WebGL2 architecture.
+3. Preserve the locked 25%-of-size spacing because it defines stroke character; the reported defect was reproducible on a single dab, not evidence for changing spacing.
+4. Retain Uint8 accumulation and straight-alpha eraser semantics after auditing UI flow bounds and WebGL alpha weighting; neither produced a reproduced defect in this scope.
+
+**Verification:**
+- PASS: TDD RED, 3/26 expected boundary failures before implementation; GREEN, 26/26 after implementation.
+- PASS: focused raster/mask/Brush/Eraser production coverage, 4 files / 93 tests.
+- PASS: full frontend suite, 100 files / 1341 tests.
+- PASS: `pnpm run build` (TypeScript + Vite production build).
+- PASS: `cargo test -p photrez-core`, 85/85.
+- PASS: `cargo test --workspace`, 100/100 (85 core + 15 desktop).
+
+---
+
+## [2026-06-22] REFACTOR - Float Brush-Tip Rasterizer [COMPLETE]
+
+### Kategori: FRONTEND / BRUSH / RASTERIZATION / TEST
+
+**Goal:**
+Replace cached RGBA byte brush tips with padded single-channel Float32 alpha tips without changing the active CPU mask, Canvas2D commit, or WebGL2 presentation paths.
+
+**Done:**
+1. Added `rasterizeBrushTip(brushDiameter, hardness)` with exact calibrated support padding, pixel-center sampling, fractional nominal diameters, and the existing simple AA-circle fallback below 22px.
+2. Added exact diameter/hardness caching and routed the existing soft `getBrushTip(...)` API through it; color and opacity remain outside the raster cache.
+3. Preserved `BrushTip.width/height/radius`, every mask/composite function signature, Uint8 layer-mask source-over accumulation, bilinear subpixel stamping, and all production consumers.
+4. Updated raster/profile tests from RGBA byte indexing to single-channel float indexing and added dedicated RED/GREEN raster/cache coverage.
+5. Left `useBrushOverlay.ts`, `paintCommitCommand.ts`, and the WebGL2 renderer unchanged.
+
+**Verification:**
+- PASS: TDD RED observed for missing raster/cache exports and exact fractional invalidation.
+- PASS: focused raster/mask/audit/coordinate/renderer/overlay coverage, 94/94.
+- PASS: full frontend suite, 100 files / 1337 tests.
+- PASS: TypeScript type-check and production Vite build.
+- PASS: Rust core 85/85; full workspace 100/100 (85 core + 15 desktop).
 
 ---
 

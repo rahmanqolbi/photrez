@@ -124,7 +124,7 @@ export function renderPaintStrokeToContext(
   // ctx.lineCap=round shortcut for hardness>=1 produced browser-dependent
   // AA and skipped the brush-tip pipeline entirely. brushAlphaAtDistance
   // already returns 1 inside radius / 0 outside for hardness=1, so the
-  // mask path gives a hard edge with deterministic subpixel AA.
+  // mask path gives a hard edge with deterministic pixel-coverage AA.
   renderSoftStrokeWithTipMask(ctx, points, settings, color, isEraser);
 
   ctx.restore();

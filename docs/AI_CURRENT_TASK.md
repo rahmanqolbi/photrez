@@ -4,6 +4,63 @@
 
 ## Current Tasks
 
+### [2026-06-23] TEST - Automated Brush/Eraser Visual QA [COMPLETE]
+
+**Goal:**
+Replace the remaining manual Brush/Eraser spot-check with deterministic automated coverage over hard-edge geometry, long strokes, subpixel placement, soft-tail support, and Brush/Eraser mask parity.
+
+**Current status:**
+- [x] Keep scope to the existing CPU brush-tip/mask production path
+- [x] Add focused automated visual-regression tests over mask buffers
+- [x] Run focused and mandatory verification gates
+
+**Verification:**
+- PASS: new automated visual-regression file, 5/5 tests.
+- PASS: focused brush raster/mask/production visual coverage, 4 files / 80 tests.
+- PASS: full frontend suite, 101 files / 1346 tests.
+- PASS: TypeScript production build.
+- PASS: Rust core 85/85; full workspace 100/100 (85 core + 15 desktop).
+
+### [2026-06-23] BUG FIX - Brush/Eraser Hard-Edge Raster Polish [COMPLETE]
+
+**Goal:**
+Remove visible stairstepping from large 100%-hard Brush and Eraser dabs while preserving the calibrated nominal diameter, Float32 tip cache, fixed stroke spacing, and shared production path.
+
+**Current status:**
+- [x] Trace the visual defect to binary single-sample edge coverage in the CPU tip rasterizer
+- [x] Lock the minimal design: reuse the existing one-pixel circle coverage function only for the calibrated hard-edge branch
+- [x] Add RED raster and stamping regression tests
+- [x] Implement the minimal coverage-AA fix
+- [x] Empirically audit spacing, low-flow quantization, and eraser compositing before considering further changes
+- [x] Run focused and mandatory verification gates
+
+**Verification:**
+- PASS: TDD RED observed as 3 boundary-coverage failures, followed by 26/26 focused raster/audit tests.
+- PASS: focused raster, mask, Brush, and Eraser production-path coverage, 4 files / 93 tests.
+- PASS: full frontend suite, 100 files / 1341 tests.
+- PASS: TypeScript production build.
+- PASS: Rust core 85/85; full workspace 100/100 (85 core + 15 desktop).
+
+### [2026-06-22] REFACTOR - Float Brush-Tip Rasterizer [COMPLETE]
+
+**Goal:**
+Move the sole production brush-tip cache and stamping path to padded single-channel Float32 alpha while preserving calibrated bleed, small-tip AA, subpixel placement, and stroke accumulation semantics.
+
+**Current status:**
+- [x] Audit the existing raster/cache/stamp/composite production path
+- [x] Approve an in-place single-path refactor with temporary deprecated wrappers
+- [x] Write the implementation design and TDD plan
+- [x] Lock Float32 raster, padding, cache, and pixel-center contracts with failing tests
+- [x] Adapt in-place stamping to Float32 tip data while preserving Uint8 mask accumulation and all production consumer APIs
+- [x] Run focused and mandatory verification gates
+
+**Verification:**
+- PASS: TDD RED observed, initially 5/5 missing-raster/cache failures and then 2/6 exact cache/fractional-diameter failures.
+- PASS: focused raster, mask, audit, coordinate, renderer, and overlay coverage, 6 files / 94 tests.
+- PASS: full frontend suite, 100 files / 1337 tests.
+- PASS: TypeScript type-check and production Vite build.
+- PASS: Rust core 85/85; full workspace 100/100 (85 core + 15 desktop).
+
 ### [2026-06-22] MAINTENANCE - Remove External Image-Editor Branding [COMPLETE]
 
 **Goal:**

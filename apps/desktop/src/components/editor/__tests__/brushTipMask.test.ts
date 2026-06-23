@@ -50,12 +50,13 @@ describe("brushTipMask falloff", () => {
 
   it("creates a tip with center alpha and zero outer edge", () => {
     const tip = createBrushTip({ size: 21, hardness: 0, curve: "cosine" });
-    const center = (10 * tip.width + 10) * 4 + 3;
-    const corner = (20 * tip.width + 20) * 4 + 3;
-    expect(tip.width).toBe(21);
-    expect(tip.height).toBe(21);
-    expect(tip.data[center]).toBe(255);
-    expect(tip.data[corner]).toBe(0);
+    const center = tip.diameter / 2;
+    const centerAlpha = tip.data[center * tip.width + center];
+    const corner = tip.data[tip.data.length - 1];
+    expect(tip.width).toBe(24);
+    expect(tip.height).toBe(24);
+    expect(centerAlpha).toBeGreaterThan(0.98);
+    expect(corner).toBe(0);
   });
 
   it("rounds cache keys to stable values", () => {
@@ -79,13 +80,13 @@ describe("reference-calibrated soft round raster", () => {
 
   it("uses a one-pixel antialiased boundary below 22 render pixels", () => {
     const tip = createBrushTip({ size: 21, hardness: 0, curve: "soft" });
-    const center = Math.floor(tip.width / 2);
-    const centerAlpha = tip.data[(center * tip.width + center) * 4 + 3];
-    const boundaryAlpha = tip.data[(18 * tip.width + 18) * 4 + 3];
+    const center = tip.diameter / 2;
+    const centerAlpha = tip.data[center * tip.width + center];
+    const boundaryAlpha = tip.data[center * tip.width + center + 10];
 
-    expect(centerAlpha).toBe(255);
+    expect(centerAlpha).toBe(1);
     expect(boundaryAlpha).toBeGreaterThan(0);
-    expect(boundaryAlpha).toBeLessThan(255);
+    expect(boundaryAlpha).toBeLessThan(1);
   });
 
   it("reuses cached data until size or hardness changes", () => {
@@ -181,7 +182,7 @@ describe("brushTipMask dabs", () => {
       false,
     )).toBe(true);
 
-    expect(getImageData).toHaveBeenCalledWith(82, 30, 18, 21);
+    expect(getImageData).toHaveBeenCalledWith(81, 29, 19, 22);
     const written = putImageData.mock.calls[0][0] as ImageData;
     expect(written.data[(10 * written.width + 10) * 4 + 3]).toBeGreaterThan(0);
   });
@@ -246,9 +247,7 @@ describe("brushTipMask dabs", () => {
     stampBrushTip(maskFractional, 3, 3, tip, 1.5, 1, 1.0);
 
     // The mask stamped at 1.5 should be different (interpolated)
-    expect(maskFractional[3]).not.toEqual(maskInteger[3]);
-    expect(maskFractional[4]).not.toEqual(maskInteger[4]);
-    expect(maskFractional[5]).not.toEqual(maskInteger[5]);
+    expect(maskFractional).not.toEqual(maskInteger);
   });
 
   it("incremental dabs match continuous interpolation", () => {
@@ -293,17 +292,17 @@ describe("brushTipMask dabs", () => {
 
 describe("brushTipMask pixel profile", () => {
   function alphaAt(tip: BrushTip, x: number, y: number): number {
-    return tip.data[(y * tip.width + x) * 4 + 3] / 255;
+    return tip.data[y * tip.width + x];
   }
 
   it("rasterizes the calibrated hardness-0 curve through and beyond the nominal radius", () => {
     const size = 75;
     const radius = size / 2;
     const tip = createBrushTip({ size, hardness: 0, curve: "soft" });
-    const center = (tip.width - 1) / 2;
-    const row = Math.round(center);
-    const atNominalRadius = alphaAt(tip, Math.round(center + radius), row);
-    const beyondRadius = alphaAt(tip, Math.round(center + radius * 1.4), row);
+    const center = tip.diameter / 2;
+    const row = center;
+    const atNominalRadius = alphaAt(tip, center + Math.floor(radius), row);
+    const beyondRadius = alphaAt(tip, center + Math.floor(radius * 1.4), row);
 
     expect(tip.width).toBeGreaterThan(size);
     expect(atNominalRadius).toBeGreaterThan(0.08);

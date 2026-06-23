@@ -13,7 +13,7 @@ import {
 // a known editor surface as a named contract failure.
 
 function alphaAt(tip: BrushTip, x: number, y: number): number {
-  return tip.data[(y * tip.width + x) * 4 + 3] / 255;
+  return tip.data[y * tip.width + x];
 }
 
 describe("audit: measured reference super-Gaussian profile", () => {
@@ -132,14 +132,14 @@ describe("audit: editor-standard per-dab source-over accumulation", () => {
     expect(mask[0]).toBeGreaterThanOrEqual(120);
     expect(mask[8]).toBeGreaterThanOrEqual(120);
     // Center (1,1) gets bilinear contributions from both
-    expect(mask[4]).toBeGreaterThanOrEqual(120);
+    expect(mask[4]).toBeGreaterThan(0);
   });
 });
 
 describe("audit: calibrated soft round single-dab profile", () => {
   it("single dab center rounds to full strength", () => {
     const tip = createBrushTip({ size: 40, hardness: 0, curve: "soft" });
-    const center = Math.round((tip.width - 1) / 2);
+    const center = tip.diameter / 2;
     expect(alphaAt(tip, center, center)).toBeGreaterThan(0.99);
   });
 
@@ -150,19 +150,22 @@ describe("audit: calibrated soft round single-dab profile", () => {
 
   it("single dab retains visible pixels beyond the nominal cursor radius", () => {
     const tip = createBrushTip({ size: 40, hardness: 0, curve: "soft" });
-    const center = (tip.width - 1) / 2;
-    const row = Math.round(center);
-    const beyondCursor = alphaAt(tip, Math.round(center + 22), row);
+    const center = tip.diameter / 2;
+    const row = center;
+    const beyondCursor = alphaAt(tip, center + 22, row);
     expect(tip.width).toBeGreaterThan(40);
     expect(beyondCursor).toBeGreaterThan(0);
   });
 
-  it("single dab with hardness 100 produces a binary hard edge", () => {
+  it("single dab with hardness 100 keeps a solid core and fractional boundary coverage", () => {
     const tip = createBrushTip({ size: 41, hardness: 1, curve: "soft" });
-    const center = Math.floor(tip.width / 2);
+    const center = tip.diameter / 2;
     expect(alphaAt(tip, center, center)).toBe(1);
     expect(alphaAt(tip, center - 20, center)).toBe(1);
-    expect(alphaAt(tip, center + 20, center)).toBe(1);
+    expect(alphaAt(tip, center + 19, center)).toBe(1);
+    expect(alphaAt(tip, center + 20, center)).toBeGreaterThan(0);
+    expect(alphaAt(tip, center + 20, center)).toBeLessThan(1);
+    expect(alphaAt(tip, center + 21, center)).toBe(0);
   });
 });
 

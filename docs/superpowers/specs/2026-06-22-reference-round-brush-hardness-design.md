@@ -176,3 +176,16 @@ The user supplied a final visual comparison showing that the single normal paint
 - The overlay renders one cursor ring, not an additional inner/outer pair.
 - The nominal brush size, dab spacing, mask support, painted output, terminal preview, and center crosshair remain unchanged.
 - The cursor helper lives beside the calibrated profile so rendering and cursor geometry share the same interpolation and threshold contract without duplicating constants.
+
+## Approved Addendum: Float Brush-Tip Rasterizer
+
+The existing `brushTipMask.ts` remains the sole production brush-tip path and is refactored in place. No parallel rasterizer or cache is introduced.
+
+- Canonical tips use `{ data: Float32Array, diameter, R_nominal }`; tip alpha remains normalized float through rasterization and bilinear sampling. The existing full-layer `Uint8ClampedArray` accumulation mask and final `ImageData` compositor remain unchanged.
+- For calibrated tips at diameter 22px or larger, texture diameter is exactly `ceil(R_nominal * supportNorm) * 2 + 2`. The two extra pixels are an antialiasing margin.
+- Texture-space center is `(diameter / 2, diameter / 2)`. Raster samples are evaluated at pixel centers `(x + 0.5, y + 0.5)`, with `rNorm = hypot(dx, dy) / R_nominal`.
+- Tips smaller than 22px bypass the super-Gaussian and use a one-pixel antialiased circle with nominal support plus the same two-pixel texture margin.
+- `getCachedBrushTip(brushDiameter, hardness)` keys only normalized diameter and hardness. Color and opacity are excluded and applied at composite time.
+- Production strokes continue using `getBrushTip(...)`, which delegates soft tips to the exact diameter/hardness canonical cache. Their existing full-layer mask cannot clip tip support; the transient region mask is bounded from the enlarged tip diameter.
+- The existing `stampBrushTip(...)` signature preserves source-over per-dab accumulation and bilinear subpixel positioning while reading the single-channel Float32 source.
+- `createBrushTip` and `getBrushTip` remain temporary `@deprecated` wrappers over the canonical implementation. Production imports must not use them.

@@ -1,4 +1,5 @@
 import {
+  BRUSH_HARD_EDGE_THRESHOLD,
   MIN_RELIABLE_BRUSH_DIAMETER_PX,
   brushAlpha,
   getBrushProfileSupportNorm,
@@ -16,7 +17,9 @@ export interface BrushTip {
   width: number;
   height: number;
   radius: number;
-  data: Uint8ClampedArray;
+  diameter: number;
+  R_nominal: number;
+  data: Float32Array;
 }
 
 export interface BrushPoint {
@@ -95,34 +98,71 @@ export function getBrushTipCacheKey(options: BrushTipOptions): string {
 
 const brushTipCache = new Map<string, BrushTip>();
 
-export function createBrushTip(options: BrushTipOptions): BrushTip {
-  const size = Math.max(1, Math.round(options.size));
-  const radius = size / 2;
-  const curve = options.curve ?? "soft";
-  const hardness = clamp01(options.hardness);
-  const outerRadius = getBrushTipOuterRadius(radius, hardness, curve);
-  const width = Math.max(size, Math.ceil(outerRadius * 2));
-  const height = width;
-  const data = new Uint8ClampedArray(width * height * 4);
-  const center = (width - 1) / 2;
+function rasterizeBrushTipWithCurve(
+  brushDiameter: number,
+  hardness: number,
+  curve: BrushFalloffCurve,
+): BrushTip {
+  const diameterNominal = Number.isFinite(brushDiameter) ? Math.max(1, brushDiameter) : 1;
+  const R_nominal = diameterNominal / 2;
+  const h = clamp01(hardness);
+  const supportNorm = diameterNominal < MIN_RELIABLE_BRUSH_DIAMETER_PX
+    ? 1
+    : curve === "soft" ? getBrushProfileSupportNorm(h) : 1;
+  const diameter = Math.ceil(R_nominal * supportNorm) * 2 + 2;
+  const data = new Float32Array(diameter * diameter);
+  const center = diameter / 2;
 
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const distance = Math.hypot(x - center, y - center);
-      const alpha = brushAlphaAtDistance(distance, radius, hardness, curve);
-      const idx = (y * width + x) * 4;
-      data[idx] = 255;
-      data[idx + 1] = 255;
-      data[idx + 2] = 255;
-      data[idx + 3] = Math.round(alpha * 255);
+  for (let y = 0; y < diameter; y += 1) {
+    const dy = y + 0.5 - center;
+    for (let x = 0; x < diameter; x += 1) {
+      const dx = x + 0.5 - center;
+      const distance = Math.hypot(dx, dy);
+      data[y * diameter + x] = diameterNominal < MIN_RELIABLE_BRUSH_DIAMETER_PX
+        || (curve === "soft" && h >= BRUSH_HARD_EDGE_THRESHOLD)
+        ? smallRoundAlpha(distance, R_nominal)
+        : curve === "soft"
+          ? brushAlpha(distance / R_nominal, h)
+          : brushAlphaAtDistance(distance, R_nominal, h, curve);
     }
   }
 
-  return { width, height, radius, data };
+  return {
+    width: diameter,
+    height: diameter,
+    radius: R_nominal,
+    diameter,
+    R_nominal,
+    data,
+  };
 }
 
+export function rasterizeBrushTip(brushDiameter: number, hardness: number): BrushTip {
+  return rasterizeBrushTipWithCurve(brushDiameter, hardness, "soft");
+}
+
+/** @deprecated Prefer rasterizeBrushTip/getCachedBrushTip for the canonical soft tip path. */
+export function createBrushTip(options: BrushTipOptions): BrushTip {
+  return rasterizeBrushTipWithCurve(options.size, options.hardness, options.curve ?? "soft");
+}
+
+export function getCachedBrushTip(brushDiameter: number, hardness: number): BrushTip {
+  const diameter = Number.isFinite(brushDiameter) ? Math.max(1, brushDiameter) : 1;
+  const h = clamp01(hardness);
+  const key = `soft:${diameter}:${h}`;
+  const cached = brushTipCache.get(key);
+  if (cached) return cached;
+  const tip = rasterizeBrushTip(diameter, h);
+  brushTipCache.set(key, tip);
+  return tip;
+}
+
+/** @deprecated Kept temporarily for legacy curve callers while production converges on getCachedBrushTip. */
 export function getBrushTip(options: BrushTipOptions): BrushTip {
-  const key = getBrushTipCacheKey(options);
+  if ((options.curve ?? "soft") === "soft") {
+    return getCachedBrushTip(options.size, options.hardness);
+  }
+  const key = `${options.curve}:${options.size}:${clamp01(options.hardness)}`;
   const cached = brushTipCache.get(key);
   if (cached) return cached;
   const tip = createBrushTip(options);
@@ -187,16 +227,16 @@ export function stampBrushTip(
   // center. Replaces the previous max-within-stroke semantics which made
   // brush strokes stop accumulating after the first pass.
   const scale = clamp01(alphaScale);
-  const cx = (tip.width - 1) / 2;
-  const cy = (tip.height - 1) / 2;
+  const halfExtent = tip.diameter / 2;
+  const centerIndex = halfExtent - 0.5;
 
-  const minX = Math.max(0, Math.floor(centerX - cx));
-  const maxX = Math.min(maskWidth - 1, Math.ceil(centerX + cx));
-  const minY = Math.max(0, Math.floor(centerY - cy));
-  const maxY = Math.min(maskHeight - 1, Math.ceil(centerY + cy));
+  const minX = Math.max(0, Math.floor(centerX - halfExtent));
+  const maxX = Math.min(maskWidth - 1, Math.ceil(centerX + halfExtent) - 1);
+  const minY = Math.max(0, Math.floor(centerY - halfExtent));
+  const maxY = Math.min(maskHeight - 1, Math.ceil(centerY + halfExtent) - 1);
 
   for (let y = minY; y <= maxY; y += 1) {
-    const ty = y - centerY + cy;
+    const ty = y - centerY + centerIndex;
     const y0 = Math.floor(ty);
     const y1 = y0 + 1;
     const wy = ty - y0;
@@ -209,7 +249,7 @@ export function stampBrushTip(
     const rowIdx = y * maskWidth;
 
     for (let x = minX; x <= maxX; x += 1) {
-      const tx = x - centerX + cx;
+      const tx = x - centerX + centerIndex;
       const x0 = Math.floor(tx);
       const x1 = x0 + 1;
       const wx = tx - x0;
@@ -217,10 +257,10 @@ export function stampBrushTip(
       const x0In = x0 >= 0 && x0 < tip.width;
       const x1In = x1 >= 0 && x1 < tip.width;
 
-      const a00 = (y0In && x0In) ? tip.data[(y0Offset + x0) * 4 + 3] : 0;
-      const a10 = (y0In && x1In) ? tip.data[(y0Offset + x1) * 4 + 3] : 0;
-      const a01 = (y1In && x0In) ? tip.data[(y1Offset + x0) * 4 + 3] : 0;
-      const a11 = (y1In && x1In) ? tip.data[(y1Offset + x1) * 4 + 3] : 0;
+      const a00 = (y0In && x0In) ? tip.data[y0Offset + x0] : 0;
+      const a10 = (y0In && x1In) ? tip.data[y0Offset + x1] : 0;
+      const a01 = (y1In && x0In) ? tip.data[y1Offset + x0] : 0;
+      const a11 = (y1In && x1In) ? tip.data[y1Offset + x1] : 0;
 
       const a0 = a00 * (1 - wx) + a10 * wx;
       const a1 = a01 * (1 - wx) + a11 * wx;
@@ -228,13 +268,13 @@ export function stampBrushTip(
 
       if (interpolatedAlpha <= 0) continue;
 
-      const scaled = Math.round(interpolatedAlpha * scale);
+      const scaled = interpolatedAlpha * scale;
       if (scaled <= 0) continue;
 
       const idx = rowIdx + x;
       const cur = mask[idx];
       if (cur >= 255) continue;
-      mask[idx] = cur + Math.round((255 - cur) * scaled / 255);
+      mask[idx] = cur + Math.round((255 - cur) * scaled);
     }
   }
 }
@@ -370,12 +410,12 @@ export function paintTransientBrushTipToContext(
 
   const canvasWidth = ctx.canvas.width;
   const canvasHeight = ctx.canvas.height;
-  const cx = (tip.width - 1) / 2;
-  const cy = (tip.height - 1) / 2;
+  const cx = tip.diameter / 2;
+  const cy = tip.diameter / 2;
   const minX = Math.max(0, Math.floor(endpoint.x - cx));
-  const maxX = Math.min(canvasWidth - 1, Math.ceil(endpoint.x + cx));
+  const maxX = Math.min(canvasWidth - 1, Math.ceil(endpoint.x + cx) - 1);
   const minY = Math.max(0, Math.floor(endpoint.y - cy));
-  const maxY = Math.min(canvasHeight - 1, Math.ceil(endpoint.y + cy));
+  const maxY = Math.min(canvasHeight - 1, Math.ceil(endpoint.y + cy) - 1);
   if (maxX < minX || maxY < minY) return false;
 
   const width = maxX - minX + 1;

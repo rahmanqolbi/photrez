@@ -148,7 +148,7 @@
 | ✅ DONE      | Keyboard shortcuts — `[`/`]` for size, Shift+`[`/`]` for hardness |
 | ✅ DONE      | Brush visual calibration: editor-standard hardness 0 soft-round profile with broader dense center, dense soft spacing, subpixel bilinear stamping, opacity/flow-independent alpha scale, and pixel-profile regression tests |
 | ↪ SUPERSEDED | Bounded core/feather hardness models (`1 - t²`, smoothstep, and fixed cursor support) — replaced by the measured reference calibration below |
-| ✅ DONE      | reference-calibrated round hardness — exact seven-point monotone-cubic sigma/n interpolation drives `exp(-((r / sigma)^n))`; hardness ≥97% is a literal hard disk and diameters below 22px use deterministic one-pixel raster AA |
+| ✅ DONE      | reference-calibrated round hardness — exact seven-point monotone-cubic sigma/n interpolation drives `exp(-((r / sigma)^n))`; hardness ≥97% keeps a literal hard-disk profile with deterministic one-pixel coverage AA at raster boundaries, also used by diameters below 22px |
 | ✅ DONE      | reference editor soft-tail semantics — Size remains the nominal cursor diameter while low-hardness quantized alpha may extend beyond the cursor; finite cached bitmap support ends below half an 8-bit alpha level |
 | ✅ DONE      | Alt-Hold Eyedropper modifier for sampling colors from active canvas |
 | ✅ DONE      | Shift-Click Straight Lines interpolation connecting last painted dab |
@@ -160,6 +160,8 @@
 | ↪ SUPERSEDED | Editor-style bounded smoothstep mask and exact cursor-support alignment — retained only as implementation history; runtime now follows measured reference editor bleed |
 | ✅ DONE      | Brush cursor semantics — one sharp ring follows the shared 20% calibrated alpha contour below 97% hardness and the nominal Size radius at the hard edge; no duplicate support ring or filled gradient |
 | ✅ DONE      | editor-standard hardness-aware brush cursor — an earlier SVG soft fill was reverted because it caused color-inversion artifacts; the retained sharp ring now changes geometry only, shared by Brush and Eraser |
+| ✅ DONE      | Large hard-edge Brush/Eraser polish — cached Float32 tips reuse the existing circle-coverage function at hardness ≥97%, preserving a solid interior and nominal radius while eliminating binary single-sample stairstepping |
+| ✅ DONE      | Automated Brush/Eraser visual QA — deterministic buffer-level regression coverage for large hard-edge dabs, connected long strokes, low-hardness soft-tail support, subpixel edge coverage, and Brush/Eraser mask parity |
 
 ---
 
@@ -369,6 +371,7 @@
 | DONE | Viewport camera regression recovery todo created: `docs/plans/2026-06-13-viewport-camera-regression-recovery-todo.md` |
 | SUPERSEDED | GPU-Accelerated smooth zoom viewport camera implementation plan: `docs/plans/2026-06-13-gpu-smooth-zoom-transitions-design.md` |
 | DONE | Brush visual calibration and pixel QA plan executed: `docs/superpowers/plans/2026-06-11-brush-visual-calibration-and-qa.md` |
+| DONE | CPU brush-tip rasterizer refactored to cached single-channel Float32 alpha with calibrated padded support, pixel-center sampling, and preserved Uint8 mask/WebGL2 production wiring |
 | DONE | Brush-tip mask engine implementation plan executed: `docs/superpowers/plans/2026-06-11-brush-tip-mask-engine.md` |
 | DONE | Brush hardness distance-field soft-edge implementation: `docs/superpowers/plans/2026-06-11-brush-hardness-distance-field-soft-edge.md` |
 | DONE | Brush and Eraser tool improvement plan created: `docs/superpowers/plans/2026-06-06-brush-eraser-tool-improvements.md` |

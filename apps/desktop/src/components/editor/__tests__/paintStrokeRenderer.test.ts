@@ -424,6 +424,38 @@ describe("renderPaintStrokeToContext", () => {
     expect(ctx.putImageData).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    { label: "brush", isEraser: false },
+    { label: "eraser", isEraser: true },
+  ])("preserves fractional hard-edge coverage through the $label production path", ({ isEraser }) => {
+    const imageData = createImageDataMock(140, 140);
+    if (isEraser) {
+      for (let i = 3; i < imageData.data.length; i += 4) imageData.data[i] = 255;
+    }
+    const ctx = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      globalCompositeOperation: "",
+      globalAlpha: 1,
+      canvas: { width: 140, height: 140 },
+      getImageData: vi.fn(() => imageData),
+      putImageData: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+
+    renderPaintStrokeToContext(
+      ctx,
+      [{ x: 70, y: 70 }],
+      { size: 100, hardness: 1, opacity: 1, flow: 1, smoothing: 0 },
+      "#ff0000",
+      isEraser,
+    );
+
+    const written = (ctx.putImageData as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as ImageData;
+    const boundaryAlpha = written.data[(105 * written.width + 105) * 4 + 3];
+    expect(boundaryAlpha).toBeGreaterThan(0);
+    expect(boundaryAlpha).toBeLessThan(255);
+  });
+
   it("applies flow multiplier to dab alpha in the mask engine", () => {
     const imageData = createImageDataMock(80, 80);
     const ctx = {
