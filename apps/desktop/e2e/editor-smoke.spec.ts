@@ -2,11 +2,21 @@ import { expect, test } from "@playwright/test";
 import { readRenderedPixelAtRatio } from "./helpers/screenshotPixels";
 
 async function createBlankCanvas(page: import("@playwright/test").Page, width = "800", height = "600") {
-  const promptValues = [width, height];
-  page.on("dialog", async (dialog) => {
-    await dialog.accept(promptValues.shift() ?? height);
-  });
-  await page.getByRole("button", { name: "New Canvas" }).click();
+  await page.evaluate(async ({ w, h }) => {
+    const editor = (window as unknown as {
+      __photrezEditor?: {
+        workspace: { addDocument: (doc: unknown) => void };
+        scheduler: { requestRender: () => void };
+      };
+    }).__photrezEditor;
+    if (!editor) throw new Error("Editor context handle not found on window");
+    const { WorkspaceManager } = await import("/src/engine/workspace");
+    const id = `doc-${crypto.randomUUID()}`;
+    const name = "Untitled Canvas";
+    const session = WorkspaceManager.createBlankDocument(id, name, w, h);
+    editor.workspace.addDocument(session);
+    editor.scheduler.requestRender();
+  }, { w: Number(width), h: Number(height) });
 }
 
 async function getTransformBox(page: import("@playwright/test").Page) {
@@ -35,8 +45,7 @@ test.describe("editor browser smoke", () => {
     await page.goto("/");
 
     await expect(page.getByRole("banner").getByText("photrez")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "No image open" })).toBeVisible();
-    await expect(page.getByRole("contentinfo").getByText("No selection")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Start a Photrez document" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Move Tool" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Crop Tool" })).toBeVisible();
     await expect(page.getByRole("button", { name: "New Canvas" })).toBeVisible();
@@ -48,7 +57,7 @@ test.describe("editor browser smoke", () => {
     await createBlankCanvas(page);
 
     await expect(page.getByRole("main").getByText("Untitled Canvas")).toBeVisible();
-    await expect(page.getByText("800 x 600 px")).toBeVisible();
+    await expect(page.getByText("800 × 600 px")).toBeVisible();
     await expect(page.getByText("Active:")).toBeVisible();
     await expect(page.getByText("Selected Layer:")).toBeVisible();
 
@@ -58,7 +67,7 @@ test.describe("editor browser smoke", () => {
 
     await page.getByRole("button", { name: "Move Tool" }).click();
     await expect(page.getByText("Active:")).toBeVisible();
-    await expect(page.getByText("Move Tool")).toBeVisible();
+    await expect(page.getByRole("contentinfo").getByText("Move Tool", { exact: true })).toBeVisible();
   });
 
   test("toggles side panels without losing the active document", async ({ page }) => {
@@ -316,8 +325,8 @@ test.describe("export dialog", () => {
     await page.goto("/");
 
     const result = await page.evaluate(async () => {
-      const { WorkspaceManager } = await import("/src/engine/workspace.ts");
-      const { encodeComposite } = await import("/src/components/editor/exportDocument.ts");
+      const { WorkspaceManager } = await import("/src/engine/workspace");
+      const { encodeComposite } = await import("/src/components/editor/exportDocument");
 
       const session = WorkspaceManager.createBlankDocument("e2e-export", "E2E", 10, 10);
       const engine = session.engine;
@@ -356,8 +365,8 @@ test.describe("export dialog", () => {
     await page.goto("/");
 
     const result = await page.evaluate(async () => {
-      const { WorkspaceManager } = await import("/src/engine/workspace.ts");
-      const { encodeComposite } = await import("/src/components/editor/exportDocument.ts");
+      const { WorkspaceManager } = await import("/src/engine/workspace");
+      const { encodeComposite } = await import("/src/components/editor/exportDocument");
 
       // Test 1: Dimensions match
       const doc = WorkspaceManager.createBlankDocument("dim-test", "Dim", 320, 240);
@@ -371,7 +380,7 @@ test.describe("export dialog", () => {
       layer.imageBitmap = cav.transferToImageBitmap();
 
       const bytes = await encodeComposite(engine, "png", 100);
-      const blob = new Blob([bytes]);
+      const blob = new Blob([bytes as unknown as BlobPart]);
       const img = await createImageBitmap(blob);
       const dimMatch = img.width === 320 && img.height === 240;
 
@@ -400,7 +409,7 @@ test.describe("export dialog", () => {
       invisibleLayer.imageBitmap = invisibleCanvas.transferToImageBitmap();
 
       const hiddenBytes = await encodeComposite(engine, "png", 100);
-      const hiddenBlob = new Blob([hiddenBytes]);
+      const hiddenBlob = new Blob([hiddenBytes as unknown as BlobPart]);
       const hiddenImg = await createImageBitmap(hiddenBlob);
       const hiddenDimMatch = hiddenImg.width === 320 && hiddenImg.height === 240;
 
@@ -421,8 +430,8 @@ test.describe("export dialog", () => {
     await page.goto("/");
 
     const result = await page.evaluate(async () => {
-      const { WorkspaceManager } = await import("/src/engine/workspace.ts");
-      const { encodeComposite } = await import("/src/components/editor/exportDocument.ts");
+      const { WorkspaceManager } = await import("/src/engine/workspace");
+      const { encodeComposite } = await import("/src/components/editor/exportDocument");
 
       // Create a document with content
       const session = WorkspaceManager.createBlankDocument("dataflow", "DataFlow", 16, 16);

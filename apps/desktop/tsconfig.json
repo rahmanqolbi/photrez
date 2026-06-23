@@ -14,8 +14,9 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "/src/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "e2e"]
 }

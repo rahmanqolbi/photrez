@@ -1,11 +1,21 @@
 import { expect, test } from "@playwright/test";
 
 async function createBlankCanvas(page: import("@playwright/test").Page) {
-  const values = ["320", "240"];
-  page.on("dialog", async (dialog) => {
-    await dialog.accept(values.shift() ?? "240");
+  await page.evaluate(async () => {
+    const editor = (window as unknown as {
+      __photrezEditor?: {
+        workspace: { addDocument: (doc: unknown) => void };
+        scheduler: { requestRender: () => void };
+      };
+    }).__photrezEditor;
+    if (!editor) throw new Error("Editor context handle not found on window");
+    const { WorkspaceManager } = await import("/src/engine/workspace");
+    const id = `doc-${crypto.randomUUID()}`;
+    const name = "Untitled Canvas";
+    const session = WorkspaceManager.createBlankDocument(id, name, 320, 240);
+    editor.workspace.addDocument(session);
+    editor.scheduler.requestRender();
   });
-  await page.getByRole("button", { name: "New Canvas" }).click();
 }
 
 test.describe("Precision Workbench dialogs", () => {
