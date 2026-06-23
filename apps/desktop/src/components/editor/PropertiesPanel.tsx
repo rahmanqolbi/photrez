@@ -1,9 +1,10 @@
-import { For, Show } from "solid-js";
+import { For, Show, createSignal } from "solid-js";
 import { Icon, type IconName } from "./icons";
 import { NumField, PropRow, SelectField, Slider } from "./primitives";
 import { useEditor } from "./EditorContext";
 import { SectionHeader } from "./SectionHeader";
 import { CanvasProperties } from "./CanvasProperties";
+import type { BasicAdjustment } from "@/engine/layerAdjustments";
 
 const COLLAPSED_SECTIONS: readonly {
   icon: IconName;
@@ -22,7 +23,12 @@ const COLLAPSED_SECTIONS: readonly {
 ] as const;
 
 export function PropertiesPanel() {
-  const { workspace, layers, selectedLayerId, scheduler, activeDocumentId } = useEditor();
+  const { workspace, layers, selectedLayerId, scheduler, activeDocumentId, renderer } = useEditor();
+  const [basicAdjustment, setBasicAdjustment] = createSignal<BasicAdjustment>({
+    brightness: 0,
+    contrast: 0,
+    saturation: 0,
+  });
 
   const activeLayer = () => {
     const id = selectedLayerId();
@@ -38,6 +44,41 @@ export function PropertiesPanel() {
       engine.setLayerOpacity(id, val / 100);
       scheduler.requestRender();
     }
+  };
+
+  const setAdjustmentValue = (key: keyof BasicAdjustment, value: number) => {
+    setBasicAdjustment((current) => ({ ...current, [key]: value }));
+  };
+
+  const hasPendingAdjustment = () => {
+    const adjustment = basicAdjustment();
+    return adjustment.brightness !== 0 || adjustment.contrast !== 0 || adjustment.saturation !== 0;
+  };
+
+  const canApplyBasicAdjustment = () => {
+    const layer = activeLayer();
+    return Boolean(layer?.imageBitmap && !layer.locked && hasPendingAdjustment());
+  };
+
+  const resetBasicAdjustment = () => {
+    setBasicAdjustment({ brightness: 0, contrast: 0, saturation: 0 });
+  };
+
+  const applyBasicAdjustment = () => {
+    const engine = workspace.getActiveEngine();
+    const history = workspace.getActiveHistory();
+    const layer = activeLayer();
+    if (!engine || !history || !layer?.imageBitmap || layer.locked || !hasPendingAdjustment()) return;
+
+    history.commit(engine.snapshot(), "Basic Adjustment");
+    engine.applyBasicAdjustment(layer.id, basicAdjustment());
+    const updated = engine.getLayer(layer.id);
+    if (updated?.imageBitmap) {
+      renderer.uploadImage(layer.id, updated.imageBitmap);
+    }
+    workspace.notifyVisualChange();
+    scheduler.requestRender();
+    resetBasicAdjustment();
   };
 
   return (
@@ -143,41 +184,52 @@ export function PropertiesPanel() {
               iconClass="text-editor-text-dim"
               label="Basic"
               trailing={
-                <Icon
-                  name="x"
-                  class="size-3.5 text-editor-text-dim"
-                  strokeWidth={1.75}
-                />
+                <button
+                  type="button"
+                  aria-label="Reset basic adjustments"
+                  disabled={!hasPendingAdjustment()}
+                  onClick={resetBasicAdjustment}
+                  class="flex size-5 items-center justify-center rounded-[3px] text-editor-text-dim hover:bg-white/[0.045] hover:text-editor-text disabled:pointer-events-none disabled:opacity-40"
+                >
+                  <Icon
+                    name="x"
+                    class="size-3.5"
+                    strokeWidth={1.75}
+                  />
+                </button>
               }
             />
 
             <div class="mt-3 flex flex-col gap-2.5">
-              <PropRow label="Profile">
-                <SelectField value="Landscape" class="flex-1" />
-              </PropRow>
-              <PropRow label="WB">
-                <SelectField value="As Shot" class="flex-1" />
-                <button
-                  class="flex size-[26px] shrink-0 items-center justify-center text-editor-icon hover:text-editor-text"
-                  aria-label="White balance picker"
-                >
-                  <Icon name="pipette" class="size-3.5" strokeWidth={1.75} />
-                </button>
-              </PropRow>
-              <SliderRow
-                label="Temp"
-                percent={40}
-                value="5600"
-                gradient="linear-gradient(to right, #3b82f6, #6b8db8, #d98a2b)"
-                centerTick={true}
+              <AdjustmentSliderRow
+                label="Bright"
+                value={basicAdjustment().brightness}
+                onInput={(value) => setAdjustmentValue("brightness", value)}
               />
-              <SliderRow
-                label="Tint"
-                percent={50}
-                value="+6"
-                gradient="linear-gradient(to right, #5aa86a, #2b2b2b 50%, #b25fae)"
-                centerTick={true}
+              <AdjustmentSliderRow
+                label="Contrast"
+                value={basicAdjustment().contrast}
+                onInput={(value) => setAdjustmentValue("contrast", value)}
               />
+              <AdjustmentSliderRow
+                label="Saturate"
+                value={basicAdjustment().saturation}
+                onInput={(value) => setAdjustmentValue("saturation", value)}
+              />
+              <button
+                type="button"
+                data-basic-adjustment-apply
+                disabled={!canApplyBasicAdjustment()}
+                onClick={applyBasicAdjustment}
+                class="mt-1 flex h-[28px] items-center justify-center rounded-[4px] border border-editor-field-border bg-editor-field px-3 text-[12px] font-medium text-editor-text transition-colors hover:bg-white/[0.045] disabled:pointer-events-none disabled:opacity-45"
+              >
+                Apply to Layer
+              </button>
+              <Show when={activeLayer() && !activeLayer()?.imageBitmap}>
+                <p class="text-[11px] leading-snug text-editor-text-dim">
+                  Add image pixels to this layer before applying adjustments.
+                </p>
+              </Show>
             </div>
           </div>
 
@@ -196,26 +248,33 @@ export function PropertiesPanel() {
   );
 }
 
-function SliderRow(props: {
+function AdjustmentSliderRow(props: {
   label: string;
-  percent: number;
-  value: string;
-  gradient?: string;
-  centerTick?: boolean;
+  value: number;
+  onInput: (value: number) => void;
 }) {
+  const percent = () => props.value + 100;
+
   return (
     <div class="flex items-center gap-2.5">
       <span class="w-[58px] shrink-0 text-[12px] text-editor-text-dim">
         {props.label}
       </span>
       <div class="flex flex-1 items-center gap-2.5">
-        <Slider
-          percent={props.percent}
-          gradient={props.gradient}
-          centerTick={props.centerTick}
-        />
-        <span class="w-[28px] shrink-0 text-right text-[12px] text-editor-text">
-          {props.value}
+        <div class="relative flex h-[14px] flex-1 items-center">
+          <Slider percent={percent() / 2} accent={props.value > 0} centerTick={true} />
+          <input
+            aria-label={props.label}
+            type="range"
+            min="-100"
+            max="100"
+            value={props.value}
+            onInput={(e) => props.onInput(parseInt(e.currentTarget.value, 10))}
+            class="absolute inset-0 h-[14px] w-full cursor-pointer opacity-0"
+          />
+        </div>
+        <span class="w-[34px] shrink-0 text-right text-[12px] text-editor-text">
+          {props.value > 0 ? `+${props.value}` : props.value}
         </span>
       </div>
     </div>

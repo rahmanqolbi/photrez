@@ -17,6 +17,7 @@ import { drawLayerToContext, compositeTwoLayers, compositeAllLayers } from "./la
 import { performCropCanvas, performApplyCrop } from "./cropApply";
 import { createSnapshot, restoreSnapshot } from "./snapshot";
 import { performPixelSampling } from "./pixelSample";
+import { applyBasicAdjustmentToPixels, type BasicAdjustment } from "./layerAdjustments";
 
 export { drawLayerToContext };
 
@@ -543,6 +544,25 @@ export class DocumentEngine {
       this.markLayerDirty(id);
       this.notifyVisualChange();
     }
+  }
+
+  applyBasicAdjustment(id: LayerId, adjustment: BasicAdjustment): void {
+    const layer = this.getLayer(id);
+    if (!layer || layer.locked || !layer.imageBitmap) return;
+
+    const canvas = new OffscreenCanvas(layer.width, layer.height);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(layer.imageBitmap, 0, 0);
+    const imageData = ctx.getImageData(0, 0, layer.width, layer.height);
+    imageData.data.set(applyBasicAdjustmentToPixels(imageData.data, adjustment));
+    ctx.putImageData(imageData, 0, 0);
+
+    layer.imageBitmap = canvas.transferToImageBitmap();
+    this.model.dirty = true;
+    this.markLayerDirty(id);
+    this.notifyVisualChange();
   }
 
   // ─── Texture Handles ───

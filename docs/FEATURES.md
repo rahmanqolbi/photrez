@@ -40,6 +40,7 @@
 | ✅ DONE      | Live Canvas Row Thumbnails (checkerboard background) |
 | ✅ DONE      | Canvas checkerboard pattern (transparent-pixel indicator behind layers — editor-standard light/dark gray grid, always on, no toggle) |
 | ✅ DONE      | Layer keyboard shortcuts — Ctrl+Shift+N (new layer), Ctrl+J (duplicate), Ctrl+E / Ctrl+Shift+E (merge down / flatten), Ctrl+] / Ctrl+[ (move up / down stack), Ctrl+G / Ctrl+Shift+G (flip H / V), Delete / Backspace (delete active layer), 0–9 (set opacity, 0=100%) |
+| ✅ DONE      | Properties Basic adjustments — destructive per-layer Brightness, Contrast, and Saturation with Apply/Reset controls, undo checkpoint, texture refresh, and wiring coverage |
 
 ---
 
