@@ -11,6 +11,7 @@
 | Status       | Fitur                                      |
 |--------------|--------------------------------------------|
 | ✅ DONE      | External image-editor branding removed from project-owned source comments, test labels, documentation, local agent references, and filenames; behavior remains unchanged |
+| ✅ DONE      | Public repository hygiene — local AI-agent workflow files, personal tool configs, and build artifacts removed from Git tracking (`git rm --cached`); files kept on disk |
 
 ---
 
@@ -43,6 +44,7 @@
 | ✅ DONE      | Properties Basic adjustments — destructive per-layer Brightness, Contrast, and Saturation with live slider preview, reset restore, undo checkpoint, texture refresh, and wiring coverage |
 | ✅ DONE      | Properties Transform fields — editable X/Y, W/H, Rotation, and Scale controls with history checkpointing, lock guards, and mounted wiring coverage |
 | ✅ DONE      | Properties state hints — inline guidance for locked layers, position/rotation locks, and layers without pixel data |
+| ✅ DONE      | Properties history polish — opacity slider creates one undo checkpoint per edit session and Properties edits use descriptive History labels |
 
 ---
 

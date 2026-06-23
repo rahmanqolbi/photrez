@@ -34,6 +34,7 @@ export function PropertiesPanel() {
     layerId: string;
     bitmap: ImageBitmap;
   } | null>(null);
+  const [opacityEditLayerId, setOpacityEditLayerId] = createSignal<string | null>(null);
 
   const activeLayer = () => {
     const id = selectedLayerId();
@@ -45,13 +46,24 @@ export function PropertiesPanel() {
     const engine = workspace.getActiveEngine();
     const id = selectedLayerId();
     if (engine && id) {
-      // Direct update for live performance (no history commit on every drag segment, just update)
+      const layer = engine.getLayer(id);
+      if (!layer || layer.locked) return;
+      if (Math.abs(layer.opacity - val / 100) < 0.0001) return;
+      if (opacityEditLayerId() !== id) {
+        workspace.getActiveHistory()?.commit(engine.snapshot(), "Adjust Opacity");
+        setOpacityEditLayerId(id);
+      }
       engine.setLayerOpacity(id, val / 100);
       scheduler.requestRender();
+      workspace.notifyVisualChange();
     }
   };
 
-  const commitTransform = (patch: Partial<Transform2D>) => {
+  const finishOpacityEdit = () => {
+    setOpacityEditLayerId(null);
+  };
+
+  const commitTransform = (patch: Partial<Transform2D>, label: string) => {
     const engine = workspace.getActiveEngine();
     const id = selectedLayerId();
     if (!engine || !id) return false;
@@ -72,7 +84,7 @@ export function PropertiesPanel() {
     }
 
     const history = workspace.getActiveHistory();
-    history?.commit(engine.snapshot(), "Transform Layer");
+    history?.commit(engine.snapshot(), label);
     engine.transformLayer(id, next);
     scheduler.requestRender();
     workspace.notifyVisualChange();
@@ -82,28 +94,28 @@ export function PropertiesPanel() {
   const handlePositionField = (axis: "x" | "y") => (val: number) => {
     const layer = activeLayer();
     if (!layer || layer.lockPosition) return;
-    commitTransform({ [axis]: val });
+    commitTransform({ [axis]: val }, "Move Layer");
   };
 
   const handleSizeField = (axis: "w" | "h") => (val: number) => {
     const layer = activeLayer();
     if (!layer || val <= 0) return;
     const nextScale = axis === "w" ? val / layer.width : val / layer.height;
-    commitTransform(axis === "w" ? { scaleX: nextScale } : { scaleY: nextScale });
+    commitTransform(axis === "w" ? { scaleX: nextScale } : { scaleY: nextScale }, "Resize Layer");
   };
 
   const handleRotationField = (val: number) => {
     const layer = activeLayer();
     if (!layer || layer.lockRotation) return;
-    commitTransform({ rotation: val });
+    commitTransform({ rotation: val }, "Rotate Layer");
   };
 
   const handleScaleField = (axis: "x" | "y") => (val: number) => {
     if (val <= 0) return;
-    commitTransform(axis === "x" ? { scaleX: val / 100 } : { scaleY: val / 100 });
+    commitTransform(axis === "x" ? { scaleX: val / 100 } : { scaleY: val / 100 }, "Resize Layer");
   };
 
-  const previewBasicAdjustment = (next: BasicAdjustment) => {
+  const previewBasicAdjustment = (next: BasicAdjustment, label: string) => {
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     const layer = activeLayer();
@@ -113,7 +125,7 @@ export function PropertiesPanel() {
     if (!base || base.layerId !== layer.id) {
       base = { layerId: layer.id, bitmap: layer.imageBitmap };
       setAdjustmentBase(base);
-      history.commit(engine.snapshot(), "Basic Adjustment");
+      history.commit(engine.snapshot(), label);
     }
 
     engine.applyBasicAdjustment(layer.id, next, base.bitmap);
@@ -128,7 +140,7 @@ export function PropertiesPanel() {
   const setAdjustmentValue = (key: keyof BasicAdjustment, value: number) => {
     const next = { ...basicAdjustment(), [key]: value };
     setBasicAdjustment(next);
-    previewBasicAdjustment(next);
+    previewBasicAdjustment(next, key === "brightness" ? "Adjust Brightness" : key === "contrast" ? "Adjust Contrast" : "Adjust Saturation");
   };
 
   const hasPendingAdjustment = () => {
@@ -238,12 +250,17 @@ export function PropertiesPanel() {
                           accent={true}
                         />
                         <input
+                          aria-label="Opacity"
                           type="range"
                           min="0"
                           max="100"
                           value={Math.round(layer().opacity * 100)}
+                          disabled={layer().locked}
                           onInput={(e) => handleOpacityChange(parseInt(e.currentTarget.value))}
-                          class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer"
+                          onPointerUp={finishOpacityEdit}
+                          onBlur={finishOpacityEdit}
+                          onChange={finishOpacityEdit}
+                          class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer disabled:pointer-events-none"
                         />
                       </div>
                       <span class="w-[44px] shrink-0 text-right text-[12px] text-editor-text">

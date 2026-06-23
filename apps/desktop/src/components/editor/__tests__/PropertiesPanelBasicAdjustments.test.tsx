@@ -60,7 +60,7 @@ describe("PropertiesPanel basic adjustments", () => {
     brightness.value = "40";
     brightness.dispatchEvent(new InputEvent("input", { bubbles: true }));
 
-    expect(commitSpy).toHaveBeenCalledWith(expect.any(Object), "Basic Adjustment");
+    expect(commitSpy).toHaveBeenCalledWith(expect.any(Object), "Adjust Brightness");
     expect(commitSpy).toHaveBeenCalledTimes(1);
     expect(applySpy).toHaveBeenCalledWith(
       layer.id,
@@ -99,8 +99,35 @@ describe("PropertiesPanel basic adjustments", () => {
     xField.dispatchEvent(new InputEvent("input", { bubbles: true }));
     xField.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
 
-    expect(commitSpy).toHaveBeenCalledWith(expect.any(Object), "Transform Layer");
+    expect(commitSpy).toHaveBeenCalledWith(expect.any(Object), "Move Layer");
     expect(transformSpy).toHaveBeenCalledWith(layer.id, expect.objectContaining({ x: 42 }));
+    expect(scheduler.requestRender).toHaveBeenCalled();
+
+    dispose();
+  });
+
+  it("commits one undo checkpoint for an opacity slider edit session", async () => {
+    const workspace = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("opacity-doc", "Opacity Doc", 20, 10);
+    workspace.addDocument(session);
+    const layer = session.engine.getLayers()[0];
+    const history = workspace.getActiveHistory();
+    if (!history) throw new Error("Expected active history");
+    const commitSpy = vi.spyOn(history, "commit");
+
+    const { container, dispose, scheduler } = renderPropertiesPanel(workspace);
+    await tick();
+
+    const opacity = container.querySelector<HTMLInputElement>("input[aria-label='Opacity']");
+    if (!opacity) throw new Error("Opacity slider was not rendered");
+    opacity.value = "70";
+    opacity.dispatchEvent(new InputEvent("input", { bubbles: true }));
+    opacity.value = "45";
+    opacity.dispatchEvent(new InputEvent("input", { bubbles: true }));
+
+    expect(commitSpy).toHaveBeenCalledWith(expect.any(Object), "Adjust Opacity");
+    expect(commitSpy).toHaveBeenCalledTimes(1);
+    expect(session.engine.getLayer(layer.id)?.opacity).toBe(0.45);
     expect(scheduler.requestRender).toHaveBeenCalled();
 
     dispose();
