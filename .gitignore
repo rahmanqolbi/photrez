@@ -16,6 +16,7 @@ build/
 src-tauri/target/
 src-tauri/Cargo.lock
 target/
+target_test/
 **/*.rs.bk
 
 # Environment Variables & Secrets
@@ -44,16 +45,33 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# AI Agent & Security Context Artifacts (Keep workspace clean)
+# Local AI agent, workflow, and security context artifacts
+.agent/
+.agents/
+.antigravitycli/
+.codex/
+.gemini/
 .gemini_security/
-.agents/tmp/
-.codex/tmp/
+.gsd/
+.github/prompts/
+.impeccable/critique/
+.opencode/
 .superpowers/
+.cursorrules
+.mcp.json
+.opencode.json
+opencode.json
+model_capabilities.yaml
+skills-lock.json
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+adapters/
 docs/AI_CONTEXT.md
 docs/AI_CURRENT_TASK.md
 docs/AI_HISTORY.md
-docs/FEATURES.md
-docs/ARCHITECTURE.md
+docs/archive/AI_CURRENT_TASK_ARCHIVE.md
+docs/archive/AI_HISTORY_ARCHIVE.md
 
 # Tauri specific (optional, usually handled by src-tauri/.gitignore if exists, but safe to add globally)
 src-tauri/gen/
@@ -69,6 +87,7 @@ photrez-solid-tailwind/
 !apps/desktop/src/assets/**/*
 !apps/desktop/src/norway_fjord_preview.png
 *.py
+rtk.exe
 .codegraph/
 .omo/
 .playwright-mcp/
