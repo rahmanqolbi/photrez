@@ -1,90 +1,114 @@
 # Photrez
 
-Photrez is a lightweight desktop image editor for practical design work.
+Photrez is a lightweight desktop image editor for practical image work. It is built with Tauri, SolidJS, TypeScript, and WebGL2, with Rust crates maintained for core domain logic and future renderer work.
 
-Current direction:
+Photrez is currently in active development. The editor has a working desktop shell, multi-document workspace, layer operations, selection and transform tools, crop and resize workflows, brush and eraser tools, export flows, and an automated regression suite. It is not yet a stable end-user release.
 
-- Familiar editing workflow.
-- Distinct product identity with familiar editing workflows.
-- Performance-first targets for low-end Windows devices.
+## Highlights
+
+- Familiar desktop image-editor layout: tool rail, canvas, inspector, layers, history, menus, and status bar.
+- Layer workflow: create, duplicate, delete, reorder, opacity, visibility, lock, merge down, flatten, drag and drop.
+- Selection and transform tools: marquee selection, inverted selection, move, scale, rotate, flip, snapping, keyboard nudges.
+- Crop and resize workflows with classic and modern crop modes.
+- Brush and eraser tools with calibrated round-tip hardness, flow, smoothing, presets, and visual regression coverage.
+- Export to PNG, JPEG, and WebP through the desktop file flow.
+- Automated tests for engine logic, component wiring, pointer chains, dialogs, export, and browser-level editor smoke checks.
 
 ## Project Status
 
-Planning and documentation phase.
+Photrez is pre-release software. APIs, document internals, and UI details may change before the first stable release.
 
-- MVP scope is locked.
-- Architecture and technical requirements are defined.
-- Implementation has not started yet.
+Current focus:
 
-## MVP v1 Scope
+- Polish public repository documentation.
+- Remove internal workflow artifacts from the public source tree.
+- Keep native desktop runtime smoke evidence current.
+- Improve first-run and empty-state polish before public showcase.
 
-- Layer basic: add, delete, reorder, opacity.
-- Selection + move + basic transform (scale, rotate, flip).
-- Crop + resize image/canvas.
-- Brush + eraser.
-- Export JPG/PNG/WebP.
-
-Out of scope for MVP:
-
-- PSD workflow, print checker, plugin runtime, AI features, cloud collaboration.
-
-## Performance Targets
-
-- Installer `< 80 MB`
-- Idle RAM `< 250 MB`
-- Startup `< 2s`
-
-## Planned Stack
+## Tech Stack
 
 - Desktop shell: Tauri 2
-- Frontend: SolidJS + TypeScript + Vite
-- Core: Rust
-- Renderer: wgpu
+- Frontend: SolidJS, TypeScript, Vite
+- Styling: Tailwind CSS v4
+- Current renderer: WebGL2
+- Current editor state: TypeScript document engine
+- Rust crates: `photrez-core` and `photrez-render`
 
-## Documentation Entry Points
+## Getting Started
 
-### Core AI Documents (Root of `docs/`)
-- [Docs Index](docs/INDEX.md)
-- [Strict AI Rules](docs/AI_CONTEXT.md)
-- [Active Tasks](docs/AI_CURRENT_TASK.md)
-- [Change History Log](docs/AI_HISTORY.md)
-- [Feature Status Tracker](docs/FEATURES.md)
-- [Runtime Architecture Reference](docs/ARCHITECTURE.md)
-- [Code Conventions](docs/CONVENTIONS.md)
-- [UI Style Guide & Design Tokens](docs/UI_GUIDE.md)
+Requirements:
 
-### Specifications (`docs/spec/`)
-- [MVP Scope Lock](docs/spec/product-scope.md)
-- [PRD](docs/spec/prd.md)
-- [TRD](docs/spec/trd.md)
-- [Data Model Schema](docs/spec/data-model.md)
-- [Build Plan](docs/spec/build-plan.md)
+- Node.js and pnpm
+- Rust stable toolchain
+- Tauri platform prerequisites for your operating system
 
-### Decisions (`docs/decisions/`)
-- [Architectural Decision Log](docs/decisions/id-decision-log.md)
-- [MVP Risk Register](docs/decisions/risk-register.md)
+Install dependencies:
 
-### Reference & Inventories (`docs/reference/`)
-- [Command Contract Spec](docs/reference/command-contract-spec.md)
-- [Performance Measurement Protocol](docs/reference/performance-measurement-protocol.md)
-- [Design Tokens Spec](docs/reference/design-tokens.md)
-- [Dependency Inventory](docs/reference/dependency-inventory.md)
-- [Keyboard Shortcut Map](docs/reference/keyboard-shortcut-map.md)
+```bash
+pnpm install
+```
+
+Run the desktop app in development:
+
+```bash
+pnpm dev
+```
+
+Build the frontend:
+
+```bash
+pnpm build
+```
+
+Run the main verification gate:
+
+```bash
+pnpm run verify
+```
+
+Useful focused checks:
+
+```bash
+pnpm --filter photrez-desktop test --run
+cargo test -p photrez-core
+cargo test --workspace
+```
+
+## Repository Layout
+
+```text
+apps/desktop/       Tauri desktop app and SolidJS editor UI
+crates/core/        Rust core domain model and tests
+crates/render/      Future Rust renderer crate
+docs/spec/          Product and technical specifications
+docs/reference/     Runtime contracts, shortcuts, file formats, and inventories
+docs/decisions/     Architecture and project decision records
+docs/ARCHITECTURE.md
+docs/FEATURES.md
+DESIGN.md           Visual design system
+PRODUCT.md          Product context
+```
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Feature Status](docs/FEATURES.md)
+- [Product Scope](docs/spec/product-scope.md)
+- [Product Requirements](docs/spec/prd.md)
+- [Technical Requirements](docs/spec/trd.md)
+- [Command Contract](docs/reference/command-contract-spec.md)
+- [Keyboard Shortcuts](docs/reference/keyboard-shortcut-map.md)
 - [File Format Support](docs/reference/file-format-support.md)
-- [Save and Document Lifecycle](docs/reference/save-and-document-lifecycle.md)
-- [Error Code Registry](docs/reference/error-code-registry.md)
-- [Glossary](docs/reference/glossary.md)
+- [Design System](DESIGN.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security Policy](SECURITY.md)
 
-## Governance
+## Contributing
 
-- [AGENTS.md](AGENTS.md)
-- [CONTRIBUTING.md](CONTRIBUTING.md)
-- [SECURITY.md](SECURITY.md)
-- [TRADEMARKS.md](TRADEMARKS.md)
-- [GOVERNANCE.md](GOVERNANCE.md)
-- [CHANGELOG.md](CHANGELOG.md)
+Photrez is open source and welcomes careful, scoped contributions. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+High-value contributions right now include documentation cleanup, reproducible bug reports, focused tests, accessibility fixes, and small UI polish that preserves the existing editor layout.
 
 ## License
 
-AGPL-3.0-or-later.
-See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+Photrez is licensed under AGPL-3.0-or-later. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

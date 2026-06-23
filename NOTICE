@@ -1,7 +1,7 @@
 Photrez
+
 Copyright (c) Photrez contributors.
 
 This project is distributed under AGPL-3.0-or-later.
 
-Third-party components may include their own licenses and notices.
-Those notices should be documented as dependencies are added.
+Third-party components may include their own licenses and notices. Dependency license information is tracked through the package and crate manifests, and release distributions should include any required third-party notices.

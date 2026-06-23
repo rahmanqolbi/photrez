@@ -1,27 +1,27 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to Photrez will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once stable releases begin.
 
 ## [Unreleased]
 
 ### Added
-- Project documentation suite (docs 00–37).
-- Governance files: LICENSE, NOTICE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, TRADEMARKS, GOVERNANCE.
-- AGENTS.md for AI agent orchestration.
-- Architecture decision records (ADR 0001, 0002).
-- MVP scope lock and product requirements.
-- Command contract specification (v1.0.0).
-- UI design system: style guide, design tokens, component rules, wireframe spec.
-- CI verification plan and GitHub Actions template for Milestone 1.
-- Performance measurement protocol.
-- Risk register with 10 active risks.
-- Dependency inventory and audit framework.
-- Keyboard shortcut map.
-- File format support specification.
-- Save and document lifecycle specification.
-- Error code registry.
-- Glossary and terminology guide.
-- Internationalization strategy note.
+
+- Tauri 2 desktop shell with custom title bar, native menu integration, dialogs, file open, and export flows.
+- SolidJS editor UI with tool rail, document tabs, canvas viewport, inspector, layers, history, navigator, menus, context menus, and status bar.
+- Multi-document workspace and cross-document drag and drop.
+- Layer operations: create, duplicate, delete, reorder, visibility, lock, opacity, merge down, flatten, and thumbnails.
+- Selection, move, transform, crop, resize, brush, eraser, eyedropper, color, and export workflows.
+- WebGL2 renderer for active MVP presentation.
+- Rust `photrez-core` domain crate with tests.
+- Automated frontend, Rust, browser, dialog, export, and paint regression checks.
+- Public project docs for architecture, features, product scope, contribution, security, governance, and design system.
+
+### Changed
+
+- Public repository hygiene: local agent workflows, personal tool configs, prompt databases, AI task logs, local binaries, and build artifacts are ignored and no longer tracked.
+
+### Notes
+
+- Photrez is still pre-release software. Public APIs, internal document structures, and UI details may change before the first stable release.

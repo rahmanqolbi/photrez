@@ -1,29 +1,64 @@
 # Contributing to Photrez
 
-Thanks for contributing.
+Thanks for helping improve Photrez. This project is still pre-release, so the best contributions are focused, well-tested, and easy to review.
 
 ## Ground Rules
 
-- Keep changes aligned with MVP scope in `docs/spec/product-scope.md`.
-- Follow architecture boundaries in `docs/ARCHITECTURE.md`.
-- Follow technical constraints in `docs/spec/trd.md`.
-- Do not introduce non-MVP features without explicit approval.
+- Keep changes aligned with the locked product scope in `docs/spec/product-scope.md`.
+- Preserve the existing desktop editor layout unless a change explicitly requires UI structure work.
+- Follow the runtime architecture in `docs/ARCHITECTURE.md`.
+- Avoid broad rewrites when a narrow fix solves the problem.
+- Do not introduce new dependencies without explaining why the existing stack is insufficient.
+
+## Development Setup
+
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+Run the desktop app:
+
+```bash
+pnpm dev
+```
+
+Run the main verification gate:
+
+```bash
+pnpm run verify
+```
+
+Focused checks:
+
+```bash
+pnpm --filter photrez-desktop test --run
+pnpm run build
+cargo test -p photrez-core
+cargo test --workspace
+```
 
 ## Pull Request Requirements
 
-- Clear summary of what changed and why.
-- Tests added or updated for behavior changes.
-- Brief performance impact note for runtime-facing changes.
-- Any command schema change documented in TRD and ADR.
+- Explain what changed and why.
+- Include tests for behavior changes.
+- Include wiring tests for UI event paths, not only pure function tests.
+- Update relevant docs when behavior, shortcuts, architecture, or user-facing scope changes.
+- Note performance impact for rendering, paint, export, import, and history changes.
+- Keep unrelated refactors out of feature and bug-fix PRs.
 
-## Code and Docs Quality
+## Code Style
 
-- Keep modules focused by capability.
-- Avoid cross-layer coupling (`shell`, `core`, `renderer`).
-- Update docs in `docs/` when behavior or decisions change.
+- Frontend code uses SolidJS, not React.
+- TypeScript is strict. Avoid `any`; prefer explicit types and narrowing.
+- Keep document state changes history-safe: commit undo history before mutation.
+- Use existing editor commands, layer actions, and selection operations instead of adding parallel mutation paths.
+- Keep UI compact and consistent with `DESIGN.md`.
 
 ## Review Process
 
-- PR must pass agreed checks (tests, lint/type-check when available).
-- High-risk changes require at least one additional reviewer.
-- Breaking changes require an ADR entry under `docs/decisions/adr/`.
+- Maintainers review for scope, correctness, tests, accessibility, and architecture fit.
+- High-risk changes may require extra review or a focused design note.
+- Breaking changes should be documented in `docs/decisions/`.
+- Native runtime behavior should be verified in Tauri when the change touches shell, dialogs, file I/O, drag and drop, or window behavior.
