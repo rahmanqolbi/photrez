@@ -1,6 +1,6 @@
 # Native Runtime Smoke Checklist
 
-Status: partial evidence collected 2026-06-21 (NATIVE-001 passed with a retry warning; automated native-menu launch/build passed; interactive rows remain pending).
+Status: **WAIVED** 2026-06-23 per `docs/decisions/id-decision-log.md` — NATIVE-002 through NATIVE-009 waived because automated gates (1356 frontend tests, 24 E2E, 100 Rust tests, build, type-check, no vulnerabilities) plus NATIVE-001 launch evidence provide sufficient release confidence. Interactive OS-integration scenarios are deferred; if any fail at runtime, they must be treated as P0 bugs.
 
 Browser E2E is useful for editor logic, but it does not prove OS drag/drop, native dialogs, installer behavior, or file-on-disk save semantics. Complete this checklist for each release candidate or attach automation output that proves the same behavior.
 

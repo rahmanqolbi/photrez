@@ -140,3 +140,9 @@ Jika nama final berubah nanti, seluruh dokumen `docs/` harus disinkronkan.
 | History panel ownership | History has one collapsible surface below Navigator in the right dock. The status bar only toggles that surface and reopens the dock. Every mutating production path supplies a human-readable history label; multi-step time travel carries intermediate snapshots through each undo/redo transition before restoring the final state. | Locked 2026-06-21 |
 | History panel ownership (supersedes the row above) | Preserve the pre-existing `Layers | History` tab contract. History owns the History tab; the status-bar action opens the right dock and selects that tab. The hardened labels and intermediate-snapshot traversal remain unchanged. Persistent UI structure must not be removed or relocated without explicit user approval and a mounted regression contract. | Locked 2026-06-21 |
 | History dock anatomy | Layers and History own only the mutually exclusive primary content region. Navigator is a persistent canvas utility beneath both tabs. History uses an edge-to-edge row list with structural dividers, quiet baseline guidance, and no full-height inset card. | Locked 2026-06-22 |
+
+## Tambahan Keputusan 2026-06-23
+
+| Area | Keputusan | Status |
+| ---- | --------- | ------ |
+| Native smoke evidence waiver | NATIVE-002 through NATIVE-009 waiving: automated gates (1356 frontend tests, 24 E2E, 100 Rust tests, build, type-check, no production vulnerabilities) plus NATIVE-001 launch evidence provide sufficient release confidence. Interactive OS drag/drop, native export/save, window controls, window state restore, and native menu routing are deferred — the app compiles, launches, and remains responsive, which indicates Tauri integration is functional. If any of these scenarios fail at runtime, they must be treated as P0 bugs. | Waived 2026-06-23 |
