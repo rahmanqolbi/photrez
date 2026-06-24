@@ -60,6 +60,15 @@ export function Tooltip(props: TooltipProps) {
     }
   };
 
+  // ponytail: named handlers so onMount + onCleanup can pair the same
+  // reference. Inline `() => showTooltip(false)` lambdas in onMount
+  // were leak-cleanup blind — onCleanup could only remove the one
+  // listener (window keydown) whose reference it held.
+  const onTargetEnter = () => showTooltip(false);
+  const onTargetLeave = hideTooltip;
+  const onTargetFocus = () => showTooltip(true);
+  const onTargetBlur = hideTooltip;
+
   createEffect(() => {
     if (visible() && tooltipRef && triggerRef) {
       const target = triggerRef.firstElementChild as HTMLElement;
@@ -108,10 +117,10 @@ export function Tooltip(props: TooltipProps) {
   onMount(() => {
     const target = triggerRef.firstElementChild as HTMLElement;
     if (target) {
-      target.addEventListener("mouseenter", () => showTooltip(false));
-      target.addEventListener("mouseleave", hideTooltip);
-      target.addEventListener("focusin", () => showTooltip(true));
-      target.addEventListener("focusout", hideTooltip);
+      target.addEventListener("mouseenter", onTargetEnter);
+      target.addEventListener("mouseleave", onTargetLeave);
+      target.addEventListener("focusin", onTargetFocus);
+      target.addEventListener("focusout", onTargetBlur);
       window.addEventListener("keydown", handleKeyDown);
     }
   });
@@ -120,6 +129,10 @@ export function Tooltip(props: TooltipProps) {
     if (hoverTimer) clearTimeout(hoverTimer);
     const target = triggerRef?.firstElementChild as HTMLElement;
     if (target) {
+      target.removeEventListener("mouseenter", onTargetEnter);
+      target.removeEventListener("mouseleave", onTargetLeave);
+      target.removeEventListener("focusin", onTargetFocus);
+      target.removeEventListener("focusout", onTargetBlur);
       target.removeAttribute("aria-describedby");
     }
     window.removeEventListener("keydown", handleKeyDown);

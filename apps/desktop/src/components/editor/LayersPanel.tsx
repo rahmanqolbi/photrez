@@ -433,13 +433,14 @@ export function LayersPanel() {
 
       {/* Layer Actions footer */}
       <div class={clsx("flex shrink-0 items-center gap-5 border-t border-editor-divider bg-editor-panel px-4 py-2.5 text-editor-icon", !activeDocumentId() && "opacity-50 pointer-events-none")}>
-        <button onClick={handleAddLayer} class="hover:text-editor-text" title="New Layer">
+        <button onClick={handleAddLayer} class="hover:text-editor-text" aria-label="New Layer">
           <Icon name="plus" class="size-[17px]" strokeWidth={1.75} />
         </button>
         <button
           onClick={handleDuplicateActiveLayer}
           disabled={!activeLayer()}
           class="hover:text-editor-text disabled:opacity-30"
+          aria-label="Duplicate Layer"
           title="Duplicate Layer"
         >
           <Icon name="copy" class="size-[17px]" strokeWidth={1.75} />
@@ -448,6 +449,7 @@ export function LayersPanel() {
           onClick={handleMergeActiveLayerDown}
           disabled={!activeLayer() || layers().indexOf(activeLayer()!) === layers().length - 1}
           class="hover:text-editor-text disabled:opacity-30"
+          aria-label="Merge Down"
           title="Merge Down"
         >
           <Icon name="chevron-down" class="size-[17px]" strokeWidth={1.75} />
@@ -456,6 +458,7 @@ export function LayersPanel() {
           onClick={handleFlattenAllLayers}
           disabled={layers().length <= 1}
           class="hover:text-editor-text disabled:opacity-30"
+          aria-label="Flatten All Layers"
           title="Flatten All Layers"
         >
           <Icon name="square-dashed" class="size-[17px]" strokeWidth={1.75} />
@@ -464,6 +467,7 @@ export function LayersPanel() {
           disabled={layers().length <= 1}
           onClick={handleDeleteActiveLayer}
           class="ml-auto hover:text-editor-accent disabled:opacity-30 disabled:hover:text-editor-icon"
+          aria-label="Delete Layer"
           title="Delete Layer"
         >
           <Icon name="trash" class="size-[17px]" strokeWidth={1.75} />

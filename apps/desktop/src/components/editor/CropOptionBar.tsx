@@ -9,6 +9,16 @@ import { ToggleBtn, Divider, ToolPill, MoreDropdown } from "./OptionBarShared";
 import { Icon } from "./icons";
 import { discardCropSession, resetCropPreviewToCanvas, applyCropPreview } from "./cropToolActions";
 
+// ponytail: tiny type guard for narrowing a raw <select> event value to a
+// known union. Avoids three separate `as any` casts scattered through the
+// component — one place to extend when new unit/mode values appear.
+function isCropSizeUnit(v: string): v is "px" | "cm" | "mm" | "in" {
+  return v === "px" || v === "cm" || v === "mm" || v === "in";
+}
+function isCropGuideMode(v: string): v is "none" | "thirds" | "grid" | "diagonal" | "golden" {
+  return v === "none" || v === "thirds" || v === "grid" || v === "diagonal" || v === "golden";
+}
+
 export function CropOptionBar() {
   const {
     workspace,
@@ -539,7 +549,10 @@ export function CropOptionBar() {
             </div>
             <select
               value={cropSizeUnit()}
-              onChange={(e) => setCropSizeUnit(e.currentTarget.value as any)}
+              onChange={(e) => {
+                const v = e.currentTarget.value;
+                if (isCropSizeUnit(v)) setCropSizeUnit(v);
+              }}
               class="absolute inset-0 h-full w-full opacity-0 cursor-pointer text-[11px]"
             >
               <option value="px" class="bg-editor-panel text-editor-text">px</option>
@@ -630,7 +643,10 @@ export function CropOptionBar() {
           </div>
           <select
             value={cropGuideMode()}
-            onChange={(e) => setCropGuideMode(e.currentTarget.value as any)}
+            onChange={(e) => {
+              const v = e.currentTarget.value;
+              if (isCropGuideMode(v)) setCropGuideMode(v);
+            }}
             class="absolute inset-0 h-full w-full opacity-0 cursor-pointer text-[11px]"
           >
             <option value="none" class="bg-editor-panel text-editor-text">None</option>
@@ -773,7 +789,10 @@ export function CropOptionBar() {
             </div>
             <select
               value={cropGuideMode()}
-              onChange={(e) => setCropGuideMode(e.currentTarget.value as any)}
+onChange={(e) => {
+              const v = e.currentTarget.value;
+              if (isCropGuideMode(v)) setCropGuideMode(v);
+            }}
               class="absolute inset-0 h-full w-full opacity-0 cursor-pointer text-[11px]"
             >
               <option value="none" class="bg-editor-panel text-editor-text">None</option>

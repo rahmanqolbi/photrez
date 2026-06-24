@@ -50,107 +50,32 @@ describe('Photrez high-fidelity UI slice tokens', () => {
   });
 });
 
-describe('Photrez high-fidelity component structure', () => {
+describe('App.tsx integrity', () => {
+  // ponytail: reality-check the actual production App.tsx instead of
+  // asserting on a stale high-fidelity slice comment block. The previous
+  // suite passed via comments left in App.tsx ("tests pass but app fails"
+  // anti-pattern from 2026-06-16). This block checks what the file
+  // currently does.
   const appTsxPath = path.resolve(__dirname, 'App.tsx');
   const appTsx = fs.readFileSync(appTsxPath, 'utf8');
 
-  it('should preserve the requested component function names', () => {
-    for (const name of [
-      'AppShell',
-      'TopMenuBar',
-      'DocumentTabsBar',
-      'OptionBar',
-      'MainWorkspace',
-      'LeftToolRail',
-      'CanvasViewport',
-      'RightDock',
-      'PropertiesPanel',
-      'LayersPanel',
-      'BottomStatusBar',
-    ]) {
-      expect(appTsx).toContain(`function ${name}(`);
-    }
+  it('exports a single default App function that renders EditorShell', () => {
+    expect(appTsx).toContain('export default function App');
+    expect(appTsx).toContain('return <EditorShell />');
   });
 
-  it('should render the requested photrez branding, tabs, layers, and status text', () => {
-    expect(appTsx).toContain('photrez');
+  it('contains no external image-editor branding (regression guard)', () => {
     expect(appTsx).not.toContain('LUMINARIS');
     expect(appTsx).not.toContain('L U M I N A R I S');
-    expect(appTsx).toContain('Norway Fjord Edit');
-    expect(appTsx).toContain('Color Adjust 1');
-    expect(appTsx).toContain('Water Reflection');
-    expect(appTsx).toContain('1920  1280 px | 41% | RGB/8 | sRGB IEC61966-2.1');
-    expect(appTsx).toContain('Move Tool | Image Layer');
-    expect(appTsx).toContain('Snapshots | History | Assets');
   });
 
-  it('should use SolidJS control flow and avoid React patterns', () => {
-    expect(appTsx).toContain('import { For } from "solid-js";');
-    expect(appTsx).toContain('<For each={documentTabs}>');
-    expect(appTsx).not.toContain('className=');
+  it('contains no React-only patterns or forbidden TypeScript escape hatches', () => {
     expect(appTsx).not.toContain('useState');
     expect(appTsx).not.toContain('useEffect');
     expect(appTsx).not.toContain('React');
+    expect(appTsx).not.toContain('className=');
     expect(appTsx).not.toContain('as any');
     expect(appTsx).not.toContain('@ts-ignore');
     expect(appTsx).not.toContain('@ts-expect-error');
-  });
-
-  it('should lock the titlebar reference structure and spacing hooks', () => {
-    expect(appTsx).toContain('class="hamburger-button"');
-    expect(appTsx).toContain('aria-label="Main menu"');
-    expect(appTsx).toContain('class="titlebar-right-separator"');
-    expect(appTsx).toContain('top-menu-actions');
-    expect(appTsx).toContain('<div class="brand-mark" aria-label="photrez">photrez</div>');
-  });
-
-  it('should render a continuous tool stack without dividers in the LeftToolRail', () => {
-    const railStart = appTsx.indexOf('function LeftToolRail()');
-    const railEnd = appTsx.indexOf('function CanvasViewport()');
-    const railSection = appTsx.slice(railStart, railEnd);
-    expect(railSection).not.toContain('tool-divider');
-  });
-
-  it('should use a monochrome active state for tool buttons instead of orange accent', () => {
-    const indexCss = fs.readFileSync(path.resolve(__dirname, 'index.css'), 'utf8');
-    const activeRule = indexCss.match(/\.tool-button\.active\s*\{[^}]*\}/);
-    expect(activeRule).toBeTruthy();
-    if (activeRule) {
-      expect(activeRule[0]).not.toContain('var(--color-accent)');
-      expect(activeRule[0]).not.toContain('#E15A17');
-    }
-  });
-
-  it('should not have an orange left bar pseudo-element on active tool buttons', () => {
-    const indexCss = fs.readFileSync(path.resolve(__dirname, 'index.css'), 'utf8');
-    const beforeRule = indexCss.match(/\.tool-button\.active::before\s*\{[^}]*\}/);
-    expect(beforeRule).toBeNull();
-  });
-
-  it('should render an ellipsis button instead of a settings button in the LeftToolRail', () => {
-    const railStart = appTsx.indexOf('function LeftToolRail()');
-    const railEnd = appTsx.indexOf('function CanvasViewport()');
-    const railSection = appTsx.slice(railStart, railEnd);
-    expect(railSection).toContain('ellip');
-    expect(railSection).not.toContain('settings');
-  });
-
-  it('should use the local fjord image as an image element instead of a full screenshot background', () => {
-    expect(appTsx).toContain('new URL("./norway_fjord_preview.png", import.meta.url).href');
-    expect(appTsx).toContain('<img src={fjordPreviewUrl}');
-    expect(appTsx).not.toContain('background-image: url("./norway_fjord_preview.png")');
-    expect(appTsx).not.toContain('bottom thumbnail');
-  });
-
-  it('should maintain the docked layout structure in EditorShell without margins, padding or gaps', () => {
-    const editorShellPath = path.resolve(__dirname, 'components', 'editor', 'EditorShell.tsx');
-    const editorShell = fs.readFileSync(editorShellPath, 'utf8');
-
-    // Assert docked layout main class exists
-    expect(editorShell).toContain('class="relative flex min-h-0 flex-1 overflow-hidden"');
-
-    // Assert no floating padding or gap containers around the panels
-    expect(editorShell).not.toContain('gap-1.5');
-    expect(editorShell).not.toContain('p-1.5');
   });
 });

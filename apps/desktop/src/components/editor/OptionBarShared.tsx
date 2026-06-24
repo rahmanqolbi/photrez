@@ -1,8 +1,8 @@
-import { Icon } from "./icons";
+import { Icon, IconName } from "./icons";
 import { clsx } from "clsx";
 import { Show, createSignal, JSX } from "solid-js";
 
-export function ToggleBtn(props: { active: boolean; onChange: (v: boolean) => void; icon: string; label: string; title?: string; labelClass?: string; class?: string }) {
+export function ToggleBtn(props: { active: boolean; onChange: (v: boolean) => void; icon: IconName; label: string; title?: string; labelClass?: string; class?: string }) {
   return (
     <button
       onClick={() => props.onChange(!props.active)}
@@ -15,7 +15,7 @@ export function ToggleBtn(props: { active: boolean; onChange: (v: boolean) => vo
         props.class
       )}
     >
-      <Icon name={props.icon as any} class={clsx("size-3", props.active && "text-editor-accent")} strokeWidth={1.5} />
+      <Icon name={props.icon} class={clsx("size-3", props.active && "text-editor-accent")} strokeWidth={1.5} />
       <span class={props.labelClass}>{props.label}</span>
     </button>
   );
@@ -25,10 +25,10 @@ export function Divider() {
   return <div class="h-5 w-px shrink-0 bg-editor-divider" />;
 }
 
-export function ToolPill(props: { icon: string; label: string }) {
+export function ToolPill(props: { icon: IconName; label: string }) {
   return (
     <div class="flex h-[24px] shrink-0 items-center gap-1.5 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[11px] font-medium text-editor-text-dim capitalize">
-      <Icon name={props.icon as any} class="size-3" strokeWidth={1.5} />
+      <Icon name={props.icon} class="size-3" strokeWidth={1.5} />
       <span>{props.label}</span>
     </div>
   );

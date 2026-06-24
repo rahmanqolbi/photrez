@@ -1,4 +1,4 @@
-import { createContext, useContext, onMount, createEffect, createSignal, batch } from "solid-js";
+import { createContext, useContext, onMount, createEffect, createSignal, batch, JSX } from "solid-js";
 import { WorkspaceManager } from "@/engine/workspace";
 import { WebGL2Backend } from "@/renderer/webgl2";
 import { RenderScheduler } from "@/renderer/scheduler";
@@ -226,7 +226,7 @@ export function EditorProvider(props: {
   camera?: ViewportCamera;
   rightDockOpen?: Accessor<boolean>;
   setRightDockOpen?: (open: boolean) => void;
-  children: any;
+  children: JSX.Element;
 }) {
   const camera = props.camera || new ViewportCamera();
   const editorState = createEditorState();
@@ -237,10 +237,20 @@ export function EditorProvider(props: {
   const [activeHistoryIndex, setActiveHistoryIndex] = createSignal(0);
   const [rightDockPanel, setRightDockPanel] = createSignal<"layers" | "history">("layers");
 
-  const [rightDockLayoutState, setRightDockLayoutState] = createSignal<"side-by-side" | "stacked">(
-    (typeof localStorage !== "undefined" && localStorage.getItem("photrez.rightDockLayout") as "side-by-side" | "stacked") || "side-by-side"
-  );
-  const setRightDockLayout = (layout: "side-by-side" | "stacked") => {
+  // ponytail: validate raw localStorage value against the known union
+  // before trusting it as a typed signal value. Corrupted state or a
+  // schema drift from a future build would otherwise pass through and
+  // produce a stale-typed state with no diagnostic.
+  type RightDockLayout = "side-by-side" | "stacked";
+  function readRightDockLayout(): RightDockLayout {
+    if (typeof localStorage === "undefined") return "side-by-side";
+    const stored = localStorage.getItem("photrez.rightDockLayout");
+    if (stored === "side-by-side" || stored === "stacked") return stored;
+    return "side-by-side";
+  }
+
+  const [rightDockLayoutState, setRightDockLayoutState] = createSignal<RightDockLayout>(readRightDockLayout());
+  const setRightDockLayout = (layout: RightDockLayout) => {
     setRightDockLayoutState(layout);
     if (typeof localStorage !== "undefined") {
       localStorage.setItem("photrez.rightDockLayout", layout);
@@ -340,6 +350,7 @@ export function EditorProvider(props: {
     workspace: props.workspace,
     renderer: props.renderer,
     scheduler: props.scheduler,
+    onError: (message) => showToastImpl(message, "error"),
   });
 
   onMount(() => {

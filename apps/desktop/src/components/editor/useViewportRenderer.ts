@@ -1,6 +1,6 @@
 import { createSignal, createEffect, onMount, onCleanup } from "solid-js";
 import { useEditor } from "./EditorContext";
-import { centerModernCropFrame } from "@/viewport/modernCropGeometry";
+import { centerModernCropFrame, type ModernCropFrame } from "@/viewport/modernCropGeometry";
 import { easeOutCubic } from "@/viewport/easing";
 import { WEBGL2_CONTEXT_RESTORED_EVENT } from "@/renderer/webgl2";
 
@@ -78,7 +78,7 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
       camera.setState({ x: targetX, y: targetY, zoom: fitZoom });
       syncFromCamera();
       if (cropInteractionMode() === "modern") {
-        setModernCropFrame((prev: any) => {
+        setModernCropFrame((prev: ModernCropFrame | null) => {
           if (!prev) return null;
           return centerModernCropFrame(prev, rect.width, rect.height);
         });

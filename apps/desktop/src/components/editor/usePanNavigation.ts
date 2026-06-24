@@ -1,5 +1,6 @@
-import { createSignal } from "solid-js";
+import { createSignal, onCleanup } from "solid-js";
 import { useEditor } from "./EditorContext";
+import type { ModernCropFrame } from "@/viewport/modernCropGeometry";
 
 interface PanNavigationOptions {
   getCanvasContainerRef: () => HTMLDivElement | undefined;
@@ -12,7 +13,7 @@ export function usePanNavigation(options: PanNavigationOptions) {
   /** When panning in Modern crop mode, shift the frame along with the viewport. */
   function shiftModernCropFrame(dx: number, dy: number) {
     if (cropInteractionMode() !== "modern") return;
-    setModernCropFrame((prev: any) => {
+    setModernCropFrame((prev: ModernCropFrame | null) => {
       if (!prev) return null;
       return { ...prev, x: prev.x + dx, y: prev.y + dy };
     });
@@ -25,6 +26,17 @@ export function usePanNavigation(options: PanNavigationOptions) {
   let lastPointerPositions: { time: number; x: number; y: number }[] = [];
   let momentumVelocity = { x: 0, y: 0 };
   let momentumRafId = 0;
+
+  // ponytail: cancel any in-flight momentum RAF if the host component
+  // unmounts. Without this, a CanvasViewport tear-down during panning
+  // leaves the RAF callback alive, calling workspace.getActiveEngine()
+  // on a stale context and producing console noise.
+  onCleanup(() => {
+    if (momentumRafId) {
+      cancelAnimationFrame(momentumRafId);
+      momentumRafId = 0;
+    }
+  });
 
   function stopMomentum() {
     if (momentumRafId) {

@@ -86,18 +86,21 @@ export function AppTitleBar(props: AppTitleBarProps) {
           <button
             class="flex h-[46px] w-11 items-center justify-center hover:bg-white/[0.055] hover:text-editor-text"
             onClick={() => runTauriWindowAction("minimize")}
+            aria-label="Minimize window"
           >
             <Icon name="minus" class="size-[15px]" strokeWidth={1.75} />
           </button>
           <button
             class="flex h-[46px] w-11 items-center justify-center hover:bg-white/[0.055] hover:text-editor-text"
             onClick={() => runTauriWindowAction("toggleMaximize")}
+            aria-label="Toggle maximize window"
           >
             <Icon name="square" class="size-[12px]" strokeWidth={1.75} />
           </button>
           <button
             class="flex h-[46px] w-11 items-center justify-center hover:bg-red-500/85 hover:text-white"
             onClick={() => runTauriWindowAction("close")}
+            aria-label="Close window"
           >
             <Icon name="x" class="size-[16px]" strokeWidth={1.75} />
           </button>

@@ -1,10 +1,28 @@
 import { Show } from "solid-js";
 import { clsx } from "clsx";
 import { Icon } from "./icons";
-import { LayerNode } from "@/engine/types";
+import { LayerNode, DocumentModel } from "@/engine/types";
 import { LayerThumb } from "./LayerThumb";
 import { LAYER_DRAG_MIME, LayerDragPayload } from "./dragTypes";
 import { useDragController } from "./DragController";
+
+// ponytail: narrow façade for the workspace/scheduler surface LayerItem
+// actually touches. Avoids the production `any` while staying decoupled
+// from the full WorkspaceManager/Scheduler types — LayerItem only needs
+// the read-and-request paths, not the document lifecycle.
+interface LayerItemWorkspaceFacade {
+  getActiveEngine: () => {
+    snapshot: () => DocumentModel;
+    setLayerName: (id: string, name: string) => void;
+  } | null;
+  getActiveHistory: () => {
+    commit: (snapshot: DocumentModel, label?: string) => void;
+  } | null;
+}
+
+interface LayerItemSchedulerFacade {
+  requestRender: () => void;
+}
 
 interface LayerItemProps {
   layer: LayerNode;
@@ -25,8 +43,8 @@ interface LayerItemProps {
   onMoveUp: (e: MouseEvent, idx: number) => void;
   onMoveDown: (e: MouseEvent, idx: number) => void;
   layersLength: number;
-  workspace: any;
-  scheduler: any;
+  workspace: LayerItemWorkspaceFacade;
+  scheduler: LayerItemSchedulerFacade;
   activeDocumentId: string;
 }
 

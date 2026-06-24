@@ -234,6 +234,7 @@ export function BrushOptionBar() {
           <button
             type="button"
             class="h-[24px] rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:border-editor-accent"
+            aria-label="Set eraser to full hard strength"
             title="Set eraser to full hard strength"
             onClick={() => {
               setEraserHardness(1);
@@ -351,6 +352,7 @@ export function BrushOptionBar() {
           <button
             type="button"
             class="h-[24px] w-full rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors mt-1"
+            aria-label="Set eraser to full hard strength"
             title="Set eraser to full hard strength"
             onClick={() => {
               setEraserHardness(1);

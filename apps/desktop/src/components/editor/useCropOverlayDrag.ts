@@ -39,17 +39,12 @@ interface UseCropOverlayDragParams {
 }
 
 export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
-  let sdk: any;
-  try {
-    sdk = useEditor();
-  } catch (e) {
-    sdk = {
-      pan: () => ({ x: 0, y: 0 }),
-      hoverPos: () => null,
-      setHoverPos: () => {},
-      commitCropState: () => {},
-    };
-  }
+  // ponytail: removed the silent try/catch stub that returned no-op accessors
+  // when called outside an EditorProvider. The previous behavior masked
+  // missing-provider bugs as "drag does nothing" with no diagnostic. The
+  // real `useEditor()` throws a clear error so the wiring mistake surfaces
+  // immediately instead of silently degrading the UI.
+  const sdk = useEditor();
   const { pan, hoverPos, setHoverPos, commitCropState, camera } = sdk;
 
   const [activeHandle, setActiveHandle] = createSignal<string | null>(null);
