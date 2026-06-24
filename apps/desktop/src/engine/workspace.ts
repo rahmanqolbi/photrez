@@ -42,16 +42,25 @@ export class WorkspaceManager {
 
   removeDocument(id: DocumentId): void {
     if (this.sessions.has(id)) {
-      const keys = Array.from(this.sessions.keys());
-      const index = keys.indexOf(id);
+      const index = Array.from(this.sessions.keys()).indexOf(id);
       this.sessions.delete(id);
 
-      // Adjust active document focus
+      // ponytail: cleaned up. The previous implementation did two
+      // consecutive assignments to `this.activeDocumentId` where the
+      // first (line 53) computed `keys.indexOf(id) + 1` against the
+      // already-mutated `keys` array — `indexOf(id)` returned `-1`
+      // after the delete, so `+ 1` resolved to `0`, picking the
+      // first document instead of the neighbor. Line 56 then
+      // immediately overwrote that value with a correct computation
+      // against `remainingKeys`, so behavior was accidentally right
+      // but the dead-code path was a foot-gun if anyone refactored
+      // the trailing line.
+
+      // Adjust active document focus: activate the neighbor at the
+      // same index, or the new last document if the removed one was
+      // last.
       if (this.activeDocumentId === id) {
         if (this.sessions.size > 0) {
-          const nextActiveIndex = Math.min(index, this.sessions.size - 1);
-          this.activeDocumentId = keys[nextActiveIndex === index ? keys.indexOf(id) + 1 : nextActiveIndex];
-          // Simple key switch
           const remainingKeys = Array.from(this.sessions.keys());
           this.activeDocumentId = remainingKeys[Math.min(index, remainingKeys.length - 1)];
         } else {
