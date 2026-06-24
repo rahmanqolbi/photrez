@@ -27,7 +27,7 @@ test.describe("Precision Workbench dialogs", () => {
     const dialog = page.getByRole("dialog", { name: "About Photrez" });
     await expect(dialog).toBeVisible();
     await expect(dialog).toHaveAttribute("data-dialog-kind", "alert");
-    await expect(page.getByRole("button", { name: "Close" })).toBeFocused();
+    await expect(dialog.getByRole("button", { name: "Close", exact: true })).toBeFocused();
 
     const geometry = await dialog.evaluate((element) => {
       const rect = element.getBoundingClientRect();

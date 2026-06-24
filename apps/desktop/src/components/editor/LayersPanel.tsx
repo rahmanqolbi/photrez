@@ -433,7 +433,12 @@ export function LayersPanel() {
 
       {/* Layer Actions footer */}
       <div class={clsx("flex shrink-0 items-center gap-5 border-t border-editor-divider bg-editor-panel px-4 py-2.5 text-editor-icon", !activeDocumentId() && "opacity-50 pointer-events-none")}>
-        <button onClick={handleAddLayer} class="hover:text-editor-text" aria-label="New Layer">
+        <button
+          onClick={handleAddLayer}
+          class="hover:text-editor-text"
+          aria-label="New Layer"
+          title="New Layer"
+        >
           <Icon name="plus" class="size-[17px]" strokeWidth={1.75} />
         </button>
         <button
