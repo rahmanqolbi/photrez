@@ -796,7 +796,14 @@ export function CanvasViewport() {
       onLostPointerCapture={onViewportLostPointerCapture}
     >
       {/* CSS Transform container — GPU-accelerated pan/zoom */}
-      <Show when={workspace.getActiveEngine()}>
+      {/* ponytail: the engine is a non-reactive class method, so wrapping
+         it directly in `<Show when={...}>` would compile to a constant
+         getter that never re-evaluates when activeDocumentId changes.
+         The activeDocumentId signal is referenced first to register the
+         dependency in the JSX reactive scope, then getActiveEngine()
+         reads through the freshly-updated workspace state. This keeps
+         the canvas mounted across document switches. */}
+      <Show when={activeDocumentId() && !!workspace.getActiveEngine()}>
         {/* WebGL Canvas — outside transform div for 1:1 pixel mapping.
             The canvas pixel buffer is Math.round(docWidth * zoom * dpr) but the
             CSS box inside a scale(zoom) parent would be docWidth before transform.

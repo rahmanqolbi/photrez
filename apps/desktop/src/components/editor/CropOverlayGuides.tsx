@@ -1,4 +1,4 @@
-import { Show, For } from "solid-js";
+import { Show, For, createMemo } from "solid-js";
 
 interface CropOverlayGuidesProps {
   x: number;
@@ -12,8 +12,18 @@ interface CropOverlayGuidesProps {
 function GridLines(props: { x: number; y: number; w: number; h: number; zoom: number }) {
   const n = () => Math.max(1, Math.ceil(Math.sqrt(props.w * props.h) / 64));
   const z = props.zoom;
+  // ponytail: Array.from(...) inside <For each={...}> produces a
+  // brand-new array reference on every reactive evaluation. SolidJS
+  // <For> uses referential equality to decide whether to reuse or
+  // recreate children, so the entire grid re-renders every time any
+  // tracked signal (zoom, w, h) changes. The createMemo caches the
+  // array until n() actually changes, keeping the grid static while
+  // zoom/size updates flow through the existing line elements.
+  const indices = createMemo(() =>
+    Array.from({ length: Math.max(0, n() - 1) }, (_, i) => i + 1),
+  );
   return (
-    <For each={Array.from({ length: n() - 1 }, (_, i) => i + 1)}>
+    <For each={indices()}>
       {(i) => (
         <>
           <line x1={props.x + (props.w * i) / n()} y1={props.y} x2={props.x + (props.w * i) / n()} y2={props.y + props.h} stroke="rgba(255,255,255,0.3)" stroke-width={1 / z} vector-effect="non-scaling-stroke" style={{ "pointer-events": "none" }} />
