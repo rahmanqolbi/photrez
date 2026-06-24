@@ -11,6 +11,10 @@ dist/
 dist-ssr/
 build/
 .vite/
+apps/desktop/test-results/
+apps/desktop/playwright-report/
+apps/desktop/blob-report/
+apps/desktop/playwright/.cache/
 
 # Tauri / Rust Core Build Output
 src-tauri/target/
