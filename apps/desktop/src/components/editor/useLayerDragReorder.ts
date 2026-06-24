@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal, createEffect } from "solid-js";
 import { useEditor } from "./EditorContext";
 import { useDragController } from "./DragController";
 import { cancelLayerTransformSession } from "./transformSession";
@@ -18,6 +18,23 @@ export function useLayerDragReorder() {
   const [draggedIndex, setDraggedIndex] = createSignal<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = createSignal<number | null>(null);
   const [dropPosition, setDropPosition] = createSignal<"above" | "below" | null>(null);
+
+  // ponytail: reactive guard against stuck visual. The pointer-based
+  // and HTML5 drag systems coexist (LayerItem is `draggable=true`),
+  // so multiple event handlers race to clear these signals. Watching
+  // `dragKind` from the drag controller as the canonical "drag ended"
+  // signal means we always clear visual state when either system
+  // completes — even if a specific pointerup/pointermove handler is
+  // missed or fires out of order. LayerItem renders these signals
+  // via SolidJS reactivity, so this effect triggers the visual
+  // unstuck immediately on drag-end.
+  createEffect(() => {
+    if (dragController.state().dragKind === null) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      setDropPosition(null);
+    }
+  });
 
   let layerListRef: HTMLDivElement | undefined;
   let dragStartY = 0;

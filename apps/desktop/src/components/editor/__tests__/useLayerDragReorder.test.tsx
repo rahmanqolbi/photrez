@@ -152,16 +152,67 @@ describe("useLayerDragReorder", () => {
       // 4. Next pointermove detects dragKind !== null â†’ abandons.
       document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, button: 0, clientY: 120 }));
 
-      // 5. Critical: draggedIndex must be cleared so the source
+// 5. Critical: draggedIndex must be cleared so the source
       //    layer is not visually stuck.
       expect(ctx.api().draggedIndex()).toBeNull();
       expect(ctx.api().dragOverIndex()).toBeNull();
       expect(ctx.api().dropPosition()).toBeNull();
 
-      // 6. pointerup fires later â€” but the listener was removed in
+      // 6. pointerup fires later — but the listener was removed in
       //    the abandon branch. Simulate a delayed mouse release to
       //    prove it does not crash.
       document.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, button: 0, clientY: 120 }));
+    } finally {
+      ctx.dispose();
+    }
+  });
+
+  // Regression: real-browser flow where HTML5 drag fires AFTER
+  // pointer-based drag is already active, and the user releases the
+  // mouse WITHOUT moving further (so no second pointermove fires).
+  // The createEffect that watches dragController.state().dragKind
+  // must fire on dragend → endDrag → dragKind=null and clear all
+  // drag signals. This pins the regression where the source layer
+  // stayed visually "stuck" as dragged until the next click.
+  it("clears drag state via reactive effect when HTML5 drag completes without a second pointermove", async () => {
+    const ctx = setup();
+    try {
+      const rows = ctx.list.querySelectorAll<HTMLElement>("[data-layer-idx]");
+      rows[0].addEventListener("pointerdown", (e) => ctx.api().handlePointerDragStart(e as PointerEvent, 0));
+
+      // 1. Pointer down on row 0.
+      rows[0].dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, clientY: 10 }));
+
+      // 2. Move past dead-zone — this sets draggedIndex(0).
+      document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, button: 0, clientY: 80 }));
+      expect(ctx.api().draggedIndex()).toBe(0);
+
+      // 3. HTML5 drag fires. After this, no more pointermove events
+      //    fire because the browser captures pointer for HTML5 drag.
+      ctx.drag().beginLayerDrag(
+        {
+          version: 1,
+          sourceDocId: "reorder-doc",
+          layerId: "any",
+          sourceName: "any",
+          isAltPressed: false,
+        } satisfies LayerDragPayload,
+        null,
+      );
+
+      // 4. User drops and releases — dragend fires → endDrag() →
+      //    dragKind = null. No second pointermove fires.
+      ctx.drag().endDrag();
+
+      // 5. Reactive effect should detect dragKind === null and clear
+      //    all drag signals. Solid effects run async (microtask).
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // 6. Critical: draggedIndex must be cleared so the source
+      //    layer is not visually stuck.
+      expect(ctx.api().draggedIndex()).toBeNull();
+      expect(ctx.api().dragOverIndex()).toBeNull();
+expect(ctx.api().dropPosition()).toBeNull();
     } finally {
       ctx.dispose();
     }
