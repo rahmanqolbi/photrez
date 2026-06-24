@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
 import { EditorProvider } from "../EditorContext";
 import { useLayerDragReorder } from "../useLayerDragReorder";
+import { DragControllerProvider, useDragController } from "../DragController";
 import { WorkspaceManager } from "@/engine/workspace";
+import type { LayerDragPayload } from "../dragTypes";
 
 function setRect(el: HTMLElement, top: number, height: number) {
   el.getBoundingClientRect = vi.fn(() => ({
@@ -51,20 +53,24 @@ describe("useLayerDragReorder", () => {
     document.body.appendChild(container);
 
     let api: ReturnType<typeof useLayerDragReorder> | null = null;
+    let drag: ReturnType<typeof useDragController> | null = null;
     const dispose = render(
       () => (
         <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
-          {(() => {
-            api = useLayerDragReorder();
-            api.setLayerListRef(list);
-            return null;
-          })()}
+          <DragControllerProvider>
+            {(() => {
+              api = useLayerDragReorder();
+              api.setLayerListRef(list);
+              drag = useDragController();
+              return null;
+            })()}
+          </DragControllerProvider>
         </EditorProvider>
       ),
       container,
     );
 
-    return { ws, scheduler, list, dispose, api: () => api! };
+    return { ws, scheduler, list, dispose, api: () => api!, drag: () => drag! };
   }
 
   it("reorders top/middle/bottom correctly when dragging the top row below the bottom row", () => {
@@ -104,6 +110,73 @@ describe("useLayerDragReorder", () => {
         "Top",
         "Middle",
       ]);
+    } finally {
+      ctx.dispose();
+    }
+  });
+
+  // Regression: when the HTML5 drag controller activates during the
+  // pointer drag (e.g. browser fires dragstart while pointermove is
+  // still running), the in-panel pointer drag abandons. Before Pass
+  // 11, the abandon branch removed the pointerup listener WITHOUT
+  // clearing draggedIndex — so the source layer stayed visually
+  // "stuck" as dragged until the next pointerup cycle. The fix
+  // clears all drag signals in the abandon branch. This test pins
+  // the cleanup contract: after abandonment, all drag state signals
+  // return to null/false and no reorder is committed even when the
+  // user later releases the mouse.
+  it("clears drag state when HTML5 drag activates during pointer drag (no stuck visual)", () => {
+    const ctx = setup();
+    try {
+      const rows = ctx.list.querySelectorAll<HTMLElement>("[data-layer-idx]");
+      rows[0].addEventListener("pointerdown", (e) => ctx.api().handlePointerDragStart(e as PointerEvent, 0));
+
+      const initialNames = ctx.ws.getActiveEngine()!.getLayers().map((l) => l.name);
+
+      // 1. Pointer down on row 0 (Top).
+      rows[0].dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, clientY: 10 }));
+
+      // 2. Move past dead-zone — this activates dragActive and
+      //    sets draggedIndex(0).
+      document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, button: 0, clientY: 80 }));
+      expect(ctx.api().draggedIndex()).toBe(0);
+      expect(ctx.api().dragActive()).toBe(true);
+
+      // 3. HTML5 drag fires mid-pointermove. This is what happens
+      //    in production when the browser dispatches dragstart after
+      //    the row becomes "draggable".
+      ctx.drag().beginLayerDrag(
+        {
+          version: 1,
+          sourceDocId: "reorder-doc",
+          layerId: "any",
+          sourceName: "any",
+          isAltPressed: false,
+        } satisfies LayerDragPayload,
+        null,
+      );
+
+      // 4. Next pointermove detects dragKind !== null → abandons.
+      document.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, button: 0, clientY: 120 }));
+
+      // 5. Critical: all drag signals must be cleared so the source
+      //    layer is not visually stuck.
+      expect(ctx.api().draggedIndex()).toBeNull();
+      expect(ctx.api().dragActive()).toBe(false);
+      expect(ctx.api().dragOverIndex()).toBeNull();
+      expect(ctx.api().dropPosition()).toBeNull();
+
+      // 6. pointerup fires later — but the listener was removed in
+      //    the abandon branch. Simulate a delayed mouse release to
+      //    prove it does not trigger reorder or cause errors.
+      document.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, button: 0, clientY: 120 }));
+
+      // 7. Engine layer order is unchanged.
+      const afterNames = ctx.ws.getActiveEngine()!.getLayers().map((l) => l.name);
+      expect(afterNames).toEqual(initialNames);
+
+      // 8. No reorder history was committed.
+      expect(ctx.ws.getActiveHistory()?.canUndo()).toBe(false);
     } finally {
       ctx.dispose();
     }

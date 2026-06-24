@@ -31,6 +31,7 @@ interface LayerItemProps {
   isDragged: boolean;
   isDragOver: boolean;
   dropPosition: "above" | "below" | null;
+  isAnyDragActive: boolean;
   isEditing: boolean;
   editName: string;
   setEditingLayerId: (id: string | null) => void;
@@ -101,11 +102,21 @@ export function LayerItem(props: LayerItemProps) {
       onContextMenu={(event) => props.onContextMenu?.(event, props.layer, props.idx)}
       onPointerDown={(e) => !props.layer.locked && props.onPointerDragStart(e, props.idx)}
       class={clsx(
-        "flex h-[50px] items-center gap-2.5 px-3.5 cursor-grab select-none group border-b border-editor-divider/10 relative transition-all duration-100 touch-auto active:cursor-grabbing",
+        "flex h-[50px] items-center gap-2.5 px-3.5 select-none group border-b border-editor-divider/10 relative touch-auto",
+        // ponytail: cursor flips to grabbing while a drag is in
+        // progress. `cursor-grab` is the default hint that the row is
+        // draggable. `active:cursor-grabbing` only fires during the
+        // mousedown-to-mouseup span on a single element, so the
+        // pointer-based drag handler signals `isAnyDragActive` to keep
+        // the grabbing cursor visible while dragging across rows.
+        !props.isAnyDragActive ? "cursor-grab active:cursor-grabbing" : "cursor-grabbing",
         props.isActive ? "bg-editor-row-active" : "hover:bg-white/[0.03]",
-        props.isDragged && "opacity-25 bg-editor-divider/10 scale-[0.98] border-dashed border-editor-accent/40",
-        props.isDragOver && props.dropPosition === "above" && "before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-editor-accent before:z-20",
-        props.isDragOver && props.dropPosition === "below" && "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[3px] after:bg-editor-accent after:z-20"
+        // Source layer being dragged: dimmed + amber ring + subtle scale.
+        props.isDragged && "opacity-40 ring-2 ring-editor-accent/60 ring-inset scale-[0.98] border-dashed border-editor-accent/50 bg-editor-divider/20",
+        // Drop insertion bar above this row.
+        props.isDragOver && props.dropPosition === "above" && "before:absolute before:top-[-2px] before:left-0 before:right-0 before:h-[4px] before:bg-editor-accent before:shadow-[0_0_8px_rgba(225,90,23,0.6)] before:z-20 before:rounded-full",
+        // Drop insertion bar below this row.
+        props.isDragOver && props.dropPosition === "below" && "after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[4px] after:bg-editor-accent after:shadow-[0_0_8px_rgba(225,90,23,0.6)] after:z-20 after:rounded-full"
       )}
     >
       {/* Eye toggle button */}
