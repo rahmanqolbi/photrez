@@ -87,7 +87,6 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
     h: number;
   } | null>(null);
   let lastPointerDownTime = 0;
-  let pendingApply: ReturnType<typeof setTimeout> | null = null;
 
   const navMode = () => props.isNavigationMode ?? false;
   const screenRect = createMemo(() =>

@@ -136,10 +136,18 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
       cancelAnimationFrame(animFrameId);
     };
 
+    // ponytail: ResizeObserver is optional (depends on the container
+    // being mounted), but the cleanup must always register so canvas
+    // listener, RAF, renderer, and camera animation hooks are released
+    // on host unmount regardless of whether the container was present
+    // at mount time. Previously the entire onCleanup lived inside
+    // `if (container)` — if container was null at mount the WebGL
+    // context-restored listener, animFrameId, and camera callbacks all
+    // leaked.
+    let resizeObserver: ResizeObserver | null = null;
     const container = params.getCanvasContainerRef();
     if (container) {
-      // ─── ResizeObserver — always active ───
-      const resizeObserver = new ResizeObserver((entries) => {
+      resizeObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           setViewportWidth(entry.contentRect.width);
           setViewportHeight(entry.contentRect.height);
@@ -148,16 +156,16 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
         fitToScreenAndRender();
       });
       resizeObserver.observe(container);
-
-      onCleanup(() => {
-        canvas?.removeEventListener(WEBGL2_CONTEXT_RESTORED_EVENT, reuploadActiveDocumentTextures);
-        resizeObserver.disconnect();
-        renderer.dispose();
-        cancelAnimationFrame(animFrameId);
-        camera.onAnimationStart = undefined;
-        camera.onAnimationEnd = undefined;
-      });
     }
+
+    onCleanup(() => {
+      canvas?.removeEventListener(WEBGL2_CONTEXT_RESTORED_EVENT, reuploadActiveDocumentTextures);
+      resizeObserver?.disconnect();
+      cancelAnimationFrame(animFrameId);
+      camera.onAnimationStart = undefined;
+      camera.onAnimationEnd = undefined;
+      renderer.dispose();
+    });
   });
 
   // Track which documents have been "opened" (fit-to-screen'd) so we

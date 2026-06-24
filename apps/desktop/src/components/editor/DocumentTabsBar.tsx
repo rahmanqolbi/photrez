@@ -5,7 +5,7 @@ import { useEditor } from "./EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
 import { cancelLayerTransformSession } from "./transformSession";
 import { useDragController } from "./DragController";
-import { addFilesAsLayers, addLayerFromCrossDoc, createNewDocsFromFiles } from "./crossDocLayerOps";
+import { addFilesAsLayers, addLayerFromCrossDoc, createNewDocsFromFiles, type WorkspaceFacade } from "./crossDocLayerOps";
 
 export function DocumentTabsBar() {
   const { workspace, documents, activeDocumentId, renderer, scheduler, layerTransformSession, setLayerTransformSession } = useEditor();
@@ -134,10 +134,11 @@ export function DocumentTabsBar() {
     e.preventDefault();
     const state = drag.state();
     if (state.dragKind === "file" && state.filePaths) {
-      const created = await createNewDocsFromFiles(
-        state.filePaths,
-        workspace as unknown as Parameters<typeof createNewDocsFromFiles>[1]
-      );
+      // ponytail: WorkspaceManager is structurally a WorkspaceFacade, so
+      // a single downcast replaces the previous `as unknown as ...[1]`
+      // double-assert noise.
+      const facade: WorkspaceFacade = workspace;
+      const created = await createNewDocsFromFiles(state.filePaths, facade);
       for (const { backgroundLayerId, bitmap } of created) {
         renderer.uploadImage(backgroundLayerId, bitmap);
       }

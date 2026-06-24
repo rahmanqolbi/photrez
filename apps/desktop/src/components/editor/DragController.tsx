@@ -35,7 +35,7 @@ export function DragControllerProvider(props: ParentProps<{ workspaceOverride?: 
   const editor = props.workspaceOverride ? null : useEditor();
   const workspace = (): WorkspaceLike => {
     if (props.workspaceOverride) return props.workspaceOverride;
-    return editor!.workspace as unknown as WorkspaceLike;
+    return editor!.workspace as WorkspaceLike;
   };
 
   const [state, setState] = createSignal<DragState>({

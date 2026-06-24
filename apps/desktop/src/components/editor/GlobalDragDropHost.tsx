@@ -1,7 +1,7 @@
 import { useEditor } from "./EditorContext";
 import { useDragController } from "./DragController";
 import { useTauriDragDrop } from "./useTauriDragDrop";
-import { dispatchTauriFileDrop, findDropZoneAtPoint } from "./crossDocDropDispatch";
+import { dispatchTauriFileDrop, findDropZoneAtPoint, type DropDispatchDeps } from "./crossDocDropDispatch";
 
 export function GlobalDragDropHost() {
   const { workspace, renderer, scheduler, camera } = useEditor();
@@ -17,12 +17,11 @@ export function GlobalDragDropHost() {
       else dragController.setDropTarget(null);
     },
     onDrop: (paths, position) => {
-      void dispatchTauriFileDrop(paths, position, {
-        workspace: workspace as unknown as Parameters<typeof dispatchTauriFileDrop>[2]["workspace"],
-        renderer,
-        scheduler,
-        camera: camera as unknown as Parameters<typeof dispatchTauriFileDrop>[2]["camera"],
-      });
+      // ponytail: import the deps type directly instead of re-deriving it
+      // via `Parameters<...>[2]` and double-asserting. The dep type is the
+      // source of truth — anything else drifts on signature changes.
+      const deps: DropDispatchDeps = { workspace, renderer, scheduler, camera };
+      void dispatchTauriFileDrop(paths, position, deps);
     },
     onLeave: () => {
       dragController.setDropTarget(null);
