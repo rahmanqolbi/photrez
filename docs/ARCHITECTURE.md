@@ -1,20 +1,20 @@
 # ARCHITECTURE.md â€” Photrez (Runtime Reference)
 
-> âš ï¸ **PENTING UNTUK AI:** Referensi mengenai aturan mutlak, tech stack rules, dan pedoman mencegah bug/regresi wajib dibaca di berkas terpusat **`AI_CONTEXT.md`**.
-> Baca juga: `AI_CURRENT_TASK.md` (status), `AI_HISTORY.md` (riwayat), `FEATURES.md` (fitur)
+> âš ï¸ **IMPORTANT FOR AI:** Absolute rules reference, tech stack rules, and bug/regression prevention guidelines must be read in the central file **`AI_CONTEXT.md`**.
+> Also read: `AI_CURRENT_TASK.md` (status), `AI_HISTORY.md` (history), `FEATURES.md` (features)
 
 ---
 
-## Gambaran Umum
+## Overview
 
-Photrez adalah lightweight desktop image editor yang dibangun untuk workflow digital dan print praktis.
+Photrez is a lightweight desktop image editor built for practical digital and print workflows.
 
 **MVP Runtime:** Tauri 2 (shell) + SolidJS/TypeScript (frontend) + **TypeScript DocumentEngine** (core) + **WebGL2** (renderer).
-**Future target:** Rust (photrez-core) + wgpu (photrez-render) â€” lihat `docs/AI_CURRENT_TASK.md:1054` Architecture Migration v2.
+**Future target:** Rust (photrez-core) + wgpu (photrez-render) â€” see `docs/AI_CURRENT_TASK.md` Architecture Migration v2.
 
 ---
 
-## Status Proyek
+## Project Status
 
 - **Phase**: Post-MVP polish & bug-fix (2026-06-13). GPU viewport migration, brush calibration, crop UX improvements, and multi-cycle bug-fix passes completed. Multi-document workspace implemented.
 - **Core Crate**: Document model, layer management, bitmap buffers, selection, transform, brush/eraser, import decode, export encode, and workspace management exist. Core tests pass (`cargo test -p photrez-core`: 85 tests). Workspace total: 92 tests (`cargo test --workspace`).
@@ -25,9 +25,9 @@ Photrez adalah lightweight desktop image editor yang dibangun untuk workflow dig
 
 ---
 
-## Stack Teknologi
+## Technology Stack
 
-| Layer            | Teknologi                                              |
+| Layer            | Technology                                              |
 | ---------------- | ------------------------------------------------------ |
 | Desktop Shell    | Tauri 2                                                |
 | Frontend         | SolidJS + TypeScript (TSX)                             |
@@ -44,7 +44,7 @@ Photrez adalah lightweight desktop image editor yang dibangun untuk workflow dig
 
 ---
 
-## Diagram Arsitektur
+## Architecture Diagram
 
 ### Active MVP Runtime (2026-06-19)
 
@@ -164,11 +164,11 @@ Note 2026-06-19: the diagram below is historical and retained only for ownership
 ## Data Flow
 
 ```text
-1. User action (click/drag/shortcut) di SolidJS frontend
+1. User action (click/drag/shortcut) in SolidJS frontend
         â†“
 2. Frontend memanggil invoke("command_name", { params })
         â†“
-3. Tauri IPC bridge meneruskan ke #[tauri::command] handler
+3. Tauri IPC bridge forwards to #[tauri::command] handler
         â†“
 4. Handler mengakses EditorState (Mutex lock)
         â†“
@@ -176,7 +176,7 @@ Note 2026-06-19: the diagram below is historical and retained only for ownership
         â†“
 6. Document/Layer/Core dimutasi
         â†“
-7. Handler return ok_response(updated_doc) atau err_response(code, msg)
+7. Handler returns ok_response(updated_doc) or err_response(code, msg)
         â†“
 8. Frontend menerima response, update SolidJS signals
         â†“
@@ -284,7 +284,7 @@ image-studio/
 
 ---
 
-## Aturan Arsitektur (WAJIB)
+## Architecture Rules (MANDATORY)
 
 ### Module Boundaries
 
@@ -297,11 +297,11 @@ image-studio/
 
 ### Source of Truth
 
-- **Document state (MVP)**: Di TypeScript `DocumentEngine` (`apps/desktop/src/engine/document.ts`). Rust `photrez-core` mempertahankan model domain sebagai reference + test coverage.
-- **Document state (future)**: Akan migrasi ke Rust Core saat task eksplisit runtime migration.
-- **UI state**: Di SolidJS signals (tool selection, zoom level, panel visibility).
-- **Pixel data (MVP)**: `ImageBitmap` per layer di `DocumentEngine`, di-render oleh WebGL2. Rust crates tidak memiliki bitmap untuk MVP hot-path.
-- **TIDAK PERNAH** duplikasi document state di frontend sebagai mutable source.
+- **Document state (MVP)**: In TypeScript `DocumentEngine` (`apps/desktop/src/engine/document.ts`). Rust `photrez-core` retains the domain model as reference + test coverage.
+- **Document state (future)**: Will migrate to Rust Core on explicit runtime migration task.
+- **UI state**: In SolidJS signals (tool selection, zoom level, panel visibility).
+- **Pixel data (MVP)**: `ImageBitmap` per layer in `DocumentEngine`, rendered by WebGL2. Rust crates do not hold bitmaps for the MVP hot-path.
+- **NEVER** duplicate document state in the frontend as a mutable source.
 
 ---
 
@@ -313,4 +313,4 @@ image-studio/
 | Idle RAM       | `< 250 MB`  |
 | Startup time   | `< 2s`      |
 
-Protocol ukur: `docs/reference/performance-measurement-protocol.md`
+Measurement protocol: `docs/reference/performance-measurement-protocol.md`

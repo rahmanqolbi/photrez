@@ -2,6 +2,7 @@ import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 import { MENU_ITEMS } from "./editorData";
 import type { MenuItem } from "./types";
 import type { EditorCommand } from "./useEditorCommands";
+import { useEditor } from "./EditorContext";
 
 type MenuEntry =
   | { kind: "item"; label: string; command: EditorCommand; shortcut?: string }
@@ -44,6 +45,7 @@ const MENU_DEFINITIONS: Record<MenuItem, readonly MenuEntry[]> = {
     { kind: "item", label: "Fit Canvas", command: "view.fit-canvas", shortcut: "Ctrl+0" },
     { kind: "separator" },
     { kind: "item", label: "Toggle Side Panels", command: "view.toggle-side-panels", shortcut: "Ctrl+Shift+P" },
+    { kind: "item", label: "Use Stacked Side Dock", command: "view.toggle-right-dock-layout" },
   ],
   Window: [
     { kind: "item", label: "Minimize", command: "window.minimize" },
@@ -136,8 +138,18 @@ export function AppMenuBar(props: AppMenuBarProps) {
   };
 
   const labelFor = (entry: Extract<MenuEntry, { kind: "item" }>) => {
-    if (entry.command !== "view.toggle-side-panels") return entry.label;
-    return props.isRightDockOpen ? "Hide Side Panels" : "Show Side Panels";
+    if (entry.command === "view.toggle-side-panels") {
+      return props.isRightDockOpen ? "Hide Side Panels" : "Show Side Panels";
+    }
+    if (entry.command === "view.toggle-right-dock-layout") {
+      try {
+        const editor = useEditor();
+        return editor.rightDockLayout() === "side-by-side" ? "Use Stacked Side Dock" : "Use Side-by-Side Side Dock";
+      } catch (e) {
+        return "Use Stacked Side Dock";
+      }
+    }
+    return entry.label;
   };
 
   const activate = (command: EditorCommand) => {

@@ -50,10 +50,13 @@ yarn-error.log*
 .agents/
 .antigravitycli/
 .codex/
+.cursor/
 .gemini/
 .gemini_security/
 .gsd/
+.github/instructions/
 .github/prompts/
+.github/copilot-instructions.md
 .impeccable/critique/
 .opencode/
 .superpowers/
@@ -61,6 +64,7 @@ yarn-error.log*
 .mcp.json
 .opencode.json
 opencode.json
+.windsurf/
 model_capabilities.yaml
 skills-lock.json
 AGENTS.md

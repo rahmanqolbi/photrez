@@ -1,40 +1,18 @@
 import { For, Show, createSignal } from "solid-js";
-import { Icon, type IconName } from "./icons";
+import { Icon } from "./icons";
 import { EditableNumField, PropRow, SelectField, Slider } from "./primitives";
 import { useEditor } from "./EditorContext";
 import { SectionHeader } from "./SectionHeader";
 import { CanvasProperties } from "./CanvasProperties";
-import type { BasicAdjustment } from "@/engine/layerAdjustments";
 import type { Transform2D } from "@/engine/types";
 
-const COLLAPSED_SECTIONS: readonly {
-  icon: IconName;
-  iconClass: string;
-  label: string;
-}[] = [
-  { icon: "spline", iconClass: "text-editor-text-dim", label: "Tone Curve" },
-  { icon: "palette", iconClass: "text-sky-400", label: "HSL / Color" },
-  { icon: "swatch", iconClass: "text-amber-400", label: "Color Grading" },
-  { icon: "sparkles", iconClass: "text-sky-300", label: "Detail" },
-  {
-    icon: "aperture",
-    iconClass: "text-emerald-400",
-    label: "Lens Corrections",
-  },
-] as const;
+const ANCHOR_POSITIONS = ["top-left", "top-center", "top-right", "middle-left", "center", "middle-right", "bottom-left", "bottom-center", "bottom-right"] as const;
 
 export function PropertiesPanel() {
-  const { workspace, layers, selectedLayerId, scheduler, activeDocumentId, renderer } = useEditor();
-  const [basicAdjustment, setBasicAdjustment] = createSignal<BasicAdjustment>({
-    brightness: 0,
-    contrast: 0,
-    saturation: 0,
-  });
-  const [adjustmentBase, setAdjustmentBase] = createSignal<{
-    layerId: string;
-    bitmap: ImageBitmap;
-  } | null>(null);
+  const { workspace, layers, selectedLayerId, scheduler, activeDocumentId } = useEditor();
   const [opacityEditLayerId, setOpacityEditLayerId] = createSignal<string | null>(null);
+  const [anchor, setAnchor] = createSignal<string>("center");
+  const [lockScale, setLockScale] = createSignal(false);
 
   const activeLayer = () => {
     const id = selectedLayerId();
@@ -115,39 +93,6 @@ export function PropertiesPanel() {
     commitTransform(axis === "x" ? { scaleX: val / 100 } : { scaleY: val / 100 }, "Resize Layer");
   };
 
-  const previewBasicAdjustment = (next: BasicAdjustment, label: string) => {
-    const engine = workspace.getActiveEngine();
-    const history = workspace.getActiveHistory();
-    const layer = activeLayer();
-    if (!engine || !history || !layer?.imageBitmap || layer.locked) return;
-
-    let base = adjustmentBase();
-    if (!base || base.layerId !== layer.id) {
-      base = { layerId: layer.id, bitmap: layer.imageBitmap };
-      setAdjustmentBase(base);
-      history.commit(engine.snapshot(), label);
-    }
-
-    engine.applyBasicAdjustment(layer.id, next, base.bitmap);
-    const updated = engine.getLayer(layer.id);
-    if (updated?.imageBitmap) {
-      renderer.uploadImage(layer.id, updated.imageBitmap);
-    }
-    workspace.notifyVisualChange();
-    scheduler.requestRender();
-  };
-
-  const setAdjustmentValue = (key: keyof BasicAdjustment, value: number) => {
-    const next = { ...basicAdjustment(), [key]: value };
-    setBasicAdjustment(next);
-    previewBasicAdjustment(next, key === "brightness" ? "Adjust Brightness" : key === "contrast" ? "Adjust Contrast" : "Adjust Saturation");
-  };
-
-  const hasPendingAdjustment = () => {
-    const adjustment = basicAdjustment();
-    return adjustment.brightness !== 0 || adjustment.contrast !== 0 || adjustment.saturation !== 0;
-  };
-
   const transformStatusText = () => {
     const layer = activeLayer();
     if (!layer) return null;
@@ -158,33 +103,8 @@ export function PropertiesPanel() {
     return null;
   };
 
-  const basicStatusText = () => {
-    const layer = activeLayer();
-    if (!layer) return null;
-    if (layer.locked) return "Layer is locked. Unlock it before applying pixel adjustments.";
-    if (!layer.imageBitmap) return "This layer has no pixels yet. Add image pixels before adjusting tone.";
-    return null;
-  };
-
-  const resetBasicAdjustment = () => {
-    const engine = workspace.getActiveEngine();
-    const base = adjustmentBase();
-    if (engine && base) {
-      engine.setLayerImageBitmap(base.layerId, base.bitmap);
-      renderer.uploadImage(base.layerId, base.bitmap);
-      workspace.notifyVisualChange();
-      scheduler.requestRender();
-    }
-    setAdjustmentBase(null);
-    setBasicAdjustment({ brightness: 0, contrast: 0, saturation: 0 });
-  };
-
   return (
     <section class="flex flex-1 shrink-0 flex-col overflow-hidden bg-editor-panel">
-      <div class="flex h-[46px] shrink-0 items-center border-b border-editor-divider px-4">
-        <h2 class="text-[13px] font-medium text-editor-text">Properties</h2>
-      </div>
-
       <div class="flex-1 overflow-y-auto">
         <Show
           when={activeDocumentId()}
@@ -236,8 +156,9 @@ export function PropertiesPanel() {
                     <EditableNumField label="X" value={layer().transform.scaleX * 100} suffix="%" onSubmit={handleScaleField("x")} disabled={layer().locked} class="flex-1" />
                     <EditableNumField label="Y" value={layer().transform.scaleY * 100} suffix="%" onSubmit={handleScaleField("y")} disabled={layer().locked} class="flex-1" />
                     <button
-                      class="flex size-[26px] shrink-0 items-center justify-center text-editor-accent"
+                      class={`flex size-[26px] shrink-0 items-center justify-center ${lockScale() ? "text-editor-accent" : "text-editor-text-dim"}`}
                       aria-label="Lock scale"
+                      onClick={() => setLockScale(!lockScale())}
                     >
                       <Icon name="link" class="size-3.5" strokeWidth={1.75} />
                     </button>
@@ -273,7 +194,7 @@ export function PropertiesPanel() {
                     <span class="w-[58px] shrink-0 text-[12px] text-editor-text-dim">
                       Anchor
                     </span>
-                    <AnchorGrid />
+                    <AnchorGrid value={anchor()} onSelect={setAnchor} />
                   </div>
 
                   <PropRow label="Constrain">
@@ -283,63 +204,6 @@ export function PropertiesPanel() {
               </div>
             )}
           </Show>
-
-          <div class="border-b border-editor-divider px-4 py-3.5">
-            <SectionHeader
-              icon="sun"
-              iconClass="text-editor-text-dim"
-              label="Basic"
-              trailing={
-                <button
-                  type="button"
-                  aria-label="Reset basic adjustments"
-                  disabled={!hasPendingAdjustment()}
-                  onClick={resetBasicAdjustment}
-                  class="flex size-5 items-center justify-center rounded-[3px] text-editor-text-dim hover:bg-white/[0.045] hover:text-editor-text disabled:pointer-events-none disabled:opacity-40"
-                >
-                  <Icon
-                    name="x"
-                    class="size-3.5"
-                    strokeWidth={1.75}
-                  />
-                </button>
-              }
-            />
-
-            <div class="mt-3 flex flex-col gap-2.5">
-              <AdjustmentSliderRow
-                label="Bright"
-                value={basicAdjustment().brightness}
-                onInput={(value) => setAdjustmentValue("brightness", value)}
-              />
-              <AdjustmentSliderRow
-                label="Contrast"
-                value={basicAdjustment().contrast}
-                onInput={(value) => setAdjustmentValue("contrast", value)}
-              />
-              <AdjustmentSliderRow
-                label="Saturate"
-                value={basicAdjustment().saturation}
-                onInput={(value) => setAdjustmentValue("saturation", value)}
-              />
-              <p class="mt-1 text-[11px] leading-snug text-editor-text-dim">
-                Drag to preview directly on the active layer. Undo restores the previous pixels.
-              </p>
-              <Show when={basicStatusText()}>
-                {(message) => <StatusHint>{message()}</StatusHint>}
-              </Show>
-            </div>
-          </div>
-
-          <For each={COLLAPSED_SECTIONS}>
-            {(section) => (
-              <CollapsedRow
-                icon={section.icon}
-                iconClass={section.iconClass}
-                label={section.label}
-              />
-            )}
-          </For>
         </Show>
       </div>
     </section>
@@ -355,117 +219,29 @@ function StatusHint(props: { children: string }) {
   );
 }
 
-function AdjustmentSliderRow(props: {
-  label: string;
-  value: number;
-  onInput: (value: number) => void;
-}) {
-  const percent = () => props.value + 100;
-  const displayValue = () => props.value > 0 ? `+${props.value}` : `${props.value}`;
-  const trackFillStyle = () => {
-    const position = percent() / 2;
-    if (props.value >= 0) {
-      return {
-        left: "50%",
-        width: `${position - 50}%`,
-      };
-    }
-    return {
-      left: `${position}%`,
-      width: `${50 - position}%`,
-    };
-  };
-
-  return (
-    <div class="flex min-h-[28px] items-center gap-2.5">
-      <span class="w-[58px] shrink-0 text-[12px] font-medium text-editor-text-dim">
-        {props.label}
-      </span>
-      <div class="flex flex-1 items-center gap-2.5">
-        <div class="relative flex h-[18px] flex-1 items-center">
-          <div
-            aria-hidden="true"
-            class="absolute left-0 right-0 top-1/2 h-[4px] -translate-y-1/2 rounded-full border border-black/30 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
-            style={{
-              "background-image": "linear-gradient(to right, rgba(59,130,246,0.56), rgba(114,114,122,0.56) 50%, rgba(245,158,11,0.58))",
-            }}
-          />
-          <div
-            aria-hidden="true"
-            class="absolute top-1/2 h-[4px] -translate-y-1/2 rounded-full bg-editor-accent shadow-[0_0_10px_rgba(74,144,226,0.28)]"
-            style={trackFillStyle()}
-          />
-          <div
-            aria-hidden="true"
-            class="absolute left-1/2 top-1/2 h-[12px] w-px -translate-x-1/2 -translate-y-1/2 bg-editor-text/45"
-          />
-          <div
-            aria-hidden="true"
-            class="absolute top-1/2 size-[12px] -translate-y-1/2 rounded-full border border-black/55 bg-[#d8dce2] shadow-[0_1px_2px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.18)]"
-            style={{ left: `calc(${percent() / 2}% - 6px)` }}
-          />
-          <input
-            aria-label={props.label}
-            type="range"
-            min="-100"
-            max="100"
-            value={props.value}
-            onInput={(e) => props.onInput(parseInt(e.currentTarget.value, 10))}
-            class="absolute inset-0 h-[18px] w-full cursor-pointer opacity-0"
-          />
-        </div>
-        <span class="flex h-[22px] w-[40px] shrink-0 items-center justify-end rounded-[3px] border border-editor-field-border bg-editor-field px-1.5 text-right text-[11px] tabular-nums text-editor-text">
-          {displayValue()}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function AnchorGrid() {
+function AnchorGrid(props: { value: string; onSelect: (value: string) => void }) {
   return (
     <div class="relative h-[42px] w-[88px]">
       <div class="absolute left-1/2 top-1/2 h-[1px] w-[72px] -translate-x-1/2 -translate-y-1/2 bg-editor-field-border" />
       <div class="absolute left-1/2 top-1/2 h-[34px] w-[1px] -translate-x-1/2 -translate-y-1/2 bg-editor-field-border" />
       <div class="relative grid h-full grid-cols-3 grid-rows-3">
-        <For each={Array.from({ length: 9 })}>
-          {(_, index) => (
-            <div class="flex items-center justify-center">
-              {index() === 4 ? (
+        <For each={ANCHOR_POSITIONS}>
+          {(pos) => (
+            <button
+              type="button"
+              aria-label={`Anchor ${pos}`}
+              onClick={() => props.onSelect(pos)}
+              class="flex items-center justify-center hover:bg-white/[0.05] rounded-[2px]"
+            >
+              {pos === props.value ? (
                 <div class="size-2.5 rounded-[2px] border border-editor-text bg-editor-panel" />
               ) : (
                 <div class="size-[3px] rounded-full bg-editor-text-dim" />
               )}
-            </div>
+            </button>
           )}
         </For>
       </div>
     </div>
-  );
-}
-
-function CollapsedRow(props: {
-  icon: IconName;
-  iconClass: string;
-  label: string;
-}) {
-  return (
-    <button class="flex h-[42px] w-full items-center justify-between border-b border-editor-divider px-4 hover:bg-white/[0.03]">
-      <div class="flex items-center gap-2.5">
-        <span class="flex size-4 items-center justify-center">
-          <Icon
-            name={props.icon}
-            class={`size-[15px] ${props.iconClass}`}
-            strokeWidth={1.75}
-          />
-        </span>
-        <span class="text-[12.5px] text-editor-text">{props.label}</span>
-      </div>
-      <Icon
-        name="chevron-right"
-        class="size-4 text-editor-text-dim"
-        strokeWidth={1.75}
-      />
-    </button>
   );
 }

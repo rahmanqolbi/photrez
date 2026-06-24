@@ -183,6 +183,14 @@ export interface EditorContextValue {
   // Side dock state
   rightDockOpen: Accessor<boolean>;
   setRightDockOpen: (open: boolean) => void;
+
+  // Right dock layout & inspector tabs
+  rightDockLayout: Accessor<"side-by-side" | "stacked">;
+  setRightDockLayout: (layout: "side-by-side" | "stacked") => void;
+  inspectorTab: Accessor<"library" | "adjust" | "presets">;
+  setInspectorTab: Setter<"library" | "adjust" | "presets">;
+  adjustSubTab: Accessor<"properties" | "adjustments">;
+  setAdjustSubTab: Setter<"properties" | "adjustments">;
 }
 
 
@@ -228,6 +236,19 @@ export function EditorProvider(props: {
   const [historyItems, setHistoryItems] = createSignal<HistoryItem[]>([]);
   const [activeHistoryIndex, setActiveHistoryIndex] = createSignal(0);
   const [rightDockPanel, setRightDockPanel] = createSignal<"layers" | "history">("layers");
+
+  const [rightDockLayoutState, setRightDockLayoutState] = createSignal<"side-by-side" | "stacked">(
+    (typeof localStorage !== "undefined" && localStorage.getItem("photrez.rightDockLayout") as "side-by-side" | "stacked") || "side-by-side"
+  );
+  const setRightDockLayout = (layout: "side-by-side" | "stacked") => {
+    setRightDockLayoutState(layout);
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("photrez.rightDockLayout", layout);
+    }
+  };
+
+  const [inspectorTab, setInspectorTab] = createSignal<"library" | "adjust" | "presets">("adjust");
+  const [adjustSubTab, setAdjustSubTab] = createSignal<"properties" | "adjustments">("properties");
 
   const [localRightDockOpen, setLocalRightDockOpen] = createSignal(true);
   const rightDockOpen = props.rightDockOpen || localRightDockOpen;
@@ -377,6 +398,12 @@ export function EditorProvider(props: {
     setRightDockPanel,
     rightDockOpen,
     setRightDockOpen,
+    rightDockLayout: rightDockLayoutState,
+    setRightDockLayout,
+    inspectorTab,
+    setInspectorTab,
+    adjustSubTab,
+    setAdjustSubTab,
   };
 
   // Expose editor on window only in dev/test builds for E2E introspection.

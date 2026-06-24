@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
 import { EditorProvider } from "../EditorContext";
 import { PropertiesPanel } from "../PropertiesPanel";
+import { AdjustmentsPanel } from "../AdjustmentsPanel";
 import { WorkspaceManager } from "@/engine/workspace";
 
 function tick(): Promise<void> {
@@ -31,6 +32,29 @@ function renderPropertiesPanel(workspace: WorkspaceManager) {
   return { container, dispose, renderer, scheduler };
 }
 
+function renderAdjustmentsPanel(workspace: WorkspaceManager) {
+  const renderer = {
+    uploadImage: vi.fn(),
+    destroyTexture: vi.fn(),
+    resize: vi.fn(),
+    resizeToViewport: vi.fn(),
+  };
+  const scheduler = { requestRender: vi.fn() };
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+
+  const dispose = render(
+    () => (
+      <EditorProvider workspace={workspace} renderer={renderer as any} scheduler={scheduler as any}>
+        <AdjustmentsPanel />
+      </EditorProvider>
+    ),
+    container,
+  );
+
+  return { container, dispose, renderer, scheduler };
+}
+
 describe("PropertiesPanel basic adjustments", () => {
   afterEach(() => {
     document.body.replaceChildren();
@@ -50,7 +74,7 @@ describe("PropertiesPanel basic adjustments", () => {
     if (!history) throw new Error("Expected active history");
     const commitSpy = vi.spyOn(history, "commit");
 
-    const { container, dispose, renderer, scheduler } = renderPropertiesPanel(workspace);
+    const { container, dispose, renderer, scheduler } = renderAdjustmentsPanel(workspace);
     await tick();
 
     const brightness = container.querySelector<HTMLInputElement>("input[aria-label='Bright']");
@@ -135,9 +159,8 @@ describe("PropertiesPanel basic adjustments", () => {
 
   it("explains empty and locked layer states inline", async () => {
     const emptyWorkspace = new WorkspaceManager();
-    const emptySession = WorkspaceManager.createBlankDocument("empty-doc", "Empty Doc", 20, 10);
-    emptyWorkspace.addDocument(emptySession);
-    const emptyRender = renderPropertiesPanel(emptyWorkspace);
+    emptyWorkspace.addDocument(WorkspaceManager.createBlankDocument("empty-doc", "Empty Doc", 20, 10));
+    const emptyRender = renderAdjustmentsPanel(emptyWorkspace);
     await tick();
 
     expect(emptyRender.container.textContent).toContain("This layer has no pixels yet");
@@ -149,11 +172,15 @@ describe("PropertiesPanel basic adjustments", () => {
     const lockedLayer = lockedSession.engine.getLayers()[0];
     lockedSession.engine.setLayerImageBitmap(lockedLayer.id, { width: 20, height: 10 } as ImageBitmap);
     lockedSession.engine.setLayerLocked(lockedLayer.id, true);
-    const lockedRender = renderPropertiesPanel(lockedWorkspace);
-    await tick();
 
-    expect(lockedRender.container.textContent).toContain("Layer is locked. Unlock it in Layers to edit transform values.");
-    expect(lockedRender.container.textContent).toContain("Layer is locked. Unlock it before applying pixel adjustments.");
-    lockedRender.dispose();
+    const lockedProperties = renderPropertiesPanel(lockedWorkspace);
+    await tick();
+    expect(lockedProperties.container.textContent).toContain("Layer is locked. Unlock it in Layers to edit transform values.");
+    lockedProperties.dispose();
+
+    const lockedAdjustments = renderAdjustmentsPanel(lockedWorkspace);
+    await tick();
+    expect(lockedAdjustments.container.textContent).toContain("Layer is locked. Unlock it before applying pixel adjustments.");
+    lockedAdjustments.dispose();
   });
 });

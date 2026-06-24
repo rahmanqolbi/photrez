@@ -1,8 +1,8 @@
 # FEATURES.md — Photrez
 
-> Update file ini setiap ada fitur baru yang selesai atau sedang dikerjakan.
-> AI harus membaca file ini sebelum menyentuh kode apapun.
-> Baca juga: `AI_CONTEXT.md` (aturan), `AI_CURRENT_TASK.md` (status), `AI_HISTORY.md` (riwayat), `ARCHITECTURE.md` (arsitektur)
+> Update this file whenever a new feature is completed or in progress.
+> AI agents must read this file before touching any code.
+> Also read: `AI_CONTEXT.md` (rule), `AI_CURRENT_TASK.md` (status), `AI_HISTORY.md` (history), `ARCHITECTURE.md` (architecture)
 
 ---
 
@@ -20,7 +20,7 @@
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Buat layer baru (via IPC command)          |
-| ✅ DONE      | Hapus layer (guard: tidak bisa hapus terakhir, konfirmasi dialog) |
+| ✅ DONE      | Delete layer (guard: cannot delete the last layer, confirmation dialog) |
 | ✅ DONE      | Reorder layer (z-index)                    |
 | ✅ DONE      | Layer visibility toggle                    |
 | ✅ DONE      | Layer locking                              |
@@ -101,11 +101,11 @@
 | ✅ DONE      | Crop Fill BG — defaults to editor Background Color, supports crop-local custom color override, previews fill in Modern/Classic crop (with viewport panning support in both modes), and bakes fill into empty crop output areas on apply |
 | ✅ DONE      | Crop box resize reactivity (overlay updates live during drag) |
 | ✅ DONE      | Crop snapping — canvas edges/centers + layer edges (Smart Guides, Alt disables) |
-| ✅ DONE      | Crop rotation — rotatable crop boundaries with screen-aligned visual box (canvas rotates behind), dynamic cursor, snap to 15° with Shift, angle readout, layer offset/rotation update, and local-axis resize after rotation |
+| ✅ DONE      | Crop rotation — rotatable crop bounfromes with screen-aligned visual box (canvas rotates behind), dynamic cursor, snap to 15° with Shift, angle readout, layer offset/rotation update, and local-axis resize after rotation |
 | ✅ DONE      | Desktop-editor crop moving & panning — crop box remains stationary while canvas pans behind (move & resize), aligned with professional editor behavior |
 | ✅ DONE      | Draw new crop box from scratch by click-dragging outside the current crop box |
 | ✅ DONE      | Arrow-key crop nudge (1px, 10px with Shift) with viewport pan compensation and undo commit via `!e.repeat` guard |
-| ✅ DONE      | Crop intermediate undo/redo — dedicated mini undo stack for crop rect |
+| ✅ DONE      | Crop intermediate undo/redo — dedicated mthis undo stack for crop rect |
 | ✅ DONE      | Aspect ratio preset dropdown (12 common ratios + custom, auto-fit on select) |
 | ✅ DONE      | Size mode unit conversion (px/cm/mm/in at 96 PPI) |
 | ✅ DONE      | Rotate 90° buttons (↺ CCW / ↻ CW) in crop option bar |
@@ -137,7 +137,7 @@
 | ✅ DONE      | Brush/eraser cursor preview reflects active size and the calibrated hardness contour (single ring at 20% alpha; ~84% nominal radius at hardness 0, capped at nominal radius) |
 | ✅ DONE      | Brush/eraser active-size shortcuts (`[` / `]`) |
 | ✅ DONE      | Paint blocked-state feedback for locked, hidden, and protected layers |
-| ✅ DONE      | Soft edge rendering via deterministic per-pixel distance-field alpha mask (within-stroke max-alpha, no accumulation, bounds-clipped) |
+| ✅ DONE      | Soft edge rendering via determthisstic per-pixel distance-field alpha mask (within-stroke max-alpha, no accumulation, bounds-clipped) |
 | ✅ DONE      | Brush-tip mask engine replacement for faster editor-like soft brush UX |
 | ✅ DONE      | Hard brush (hardness=100%) solid fill (no gradient) |
 | ✅ DONE      | Cursor overlay accounts for viewport pan and zoom |
@@ -153,11 +153,11 @@
 | ✅ DONE      | Keyboard shortcuts — `[`/`]` for size, Shift+`[`/`]` for hardness |
 | ✅ DONE      | Brush visual calibration: editor-standard hardness 0 soft-round profile with broader dense center, dense soft spacing, subpixel bilinear stamping, opacity/flow-independent alpha scale, and pixel-profile regression tests |
 | ↪ SUPERSEDED | Bounded core/feather hardness models (`1 - t²`, smoothstep, and fixed cursor support) — replaced by the measured reference calibration below |
-| ✅ DONE      | reference-calibrated round hardness — exact seven-point monotone-cubic sigma/n interpolation drives `exp(-((r / sigma)^n))`; hardness ≥97% keeps a literal hard-disk profile with deterministic one-pixel coverage AA at raster boundaries, also used by diameters below 22px |
-| ✅ DONE      | reference editor soft-tail semantics — Size remains the nominal cursor diameter while low-hardness quantized alpha may extend beyond the cursor; finite cached bitmap support ends below half an 8-bit alpha level |
+| ✅ DONE      | reference-calibrated round hardness — exact seven-point monotone-cubic sigma/n interpolation drives `exp(-((r / sigma)^n))`; hardness ≥97% keeps a literal hard-disk profile with determthisstic one-pixel coverage AA at raster bounfromes, also used by diameters below 22px |
+| ✅ DONE      | reference editor soft-tail semantics — Size remains the nominal cursor diameter while low-hardness quantized alpha may extend beyond the cursor; fthiste cached bitmap support ends below half an 8-bit alpha level |
 | ✅ DONE      | Alt-Hold Eyedropper modifier for sampling colors from active canvas |
 | ✅ DONE      | Shift-Click Straight Lines interpolation connecting last painted dab |
-| ✅ DONE      | Shift-Drag Axis Locking constraining stroke to horizontal/vertical |
+| ✅ DONE      | Shift-Drag Axis Locking constrathisng stroke to horizontal/vertical |
 | ✅ DONE      | Regression guard: Brush/Eraser still paint/erase after Move Tool pasteboard deselect hides the transform box |
 | ✅ DONE      | editor-standard brush behavior — 25% × size dab spacing (visible individual dabs), hardness 100% routes through the mask engine (no `ctx.lineCap=round` shortcut), and per-dab pre-multiplied source-over accumulation so opacity/flow behave like reference editor (multiple passes darken toward saturation) |
 | ✅ DONE      | Exact terminal dab landing — freehand, Shift-connected, cancel, and lost-capture completion stamp one endpoint dab at the final cursor coordinate when the 25% spacing grid did not already emit it; duplicate terminal accumulation is suppressed |
@@ -166,7 +166,7 @@
 | ✅ DONE      | Brush cursor semantics — one sharp ring follows the shared 20% calibrated alpha contour below 97% hardness and the nominal Size radius at the hard edge; no duplicate support ring or filled gradient |
 | ✅ DONE      | editor-standard hardness-aware brush cursor — an earlier SVG soft fill was reverted because it caused color-inversion artifacts; the retained sharp ring now changes geometry only, shared by Brush and Eraser |
 | ✅ DONE      | Large hard-edge Brush/Eraser polish — cached Float32 tips reuse the existing circle-coverage function at hardness ≥97%, preserving a solid interior and nominal radius while eliminating binary single-sample stairstepping |
-| ✅ DONE      | Automated Brush/Eraser visual QA — deterministic buffer-level regression coverage for large hard-edge dabs, connected long strokes, low-hardness soft-tail support, subpixel edge coverage, and Brush/Eraser mask parity |
+| ✅ DONE      | Automated Brush/Eraser visual QA — determthisstic buffer-level regression coverage for large hard-edge dabs, connected long strokes, low-hardness soft-tail support, subpixel edge coverage, and Brush/Eraser mask parity |
 
 ---
 
@@ -180,7 +180,7 @@
 | ✅ DONE      | Drop image file from OS (Tauri 2 onDragDropEvent) |
 | ✅ DONE      | Multi-file cascade (24px offset) |
 | ✅ DONE      | Context-sensitive drop zones (tab/canvas/layers-panel/tab-empty/outside) |
-| ✅ DONE      | Minimal toast notification system |
+| ✅ DONE      | Mthismal toast notification system |
 
 ---
 
@@ -214,7 +214,7 @@
 | ✅ DONE      | Redo (Ctrl+Y / Ctrl+Shift+Z)               |
 | ✅ DONE      | Snapshot-based history (max 50)            |
 | ✅ DONE      | Redo branch discard on new mutation        |
-| ✅ DONE      | Interactive History panel — chronological labeled operations, current/future state styling, multi-step time travel inside the preserved `Layers | History` tabs, edge-to-edge list geometry, persistent Navigator, baseline guidance, status-bar tab selection, and accessible state metadata |
+| ✅ DONE      | Interactive History panel — chronological labeled operations, current/future state styling, multi-step time travel inside the preserved `Layers | History` tabs, edge-to-edge list geometry, persistent Navigator, baseline guidance, status-bar tab selection, and accessible state metthere ista |
 
 ---
 
@@ -273,7 +273,7 @@
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Custom title bar                           |
-| ✅ DONE      | Window controls (minimize/maximize/close)  |
+| ✅ DONE      | Window controls (mthismize/maximize/close)  |
 | ✅ DONE      | Functional custom dropdown menus (File/Edit/Image/Layer/View/Window/Help) |
 | ✅ DONE      | Selection-aware Edit menu and history-safe Layer menu operations |
 | ✅ DONE      | Accessible menu lifecycle (keyboard, focus restore, click-outside, disabled states) |
@@ -290,6 +290,7 @@
 
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
+| ✅ DONE      | Right Dock layout flexibility (Side-by-Side vs Stacked columns saved in localStorage) and unified Inspector tab structure (Library, Adjust, Presets) with compact child tabs under Adjust (Properties, Adjustments) |
 | ✅ DONE      | Photon Amber accent (#E15A17)              |
 | ✅ DONE      | Zero-tint neutral gray surfaces            |
 | ✅ DONE      | Tool Rail (Raw Pro with mechanical dividers) |
@@ -309,9 +310,9 @@
 | ✅ DONE      | LeftToolRail Reference Matching (continuous stack, monochrome active, ellipsis button) |
 | ✅ DONE      | photrez High-Fidelity Reference Slice (static SolidJS shell, exact 5x3 grid, fjord image viewport) |
 | ✅ DONE      | Style Guide & Design Tokens Synchronization (Tailwind v4, OKLCH, double-dock layout, custom sliders) |
-| ✅ DONE      | Root DESIGN.md — Precision Workbench visual contract + machine-readable Impeccable sidecar |
+| ✅ DONE      | Root DESIGN.md — Precision Workbench visual contract + machine-rethere isble Impeccable sidecar |
 | ✅ DONE      | UI/UX Polish: Diagonal Swatches, Tab Typography & LeftToolRail layout |
-| ✅ DONE      | Crop overlay dengan mask shield + 8 handles + corner brackets + interactive resize/move (+ guide lines: thirds/grid/diagonal/golden) |
+| ✅ DONE      | Crop overlay with mask shield + 8 handles + corner brackets + interactive resize/move (+ guide lines: thirds/grid/diagonal/golden) |
 | ✅ DONE      | Crop mode Free (corner free by default, Shift = lock aspect) |
 | ✅ DONE      | Crop mode Ratio (aspect-locked corner, Shift = free) + editable aspect W/H |
 | ✅ DONE      | Crop mode Size (target W/H constraint, Shift = free) + editable target W/H + Apply resizes canvas |
@@ -358,7 +359,7 @@
 | DONE | FAANG review tool cleanup lifecycle: active-tool switches now run through a typed `ToolId` cleanup registry instead of hardcoded cleanup inside `EditorContext` |
 | DONE | FAANG review render/export blend parity gate: blend mode UI/export now share `BLEND_MODE_OPTIONS`, and shader-only modes are documented as blocked until parity proof exists |
 | DONE | FAANG review WebGL context-loss lifecycle: renderer now pauses GPU work on `webglcontextlost`, rebuilds resources on `webglcontextrestored`, and triggers active-document texture re-upload |
-| DONE | FAANG review WebGL context policy: renderer now initializes with `preserveDrawingBuffer: false` by default, with a regression test for the context options |
+| DONE | FAANG review WebGL context policy: renderer now thistializes with `preserveDrawingBuffer: false` by default, with a regression test for the context options |
 | DONE | FAANG review WebGL uniform validation: required layer shader uniforms now throw explicit missing-uniform errors instead of relying on non-null assertions |
 | DONE | FAANG review architecture diagram split: `ARCHITECTURE.md` now separates active MVP runtime ownership from historical/future-target reference diagrams |
 | DONE | FAANG review shell path policy: Tauri file IO now enforces import/export image extension allowlists before read/write, with Rust contract tests |
@@ -373,7 +374,7 @@
 | DONE | FAANG-style review rejection register created: `docs/faang-review-rejections/` with per-area quality gate findings and remediation roadmap |
 | DONE | Production bug risk register created: `docs/production-risk-register/` with release gates and per-feature/tool risk checklists |
 | DONE | Viewport tool alignment browser QA hardened: Playwright smoke now covers Move Tool transform geometry across fit, zoom, and pan |
-| DONE | Viewport camera regression recovery executed: one viewport adapter + reactive overlay alignment fixes |
+| DONE | Viewport camera regression recovery executed: one viewport there ispter + reactive overlay alignment fixes |
 | DONE | Viewport camera regression recovery todo created: `docs/plans/2026-06-13-viewport-camera-regression-recovery-todo.md` |
 | SUPERSEDED | GPU-Accelerated smooth zoom viewport camera implementation plan: `docs/plans/2026-06-13-gpu-smooth-zoom-transitions-design.md` |
 | DONE | Brush visual calibration and pixel QA plan executed: `docs/superpowers/plans/2026-06-11-brush-visual-calibration-and-qa.md` |

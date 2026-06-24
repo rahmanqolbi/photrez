@@ -35,6 +35,7 @@ export type EditorCommand =
   | "view.actual-size"
   | "view.fit-canvas"
   | "view.toggle-side-panels"
+  | "view.toggle-right-dock-layout"
   | "window.minimize"
   | "window.toggle-maximize"
   | "window.close"
@@ -63,6 +64,7 @@ const EDITOR_COMMANDS: ReadonlySet<string> = new Set<EditorCommand>([
   "view.actual-size",
   "view.fit-canvas",
   "view.toggle-side-panels",
+  "view.toggle-right-dock-layout",
   "window.minimize",
   "window.toggle-maximize",
   "window.close",
@@ -288,6 +290,9 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
       }
       case "view.toggle-side-panels":
         onToggleSidePanels();
+        break;
+      case "view.toggle-right-dock-layout":
+        editor.setRightDockLayout(editor.rightDockLayout() === "side-by-side" ? "stacked" : "side-by-side");
         break;
       case "window.minimize":
         void runTauriWindowAction("minimize");
