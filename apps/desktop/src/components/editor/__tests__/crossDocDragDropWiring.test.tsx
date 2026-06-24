@@ -8,11 +8,11 @@
 // (Tauri listener not mounted globally, dragController state never set, etc).
 //
 // This file tests the wiring that connects:
-//   - Tauri OS file drop → GlobalDragDropHost → dispatchTauriFileDrop
+//   - Tauri OS file drop ΓåÆ GlobalDragDropHost ΓåÆ dispatchTauriFileDrop
 //   - Pure zone resolution: findDropZoneAtPoint by data attribute
 //
 // If any of these wirings break, the feature silently no-ops in the real app.
-// See AI_HISTORY §"[2026-06-16] BUG FIX — Cross-Doc Drag-Drop Wiring".
+// See AI_HISTORY ┬º"[2026-06-16] BUG FIX ΓÇö Cross-Doc Drag-Drop Wiring".
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render } from "solid-js/web";
@@ -26,11 +26,11 @@ import { findDropZoneAtPoint, dispatchTauriFileDrop } from "../crossDocDropDispa
 import { resetToasts } from "../Toast";
 import type { LayerNode } from "@/engine/types";
 
-// ─────────────────────────────────────────────────────────────────────────
-//  Tauri webview mock — captures the onDragDropEvent callback so tests can
+// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+//  Tauri webview mock ΓÇö captures the onDragDropEvent callback so tests can
 //  fire OS file-drop events synchronously. Without this listener being
 //  mounted globally, file drops silently no-op in the real app.
-// ─────────────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 const tauriState = vi.hoisted(() => ({
   capturedCallback: null as null | ((event: any) => void),
@@ -60,7 +60,7 @@ beforeEach(() => {
     height: 100,
     close: () => {},
   } as ImageBitmap);
-  // jsdom 29 does not implement elementFromPoint — polyfill it on the
+  // jsdom 29 does not implement elementFromPoint ΓÇö polyfill it on the
   // document instance so crossDocDropDispatch can call it.
   mockElementFromPoint = vi.fn().mockReturnValue(null);
   (document as any).elementFromPoint = mockElementFromPoint;
@@ -71,9 +71,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// ─────────────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 //  Pure function: findDropZoneAtPoint
-// ─────────────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 describe("findDropZoneAtPoint (zone resolution)", () => {
   it("returns 'canvas' when point is over a data-canvas-drop-zone element", () => {
@@ -119,9 +119,9 @@ describe("findDropZoneAtPoint (zone resolution)", () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 //  Integration: GlobalDragDropHost is mounted + wires Tauri events to dispatch
-// ─────────────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 describe("GlobalDragDropHost wiring (Tauri OS file drop)", () => {
   let ws: WorkspaceManager;
@@ -161,7 +161,7 @@ describe("GlobalDragDropHost wiring (Tauri OS file drop)", () => {
     expect(tauriState.capturedCallback).not.toBeNull();
   });
 
-  it("Tauri drop on canvas zone → addFilesAsLayers → active doc gains layer", async () => {
+  it("Tauri drop on canvas zone ΓåÆ addFilesAsLayers ΓåÆ active doc gains layer", async () => {
     renderWith(() => {
       const session = WorkspaceManager.createBlankDocument("wiring-canvas", "Canvas", 800, 600);
       ws.addDocument(session);
@@ -184,7 +184,7 @@ describe("GlobalDragDropHost wiring (Tauri OS file drop)", () => {
     expect(scheduler.requestRender).toHaveBeenCalled();
   });
 
-  it("Tauri drop on layers-panel zone → addFilesAsLayers (same doc)", async () => {
+  it("Tauri drop on layers-panel zone ΓåÆ addFilesAsLayers (same doc)", async () => {
     renderWith(() => {
       const session = WorkspaceManager.createBlankDocument("wiring-panel", "Panel", 800, 600);
       ws.addDocument(session);
@@ -205,7 +205,7 @@ describe("GlobalDragDropHost wiring (Tauri OS file drop)", () => {
     expect(engine.getLayers().length).toBe(2);
   });
 
-  it("Tauri drop on a tab zone → addFilesAsLayers targeting that specific doc", async () => {
+  it("Tauri drop on a tab zone ΓåÆ addFilesAsLayers targeting that specific doc", async () => {
     renderWith(() => {
       const a = WorkspaceManager.createBlankDocument("doc-a", "A", 800, 600);
       const b = WorkspaceManager.createBlankDocument("doc-b", "B", 800, 600);
@@ -229,7 +229,7 @@ describe("GlobalDragDropHost wiring (Tauri OS file drop)", () => {
     expect(ws.getEngine("doc-a")!.getLayers().length).toBe(1);
   });
 
-  it("Tauri drop on tab-empty area → createNewDocsFromFiles (new doc)", async () => {
+  it("Tauri drop on tab-empty area ΓåÆ createNewDocsFromFiles (new doc)", async () => {
     renderWith(() => {
       const a = WorkspaceManager.createBlankDocument("existing", "Existing", 800, 600);
       ws.addDocument(a);
@@ -249,7 +249,7 @@ describe("GlobalDragDropHost wiring (Tauri OS file drop)", () => {
     expect(ws.getDocumentCount()).toBe(2);
   });
 
-  it("Tauri drop on outside zone (no marker) → createNewDocsFromFiles", async () => {
+  it("Tauri drop on outside zone (no marker) ΓåÆ createNewDocsFromFiles", async () => {
     renderWith(() => {
       const a = WorkspaceManager.createBlankDocument("existing2", "Existing2", 800, 600);
       ws.addDocument(a);
@@ -268,11 +268,11 @@ describe("GlobalDragDropHost wiring (Tauri OS file drop)", () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 //  In-app layer drag wiring: LayerItem.onDragStart must call
 //  dragController.beginLayerDrag so drop zones can read state.payload.
 //  This was the OTHER half of the "feature doesn't work in real app" bug.
-// ─────────────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 describe("LayerItem wiring (in-app layer drag)", () => {
   let container: HTMLDivElement;
@@ -311,7 +311,6 @@ describe("LayerItem wiring (in-app layer drag)", () => {
             isDragged={false}
             isDragOver={false}
             dropPosition={null}
-            isAnyDragActive={false}
             isEditing={false}
             editName=""
             setEditingLayerId={vi.fn()}
@@ -397,7 +396,6 @@ describe("LayerItem wiring (in-app layer drag)", () => {
             isDragged={false}
             isDragOver={false}
             dropPosition={null}
-            isAnyDragActive={false}
             isEditing={false}
             editName=""
             setEditingLayerId={vi.fn()}
@@ -426,11 +424,11 @@ describe("LayerItem wiring (in-app layer drag)", () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 //  DocumentTabsBar wiring: handleTabDrop must handle BOTH file drag AND
-//  layer drag. The previous code only handled file drag → layer drop on
+//  layer drag. The previous code only handled file drag ΓåÆ layer drop on
 //  tab was a silent no-op even though state.dragKind === "layer".
-// ─────────────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 describe("DocumentTabsBar wiring (tab drop with layer drag)", () => {
   let ws: WorkspaceManager;
@@ -561,11 +559,11 @@ describe("DocumentTabsBar wiring (tab drop with layer drag)", () => {
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 //  Hover-to-switch: dragover on a tab for 500ms must switch the active
 //  document. This is the feature: "pas di drag ke tab maka akan terbuka
 //  document yang satunya".
-// ─────────────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 describe("DocumentTabsBar wiring (hover-to-switch)", () => {
   let ws: WorkspaceManager;
@@ -643,7 +641,7 @@ describe("DocumentTabsBar wiring (hover-to-switch)", () => {
       fireDragOver(tabEl);
       expect(probeRef.current.drag.state().hoverTabId).toBe("doc-b");
 
-      // Simulate leaving the tab — no relatedTarget means we go off the tab
+      // Simulate leaving the tab ΓÇö no relatedTarget means we go off the tab
       const leaveEvt = new Event("dragleave", { bubbles: true, cancelable: true }) as any;
       leaveEvt.relatedTarget = null;
       Object.defineProperty(leaveEvt, "currentTarget", { value: tabEl });

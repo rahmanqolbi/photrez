@@ -18,14 +18,10 @@ export function useLayerDragReorder() {
   const [draggedIndex, setDraggedIndex] = createSignal<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = createSignal<number | null>(null);
   const [dropPosition, setDropPosition] = createSignal<"above" | "below" | null>(null);
-  // ponytail: exposed as signal so LayerItem can flip cursor to
-  // "grabbing" while a drag is active. Using a signal (not a plain
-  // boolean) keeps it reactive — Solid re-evaluates the class binding
-  // when the value flips true/false.
-  const [dragActive, setDragActive] = createSignal(false);
 
   let layerListRef: HTMLDivElement | undefined;
   let dragStartY = 0;
+  let dragActive = false;
   let dragSourceIndex: number | null = null;
 
   const handlePointerDragStart = (e: PointerEvent, index: number) => {
@@ -43,17 +39,16 @@ export function useLayerDragReorder() {
 
     dragStartY = e.clientY;
     dragSourceIndex = index;
-    setDragActive(false);
+    dragActive = false;
 
     const onPointerMove = (ev: PointerEvent) => {
       // If HTML5 drag started in the meantime, abandon in-panel reorder.
-      // ponytail: clear all drag signals before removing listeners —
+      // ponytail: clear drag signals before removing listeners â€”
       // otherwise the source layer stays visually "stuck" as dragged
-      // until the next pointerup cycle. The pointerup listener is
-      // removed here, so its cleanup block never runs.
+      // until the next pointerup cycle (the pointerup listener is
+      // removed here, so its cleanup block never runs).
       if (dragController.state().dragKind !== null) {
-        setDragActive(false);
-        dragSourceIndex = null;
+        dragActive = false;
         setDraggedIndex(null);
         setDragOverIndex(null);
         setDropPosition(null);
@@ -62,10 +57,10 @@ export function useLayerDragReorder() {
         return;
       }
       // Dead-zone: require 5px movement before starting drag
-      if (!dragActive() && Math.abs(ev.clientY - dragStartY) < 5) return;
+      if (!dragActive && Math.abs(ev.clientY - dragStartY) < 5) return;
 
-      if (!dragActive()) {
-        setDragActive(true);
+      if (!dragActive) {
+        dragActive = true;
         setDraggedIndex(dragSourceIndex);
       }
 
@@ -100,7 +95,7 @@ export function useLayerDragReorder() {
 
       // If HTML5 drag took over, don't do in-panel reorder
       if (dragController.state().dragKind !== null) {
-        setDragActive(false);
+        dragActive = false;
         dragSourceIndex = null;
         setDraggedIndex(null);
         setDragOverIndex(null);
@@ -108,7 +103,7 @@ export function useLayerDragReorder() {
         return;
       }
 
-      if (dragActive() && dragSourceIndex !== null) {
+      if (dragActive && dragSourceIndex !== null) {
         const toIdx = dragOverIndex();
         const pos = dropPosition();
         if (toIdx !== null && toIdx !== dragSourceIndex) {
@@ -133,7 +128,7 @@ export function useLayerDragReorder() {
       }
 
       // Reset state
-      setDragActive(false);
+      dragActive = false;
       dragSourceIndex = null;
       setDraggedIndex(null);
       setDragOverIndex(null);
@@ -148,7 +143,6 @@ export function useLayerDragReorder() {
     draggedIndex,
     dragOverIndex,
     dropPosition,
-    dragActive,
     handlePointerDragStart,
     setLayerListRef: (el: HTMLDivElement | undefined) => { layerListRef = el; },
     getLayerListRef: () => layerListRef,

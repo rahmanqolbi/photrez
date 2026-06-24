@@ -25,6 +25,7 @@ export interface EngineFacade {
   setLayerVisibility(id: string, visible: boolean): void;
   setLayerLocked(id: string, locked: boolean): void;
   setLayerImageBitmap(id: string, bitmap: ImageBitmap): void;
+  reorderLayer(fromIndex: number, toIndex: number): void;
   deleteLayer(id: string): void;
   snapshot(): DocumentModel;
 }
@@ -81,13 +82,29 @@ export function addLayerFromCrossDoc(
   const targetDocId = resolveTargetDocId(target, ws);
   if (!targetDocId) return { newLayerId: null };
 
-  if (payload.sourceDocId === targetDocId) return { newLayerId: null };
-
   const sourceEngine = ws.getEngine(payload.sourceDocId);
   if (!sourceEngine) {
     showToast("Source document was closed. Drop cancelled.", "error");
     return { newLayerId: null };
   }
+
+  // ponytail: same-doc drop means the user is reordering within their
+  // own layer panel. The pointer-based system (useLayerDragReorder)
+  // handles fine-grained insertion position; HTML5 drag cannot track
+  // that position because the dragController DropTarget type has no
+  // index field. Fall back to "move source to end of its own stack"
+  // so the drop is never silently lost.
+  if (payload.sourceDocId === targetDocId) {
+    const sourceIdx = sourceEngine.getLayers().findIndex((l) => l.id === payload.layerId);
+    if (sourceIdx < 0) return { newLayerId: null };
+    const sourceHistory = ws.getHistory(payload.sourceDocId);
+    if (sourceHistory) sourceHistory.commit(sourceEngine.snapshot(), "Reorder Layer");
+    // Move to end of stack — the user's intent is "this layer should
+    // be in this panel", and appending is the safe default.
+    sourceEngine.reorderLayer(sourceIdx, sourceEngine.getLayers().length - 1);
+    return { newLayerId: payload.layerId };
+  }
+
   const sourceLayer = sourceEngine.getLayer(payload.layerId);
   if (!sourceLayer) {
     showToast("Layer was deleted. Drop cancelled.", "error");

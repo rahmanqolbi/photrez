@@ -149,12 +149,11 @@ export function LayersPanel() {
     ];
   };
 
-  // ─── Pointer-based Drag Reorder (replaces HTML5 DnD for Tauri compatibility) ───
+  // ΓöÇΓöÇΓöÇ Pointer-based Drag Reorder (replaces HTML5 DnD for Tauri compatibility) ΓöÇΓöÇΓöÇ
   const {
     draggedIndex,
     dragOverIndex,
     dropPosition,
-    dragActive,
     handlePointerDragStart,
     setLayerListRef,
   } = useLayerDragReorder();
@@ -393,15 +392,14 @@ export function LayersPanel() {
         >
           <For each={layers()}>
             {(layer, idx) => (
-<LayerItem
-              layer={layer}
-              idx={idx()}
-              isActive={selectedLayerId() === layer.id}
-              isDragged={draggedIndex() === idx()}
-              isDragOver={dragOverIndex() === idx()}
-              dropPosition={dropPosition()}
-              isAnyDragActive={dragActive()}
-              isEditing={editingLayerId() === layer.id}
+              <LayerItem
+                layer={layer}
+                idx={idx()}
+                isActive={selectedLayerId() === layer.id}
+                isDragged={draggedIndex() === idx()}
+                isDragOver={dragOverIndex() === idx()}
+                dropPosition={dropPosition()}
+                isEditing={editingLayerId() === layer.id}
                 editName={editName()}
                 setEditingLayerId={setEditingLayerId}
                 setEditName={setEditName}

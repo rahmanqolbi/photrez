@@ -98,6 +98,10 @@ function makeEngine(opts: { id: string; layerCount?: number; width?: number; hei
       const l = layerArr.find((layer) => layer.id === lid);
       if (l) l.imageBitmap = imageBitmap;
     }),
+    reorderLayer: vi.fn((fromIndex: number, toIndex: number) => {
+      const [moved] = layerArr.splice(fromIndex, 1);
+      layerArr.splice(toIndex, 0, moved);
+    }),
     deleteLayer: vi.fn((lid: string) => {
       const idx = layerArr.findIndex((l) => l.id === lid);
       if (idx >= 0) layerArr.splice(idx, 1);
@@ -115,7 +119,7 @@ function makeWorkspace(engines: Record<string, any>) {
   };
 }
 
-describe("addLayerFromCrossDoc — copy (default)", () => {
+describe("addLayerFromCrossDoc â€” copy (default)", () => {
   beforeEach(() => {
     mockShowToast.mockClear();
     resetToasts();
@@ -133,7 +137,7 @@ describe("addLayerFromCrossDoc — copy (default)", () => {
   });
 });
 
-describe("addLayerFromCrossDoc — move (Alt+drag)", () => {
+describe("addLayerFromCrossDoc â€” move (Alt+drag)", () => {
   beforeEach(() => {
     mockShowToast.mockClear();
     resetToasts();
@@ -169,17 +173,33 @@ describe("addLayerFromCrossDoc — move (Alt+drag)", () => {
   });
 });
 
-describe("addLayerFromCrossDoc — validation", () => {
+describe("addLayerFromCrossDoc â€” validation", () => {
   beforeEach(() => {
     mockShowToast.mockClear();
     resetToasts();
   });
 
-  it("no-op on same-doc drop", () => {
+  it("reorders layer to end of stack on same-doc drop (was: silent no-op, regression: in-panel drag felt broken)", () => {
     const engine = makeEngine({ id: "doc-A" });
+    const layers = [
+      { id: "layer-1" },
+      { id: "layer-2" },
+      { id: "layer-3" },
+    ];
+    engine.getLayers.mockReturnValue(layers as any);
+    engine.getLayer.mockImplementation((id: string) => layers.find((l) => l.id === id) as any);
     const ws = makeWorkspace({ "doc-A": engine });
-    addLayerFromCrossDoc(basePayload, { type: "canvas" }, { x: 0, y: 0 }, ws as any);
+    ws.getActiveDocumentId.mockReturnValue("doc-A");
+    addLayerFromCrossDoc(
+      { ...basePayload, sourceDocId: "doc-A", layerId: "layer-1" },
+      { type: "layers-panel" },
+      { x: 0, y: 0 },
+      ws as any,
+    );
+    // Should NOT clone (same-doc means reorder, not copy).
     expect(engine.addLayer).not.toHaveBeenCalled();
+    // Should reorder the source layer to end of its own stack.
+    expect(engine.reorderLayer).toHaveBeenCalledWith(0, 2);
   });
 
   it("error toast + abort when source doc missing", () => {
@@ -207,7 +227,7 @@ describe("addLayerFromCrossDoc — validation", () => {
   });
 });
 
-describe("addLayerFromCrossDoc — position", () => {
+describe("addLayerFromCrossDoc â€” position", () => {
   beforeEach(() => {
     mockShowToast.mockClear();
     resetToasts();
@@ -244,7 +264,7 @@ describe("addLayerFromCrossDoc — position", () => {
   });
 });
 
-describe("addLayerFromCrossDoc — return value", () => {
+describe("addLayerFromCrossDoc â€” return value", () => {
   beforeEach(() => {
     mockShowToast.mockClear();
     resetToasts();
@@ -277,15 +297,19 @@ describe("addLayerFromCrossDoc — return value", () => {
     expect(result.newLayerId).toBeNull();
   });
 
-  it("returns null newLayerId on same-doc drop", () => {
+  it("returns the source layer id on same-doc drop (caller uses it to signal reorder completed)", () => {
     const engine = makeEngine({ id: "doc-A" });
+    const layers = [{ id: "layer-source" }];
+    engine.getLayers.mockReturnValue(layers as any);
+    engine.getLayer.mockReturnValue(layers[0] as any);
     const ws = makeWorkspace({ "doc-A": engine });
+    ws.getActiveDocumentId.mockReturnValue("doc-A");
     const result = addLayerFromCrossDoc(
-      basePayload,
-      { type: "canvas" },
+      { ...basePayload, sourceDocId: "doc-A", layerId: "layer-source" },
+      { type: "layers-panel" },
       { x: 0, y: 0 },
       ws as any
     );
-    expect(result.newLayerId).toBeNull();
+    expect(result.newLayerId).toBe("layer-source");
   });
 });
