@@ -2,6 +2,8 @@ import { For } from "solid-js";
 import { Icon } from "./icons";
 import { useEditor } from "./EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
+import { MAX_OPEN_DOCUMENTS } from "@/engine/types";
+import { showToast } from "./Toast";
 
 const CANVAS_PRESETS = [
   { label: "Small", width: 800, height: 600 },
@@ -13,6 +15,14 @@ export function EmptyWorkspace() {
   const { openImage, workspace, scheduler } = useEditor();
 
   const createCanvas = (width: number, height: number) => {
+    // ponytail: guard against MAX_OPEN_DOCUMENTS so the user gets a
+    // toast instead of a silent throw from workspace.addDocument.
+    // The other entry points (crossDocLayerOps, editorOpenImage)
+    // already check isFull() before adding; this was the missing one.
+    if (workspace.isFull()) {
+      showToast(`Workspace full — close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
+      return;
+    }
     const id = `doc-${crypto.randomUUID()}`;
     const session = WorkspaceManager.createBlankDocument(id, `Untitled ${width}x${height}`, width, height);
     workspace.addDocument(session);

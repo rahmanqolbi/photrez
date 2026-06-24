@@ -3,11 +3,13 @@ import { listen } from "@tauri-apps/api/event";
 import { isEditableTarget } from "@/lib/dom";
 import { isTauriRuntime, runTauriWindowAction } from "@/lib/desktop";
 import { WorkspaceManager } from "@/engine/workspace";
+import { MAX_OPEN_DOCUMENTS } from "@/engine/types";
 import { SelectionOperations } from "@/features/selection/SelectionOperations";
 import { useEditor } from "./EditorContext";
 import { useLayerActions } from "./useLayerActions";
 import { cancelLayerTransformSession } from "./transformSession";
 import { useDialog } from "./DialogProvider";
+import { showToast } from "./Toast";
 
 export const NATIVE_MENU_EVENT = "photrez://native-menu";
 export const EDITOR_COMMAND_EVENT = "photrez://editor-command";
@@ -188,6 +190,12 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
 
     switch (command) {
       case "file.new": {
+        // ponytail: guard against MAX_OPEN_DOCUMENTS to surface a toast
+        // instead of letting workspace.addDocument throw silently.
+        if (editor.workspace.isFull()) {
+          showToast(`Workspace full — close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
+          break;
+        }
         const id = `doc-${crypto.randomUUID()}`;
         const name = `Untitled-${editor.workspace.getDocumentCount() + 1}`;
         editor.workspace.addDocument(

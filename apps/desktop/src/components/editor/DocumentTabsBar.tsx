@@ -3,9 +3,11 @@ import { clsx } from "clsx";
 import { Icon } from "./icons";
 import { useEditor } from "./EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
+import { MAX_OPEN_DOCUMENTS } from "@/engine/types";
 import { cancelLayerTransformSession } from "./transformSession";
 import { useDragController } from "./DragController";
 import { addFilesAsLayers, addLayerFromCrossDoc, createNewDocsFromFiles, type WorkspaceFacade } from "./crossDocLayerOps";
+import { showToast } from "./Toast";
 
 export function DocumentTabsBar() {
   const { workspace, documents, activeDocumentId, renderer, scheduler, layerTransformSession, setLayerTransformSession } = useEditor();
@@ -39,6 +41,12 @@ export function DocumentTabsBar() {
   const handleNewTab = () => {
     if (layerTransformSession()) {
       cancelActiveTransformSession();
+    }
+    // ponytail: guard against MAX_OPEN_DOCUMENTS to surface a toast
+    // instead of letting workspace.addDocument throw silently.
+    if (workspace.isFull()) {
+      showToast(`Workspace full — close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
+      return;
     }
     const nextId = `doc-${crypto.randomUUID()}`;
     const name = `Untitled-${workspace.getDocumentCount() + 1}`;
