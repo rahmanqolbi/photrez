@@ -142,12 +142,18 @@ export function AppMenuBar(props: AppMenuBarProps) {
       return props.isRightDockOpen ? "Hide Side Panels" : "Show Side Panels";
     }
     if (entry.command === "view.toggle-right-dock-layout") {
-      try {
-        const editor = useEditor();
-        return editor.rightDockLayout() === "side-by-side" ? "Use Stacked Side Dock" : "Use Side-by-Side Side Dock";
-      } catch (e) {
-        return "Use Stacked Side Dock";
-      }
+      // ponytail: removed the silent try/catch fallback that returned
+      // a hard-coded "Use Stacked Side Dock" label on failure. SolidJS
+      // useContext is conditional-safe (unlike React hooks), so calling
+      // it inside this per-item helper is fine. AppMenuBar is always
+      // mounted inside EditorProvider in production (EditorShell.tsx
+      // renders it under EditorProvider), so useEditor() cannot throw
+      // there. In tests it renders standalone, which is exactly the
+      // case the silent fallback was hiding — if those tests ever
+      // actually need editor.rightDockLayout(), they should wrap with
+      // EditorProvider like the other 70+ tests do.
+      const editor = useEditor();
+      return editor.rightDockLayout() === "side-by-side" ? "Use Stacked Side Dock" : "Use Side-by-Side Side Dock";
     }
     return entry.label;
   };

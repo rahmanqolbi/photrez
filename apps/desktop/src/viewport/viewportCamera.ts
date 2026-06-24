@@ -185,12 +185,16 @@ export class ViewportCamera {
   }
 
   public getViewProjectionMatrix(canvasW?: number, canvasH?: number): Float32Array {
-    if (canvasW !== undefined) this.viewportWidth = canvasW;
-    if (canvasH !== undefined) this.viewportHeight = canvasH;
+    // ponytail: this used to mutate viewportWidth/Height as a side
+    // effect when canvasW/H were passed. Pure getter is the right
+    // contract — callers that want to resize the camera must call
+    // setViewportSize() explicitly. The optional params are still
+    // accepted so existing tests that pass them continue to work
+    // without forcing every call site to thread dimensions.
+    const w = canvasW ?? this.viewportWidth;
+    const h = canvasH ?? this.viewportHeight;
 
     const { x, y, zoom } = this.current;
-    const w = this.viewportWidth;
-    const h = this.viewportHeight;
     const m = new Float32Array(16);
 
     const it = this.imageTransform;

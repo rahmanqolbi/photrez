@@ -2,6 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
 import { AppMenuBar } from "../AppMenuBar";
 import type { EditorCommand } from "../useEditorCommands";
+import { EditorProvider } from "../EditorContext";
+import { WorkspaceManager } from "@/engine/workspace";
+import { WebGL2Backend } from "@/renderer/webgl2";
+import { RenderScheduler } from "@/renderer/scheduler";
+import { ViewportCamera } from "@/viewport/viewportCamera";
 
 function tick(): Promise<void> {
   return new Promise((resolve) => queueMicrotask(resolve));
@@ -14,13 +19,29 @@ function renderMenu(options?: {
   const execute = vi.fn<(command: EditorCommand) => void>();
   const container = document.createElement("div");
   document.body.appendChild(container);
+  // ponytail: AppMenuBar calls useEditor() to render the
+  // right-dock-layout label conditionally. In production it is
+  // always mounted inside EditorProvider (EditorShell.tsx renders
+  // it under EditorProvider), so the test now wraps with the same
+  // provider to mirror the production tree.
+  const workspace = new WorkspaceManager();
+  const camera = new ViewportCamera();
+  const renderer = new WebGL2Backend();
+  const scheduler = new RenderScheduler(() => {});
   const dispose = render(
     () => (
-      <AppMenuBar
-        execute={execute}
-        isEnabled={options?.isEnabled ?? (() => true)}
-        isRightDockOpen={options?.isRightDockOpen ?? true}
-      />
+      <EditorProvider
+        workspace={workspace}
+        renderer={renderer}
+        scheduler={scheduler}
+        camera={camera}
+      >
+        <AppMenuBar
+          execute={execute}
+          isEnabled={options?.isEnabled ?? (() => true)}
+          isRightDockOpen={options?.isRightDockOpen ?? true}
+        />
+      </EditorProvider>
     ),
     container,
   );
