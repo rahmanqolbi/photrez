@@ -1,9 +1,11 @@
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { clsx } from "clsx";
 import { Icon } from "./icons";
 import { LayersPanel } from "./LayersPanel";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { AdjustmentsPanel } from "./AdjustmentsPanel";
+import { HistoryPanel } from "./HistoryPanel";
+import { Navigator } from "./Navigator";
 import { useEditor } from "./EditorContext";
 
 type RightDockProps = {
@@ -11,54 +13,12 @@ type RightDockProps = {
   onClose: () => void;
 };
 
-type InspectorTab = "library" | "adjust" | "presets";
-
-function InspectorTabs(props: { activeTab: InspectorTab; onTabChange: (tab: InspectorTab) => void }) {
-  return (
-    <nav class="flex h-full min-w-0 items-center overflow-hidden">
-      <button
-        onClick={() => props.onTabChange("library")}
-        class={clsx(
-          "relative flex h-full items-center px-4 text-[12px] font-medium transition-colors",
-          props.activeTab === "library"
-            ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[2px] after:bg-editor-accent"
-            : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
-        )}
-      >
-        Library
-      </button>
-      <button
-        onClick={() => props.onTabChange("adjust")}
-        class={clsx(
-          "relative flex h-full items-center px-4 text-[12px] font-medium transition-colors",
-          props.activeTab === "adjust"
-            ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[2px] after:bg-editor-accent"
-            : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
-        )}
-      >
-        Adjust
-      </button>
-      <button
-        onClick={() => props.onTabChange("presets")}
-        class={clsx(
-          "relative flex h-full items-center px-4 text-[12px] font-medium transition-colors",
-          props.activeTab === "presets"
-            ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[2px] after:bg-editor-accent"
-            : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
-        )}
-      >
-        Presets
-      </button>
-    </nav>
-  );
-}
-
 function ExportButton() {
   const { setShowExportDialog } = useEditor();
   return (
     <button
       onClick={() => setShowExportDialog(true)}
-      class="flex h-[28px] shrink-0 items-center gap-2 rounded-[4px] border border-editor-field-border px-3 text-[12.5px] text-editor-text transition-colors hover:bg-white/[0.045]"
+      class="flex h-[28px] shrink-0 items-center gap-2 rounded-[4px] border border-editor-field-border px-3 text-[12.5px] text-editor-text transition-colors hover:bg-white/[0.045] hover:text-editor-text"
     >
       Export
       <Icon
@@ -70,45 +30,23 @@ function ExportButton() {
   );
 }
 
-function AdjustPanel() {
-  const { adjustSubTab, setAdjustSubTab } = useEditor();
-
-  return (
-    <div class="flex flex-grow flex-col min-h-0">
-      <div class="flex h-[36px] shrink-0 items-center border-b border-editor-divider bg-editor-panel/50 pl-0">
-        <button
-          onClick={() => setAdjustSubTab("properties")}
-          class={clsx(
-            "relative flex h-full items-center px-4 text-[11px] font-medium transition-colors",
-            adjustSubTab() === "properties"
-              ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[1.5px] after:bg-editor-accent"
-              : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
-          )}
-        >
-          Properties
-        </button>
-        <button
-          onClick={() => setAdjustSubTab("adjustments")}
-          class={clsx(
-            "relative flex h-full items-center px-4 text-[11px] font-medium transition-colors",
-            adjustSubTab() === "adjustments"
-              ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[1.5px] after:bg-editor-accent"
-              : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
-          )}
-        >
-          Adjustments
-        </button>
-      </div>
-      <div class="flex-1 min-h-0 flex flex-col">
-        {adjustSubTab() === "properties" ? <PropertiesPanel /> : <AdjustmentsPanel />}
-      </div>
-    </div>
-  );
-}
-
 function InspectorDock() {
-  const { inspectorTab, setInspectorTab, rightDockLayout } = useEditor();
+  const { inspectorTab, setInspectorTab, adjustSubTab, setAdjustSubTab, rightDockLayout } = useEditor();
   const isStacked = () => rightDockLayout() === "stacked";
+
+  const activeTab = () => {
+    if (inspectorTab() === "presets") return "presets";
+    return adjustSubTab();
+  };
+
+  const handleTabChange = (tab: "properties" | "adjustments" | "presets") => {
+    if (tab === "presets") {
+      setInspectorTab("presets");
+    } else {
+      setInspectorTab("adjust");
+      setAdjustSubTab(tab);
+    }
+  };
 
   return (
     <div
@@ -119,19 +57,56 @@ function InspectorDock() {
           : "border-b lg:border-b-0 lg:border-r lg:w-[300px] 2xl:w-[336px] lg:flex-none"
       )}
     >
-      <div class="flex h-[44px] shrink-0 items-center border-b border-editor-divider bg-editor-topbar pl-0">
-        <InspectorTabs activeTab={inspectorTab()} onTabChange={setInspectorTab} />
+      <div class="flex h-[44px] shrink-0 items-center border-b border-editor-divider bg-editor-panel pl-0">
+        <nav role="tablist" aria-label="Inspector tabs" class="flex h-full min-w-0 items-center overflow-hidden">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab() === "properties"}
+            onClick={() => handleTabChange("properties")}
+            class={clsx(
+              "relative flex h-full items-center px-4 text-[12px] font-medium transition-colors",
+              activeTab() === "properties"
+                ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[2px] after:bg-editor-accent"
+                : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
+            )}
+          >
+            Properties
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab() === "adjustments"}
+            onClick={() => handleTabChange("adjustments")}
+            class={clsx(
+              "relative flex h-full items-center px-4 text-[12px] font-medium transition-colors",
+              activeTab() === "adjustments"
+                ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[2px] after:bg-editor-accent"
+                : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
+            )}
+          >
+            Adjustments
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab() === "presets"}
+            onClick={() => handleTabChange("presets")}
+            class={clsx(
+              "relative flex h-full items-center px-4 text-[12px] font-medium transition-colors",
+              activeTab() === "presets"
+                ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[2px] after:bg-editor-accent"
+                : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
+            )}
+          >
+            Presets
+          </button>
+        </nav>
       </div>
       <div class="flex-1 min-h-0 flex flex-col">
-        {inspectorTab() === "library" && (
-          <div class="flex h-full flex-col items-center justify-center p-6 text-center">
-            <Icon name="box" class="size-6 text-editor-text-dim opacity-50 mb-3" strokeWidth={1.5} />
-            <p class="text-[13px] font-medium text-editor-text">Library</p>
-            <p class="text-[12px] text-editor-text-dim leading-snug mt-1">Coming soon: manage and search your design assets, shapes, and templates.</p>
-          </div>
-        )}
-        {inspectorTab() === "adjust" && <AdjustPanel />}
-        {inspectorTab() === "presets" && (
+        {activeTab() === "properties" && <PropertiesPanel />}
+        {activeTab() === "adjustments" && <AdjustmentsPanel />}
+        {activeTab() === "presets" && (
           <div class="flex h-full flex-col items-center justify-center p-6 text-center">
             <Icon name="sparkles" class="size-6 text-editor-text-dim opacity-50 mb-3" strokeWidth={1.5} />
             <p class="text-[13px] font-medium text-editor-text">Presets</p>
@@ -164,8 +139,21 @@ function LayoutToggleButton() {
 }
 
 function LayerDock(props: Pick<RightDockProps, "onClose">) {
-  const { rightDockLayout } = useEditor();
+  const {
+    rightDockLayout,
+    rightDockPanel,
+    setRightDockPanel,
+    activeDocumentId,
+    setViewportState,
+    pan,
+    zoom,
+    syncViewport,
+    workspace,
+    renderer,
+    scheduler,
+  } = useEditor();
   const isStacked = () => rightDockLayout() === "stacked";
+  const [navigatorCollapsed, setNavigatorCollapsed] = createSignal(false);
 
   return (
     <div
@@ -176,18 +164,143 @@ function LayerDock(props: Pick<RightDockProps, "onClose">) {
           : "lg:w-[260px] 2xl:w-[298px] lg:flex-none"
       )}
     >
-      <div class="flex h-[44px] shrink-0 items-center justify-end gap-2 border-b border-editor-divider bg-editor-topbar pr-4">
-        <LayoutToggleButton />
-        <ExportButton />
-        <button
-          class="flex size-7 items-center justify-center rounded-[4px] text-editor-icon hover:bg-white/[0.045] hover:text-editor-text lg:hidden"
-          aria-label="Close side panels"
-          onClick={props.onClose}
-        >
-          <Icon name="x" class="size-4" strokeWidth={1.75} />
-        </button>
+      <div class="flex h-[44px] shrink-0 items-center border-b border-editor-divider bg-editor-panel pl-0">
+        <nav role="tablist" aria-label="Layer dock tabs" class="flex h-full min-w-0 items-center overflow-hidden">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={rightDockPanel() === "layers"}
+            onClick={() => setRightDockPanel("layers")}
+            class={clsx(
+              "relative flex h-full items-center px-4 text-[12px] font-medium transition-colors",
+              rightDockPanel() === "layers"
+                ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[2px] after:bg-editor-accent"
+                : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
+            )}
+          >
+            Layers
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={rightDockPanel() === "history"}
+            onClick={() => setRightDockPanel("history")}
+            class={clsx(
+              "relative flex h-full items-center px-4 text-[12px] font-medium transition-colors",
+              rightDockPanel() === "history"
+                ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[2px] after:bg-editor-accent"
+                : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
+            )}
+          >
+            History
+          </button>
+        </nav>
       </div>
-      <LayersPanel />
+      <div class="flex-1 min-h-0 flex flex-col">
+        {rightDockPanel() === "layers" ? <LayersPanel /> : <HistoryPanel />}
+      </div>
+
+      {/* Navigator panel */}
+      <div data-navigator-panel class="shrink-0 border-t border-editor-divider bg-editor-panel">
+        <div
+          class={clsx(
+            "flex h-[46px] items-center justify-between px-4",
+            !navigatorCollapsed() && "border-b border-editor-divider"
+          )}
+        >
+          <button
+            onClick={() => setNavigatorCollapsed(!navigatorCollapsed())}
+            class="flex items-center gap-1.5 text-[13px] font-medium text-editor-text hover:text-editor-text-dim transition-colors"
+          >
+            <Icon
+              name={navigatorCollapsed() ? "chevron-right" : "chevron-down"}
+              class="size-3.5 text-editor-text-dim"
+              strokeWidth={1.75}
+            />
+            <span>Navigator</span>
+          </button>
+          <Show when={!navigatorCollapsed()}>
+            <button
+              onClick={() => {
+                const engine = workspace.getActiveEngine();
+                if (engine) {
+                  const container = document.getElementById("canvas-container");
+                  const rect = container?.getBoundingClientRect();
+                  if (rect) {
+                    engine.fitToScreen(rect.width, rect.height);
+                    syncViewport();
+                    const dpr = window.devicePixelRatio || 1;
+                    renderer.resizeToViewport(rect.width, rect.height, dpr);
+                    scheduler.requestRender();
+                  }
+                }
+              }}
+              class="text-editor-text-dim hover:text-editor-text transition-colors p-1 rounded hover:bg-white/5"
+              title="Fit Screen"
+            >
+              <Icon name="maximize" class="size-3.5" strokeWidth={1.75} />
+            </button>
+          </Show>
+        </div>
+        
+        <Show when={!navigatorCollapsed()}>
+          <Navigator />
+
+          <div class={clsx("flex items-center gap-2.5 px-4 py-3", !activeDocumentId() && "opacity-50 pointer-events-none")}>
+            <button 
+              onClick={() => {
+                const engine = workspace.getActiveEngine();
+                if (engine) {
+                  setViewportState({
+                    x: pan().x,
+                    y: pan().y,
+                    zoom: Math.max(0.05, zoom() - 0.1),
+                  });
+                  scheduler.requestRender();
+                }
+              }}
+              class="text-[12px] text-editor-text-dim hover:text-editor-text px-1"
+            >
+              -
+            </button>
+            <input
+              type="range"
+              min="5"
+              max="400"
+              value={Math.round(zoom() * 100)}
+              onInput={(e) => {
+                const engine = workspace.getActiveEngine();
+                if (engine) {
+                  setViewportState({
+                    x: pan().x,
+                    y: pan().y,
+                    zoom: parseInt(e.target.value) / 100,
+                  });
+                  scheduler.requestRender();
+                }
+              }}
+              class="h-[3px] w-full accent-editor-accent bg-editor-field-border rounded-full appearance-none cursor-pointer"
+            />
+            <button 
+              onClick={() => {
+                const engine = workspace.getActiveEngine();
+                if (engine) {
+                  setViewportState({
+                    x: pan().x,
+                    y: pan().y,
+                    zoom: Math.min(4.0, zoom() + 0.1),
+                  });
+                  scheduler.requestRender();
+                }
+              }}
+              class="text-[12px] text-editor-text-dim hover:text-editor-text px-1"
+            >
+              +
+            </button>
+            <span class="text-[12px] text-editor-text min-w-[36px] text-right">{Math.round(zoom() * 100)}%</span>
+          </div>
+        </Show>
+      </div>
     </div>
   );
 }

@@ -40,22 +40,24 @@ function EditorLayout(props: {
       <main class="relative flex min-h-0 flex-1 overflow-hidden">
         <LeftToolRail disabled={!hasActiveDocument()} />
 
-        <section class="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <Show when={hasDocument()}>
-            <DocumentTabsBar />
-          </Show>
-          <Show when={hasActiveDocument()}>
-            <OptionBar />
-          </Show>
-          <Show when={hasActiveDocument()} fallback={<EmptyWorkspace />}>
-            <CanvasViewport />
-          </Show>
-        </section>
+        <div class="flex flex-1 min-w-0 overflow-hidden">
+          <section class="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <Show when={hasDocument()}>
+              <DocumentTabsBar />
+            </Show>
+            <Show when={hasActiveDocument()}>
+              <OptionBar />
+            </Show>
+            <Show when={hasActiveDocument()} fallback={<EmptyWorkspace />}>
+              <CanvasViewport />
+            </Show>
+          </section>
 
-        <RightDock
-          open={props.rightDockOpen}
-          onClose={() => props.setRightDockOpen(false)}
-        />
+          <RightDock
+            open={props.rightDockOpen}
+            onClose={() => props.setRightDockOpen(false)}
+          />
+        </div>
       </main>
 
       <BottomStatusBar />

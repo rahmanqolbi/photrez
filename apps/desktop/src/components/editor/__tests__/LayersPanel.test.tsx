@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
 import { EditorProvider } from "../EditorContext";
 import { LayersPanel } from "../LayersPanel";
+import { RightDock } from "../RightDock";
 import { WorkspaceManager } from "@/engine/workspace";
 
 function installCanvasMocks(bitmap: ImageBitmap) {
@@ -252,14 +253,45 @@ describe("LayersPanel interactions", () => {
     dispose();
   });
 
+function renderRightDock(session = WorkspaceManager.createBlankDocument("layers-test", "Layers Test", 800, 600)) {
+  const ws = new WorkspaceManager();
+  const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+  const scheduler = { requestRender: vi.fn() };
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+
+  const dispose = render(
+    () => (
+      <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+        <RightDock open={true} onClose={vi.fn()} />
+      </EditorProvider>
+    ),
+    container,
+  );
+
+  ws.addDocument(session);
+
+  return {
+    ws,
+    session,
+    renderer,
+    scheduler,
+    container,
+    dispose: () => {
+      dispose();
+      container.remove();
+    },
+  };
+}
+
   it("preserves the locked Layers and History tabs and renders history in its tab", async () => {
     const bitmap = { width: 800, height: 600, close: vi.fn() } as unknown as ImageBitmap;
     installCanvasMocks(bitmap);
 
-    const { container, dispose } = renderLayersPanel();
+    const { container, dispose } = renderRightDock();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const tabs = container.querySelectorAll<HTMLButtonElement>("[role='tab']");
+    const tabs = container.querySelectorAll<HTMLButtonElement>("[aria-label='Layer dock tabs'] [role='tab']");
     expect(tabs).toHaveLength(2);
     expect(tabs[0]).toHaveTextContent("Layers");
     expect(tabs[1]).toHaveTextContent("History");

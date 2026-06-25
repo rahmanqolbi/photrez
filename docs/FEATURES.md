@@ -303,7 +303,7 @@
 | ✅ DONE      | Visual De-cluttering & Airy/Lightweight UI Polishing |
 | ✅ DONE      | Flush-Left Anchor active tool indicator (Option A) |
 | ✅ DONE      | Segmented Transform matrix coordinate grid (established design editor-style) |
-| ✅ DONE      | Segmented Tab Bar (Pill tabs) & Unified Properties |
+| ✅ DONE      | Flat RightDock tab layout matching mockup (Properties/Adjustments/Presets on left, Layers/History on right) |
 | ✅ DONE      | Right Inspector Recessed Compartments (Idea A sunken well) |
 | ✅ DONE      | Mockup UI Slicing (Compact, Flat Docked 5x3 Grid, Photon Amber) |
 | ✅ DONE      | Titlebar Reference Matching (hamburger, photrez brand spacing, right action separator) |

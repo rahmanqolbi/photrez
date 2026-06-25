@@ -157,3 +157,23 @@ img {
   border: 3px solid transparent;
   background-clip: content-box;
 }
+
+.tab-scrollbar {
+  overflow-x: overlay;
+}
+.tab-scrollbar::-webkit-scrollbar {
+  height: 5px;
+}
+.tab-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tab-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+}
+.tab-scrollbar.is-hovered::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--editor-field-border), transparent 24%);
+}
+.tab-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--editor-text-dim), transparent 25%) !important;
+}

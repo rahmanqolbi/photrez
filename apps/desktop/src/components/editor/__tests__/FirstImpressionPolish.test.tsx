@@ -82,16 +82,16 @@ describe("first impression polish", () => {
     dispose();
   });
 
-  it("labels the inspector with Library, Adjust, Presets tabs and Properties and Adjustments sub-tabs", () => {
+  it("labels the inspector with flat tabs: Properties, Adjustments, Presets, Layers, History", () => {
     const workspace = new WorkspaceManager();
     workspace.addDocument(WorkspaceManager.createBlankDocument("dock-polish", "Dock Polish", 800, 600));
     const { container, dispose } = renderWithEditor(() => <RightDock open={true} onClose={vi.fn()} />, workspace);
 
-    expect(container.textContent).toContain("Library");
-    expect(container.textContent).toContain("Adjust");
-    expect(container.textContent).toContain("Presets");
     expect(container.textContent).toContain("Properties");
     expect(container.textContent).toContain("Adjustments");
+    expect(container.textContent).toContain("Presets");
+    expect(container.textContent).toContain("Layers");
+    expect(container.textContent).toContain("History");
     dispose();
   });
 });

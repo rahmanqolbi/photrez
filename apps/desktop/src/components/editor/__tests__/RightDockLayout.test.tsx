@@ -51,10 +51,11 @@ describe("RightDock layout and tab navigation", () => {
       const editor = useEditor();
       return (
         <div>
-          <button data-testid="set-library" onClick={() => editor.setInspectorTab("library")}>Go Lib</button>
           <button data-testid="set-presets" onClick={() => editor.setInspectorTab("presets")}>Go Presets</button>
-          <button data-testid="set-properties" onClick={() => editor.setAdjustSubTab("properties")}>Go Prop</button>
-          <button data-testid="set-adjustments" onClick={() => editor.setAdjustSubTab("adjustments")}>Go Adjust</button>
+          <button data-testid="set-properties" onClick={() => { editor.setInspectorTab("adjust"); editor.setAdjustSubTab("properties"); }}>Go Prop</button>
+          <button data-testid="set-adjustments" onClick={() => { editor.setInspectorTab("adjust"); editor.setAdjustSubTab("adjustments"); }}>Go Adjust</button>
+          <button data-testid="set-history" onClick={() => editor.setRightDockPanel("history")}>Go History</button>
+          <button data-testid="set-layers" onClick={() => editor.setRightDockPanel("layers")}>Go Layers</button>
           <RightDock open={true} onClose={vi.fn()} />
         </div>
       );
@@ -62,20 +63,20 @@ describe("RightDock layout and tab navigation", () => {
 
     const { container, dispose } = renderWithEditor(() => <TestComponent />, workspace);
 
-    // Initial state: Adjust active (Properties subtab active by default)
-    expect(container.textContent).toContain("Library");
-    expect(container.textContent).toContain("Adjust");
-    expect(container.textContent).toContain("Presets");
+    // Verify all flat tabs are rendered
     expect(container.textContent).toContain("Properties");
     expect(container.textContent).toContain("Adjustments");
-
-    // Click Library tab
-    container.querySelector<HTMLButtonElement>("[data-testid='set-library']")?.click();
-    expect(container.textContent).toContain("Coming soon: manage and search your design assets");
+    expect(container.textContent).toContain("Presets");
+    expect(container.textContent).toContain("Layers");
+    expect(container.textContent).toContain("History");
 
     // Click Presets tab
     container.querySelector<HTMLButtonElement>("[data-testid='set-presets']")?.click();
     expect(container.textContent).toContain("Coming soon: save and apply custom filter");
+
+    // Click History tab
+    container.querySelector<HTMLButtonElement>("[data-testid='set-history']")?.click();
+    expect(container.textContent).toContain("Edits appear here");
 
     dispose();
   });
