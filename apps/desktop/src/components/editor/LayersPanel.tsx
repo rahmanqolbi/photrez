@@ -370,10 +370,16 @@ export function LayersPanel() {
         data-layers-panel-drop-zone
         data-drag-over={dragController.state().dropTarget?.type === "layers-panel" ? "layers-panel" : null}
         onDragOver={(e) => {
-          if (dragController.state().dragKind === null) return;
+          // ponytail: ALWAYS preventDefault so the cursor stays "copy"
+          // (matching LayerItem's effectAllowed="copy"), even when
+          // dragKind is null (e.g. dragstart hasn't fired yet because
+          // the user hasn't moved past the native threshold). Without
+          // this the browser falls back to the "forbidden" cursor
+          // because it can't confirm a drop target accepts the drag.
           e.preventDefault();
-          // ponytail: track insertion position so the drop handler
-          // can land the layer exactly where the user aimed.
+          if (dragController.state().dragKind === null) return;
+          // Track insertion position so the drop handler can land
+          // the layer exactly where the user aimed.
           const hint = computeInsertionHint(e.clientY);
           if (hint) {
             dragController.setDropTarget({ type: "layers-panel", ...hint });
