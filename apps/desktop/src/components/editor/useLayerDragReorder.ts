@@ -1,167 +1,34 @@
-import { createSignal, createEffect } from "solid-js";
 import { useEditor } from "./EditorContext";
 import { useDragController } from "./DragController";
-import { cancelLayerTransformSession } from "./transformSession";
 
+/**
+ * ponytail: this hook used to host a *second*, pointer-based drag system
+ * that fought LayerItem's `draggable=true` HTML5 drag. The two systems
+ * raced to clear their own signals, leaving the source layer visually
+ * "stuck" as dragged after release. Pass 14 collapses everything to
+ * a single source of truth: `dragController.state().dragKind` plus the
+ * payload's `layerId`. Visual state in LayerItem is bound directly to
+ * `dragController` (via SolidJS reactivity), so `dragController.endDrag()`
+ * is the only "drag ended" signal we ever need to react to.
+ *
+ * This hook now only exists to:
+ *  1. Provide the list-ref so the panel can compute insertion
+ *     positions from row bounding rects during `dragover`.
+ *  2. Keep the import surface stable (LayersPanel.tsx still calls it).
+ *
+ * If a future feature needs panel-local signals, prefer deriving them
+ * from `dragController.state()` via `createMemo` — never introduce a
+ * parallel signal that can drift out of sync.
+ */
 export function useLayerDragReorder() {
-  const { workspace, scheduler, layerTransformSession, setLayerTransformSession } = useEditor();
-  const dragController = useDragController();
-
-  const cancelActiveTransformSession = () => {
-    const engine = workspace.getActiveEngine();
-    if (cancelLayerTransformSession(layerTransformSession(), engine)) {
-      setLayerTransformSession(null);
-      scheduler.requestRender();
-    }
-  };
-
-  const [draggedIndex, setDraggedIndex] = createSignal<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = createSignal<number | null>(null);
-  const [dropPosition, setDropPosition] = createSignal<"above" | "below" | null>(null);
-
-  // ponytail: reactive guard against stuck visual. The pointer-based
-  // and HTML5 drag systems coexist (LayerItem is `draggable=true`),
-  // so multiple event handlers race to clear these signals. Watching
-  // `dragKind` from the drag controller as the canonical "drag ended"
-  // signal means we always clear visual state when either system
-  // completes — even if a specific pointerup/pointermove handler is
-  // missed or fires out of order. LayerItem renders these signals
-  // via SolidJS reactivity, so this effect triggers the visual
-  // unstuck immediately on drag-end.
-  createEffect(() => {
-    if (dragController.state().dragKind === null) {
-      setDraggedIndex(null);
-      setDragOverIndex(null);
-      setDropPosition(null);
-    }
-  });
-
+  useEditor(); // validates provider scope at mount
+  useDragController(); // ensures DragControllerProvider exists above
   let layerListRef: HTMLDivElement | undefined;
-  let dragStartY = 0;
-  let dragActive = false;
-  let dragSourceIndex: number | null = null;
-
-  const handlePointerDragStart = (e: PointerEvent, index: number) => {
-    // Only primary button (left click)
-    if (e.button !== 0) return;
-    // Don't drag if clicking on a button or input inside the layer row
-    const target = e.target as HTMLElement;
-    if (target.closest("button") || target.closest("input") || target.closest("select")) return;
-
-    // If HTML5 cross-doc drag is already active, don't interfere. This was
-    // the root cause of dragstart not firing: the in-panel pointermove
-    // listener was running on every move and triggering Solid re-renders
-    // that cancelled the HTML5 drag before it could start.
-    if (dragController.state().dragKind !== null) return;
-
-    dragStartY = e.clientY;
-    dragSourceIndex = index;
-    dragActive = false;
-
-    const onPointerMove = (ev: PointerEvent) => {
-      // If HTML5 drag started in the meantime, abandon in-panel reorder.
-      // ponytail: clear drag signals before removing listeners â€”
-      // otherwise the source layer stays visually "stuck" as dragged
-      // until the next pointerup cycle (the pointerup listener is
-      // removed here, so its cleanup block never runs).
-      if (dragController.state().dragKind !== null) {
-        dragActive = false;
-        setDraggedIndex(null);
-        setDragOverIndex(null);
-        setDropPosition(null);
-        document.removeEventListener("pointermove", onPointerMove);
-        document.removeEventListener("pointerup", onPointerUp);
-        return;
-      }
-      // Dead-zone: require 5px movement before starting drag
-      if (!dragActive && Math.abs(ev.clientY - dragStartY) < 5) return;
-
-      if (!dragActive) {
-        dragActive = true;
-        setDraggedIndex(dragSourceIndex);
-      }
-
-      // Find which layer item the pointer is over
-      if (!layerListRef) return;
-      const items = layerListRef.querySelectorAll<HTMLElement>("[data-layer-idx]");
-      let foundIdx: number | null = null;
-      let foundPosition: "above" | "below" = "above";
-
-      for (const item of items) {
-        const rect = item.getBoundingClientRect();
-        if (ev.clientY >= rect.top && ev.clientY <= rect.bottom) {
-          const idx = parseInt(item.dataset.layerIdx!, 10);
-          foundIdx = idx;
-          foundPosition = (ev.clientY - rect.top) < rect.height / 2 ? "above" : "below";
-          break;
-        }
-      }
-
-      if (foundIdx !== null && foundIdx !== dragSourceIndex) {
-        setDragOverIndex(foundIdx);
-        setDropPosition(foundPosition);
-      } else {
-        setDragOverIndex(null);
-        setDropPosition(null);
-      }
-    };
-
-    const onPointerUp = () => {
-      document.removeEventListener("pointermove", onPointerMove);
-      document.removeEventListener("pointerup", onPointerUp);
-
-      // If HTML5 drag took over, don't do in-panel reorder
-      if (dragController.state().dragKind !== null) {
-        dragActive = false;
-        dragSourceIndex = null;
-        setDraggedIndex(null);
-        setDragOverIndex(null);
-        setDropPosition(null);
-        return;
-      }
-
-      if (dragActive && dragSourceIndex !== null) {
-        const toIdx = dragOverIndex();
-        const pos = dropPosition();
-        if (toIdx !== null && toIdx !== dragSourceIndex) {
-          if (layerTransformSession()) {
-            cancelActiveTransformSession();
-          }
-          const engine = workspace.getActiveEngine();
-          const history = workspace.getActiveHistory();
-          if (engine && history) {
-            history.commit(engine.snapshot(), "Reorder Layer");
-            let targetIdx = toIdx;
-            if (pos === "below") {
-              targetIdx = toIdx + 1;
-            }
-            if (dragSourceIndex < targetIdx) {
-              targetIdx = Math.max(0, targetIdx - 1);
-            }
-            engine.reorderLayer(dragSourceIndex, targetIdx);
-            scheduler.requestRender();
-          }
-        }
-      }
-
-      // Reset state
-      dragActive = false;
-      dragSourceIndex = null;
-      setDraggedIndex(null);
-      setDragOverIndex(null);
-      setDropPosition(null);
-    };
-
-    document.addEventListener("pointermove", onPointerMove);
-    document.addEventListener("pointerup", onPointerUp);
-  };
 
   return {
-    draggedIndex,
-    dragOverIndex,
-    dropPosition,
-    handlePointerDragStart,
-    setLayerListRef: (el: HTMLDivElement | undefined) => { layerListRef = el; },
+    setLayerListRef: (el: HTMLDivElement | undefined) => {
+      layerListRef = el;
+    },
     getLayerListRef: () => layerListRef,
   };
 }

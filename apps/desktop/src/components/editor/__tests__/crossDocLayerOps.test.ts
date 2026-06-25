@@ -179,7 +179,7 @@ describe("addLayerFromCrossDoc â€” validation", () => {
     resetToasts();
   });
 
-  it("reorders layer to end of stack on same-doc drop (was: silent no-op, regression: in-panel drag felt broken)", () => {
+  it("reorders layer to end of stack on same-doc drop without insertAt (Pass 12 fallback, Pass 14 polish)", () => {
     const engine = makeEngine({ id: "doc-A" });
     const layers = [
       { id: "layer-1" },
@@ -200,6 +200,50 @@ describe("addLayerFromCrossDoc â€” validation", () => {
     expect(engine.addLayer).not.toHaveBeenCalled();
     // Should reorder the source layer to end of its own stack.
     expect(engine.reorderLayer).toHaveBeenCalledWith(0, 2);
+  });
+
+  it("reorders layer to insertAt on same-doc drop with insertPosition='above' (Pass 14)", () => {
+    const engine = makeEngine({ id: "doc-A" });
+    const layers = [
+      { id: "layer-1" },
+      { id: "layer-2" },
+      { id: "layer-3" },
+    ];
+    engine.getLayers.mockReturnValue(layers as any);
+    engine.getLayer.mockImplementation((id: string) => layers.find((l) => l.id === id) as any);
+    const ws = makeWorkspace({ "doc-A": engine });
+    ws.getActiveDocumentId.mockReturnValue("doc-A");
+    addLayerFromCrossDoc(
+      { ...basePayload, sourceDocId: "doc-A", layerId: "layer-1" },
+      { type: "layers-panel", insertAt: 2, insertPosition: "above" },
+      { x: 0, y: 0 },
+      ws as any,
+    );
+    // Source is at index 0, target insertAt=2 above. After moving
+    // source out, indexes 1 and 2 shift down to 0 and 1. The target
+    // row (was index 2) is now at index 1; we want to land above it.
+    expect(engine.reorderLayer).toHaveBeenCalledWith(0, 1);
+  });
+
+  it("reorders layer to insertAt+1 on same-doc drop with insertPosition='below' (Pass 14)", () => {
+    const engine = makeEngine({ id: "doc-A" });
+    const layers = [
+      { id: "layer-1" },
+      { id: "layer-2" },
+      { id: "layer-3" },
+    ];
+    engine.getLayers.mockReturnValue(layers as any);
+    engine.getLayer.mockImplementation((id: string) => layers.find((l) => l.id === id) as any);
+    const ws = makeWorkspace({ "doc-A": engine });
+    ws.getActiveDocumentId.mockReturnValue("doc-A");
+    addLayerFromCrossDoc(
+      { ...basePayload, sourceDocId: "doc-A", layerId: "layer-1" },
+      { type: "layers-panel", insertAt: 0, insertPosition: "below" },
+      { x: 0, y: 0 },
+      ws as any,
+    );
+    // Source at index 0 → moves to index 1 (below row 0).
+    expect(engine.reorderLayer).toHaveBeenCalledWith(0, 1);
   });
 
   it("error toast + abort when source doc missing", () => {

@@ -89,19 +89,48 @@ export function addLayerFromCrossDoc(
   }
 
   // ponytail: same-doc drop means the user is reordering within their
-  // own layer panel. The pointer-based system (useLayerDragReorder)
-  // handles fine-grained insertion position; HTML5 drag cannot track
-  // that position because the dragController DropTarget type has no
-  // index field. Fall back to "move source to end of its own stack"
-  // so the drop is never silently lost.
+  // own layer panel. When the drop handler provides insertAt +
+  // insertPosition (tracked during dragover), honour that exact
+  // landing position. Otherwise fall back to "move source to end of
+  // its own stack" so the drop is never silently lost.
   if (payload.sourceDocId === targetDocId) {
     const sourceIdx = sourceEngine.getLayers().findIndex((l) => l.id === payload.layerId);
     if (sourceIdx < 0) return { newLayerId: null };
     const sourceHistory = ws.getHistory(payload.sourceDocId);
     if (sourceHistory) sourceHistory.commit(sourceEngine.snapshot(), "Reorder Layer");
-    // Move to end of stack — the user's intent is "this layer should
-    // be in this panel", and appending is the safe default.
-    sourceEngine.reorderLayer(sourceIdx, sourceEngine.getLayers().length - 1);
+
+    const layers = sourceEngine.getLayers();
+    // ponytail: derive the final reorderLayer target from the
+    // dragover-tracked (insertAt, insertPosition) hint. The naive
+    // `splice+insert` math is sensitive to whether the source sits
+    // before, at, or after the insertion point — get it wrong and
+    // the drop silently no-ops or lands in the wrong row.
+    let targetIdx: number;
+    if (target && target.type === "layers-panel" && typeof target.insertAt === "number") {
+      const insertAt = target.insertAt;
+      const position = target.insertPosition === "below" ? "below" : "above";
+      if (sourceIdx < insertAt) {
+        // Source is above the insertion point. After splice, every
+        // row at-or-after sourceIdx shifts down by one, so the row
+        // that was at insertAt is now at insertAt-1.
+        targetIdx = position === "below" ? insertAt : insertAt - 1;
+      } else if (sourceIdx > insertAt) {
+        // Source is below the insertion point — no shift.
+        targetIdx = position === "below" ? insertAt + 1 : insertAt;
+      } else {
+        // sourceIdx === insertAt — drop on the source's own row.
+        targetIdx = position === "below" ? sourceIdx + 1 : sourceIdx;
+      }
+    } else {
+      targetIdx = layers.length - 1;
+    }
+    // Clamp to a valid range after the math.
+    targetIdx = Math.min(Math.max(0, targetIdx), layers.length - 1);
+    if (targetIdx === sourceIdx) {
+      // Drop on source's own row with no movement — no-op.
+      return { newLayerId: payload.layerId };
+    }
+    sourceEngine.reorderLayer(sourceIdx, targetIdx);
     return { newLayerId: payload.layerId };
   }
 

@@ -149,14 +149,36 @@ export function LayersPanel() {
     ];
   };
 
-  // ΓöÇΓöÇΓöÇ Pointer-based Drag Reorder (replaces HTML5 DnD for Tauri compatibility) ΓöÇΓöÇΓöÇ
-  const {
-    draggedIndex,
-    dragOverIndex,
-    dropPosition,
-    handlePointerDragStart,
-    setLayerListRef,
-  } = useLayerDragReorder();
+  // HTML5 drag wiring (single source of truth via DragController).
+  // Pass 14 collapsed the previous pointer-based reorder system.
+  // The hook now only exposes the list ref so `dragover` can compute
+  // insertion positions from row bounding rects.
+  const { setLayerListRef } = useLayerDragReorder();
+
+  // ponytail: compute insertion position from pointer Y. Reading
+  // every row's bounding rect on each dragover is fine because the
+  // panel only re-renders when layers change, and `dragover` fires
+  // at most ~60Hz during a drag.
+  const computeInsertionHint = (
+    clientY: number,
+  ): { insertAt: number; insertPosition: "above" | "below" } | null => {
+    const root = document.querySelector<HTMLDivElement>("[data-layers-panel-drop-zone]");
+    if (!root) return null;
+    const rows = root.querySelectorAll<HTMLElement>("[data-layer-idx]");
+    for (const row of rows) {
+      const rect = row.getBoundingClientRect();
+      if (clientY >= rect.top && clientY <= rect.bottom) {
+        const idx = parseInt(row.dataset.layerIdx!, 10);
+        const position = clientY - rect.top < rect.height / 2 ? "above" : "below";
+        return { insertAt: idx, insertPosition: position };
+      }
+    }
+    if (rows.length > 0) {
+      const lastIdx = parseInt(rows[rows.length - 1].dataset.layerIdx!, 10);
+      return { insertAt: lastIdx, insertPosition: "below" };
+    }
+    return null;
+  };
 
   const cancelActiveTransformSession = () => {
     const engine = workspace.getActiveEngine();
@@ -350,7 +372,14 @@ export function LayersPanel() {
         onDragOver={(e) => {
           if (dragController.state().dragKind === null) return;
           e.preventDefault();
-          dragController.setDropTarget({ type: "layers-panel" });
+          // ponytail: track insertion position so the drop handler
+          // can land the layer exactly where the user aimed.
+          const hint = computeInsertionHint(e.clientY);
+          if (hint) {
+            dragController.setDropTarget({ type: "layers-panel", ...hint });
+          } else {
+            dragController.setDropTarget({ type: "layers-panel" });
+          }
           dragController.cancelTabHover();
         }}
         onDragLeave={(e) => {
@@ -396,16 +425,12 @@ export function LayersPanel() {
                 layer={layer}
                 idx={idx()}
                 isActive={selectedLayerId() === layer.id}
-                isDragged={draggedIndex() === idx()}
-                isDragOver={dragOverIndex() === idx()}
-                dropPosition={dropPosition()}
                 isEditing={editingLayerId() === layer.id}
                 editName={editName()}
                 setEditingLayerId={setEditingLayerId}
                 setEditName={setEditName}
                 onSelect={handleSelectLayer}
                 onContextMenu={openLayerContextMenu}
-                onPointerDragStart={handlePointerDragStart}
                 onToggleVisibility={handleToggleVisibility}
                 onToggleLock={handleToggleLock}
                 onMoveUp={handleMoveUp}

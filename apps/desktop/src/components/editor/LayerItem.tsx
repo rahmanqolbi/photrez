@@ -6,9 +6,9 @@ import { LayerThumb } from "./LayerThumb";
 import { LAYER_DRAG_MIME, LayerDragPayload } from "./dragTypes";
 import { useDragController } from "./DragController";
 
-// ponytail: narrow fa├ºade for the workspace/scheduler surface LayerItem
+// ponytail: narrow façade for the workspace/scheduler surface LayerItem
 // actually touches. Avoids the production `any` while staying decoupled
-// from the full WorkspaceManager/Scheduler types ΓÇö LayerItem only needs
+// from the full WorkspaceManager/Scheduler types — LayerItem only needs
 // the read-and-request paths, not the document lifecycle.
 interface LayerItemWorkspaceFacade {
   getActiveEngine: () => {
@@ -28,16 +28,12 @@ interface LayerItemProps {
   layer: LayerNode;
   idx: number;
   isActive: boolean;
-  isDragged: boolean;
-  isDragOver: boolean;
-  dropPosition: "above" | "below" | null;
   isEditing: boolean;
   editName: string;
   setEditingLayerId: (id: string | null) => void;
   setEditName: (name: string) => void;
   onSelect: (id: string) => void;
   onContextMenu?: (event: MouseEvent, layer: LayerNode, idx: number) => void;
-  onPointerDragStart: (e: PointerEvent, idx: number) => void;
   onToggleVisibility: (e: MouseEvent, id: string) => void;
   onToggleLock: (e: MouseEvent, id: string) => void;
   onMoveUp: (e: MouseEvent, idx: number) => void;
@@ -91,6 +87,31 @@ export function LayerItem(props: LayerItemProps) {
     dragController.endDrag();
   };
 
+  // ponytail: bind visual state directly to dragController so the
+  // "drag ended" signal is unambiguous. `dragController.endDrag()` is
+  // the only path that clears `dragKind`, so the source layer's
+  // "being dragged" highlight disappears at the same instant the
+  // drop or cancel completes — no parallel signal system to drift.
+  const isThisLayerBeingDragged = () => {
+    const state = dragController.state();
+    if (state.dragKind !== "layer") return false;
+    const payload = state.payload;
+    return payload !== null && payload.layerId === props.layer.id;
+  };
+
+  // ponytail: insertion-bar highlight is also driven by dragController
+  // state. The panel-level `dragover` handler keeps `dropTarget` in sync
+  // with the pointer position so this accessor stays reactive without
+  // any per-row subscription.
+  const dropPositionForThisRow = () => {
+    const state = dragController.state();
+    if (state.dragKind !== "layer") return null;
+    const target = state.dropTarget;
+    if (!target || target.type !== "layers-panel") return null;
+    if (target.insertAt !== props.idx) return null;
+    return target.insertPosition ?? "above";
+  };
+
   return (
     <div
       data-layer-idx={props.idx}
@@ -99,13 +120,15 @@ export function LayerItem(props: LayerItemProps) {
       onDragEnd={onLayerDragEnd}
       onClick={() => props.onSelect(props.layer.id)}
       onContextMenu={(event) => props.onContextMenu?.(event, props.layer, props.idx)}
-      onPointerDown={(e) => !props.layer.locked && props.onPointerDragStart(e, props.idx)}
       class={clsx(
         "flex h-[50px] items-center gap-2.5 px-3.5 cursor-grab select-none group border-b border-editor-divider/10 relative transition-all duration-100 touch-auto active:cursor-grabbing",
         props.isActive ? "bg-editor-row-active" : "hover:bg-white/[0.03]",
-        props.isDragged && "opacity-25 bg-editor-divider/10 scale-[0.98] border-dashed border-editor-accent/40",
-        props.isDragOver && props.dropPosition === "above" && "before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-editor-accent before:z-20",
-        props.isDragOver && props.dropPosition === "below" && "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[3px] after:bg-editor-accent after:z-20"
+        // Source layer being dragged: dimmed + amber ring + subtle scale.
+        isThisLayerBeingDragged() && "opacity-40 ring-2 ring-editor-accent/60 ring-inset scale-[0.98] border-dashed border-editor-accent/50 bg-editor-divider/20",
+        // Drop insertion bar above this row.
+        dropPositionForThisRow() === "above" && "before:absolute before:top-[-2px] before:left-0 before:right-0 before:h-[4px] before:bg-editor-accent before:shadow-[0_0_8px_rgba(225,90,23,0.6)] before:z-20 before:rounded-full",
+        // Drop insertion bar below this row.
+        dropPositionForThisRow() === "below" && "after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[4px] after:bg-editor-accent after:shadow-[0_0_8px_rgba(225,90,23,0.6)] after:z-20 after:rounded-full"
       )}
     >
       {/* Eye toggle button */}
