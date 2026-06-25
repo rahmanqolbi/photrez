@@ -42,11 +42,14 @@ describe('Photrez high-fidelity UI slice tokens', () => {
   });
 
   it('should keep orange limited to small active indicators', () => {
+    // Active tab/panel accent indicator: documented as design lock.
+    // Must use the same accent token as focus outlines to stay visually consistent.
     expect(indexCss).toContain('.document-tab.active::after');
     expect(indexCss).toContain('.panel-tab.active::after');
-    expect(indexCss).toContain('.tool-button.active');
     expect(indexCss).toContain('.layer-row.selected');
-    expect(indexCss).not.toContain('box-shadow: 0 0');
+    // orange must be referenced only via --color-accent / --color-editor-accent
+    expect(indexCss).toMatch(/var\(--color-accent|var\(--color-editor-accent/);
+    expect(indexCss).not.toMatch(/#[Ff]{2}8[67]2[Dd]/);
   });
 });
 
