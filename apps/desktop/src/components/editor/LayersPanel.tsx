@@ -11,7 +11,6 @@ import { BLEND_MODE_OPTIONS, isBlendMode } from "@/engine/blendModes";
 import { Navigator } from "./Navigator";
 import { HistoryPanel } from "./HistoryPanel";
 import { LayerItem } from "./LayerItem";
-import { useLayerDragReorder } from "./useLayerDragReorder";
 import { useLayerActions } from "./useLayerActions";
 import { cancelLayerTransformSession } from "./transformSession";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu";
@@ -149,16 +148,9 @@ export function LayersPanel() {
     ];
   };
 
-  // HTML5 drag wiring (single source of truth via DragController).
-  // Pass 14 collapsed the previous pointer-based reorder system.
-  // The hook now only exposes the list ref so `dragover` can compute
-  // insertion positions from row bounding rects.
-  const { setLayerListRef } = useLayerDragReorder();
-
-  // ponytail: compute insertion position from pointer Y. Reading
-  // every row's bounding rect on each dragover is fine because the
-  // panel only re-renders when layers change, and `dragover` fires
-  // at most ~60Hz during a drag.
+  // Compute insertion position from pointer Y. Reads row bounding
+  // rects during `dragover` (~60Hz max). Cheap because the panel
+  // re-renders only on layer changes, not every frame.
   const computeInsertionHint = (
     clientY: number,
   ): { insertAt: number; insertPosition: "above" | "below" } | null => {
@@ -366,7 +358,6 @@ export function LayersPanel() {
 
       {/* Dynamic Layer Stack List */}
       <div
-        ref={setLayerListRef}
         data-layers-panel-drop-zone
         data-drag-over={dragController.state().dropTarget?.type === "layers-panel" ? "layers-panel" : null}
         onDragOver={(e) => {

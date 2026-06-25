@@ -198,3 +198,129 @@ describe("LayersPanel — in-panel reorder end-to-end", () => {
     }
   });
 });
+
+function fireNativeDragStart(
+  source: Element,
+  target: Element,
+  type: string,
+  init: { clientY: number; clientX: number },
+) {
+  const dt = { setData: () => {}, types: [] } as any;
+  const evt = new Event(type, { bubbles: true, cancelable: true }) as any;
+  evt.clientY = init.clientY;
+  evt.clientX = init.clientX;
+  evt.dataTransfer = dt;
+  source.dispatchEvent(evt);
+  return dt;
+}
+
+/**
+ * ponytail: fire the actual DOM dragstart on a LayerItem row and let
+ * its real onLayerDragStart handler run. This catches bugs in the
+ * real production path that synthetic beginLayerDrag calls miss.
+ */
+describe("LayersPanel — real onLayerDragStart path", () => {
+  function setupWithMockedRects() {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("reorder-doc", "Reorder", 400, 300);
+    ws.addDocument(session);
+    session.engine.addLayer("Bottom");
+    session.engine.addLayer("Middle");
+    session.engine.addLayer("Top");
+
+    const scheduler = { requestRender: vi.fn() };
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    let probe: ReturnType<typeof useDragController> | null = null;
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <DragControllerProvider>
+            <LayersPanel />
+            {(() => {
+              probe = useDragController();
+              return null;
+            })()}
+          </DragControllerProvider>
+        </EditorProvider>
+      ),
+      container,
+    );
+
+    // Stub getBoundingClientRect on each row.
+    const rows = container.querySelectorAll<HTMLElement>("[data-layer-idx]");
+    rows.forEach((row, i) => {
+      const top = i * 50;
+      row.getBoundingClientRect = () =>
+        ({
+          x: 0,
+          y: top,
+          left: 0,
+          top,
+          right: 200,
+          bottom: top + 50,
+          width: 200,
+          height: 50,
+          toJSON: () => ({}),
+        }) as DOMRect;
+    });
+
+    return { ws, container, rows, probe: () => probe!, dispose };
+  }
+
+  it("fires LayerItem onLayerDragStart and triggers the panel drop handler end-to-end", () => {
+    const ctx = setupWithMockedRects();
+    try {
+      const initialOrder = ctx.ws.getActiveEngine()!.getLayers().map((l) => l.name);
+      expect(initialOrder).toEqual(["Top", "Middle", "Bottom", "Background"]);
+
+      const topRow = ctx.rows[0]; // Top layer
+      const bottomRow = ctx.rows[2]; // Bottom layer
+      const panelDz = ctx.container.querySelector<HTMLElement>("[data-layers-panel-drop-zone]")!;
+
+      // 1. Real dragstart on the Top row. The LayerItem handler
+      //    captures the payload from the row's props.activeDocumentId
+      //    + props.layer.id and calls beginLayerDrag.
+      fireNativeDragStart(topRow, topRow, "dragstart", { clientX: 5, clientY: 10 });
+
+      // After dragstart, dragController should be in "layer" mode.
+      const afterStart = ctx.probe().state();
+      expect(afterStart.dragKind).toBe("layer");
+      expect(afterStart.payload?.sourceName).toBe("Top");
+
+      // 2. Dragover the panel at the lower half of the Bottom row
+      //    (insertAt=2, position=below).
+      fireNativeDragStart(panelDz, panelDz, "dragover", {
+        clientY: bottomRow.getBoundingClientRect().top + 35,
+        clientX: 5,
+      });
+
+      const dt = ctx.probe().state().dropTarget;
+      expect(dt?.type).toBe("layers-panel");
+      if (dt?.type === "layers-panel") {
+        expect(dt.insertAt).toBe(2);
+        expect(dt.insertPosition).toBe("below");
+      }
+
+      // 3. Drop on the panel.
+      fireNativeDragStart(panelDz, panelDz, "drop", {
+        clientY: bottomRow.getBoundingClientRect().top + 35,
+        clientX: 5,
+      });
+
+      // 4. Verify the engine layer order changed.
+      const afterOrder = ctx.ws.getActiveEngine()!.getLayers().map((l) => l.name);
+      // Top moved below Bottom → [Middle, Bottom, Top, Background].
+      expect(afterOrder).toEqual(["Middle", "Bottom", "Top", "Background"]);
+
+      // 5. dragController should be cleared.
+      const afterDrop = ctx.probe().state();
+      expect(afterDrop.dragKind).toBeNull();
+    } finally {
+      ctx.dispose();
+      document.body.replaceChildren();
+    }
+  });
+});
