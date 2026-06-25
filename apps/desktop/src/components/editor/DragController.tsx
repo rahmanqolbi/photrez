@@ -1,4 +1,4 @@
-import { createContext, useContext, createSignal, ParentProps, Show } from "solid-js";
+import { createContext, useContext, createSignal, onMount, onCleanup, ParentProps, Show } from "solid-js";
 import type { LayerDragPayload, DropTarget } from "./dragTypes";
 import { useEditor } from "./EditorContext";
 
@@ -121,4 +121,24 @@ export function useDragController(): DragController {
   const ctx = useContext(DragControllerContext);
   if (!ctx) throw new Error("useDragController must be used within DragControllerProvider");
   return ctx;
+}
+
+// Mounts a document-level dragover handler that always calls
+// preventDefault while a drag is in flight (dragKind !== null).
+// Without this the browser shows the "forbidden" cursor over
+// any non-drop zone (canvas, topbar, empty space) because it can't
+// confirm a drop target accepts the drag. Per-zone handlers still
+// call preventDefault themselves to opt into specific drop targets.
+export function DragGlobalGuard() {
+  const dragController = useDragController();
+  onMount(() => {
+    const onDragOver = (e: DragEvent) => {
+      if (dragController.state().dragKind !== null) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener("dragover", onDragOver);
+    onCleanup(() => document.removeEventListener("dragover", onDragOver));
+  });
+  return null;
 }

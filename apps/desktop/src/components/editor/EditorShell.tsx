@@ -12,6 +12,7 @@ import { ResizeCanvasModal } from "./ResizeCanvasModal";
 import { ExportDialog } from "./ExportDialog";
 import { ToastHost } from "./Toast";
 import { GlobalDragDropHost } from "./GlobalDragDropHost";
+import { DragGlobalGuard } from "./DragController";
 
 // Core singletons import
 import { WorkspaceManager } from "@/engine/workspace";
@@ -109,6 +110,7 @@ export function EditorShell() {
       setRightDockOpen={setRightDockOpen}
     >
       <GlobalDragDropHost />
+      <DragGlobalGuard />
       <EditorLayout
         rightDockOpen={rightDockOpen()}
         toggleRightDock={toggleRightDock}
