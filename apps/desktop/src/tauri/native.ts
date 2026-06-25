@@ -1,10 +1,22 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 
-interface ApiResponse<T = unknown> {
-  ok: boolean;
+interface ApiSuccess<T> {
+  ok: true;
   contract_version: string;
   data: T;
+}
+
+interface ApiError {
+  ok: false;
+  contract_version: string;
+  error: { code: string; message: string; details: unknown };
+}
+
+type ApiResponse<T = unknown> = ApiSuccess<T> | ApiError;
+
+function asError(result: ApiError): Error {
+  return new Error(`${result.error.code}: ${result.error.message}`);
 }
 
 // ─── File Dialog ───
@@ -32,9 +44,8 @@ export async function showSaveDialog(defaultName: string): Promise<string | null
 // ─── File I/O ───
 export async function readFileBytes(path: string): Promise<Uint8Array> {
   const result = await invoke("read_file_bytes", { path }) as ApiResponse<{ data: string }>;
-  if (!result.ok) throw new Error("Failed to read file");
+  if (!result.ok) throw asError(result);
 
-  // Decode base64 to Uint8Array
   const binaryString = atob(result.data.data);
   const bytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
@@ -44,7 +55,6 @@ export async function readFileBytes(path: string): Promise<Uint8Array> {
 }
 
 export async function writeFileBytes(path: string, data: Uint8Array): Promise<void> {
-  // Encode Uint8Array to base64
   let binary = "";
   for (let i = 0; i < data.length; i++) {
     binary += String.fromCharCode(data[i]);
@@ -52,7 +62,7 @@ export async function writeFileBytes(path: string, data: Uint8Array): Promise<vo
   const b64 = btoa(binary);
 
   const result = await invoke("write_file_bytes", { path, data: b64 }) as ApiResponse;
-  if (!result.ok) throw new Error("Failed to write file");
+  if (!result.ok) throw asError(result);
 }
 
 // ─── Ping ───

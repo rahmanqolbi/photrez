@@ -146,6 +146,23 @@ impl Default for SavedWindowState {
     }
 }
 
+const MIN_DIMENSION: u32 = 320;
+const MAX_DIMENSION: u32 = 16384;
+const MIN_POSITION: i32 = -32768;
+const MAX_POSITION: i32 = 32768;
+
+fn validate_window_state(mut state: SavedWindowState) -> SavedWindowState {
+    state.width = state.width.clamp(MIN_DIMENSION, MAX_DIMENSION);
+    state.height = state.height.clamp(MIN_DIMENSION, MAX_DIMENSION);
+    if let Some(x) = state.x {
+        state.x = Some(x.clamp(MIN_POSITION, MAX_POSITION));
+    }
+    if let Some(y) = state.y {
+        state.y = Some(y.clamp(MIN_POSITION, MAX_POSITION));
+    }
+    state
+}
+
 fn window_state_path<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<PathBuf> {
     app.path()
         .app_config_dir()
@@ -158,7 +175,9 @@ fn load_window_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> SavedWindo
         return SavedWindowState::default();
     };
     match std::fs::read_to_string(&path) {
-        Ok(json) => serde_json::from_str(&json).unwrap_or_default(),
+        Ok(json) => serde_json::from_str::<SavedWindowState>(&json)
+            .map(validate_window_state)
+            .unwrap_or_default(),
         Err(_) => SavedWindowState::default(),
     }
 }
@@ -625,7 +644,7 @@ mod tests {
         assert!(!defaults.maximized);
     }
 
-    #[test]
+#[test]
     fn test_window_state_legacy_format_without_optional_position() {
         // ponytail: forward-compat gate — older builds may have written state
         // without x/y (pre-Option migration). load_window_state must default the
@@ -638,6 +657,44 @@ mod tests {
         assert_eq!(parsed.x, None);
         assert_eq!(parsed.y, None);
         assert!(!parsed.maximized);
+    }
+
+    #[test]
+    fn test_window_state_clamps_out_of_range_values() {
+        // ponytail: defense-in-depth — corrupted window-state.json (disk error,
+        // manual edit, older buggy version) must not feed u32::MAX / extreme
+        // i32 values into OS set_size/set_position. validate_window_state clamps
+        // to sane display bounds so the window always opens inside the screen.
+        let json = r#"{
+            "width": 99999999,
+            "height": 1,
+            "x": -99999,
+            "y": 99999,
+            "maximized": false
+        }"#;
+        let parsed: SavedWindowState = serde_json::from_str(json).expect("deserialize");
+        let clamped = validate_window_state(parsed);
+        assert_eq!(clamped.width, MAX_DIMENSION, "width clamped to max");
+        assert_eq!(clamped.height, MIN_DIMENSION, "height clamped to min");
+        assert_eq!(clamped.x, Some(MIN_POSITION), "x clamped to min");
+        assert_eq!(clamped.y, Some(MAX_POSITION), "y clamped to max");
+    }
+
+    #[test]
+    fn test_window_state_in_range_values_pass_through() {
+        let json = r#"{
+            "width": 1600,
+            "height": 900,
+            "x": 120,
+            "y": 80,
+            "maximized": false
+        }"#;
+        let parsed: SavedWindowState = serde_json::from_str(json).expect("deserialize");
+        let clamped = validate_window_state(parsed);
+        assert_eq!(clamped.width, 1600);
+        assert_eq!(clamped.height, 900);
+        assert_eq!(clamped.x, Some(120));
+        assert_eq!(clamped.y, Some(80));
     }
 
     #[test]
