@@ -3,6 +3,13 @@ import { useDragController } from "./DragController";
 import { useTauriDragDrop } from "./useTauriDragDrop";
 import { dispatchTauriFileDrop, findDropZoneAtPoint, type DropDispatchDeps } from "./crossDocDropDispatch";
 
+// ponytail: `dragDropEnabled: false` in tauri.conf.json disables
+// Tauri's native OS-level drag-drop events so HTML5 in-app drag
+// (layer reorder) works on Windows WebView2. As a trade-off,
+// `webview.onDragDropEvent` never fires, so this host is currently
+// a no-op in production. File drop from Explorer must go through
+// the regular file picker. When Tauri ships a "hybrid" mode
+// (tracking issue tauri-apps/tauri#15138), re-enable here.
 export function GlobalDragDropHost() {
   const { workspace, renderer, scheduler, camera } = useEditor();
   const dragController = useDragController();
