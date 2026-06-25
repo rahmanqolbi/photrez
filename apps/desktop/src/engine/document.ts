@@ -238,9 +238,23 @@ export class DocumentEngine {
 
     const index = this.model.layers.findIndex(l => l.id === id);
     if (index !== -1) {
+      const removed = this.model.layers[index];
       this.model.layers = this.model.layers.filter(l => l.id !== id);
       this.dirtyLayerIds.delete(id);
       this.textureHandles.delete(id);
+      // Free the GPU memory held by the bitmap. Shared references
+      // (e.g. cross-doc copy left source + target pointing at the
+      // same ImageBitmap) are still safe — closing an ImageBitmap
+      // only signals the platform that the underlying buffer can
+      // be released; consumers holding a reference will see a
+      // closed (zero-size) bitmap if they read it after close.
+      if (removed.imageBitmap) {
+        try {
+          removed.imageBitmap.close();
+        } catch {
+          // jsdom and some test doubles don't implement close().
+        }
+      }
 
       // Select another layer
       if (this.model.activeLayerId === id) {
@@ -534,9 +548,19 @@ export class DocumentEngine {
     return layer ? layer.imageBitmap : null;
   }
 
-  setLayerImageBitmap(id: LayerId, bitmap: ImageBitmap): void {
+setLayerImageBitmap(id: LayerId, bitmap: ImageBitmap): void {
     const layer = this.getLayer(id);
     if (layer) {
+      // Free the previous bitmap before replacing the reference —
+      // otherwise the GPU buffer stays pinned until the layer is
+      // deleted (and beyond if the bitmap was shared across layers).
+      if (layer.imageBitmap && layer.imageBitmap !== bitmap) {
+        try {
+          layer.imageBitmap.close();
+        } catch {
+          // jsdom and some test doubles don't implement close().
+        }
+      }
       layer.imageBitmap = bitmap;
       layer.width = bitmap.width;
       layer.height = bitmap.height;

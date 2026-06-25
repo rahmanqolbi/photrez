@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { DocumentEngine } from '../document';
 
 describe('DocumentEngine', () => {
@@ -505,6 +505,50 @@ describe('DocumentEngine', () => {
       expect(engine.getLayers()[0].name).toBe('Background');
       expect(engine.getLayers()[0].transform.x).toBe(0);
       expect(engine.getLayers()[0].transform.scaleX).toBe(1.0);
+    });
+  });
+
+  describe('ImageBitmap lifecycle', () => {
+    // Minimal mock with the two methods our code touches.
+    function makeBitmap(): ImageBitmap {
+      const close = vi.fn();
+      const bitmap = { width: 100, height: 100, close } as unknown as ImageBitmap;
+      return bitmap;
+    }
+
+    it('closes the bitmap when deleteLayer removes its layer', () => {
+      const engine = new DocumentEngine('doc', 'D', 800, 600);
+      // Start with two layers so we can delete one and still have
+      // another standing (the engine refuses to delete the last).
+      engine.addLayer('Background', 100, 100);
+      const target = engine.addLayer('Target', 100, 100);
+      const other = engine.addLayer('Other', 100, 100);
+      const bitmap = makeBitmap();
+      engine.setLayerImageBitmap(target.id, bitmap);
+      engine.deleteLayer(other.id); // unrelated — should not close anything
+      expect(bitmap.close).not.toHaveBeenCalled();
+      engine.deleteLayer(target.id);
+      expect(bitmap.close).toHaveBeenCalledTimes(1);
+    });
+
+    it('closes the previous bitmap when setLayerImageBitmap replaces it', () => {
+      const engine = new DocumentEngine('doc', 'D', 800, 600);
+      const l1 = engine.addLayer('L1', 100, 100);
+      const oldBitmap = makeBitmap();
+      const newBitmap = makeBitmap();
+      engine.setLayerImageBitmap(l1.id, oldBitmap);
+      engine.setLayerImageBitmap(l1.id, newBitmap);
+      expect(oldBitmap.close).toHaveBeenCalledTimes(1);
+      expect(newBitmap.close).not.toHaveBeenCalled();
+    });
+
+    it('does not close when setLayerImageBitmap is called with the same reference', () => {
+      const engine = new DocumentEngine('doc', 'D', 800, 600);
+      const l1 = engine.addLayer('L1', 100, 100);
+      const bitmap = makeBitmap();
+      engine.setLayerImageBitmap(l1.id, bitmap);
+      engine.setLayerImageBitmap(l1.id, bitmap);
+      expect(bitmap.close).not.toHaveBeenCalled();
     });
   });
 });

@@ -96,6 +96,15 @@ export function performApplyCrop(
           ctx.restore();
 
           const newBitmap = offscreen.transferToImageBitmap();
+          // Free the previous bitmap before swapping — otherwise
+          // the old GPU buffer stays pinned until layer deletion.
+          if (layer.imageBitmap) {
+            try {
+              layer.imageBitmap.close();
+            } catch {
+              // jsdom and some test doubles don't implement close().
+            }
+          }
           layer.imageBitmap = newBitmap;
           layer.width = finalW;
           layer.height = finalH;
