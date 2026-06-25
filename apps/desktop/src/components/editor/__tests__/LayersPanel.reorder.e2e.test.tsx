@@ -197,6 +197,32 @@ describe("LayersPanel — in-panel reorder end-to-end", () => {
       document.body.replaceChildren();
     }
   });
+
+  it("places source at top when dropped above the first row (regression: was routing to bottom)", () => {
+    const ctx = setupWithMockedRects([
+      { top: 0, height: 50 },
+      { top: 50, height: 50 },
+      { top: 100, height: 50 },
+      { top: 150, height: 50 },
+    ]);
+
+    try {
+      const panelDz = ctx.container.querySelector<HTMLElement>("[data-layers-panel-drop-zone]")!;
+      // Pointer above the first row → insertAt=0, above. Before the
+      // fix this fell through the loop and landed at lastIdx/below.
+      ctx.probe().beginLayerDrag(getPayload(ctx.ws, 0), null);
+      fireDragEvent(panelDz, "dragover", { clientY: -10, clientX: 5 });
+      const dt = ctx.probe().state().dropTarget;
+      expect(dt?.type).toBe("layers-panel");
+      if (dt?.type === "layers-panel") {
+        expect(dt.insertAt).toBe(0);
+        expect(dt.insertPosition).toBe("above");
+      }
+    } finally {
+      ctx.dispose();
+      document.body.replaceChildren();
+    }
+  });
 });
 
 function fireNativeDragStart(

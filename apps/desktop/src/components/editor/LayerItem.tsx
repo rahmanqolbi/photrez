@@ -79,7 +79,12 @@ export function LayerItem(props: LayerItemProps) {
       isAltPressed: e.altKey,
     };
     dt.setData(LAYER_DRAG_MIME, JSON.stringify(payload));
-    dt.effectAllowed = e.altKey ? "move" : "copy";
+    // ponytail: tell the browser the drag is a "move" operation.
+    // Cross-doc drop creates a copy + (optionally with Alt) deletes
+    // the source; same-doc drop reorders. Both are semantically
+    // moves of the layer to a new position, not user-visible copies,
+    // so the cursor should match the user's mental model.
+    dt.effectAllowed = "move";
     dragController.beginLayerDrag(payload, null);
   };
 

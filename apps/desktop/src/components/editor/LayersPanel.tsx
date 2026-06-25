@@ -157,6 +157,17 @@ export function LayersPanel() {
     const root = document.querySelector<HTMLDivElement>("[data-layers-panel-drop-zone]");
     if (!root) return null;
     const rows = root.querySelectorAll<HTMLElement>("[data-layer-idx]");
+    if (rows.length === 0) return null;
+
+    // Pointer above the first row → drop at the top of the stack.
+    const firstRect = rows[0].getBoundingClientRect();
+    if (clientY < firstRect.top) {
+      return {
+        insertAt: parseInt(rows[0].dataset.layerIdx!, 10),
+        insertPosition: "above",
+      };
+    }
+
     for (const row of rows) {
       const rect = row.getBoundingClientRect();
       if (clientY >= rect.top && clientY <= rect.bottom) {
@@ -165,11 +176,10 @@ export function LayersPanel() {
         return { insertAt: idx, insertPosition: position };
       }
     }
-    if (rows.length > 0) {
-      const lastIdx = parseInt(rows[rows.length - 1].dataset.layerIdx!, 10);
-      return { insertAt: lastIdx, insertPosition: "below" };
-    }
-    return null;
+
+    // Pointer below the last row → drop at the bottom of the stack.
+    const lastIdx = parseInt(rows[rows.length - 1].dataset.layerIdx!, 10);
+    return { insertAt: lastIdx, insertPosition: "below" };
   };
 
   const cancelActiveTransformSession = () => {
