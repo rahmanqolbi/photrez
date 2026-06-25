@@ -108,6 +108,27 @@ export const MAX_LAYERS = 100;
 export const MAX_OPEN_DOCUMENTS = 16;
 export const MAX_HISTORY_DEPTH = 50;
 export const MAX_PIXEL_BUDGET = 256 * 1024 * 1024; // 256 MB
+// ponytail: ceiling for canvas/layer dimensions. A 16384x16384 RGBA buffer
+// already costs 1 GB; anything above this is almost certainly a typo or
+// a malicious input and would OOM the WebView2 process. 16384 matches
+// WebGL2's common max texture size and the SavedWindowState clamp (Rust side).
+export const MAX_CANVAS_DIM = 16384;
+
+// ─── Device-adaptive dimension limit ───
+// MAX_CANVAS_DIM is the app-level ceiling. At runtime, the renderer
+// queries gl.MAX_TEXTURE_SIZE and calls setDeviceMaxTextureSize().
+// getEffectiveMaxDim() returns Math.min(MAX_CANVAS_DIM, deviceMax)
+// so low-end GPUs (8192) auto-clamp while high-end ones keep the full 16k.
+let deviceMaxTextureSize: number = MAX_CANVAS_DIM;
+
+export function setDeviceMaxTextureSize(size: number): void {
+  deviceMaxTextureSize = Math.min(size, MAX_CANVAS_DIM);
+}
+
+export function getEffectiveMaxDim(): number {
+  return deviceMaxTextureSize;
+}
+
 export interface DocumentTabSummary {
   id: DocumentId;
   displayName: string;

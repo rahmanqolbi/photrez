@@ -3,7 +3,7 @@ import type {
   ViewportState, SelectionState, RenderState, BlendMode,
   Transform2D, TextureHandle, RenderLayer
 } from "./types";
-import { MAX_LAYERS, MAX_PIXEL_BUDGET } from "./types";
+import { MAX_LAYERS, MAX_PIXEL_BUDGET, getEffectiveMaxDim } from "./types";
 
 function normalizeRotation(angleDeg: number): number {
   let angle = angleDeg % 360;
@@ -103,6 +103,9 @@ export class DocumentEngine {
 
     const w = width ?? this.model.width;
     const h = height ?? this.model.height;
+    if (w > getEffectiveMaxDim() || h > getEffectiveMaxDim()) {
+      throw new Error(`Layer dimensions exceed device limit ${getEffectiveMaxDim()}px per side`);
+    }
 
     if (!this.canAddLayer(w, h)) {
       throw new Error("E_RESOURCE_LIMIT: Adding this layer exceeds maximum pixel memory budget.");
@@ -495,6 +498,7 @@ export class DocumentEngine {
   // ─── Canvas Operations ───
   cropCanvas(x: number, y: number, width: number, height: number): void {
     if (width <= 0 || height <= 0) return;
+    if (width > getEffectiveMaxDim() || height > getEffectiveMaxDim()) return;
 
     this.model.width = width;
     this.model.height = height;
@@ -523,6 +527,7 @@ export class DocumentEngine {
     const targetSize = options?.targetSize ?? null;
     const finalW = targetSize ? targetSize.w : width;
     const finalH = targetSize ? targetSize.h : height;
+    if (finalW > getEffectiveMaxDim() || finalH > getEffectiveMaxDim()) return;
 
     performApplyCrop(this.model.layers, x, y, width, height, options);
 
@@ -536,6 +541,8 @@ export class DocumentEngine {
 
   resizeCanvas(width: number, height: number): void {
     if (width <= 0 || height <= 0) return;
+    const maxDim = getEffectiveMaxDim();
+    if (width > maxDim || height > maxDim) return;
     this.model.width = width;
     this.model.height = height;
     this.model.dirty = true;

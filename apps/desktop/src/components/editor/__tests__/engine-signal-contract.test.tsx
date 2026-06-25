@@ -27,7 +27,10 @@ import type { LayerDragPayload } from "../dragTypes";
 // ponytail: provide createImageBitmap for jsdom (no browser API)
 // ponytail: mock readFileBytes to avoid actual Tauri IPC in tests
 vi.mock("@/tauri/native", () => ({
-  readFileBytes: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
+  readFileBytes: vi.fn().mockResolvedValue(
+    // PNG magic header so isSupportedImageBytes passes
+    new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]),
+  ),
 }));
 
 beforeEach(() => {

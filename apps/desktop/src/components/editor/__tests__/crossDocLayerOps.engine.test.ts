@@ -38,7 +38,9 @@ describe("addLayerFromCrossDoc — real engine integration", () => {
 
   beforeEach(() => {
     resetToasts();
-    nativeMock.readFileBytes.mockResolvedValue(new Uint8Array([1, 2, 3]));
+    nativeMock.readFileBytes.mockResolvedValue(
+      new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]),
+    );
     globalThis.createImageBitmap = vi.fn().mockResolvedValue({ width: 100, height: 100 } as ImageBitmap);
     ws = new WorkspaceManager();
     const sA = WorkspaceManager.createBlankDocument("docA", "DocA", 800, 600);
@@ -237,5 +239,30 @@ describe("addFilesAsLayers — real engine decode-first contract", () => {
     expect(created).toEqual([]);
     expect(engine.getLayers().length).toBe(initialLayerCount);
     expect(commitSpy).not.toHaveBeenCalled();
+  });
+
+  it("closes already-decoded bitmaps when a later file fails (no GPU leak)", async () => {
+    const closeFn1 = vi.fn();
+    let callCount = 0;
+    globalThis.createImageBitmap = vi.fn().mockImplementation(async () => {
+      callCount++;
+      if (callCount === 2) throw new Error("corrupt file");
+      return { width: 100, height: 100, close: closeFn1 } as unknown as ImageBitmap;
+    });
+
+    // Both files readable; use PNG magic header so isSupportedImageBytes passes
+    const pngHeader = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]);
+    nativeMock.readFileBytes.mockResolvedValue(pngHeader);
+
+    const created = await addFilesAsLayers(
+      ["/ok.png", "/bad.png"],
+      { type: "canvas" },
+      { x: 0, y: 0 },
+      ws
+    );
+
+    expect(created).toEqual([]);
+    // First bitmap was decoded then freed
+    expect(closeFn1).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,5 +1,6 @@
 import type { LayerNode } from "@/engine/types";
 import type { DocumentEngine } from "@/engine/document";
+import { getEffectiveMaxDim } from "@/engine/types";
 import { writeFileBytes, showSaveDialog } from "@/tauri/native";
 import { drawLayerToContext } from "@/engine/layerComposite";
 
@@ -26,9 +27,10 @@ export async function encodeComposite(
   format: ExportFormat,
   quality: number,
 ): Promise<Uint8Array> {
-  const width = engine.getWidth();
-  const height = engine.getHeight();
+  const width = Math.min(engine.getWidth(), getEffectiveMaxDim());
+  const height = Math.min(engine.getHeight(), getEffectiveMaxDim());
   const layers = engine.getLayers();
+  const clampedQuality = Math.max(0, Math.min(1, quality / 100));
 
   const canvas = new OffscreenCanvas(width, height);
   const ctx = canvas.getContext("2d")!;
@@ -53,7 +55,7 @@ export async function encodeComposite(
   const mimeType = getMimeType(format);
   const blob = await canvas.convertToBlob({
     type: mimeType,
-    quality: format !== "png" ? quality / 100 : undefined,
+    quality: format !== "png" ? clampedQuality : undefined,
   });
 
   return new Uint8Array(await blob.arrayBuffer());

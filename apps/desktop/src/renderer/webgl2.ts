@@ -1,5 +1,6 @@
 import type { RenderBackend, RenderCapabilities, TextureRef } from "./types";
 import type { RenderState } from "../engine/types";
+import { setDeviceMaxTextureSize } from "../engine/types";
 import {
   VERTEX_SHADER_SOURCE,
   FRAGMENT_SHADER_SOURCE,
@@ -208,6 +209,7 @@ export class WebGL2Backend implements RenderBackend {
 
     // Update capabilities
     this.capabilities.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    setDeviceMaxTextureSize(this.capabilities.maxTextureSize);
   }
 
   private handleContextLost = (event: Event): void => {

@@ -2,6 +2,7 @@ import type { LayerDragPayload, DropTarget } from "./dragTypes";
 import { showToast } from "./Toast";
 import type { BlendMode, DocumentModel, LayerNode, Transform2D } from "@/engine/types";
 import { MAX_LAYERS } from "@/engine/types";
+import { decodeImageBytes, UnsupportedImageError, ImageTooLargeError } from "@/engine/imageDecode";
 import { readFileBytes } from "@/tauri/native";
 import { WorkspaceManager, type DocumentSession } from "@/engine/workspace";
 
@@ -68,9 +69,7 @@ function resolveTargetDocId(target: DropTarget, ws: WorkspaceFacade): string | n
 
 async function fileToBitmap(path: string): Promise<ImageBitmap> {
   const bytes = await readFileBytes(path);
-  const blobBytes = new ArrayBuffer(bytes.byteLength);
-  new Uint8Array(blobBytes).set(bytes);
-  return await createImageBitmap(new Blob([blobBytes]));
+  return await decodeImageBytes(bytes);
 }
 
 export function addLayerFromCrossDoc(
@@ -207,8 +206,13 @@ export async function addFilesAsLayers(
     return [];
   }
 
-  const created: CreatedLayer[] = [];
   const decoded: Array<{ name: string; pos: Point; bitmap: ImageBitmap }> = [];
+  // ponytail: on any failure path, every bitmap we've already decoded must
+  // be `.close()`d to release the GPU buffer — otherwise a partial batch
+  // failure (file #3 corrupt out of 5) leaks ImageBitmap #1 and #2.
+  const freeDecoded = () => {
+    for (const { bitmap } of decoded) bitmap.close();
+  };
   for (let i = 0; i < paths.length; i++) {
     const path = paths[i];
     const pos = computeCascadePosition(basePos, i);
@@ -217,7 +221,14 @@ export async function addFilesAsLayers(
       const bitmap = await fileToBitmap(path);
       decoded.push({ name, pos, bitmap });
     } catch (err) {
-      showToast(`Failed to load ${name}: ${err}`, "error");
+      freeDecoded();
+      if (err instanceof ImageTooLargeError) {
+        showToast(`${name}: ${err.message}`, "error");
+      } else if (err instanceof UnsupportedImageError) {
+        showToast(`${name}: ${err.message}`, "error");
+      } else {
+        showToast(`Failed to load ${name}: ${err}`, "error");
+      }
       return [];
     }
   }
@@ -225,13 +236,29 @@ export async function addFilesAsLayers(
   const targetHistory = ws.getHistory(targetDocId);
   if (targetHistory) targetHistory.commit(targetEngine.snapshot());
 
-  for (const { name, pos, bitmap } of decoded) {
-    const added = targetEngine.addLayer(name);
-    const newId = added.id;
-    if (!newId) continue;
-    targetEngine.moveLayer(newId, pos.x, pos.y);
-    targetEngine.setLayerImageBitmap(newId, bitmap);
-    created.push({ docId: targetDocId, layerId: newId, bitmap });
+  const created: CreatedLayer[] = [];
+  try {
+    for (const { name, pos, bitmap } of decoded) {
+      const added = targetEngine.addLayer(name, bitmap.width, bitmap.height);
+      const newId = added.id;
+      if (!newId) {
+        bitmap.close();
+        continue;
+      }
+      targetEngine.moveLayer(newId, pos.x, pos.y);
+      targetEngine.setLayerImageBitmap(newId, bitmap);
+      created.push({ docId: targetDocId, layerId: newId, bitmap });
+    }
+  } catch (err) {
+    // ponytail: engine refused to add (MAX_LAYERS / memory budget).
+    // Layers we successfully created keep their bitmaps (engine owns
+    // them now via setLayerImageBitmap); leftover bitmaps in `decoded`
+    // that the engine never accepted are still ours to free.
+    for (let i = created.length; i < decoded.length; i++) {
+      decoded[i].bitmap.close();
+    }
+    showToast(`Failed to add layer: ${err}`, "error");
+    return created;
   }
   return created;
 }
@@ -245,18 +272,38 @@ export async function createNewDocsFromFiles(
     return [];
   }
   const created: CreatedDoc[] = [];
+  // ponytail: same GPU-buffer leak guard as addFilesAsLayers — on any
+  // failure (decode, ws.isFull mid-loop), every bitmap decoded so far
+  // must be closed before we bail.
+  const decodedBitmaps: ImageBitmap[] = [];
+  const freeDecoded = () => {
+    for (const b of decodedBitmaps) b.close();
+  };
   for (const path of paths) {
-    if (ws.isFull()) break;
+    if (ws.isFull()) {
+      freeDecoded();
+      showToast("Workspace full — close a document first (max 16)", "error");
+      return created;
+    }
     const name = path.split(/[\\/]/).pop() || "Image";
     try {
       const bitmap = await fileToBitmap(path);
+      decodedBitmaps.push(bitmap);
       const id = `doc-${crypto.randomUUID()}`;
       const session = WorkspaceManager.createDocumentFromImage(id, name, bitmap);
       ws.addDocument(session);
       const bgLayerId = session.engine.getLayers()[0].id;
       created.push({ docId: id, backgroundLayerId: bgLayerId, bitmap });
     } catch (err) {
-      showToast(`Failed to load ${name}: ${err}`, "error");
+      freeDecoded();
+      if (err instanceof ImageTooLargeError) {
+        showToast(`${name}: ${err.message}`, "error");
+      } else if (err instanceof UnsupportedImageError) {
+        showToast(`${name}: ${err.message}`, "error");
+      } else {
+        showToast(`Failed to load ${name}: ${err}`, "error");
+      }
+      return created;
     }
   }
   return created;

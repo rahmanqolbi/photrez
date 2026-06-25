@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { DocumentEngine } from '../document';
+import { setDeviceMaxTextureSize, MAX_CANVAS_DIM } from '../types';
 
 describe('DocumentEngine', () => {
   it('creates document with correct dimensions and initial states', () => {
@@ -549,6 +550,48 @@ describe('DocumentEngine', () => {
       engine.setLayerImageBitmap(l1.id, bitmap);
       engine.setLayerImageBitmap(l1.id, bitmap);
       expect(bitmap.close).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Dimension bounds', () => {
+    afterEach(() => {
+      setDeviceMaxTextureSize(MAX_CANVAS_DIM); // reset
+    });
+
+    it('resizeCanvas clamps to MAX_CANVAS_DIM by default', () => {
+      const engine = new DocumentEngine('doc', 'D', 800, 600);
+      engine.resizeCanvas(99999, 99999);
+      // Should be silently rejected — dimensions unchanged
+      expect(engine.getWidth()).toBe(800);
+      expect(engine.getHeight()).toBe(600);
+    });
+
+    it('resizeCanvas clamps to device-adaptive limit when lower', () => {
+      setDeviceMaxTextureSize(4096);
+      const engine = new DocumentEngine('doc', 'D', 800, 600);
+      engine.resizeCanvas(5000, 5000);
+      // 5000 > 4096 → rejected
+      expect(engine.getWidth()).toBe(800);
+      expect(engine.getHeight()).toBe(600);
+    });
+
+    it('resizeCanvas accepts dimensions within limit', () => {
+      const engine = new DocumentEngine('doc', 'D', 800, 600);
+      engine.resizeCanvas(1024, 768);
+      expect(engine.getWidth()).toBe(1024);
+      expect(engine.getHeight()).toBe(768);
+    });
+
+    it('addLayer throws when dimensions exceed device limit', () => {
+      setDeviceMaxTextureSize(4096);
+      const engine = new DocumentEngine('doc', 'D', 800, 600);
+      expect(() => engine.addLayer('Huge', 5000, 5000)).toThrow(/device limit/);
+    });
+
+    it('addLayer accepts dimensions within device limit', () => {
+      setDeviceMaxTextureSize(4096);
+      const engine = new DocumentEngine('doc', 'D', 800, 600);
+      expect(() => engine.addLayer('OK', 4096, 4096)).not.toThrow();
     });
   });
 });

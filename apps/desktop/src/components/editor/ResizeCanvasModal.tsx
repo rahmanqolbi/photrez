@@ -3,6 +3,8 @@ import { Portal } from "solid-js/web";
 import { useEditor } from "./EditorContext";
 import { Icon } from "./icons";
 import { DesktopDialog, DesktopDialogButton, desktopDialogFieldClass } from "./DesktopDialog";
+import { getEffectiveMaxDim } from "@/engine/types";
+import { showToast } from "./Toast";
 
 export function ResizeCanvasModal() {
   const {
@@ -39,6 +41,13 @@ export function ResizeCanvasModal() {
   const handleWChange = (val: string) => {
     const nw = parseInt(val, 10);
     if (isNaN(nw) || nw < 1) return;
+    const max = getEffectiveMaxDim();
+    if (nw > max) {
+      showToast(`Maximum dimension is ${max}px`, "warn");
+      setW(max);
+      if (aspectLocked()) setH(Math.max(1, Math.round(max / aspect())));
+      return;
+    }
     setW(nw);
     if (aspectLocked()) {
       setH(Math.max(1, Math.round(nw / aspect())));
@@ -48,6 +57,13 @@ export function ResizeCanvasModal() {
   const handleHChange = (val: string) => {
     const nh = parseInt(val, 10);
     if (isNaN(nh) || nh < 1) return;
+    const max = getEffectiveMaxDim();
+    if (nh > max) {
+      showToast(`Maximum dimension is ${max}px`, "warn");
+      setH(max);
+      if (aspectLocked()) setW(Math.max(1, Math.round(max * aspect())));
+      return;
+    }
     setH(nh);
     if (aspectLocked()) {
       setW(Math.max(1, Math.round(nh * aspect())));
@@ -58,6 +74,11 @@ export function ResizeCanvasModal() {
     const newW = w();
     const newH = h();
     if (newW < 1 || newH < 1) return;
+    const max = getEffectiveMaxDim();
+    if (newW > max || newH > max) {
+      showToast(`Maximum dimension is ${max}px`, "error");
+      return;
+    }
 
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
