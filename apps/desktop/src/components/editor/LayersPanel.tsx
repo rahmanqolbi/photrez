@@ -393,7 +393,14 @@ export function LayersPanel() {
           e.preventDefault();
           const state = dragController.state();
           if (state.dragKind === "layer" && state.payload) {
-            addLayerFromCrossDoc(state.payload, { type: "layers-panel" }, { x: 0, y: 0 }, workspace);
+            // ponytail: pass the tracked dropTarget (with insertAt +
+            // insertPosition) so the same-doc reorder lands at the
+            // exact row the user aimed at. A bare `{ type: "layers-panel" }`
+            // here would silently fall back to "move to end".
+            const target = state.dropTarget?.type === "layers-panel"
+              ? state.dropTarget
+              : { type: "layers-panel" as const };
+            addLayerFromCrossDoc(state.payload, target, { x: 0, y: 0 }, workspace);
           } else if (state.dragKind === "file" && state.filePaths) {
             const created = await addFilesAsLayers(state.filePaths, { type: "layers-panel" }, { x: 0, y: 0 }, workspace);
             for (const { layerId, bitmap } of created) {
