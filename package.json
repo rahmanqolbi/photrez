@@ -18,5 +18,11 @@
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",
     "husky": "^9.1.7"
+  },
+  "pnpm": {
+    "overrides": {
+      "undici": "^7.28.0",
+      "esbuild": "^0.28.1"
+    }
   }
 }
