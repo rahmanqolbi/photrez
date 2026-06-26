@@ -35,6 +35,16 @@ export function duplicateLayerNode(layer: LayerNode): LayerNode {
     }
   }
 
+  let clonedBaseBitmap: ImageBitmap | null = null;
+  if (layer.baseImageBitmap) {
+    const offscreen = new OffscreenCanvas(layer.width, layer.height);
+    const ctx = offscreen.getContext("2d");
+    if (ctx) {
+      ctx.drawImage(layer.baseImageBitmap, 0, 0);
+      clonedBaseBitmap = offscreen.transferToImageBitmap();
+    }
+  }
+
   return {
     id: `layer-${crypto.randomUUID()}`,
     name: `${layer.name} copy`,
@@ -47,6 +57,8 @@ export function duplicateLayerNode(layer: LayerNode): LayerNode {
     width: layer.width,
     height: layer.height,
     imageBitmap: clonedBitmap,
+    baseImageBitmap: clonedBaseBitmap,
+    basicAdjustment: layer.basicAdjustment ? { ...layer.basicAdjustment } : undefined,
     hasAdjustments: layer.hasAdjustments
   };
 }

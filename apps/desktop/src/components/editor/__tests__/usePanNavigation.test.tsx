@@ -65,6 +65,7 @@ describe("usePanNavigation", () => {
       cancelable: true,
     }));
 
+    // Ctrl+wheel zoom is instant (no animation)
     expect(editor?.camera.getState().zoom).toBeCloseTo(1.25);
     expect(editor?.zoom()).toBeCloseTo(1.25);
     expect(scheduler.requestRender).toHaveBeenCalled();

@@ -1,3 +1,5 @@
+import type { BasicAdjustment } from "./layerAdjustments";
+
 // ─── Identifiers ───
 export type DocumentId = string;
 export type LayerId = string;
@@ -28,6 +30,8 @@ export interface LayerNode {
   lockPosition?: boolean;
   lockRotation?: boolean;
   hasAdjustments?: boolean;
+  basicAdjustment?: BasicAdjustment;
+  baseImageBitmap?: ImageBitmap | null;
   blendMode: BlendMode;
   transform: Transform2D;
   width: number;

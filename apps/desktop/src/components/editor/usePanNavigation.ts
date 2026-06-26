@@ -88,7 +88,7 @@ export function usePanNavigation(options: PanNavigationOptions) {
       e.preventDefault();
       const factor = e.deltaY < 0 ? 1.25 : 0.8;
 
-      // Zoom centered at cursor position (container-relative coordinates)
+      // Zoom centered at cursor position (container-relative coordinates) - instant for Ctrl+scroll
       const containerRect = canvasContainerRef.getBoundingClientRect();
       camera.zoomToPoint(factor, e.clientX - containerRect.left, e.clientY - containerRect.top);
       syncFromCamera();

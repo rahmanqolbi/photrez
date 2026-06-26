@@ -105,6 +105,18 @@ export function performApplyCrop(
               // jsdom and some test doubles don't implement close().
             }
           }
+          // Also free the baseImageBitmap if it exists to bake adjustments
+          if (layer.baseImageBitmap) {
+            try {
+              layer.baseImageBitmap.close();
+            } catch {
+              // jsdom and some test doubles don't implement close().
+            }
+            layer.baseImageBitmap = null;
+          }
+          layer.basicAdjustment = undefined;
+          layer.hasAdjustments = false;
+
           layer.imageBitmap = newBitmap;
           layer.width = finalW;
           layer.height = finalH;

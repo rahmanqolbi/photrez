@@ -258,6 +258,13 @@ export class DocumentEngine {
           // jsdom and some test doubles don't implement close().
         }
       }
+      if (removed.baseImageBitmap) {
+        try {
+          removed.baseImageBitmap.close();
+        } catch {
+          // jsdom and some test doubles don't implement close().
+        }
+      }
 
       // Select another layer
       if (this.model.activeLayerId === id) {
@@ -555,9 +562,12 @@ export class DocumentEngine {
     return layer ? layer.imageBitmap : null;
   }
 
-setLayerImageBitmap(id: LayerId, bitmap: ImageBitmap): void {
+  setLayerImageBitmap(id: LayerId, bitmap: ImageBitmap): void {
     const layer = this.getLayer(id);
     if (layer) {
+      if (!bitmap) {
+        throw new TypeError("Bitmap cannot be null");
+      }
       // Free the previous bitmap before replacing the reference —
       // otherwise the GPU buffer stays pinned until the layer is
       // deleted (and beyond if the bitmap was shared across layers).
@@ -568,30 +578,56 @@ setLayerImageBitmap(id: LayerId, bitmap: ImageBitmap): void {
           // jsdom and some test doubles don't implement close().
         }
       }
+      // Also free the baseImageBitmap if it exists
+      if (layer.baseImageBitmap && layer.baseImageBitmap !== layer.imageBitmap && layer.baseImageBitmap !== bitmap) {
+        try {
+          layer.baseImageBitmap.close();
+        } catch {
+          // jsdom and some test doubles don't implement close().
+        }
+      }
       layer.imageBitmap = bitmap;
-      layer.width = bitmap.width;
-      layer.height = bitmap.height;
+      layer.baseImageBitmap = null;
+      layer.basicAdjustment = undefined;
+      if (bitmap) {
+        layer.width = bitmap.width;
+        layer.height = bitmap.height;
+      }
       this.model.dirty = true;
       this.markLayerDirty(id);
       this.notifyVisualChange();
     }
   }
 
-  applyBasicAdjustment(id: LayerId, adjustment: BasicAdjustment, sourceBitmap?: ImageBitmap): void {
+  applyBasicAdjustment(id: LayerId, adjustment: BasicAdjustment): void {
     const layer = this.getLayer(id);
     if (!layer || layer.locked || !layer.imageBitmap) return;
-    const bitmap = sourceBitmap ?? layer.imageBitmap;
+
+    // Cache the unadjusted bitmap on first adjustment
+    if (!layer.baseImageBitmap) {
+      layer.baseImageBitmap = layer.imageBitmap;
+    }
 
     const canvas = new OffscreenCanvas(layer.width, layer.height);
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.drawImage(bitmap, 0, 0);
+    ctx.drawImage(layer.baseImageBitmap, 0, 0);
     const imageData = ctx.getImageData(0, 0, layer.width, layer.height);
     imageData.data.set(applyBasicAdjustmentToPixels(imageData.data, adjustment));
     ctx.putImageData(imageData, 0, 0);
 
+    // Close the old imageBitmap ONLY if it's not the baseImageBitmap
+    if (layer.imageBitmap && layer.imageBitmap !== layer.baseImageBitmap) {
+      try {
+        layer.imageBitmap.close();
+      } catch {
+        // jsdom and some test doubles don't implement close().
+      }
+    }
+
     layer.imageBitmap = canvas.transferToImageBitmap();
+    layer.basicAdjustment = adjustment;
     layer.hasAdjustments = adjustment.brightness !== 0 || adjustment.contrast !== 0 || adjustment.saturation !== 0;
     this.model.dirty = true;
     this.markLayerDirty(id);
@@ -601,8 +637,21 @@ setLayerImageBitmap(id: LayerId, bitmap: ImageBitmap): void {
   clearBasicAdjustments(id: LayerId): void {
     const layer = this.getLayer(id);
     if (layer) {
+      if (layer.baseImageBitmap) {
+        if (layer.imageBitmap && layer.imageBitmap !== layer.baseImageBitmap) {
+          try {
+            layer.imageBitmap.close();
+          } catch {
+            // jsdom and some test doubles don't implement close().
+          }
+        }
+        layer.imageBitmap = layer.baseImageBitmap;
+        layer.baseImageBitmap = null;
+      }
+      layer.basicAdjustment = undefined;
       layer.hasAdjustments = false;
       this.model.dirty = true;
+      this.markLayerDirty(id);
       this.notifyChange();
     }
   }
