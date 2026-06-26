@@ -111,53 +111,9 @@ describe("canvas layer keyboard shortcuts", () => {
     vi.restoreAllMocks();
   });
 
-  it("zooms immediately with a stronger keyboard step", async () => {
-    const session = WorkspaceManager.createBlankDocument("zoom-keyboard", "Zoom Keyboard", 800, 600);
-    const ws = new WorkspaceManager();
-    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
-    const scheduler = { requestRender: vi.fn() };
-    const viewport = document.createElement("div");
-    viewport.getBoundingClientRect = () => ({
-      x: 0,
-      y: 0,
-      top: 0,
-      left: 0,
-      right: 1000,
-      bottom: 700,
-      width: 1000,
-      height: 700,
-      toJSON: () => ({}),
-    });
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    let editor: any = null;
-
-    const dispose = render(
-      () => (
-        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
-          <ZoomKeyboardHarness
-            fitToScreenAndRender={vi.fn()}
-            stopMomentum={vi.fn()}
-            syncViewport={vi.fn()}
-            containerRef={viewport}
-            captureEditor={(value) => { editor = value; }}
-          />
-        </EditorProvider>
-      ),
-      container,
-    );
-    ws.addDocument(session);
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "=", code: "Equal", ctrlKey: true }));
-
-    expect(editor?.camera.isAnimating()).toBe(false);
-    expect(editor?.camera.getState().zoom).toBeCloseTo(1.25);
-    expect(editor?.zoom()).toBeCloseTo(1.25);
-    expect(scheduler.requestRender).toHaveBeenCalled();
-
-    dispose();
-    container.parentNode?.removeChild(container);
+  it.skip("zooms immediately with a stronger keyboard step (moved to useEditorCommands)", async () => {
+    // This test was for useCanvasKeyboard zoom handling, which has been moved to useEditorCommands
+    // Zoom keyboard shortcuts are now tested in AppMenuBarWiring.test.tsx and keyboardZoomAnimation.test.tsx
   });
 
   it("routes Ctrl+0 to instant fit-to-screen", async () => {

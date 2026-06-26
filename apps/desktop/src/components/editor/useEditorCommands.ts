@@ -12,6 +12,7 @@ import { useDialog } from "./DialogProvider";
 import { showToast } from "./Toast";
 import { showSaveDialog } from "@/tauri/native";
 import { serializeAndSaveProject } from "./projectSerialize";
+import { easeOutCubic } from "@/viewport/easing";
 
 export const NATIVE_MENU_EVENT = "photrez://native-menu";
 export const EDITOR_COMMAND_EVENT = "photrez://editor-command";
@@ -333,9 +334,15 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
           : command === "view.zoom-out"
             ? 0.8
             : 1 / currentZoom;
-        editor.camera.zoomToPoint(factor, viewport.width / 2, viewport.height / 2);
-        editor.syncFromCamera();
-        editor.scheduler.requestRender();
+        // Animated zoom for keyboard shortcuts (150ms - snappy and smooth)
+        editor.camera.animateZoomToPoint(
+          factor,
+          viewport.width / 2,
+          viewport.height / 2,
+          150,
+          easeOutCubic
+        );
+        // Note: syncFromCamera() and scheduler.requestRender() are handled by camera animation callbacks
         break;
       }
       case "view.fit-canvas": {
@@ -392,6 +399,9 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
       else if (commandKey && key === "s") command = "file.save";
       else if (commandKey && key === "e") command = "file.export";
       else if (commandKey && key === "1") command = "view.actual-size";
+      else if (commandKey && key === "0") command = "view.fit-canvas";
+      else if (commandKey && (key === "=" || key === "+")) command = "view.zoom-in";
+      else if (commandKey && (key === "-" || key === "_")) command = "view.zoom-out";
 
       if (command) {
         event.preventDefault();

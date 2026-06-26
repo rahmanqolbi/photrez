@@ -324,7 +324,31 @@ export function EditorProvider(props: {
   };
 
   const syncFromCamera = () => {
-    setViewportState(camera.getState());
+    // Don't sync to engine during animation - it triggers workspace sync which calls camera.setState() and cancels the animation
+    if (camera.isAnimating()) {
+      // Only update UI signals during animation
+      const state = camera.getState();
+      batch(() => {
+        editorState.setZoom(state.zoom);
+        editorState.setPan({ x: state.x, y: state.y });
+      });
+      return;
+    }
+
+    // Full sync when not animating
+    const state = camera.getState();
+    batch(() => {
+      editorState.setZoom(state.zoom);
+      editorState.setPan({ x: state.x, y: state.y });
+    });
+    const engine = props.workspace.getActiveEngine();
+    if (engine) {
+      engine.setViewport({
+        panX: state.x,
+        panY: state.y,
+        zoom: state.zoom,
+      });
+    }
   };
 
   const { syncState, syncViewport } = setupWorkspaceSync({

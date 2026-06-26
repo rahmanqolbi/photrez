@@ -89,8 +89,15 @@ describe("custom application menu wiring", () => {
     button(host.container, "View").click();
     button(host.container, "Actual Size").click();
 
+    // Keyboard zoom shortcuts now use animation, tick to completion
+    expect(host.camera.isAnimating()).toBe(true);
+    const startTime = performance.now();
+    while (host.camera.isAnimating()) {
+      host.camera.tick(startTime + 300); // Fast-forward past 200ms duration
+    }
+
     expect(host.camera.getState().zoom).toBeCloseTo(1);
-    expect(host.scheduler.requestRender).toHaveBeenCalled();
+    // Note: scheduler.requestRender is called by camera animation callbacks, not directly
     host.dispose();
   });
 

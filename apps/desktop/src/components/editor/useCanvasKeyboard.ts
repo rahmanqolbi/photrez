@@ -683,6 +683,8 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
       }
 
       // Zoom Shortcuts: Ctrl + Plus / Equal
+      // NOTE: Handled by useEditorCommands.ts with animation
+      /*
       if (
         ctrl &&
         (key === "=" ||
@@ -705,8 +707,11 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         }
         return;
       }
+      */
 
       // Zoom Shortcuts: Ctrl + Minus
+      // NOTE: Handled by useEditorCommands.ts with animation
+      /*
       if (
         ctrl &&
         (key === "-" || e.code === "Minus" || e.code === "NumpadSubtract")
@@ -726,6 +731,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         }
         return;
       }
+      */
 
       // Fit Screen Shortcuts: Ctrl + 0
       if (
