@@ -52,12 +52,17 @@ export function AdjustmentsPanel() {
   // Sync slider values from layer adjustments (for undo/redo)
   createEffect(() => {
     const layer = activeLayer();
-    if (layer?.basicAdjustment) {
-      // Only sync if not currently adjusting (to avoid fighting with live preview)
-      const base = adjustmentBase();
-      if (!base || base.layerId !== layer.id) {
-        setBasicAdjustment({ ...layer.basicAdjustment });
-      }
+    if (!layer) return;
+    
+    // Only sync if not currently adjusting (to avoid fighting with live preview)
+    const base = adjustmentBase();
+    if (base && base.layerId === layer.id) return;
+    
+    // Sync from layer or reset to zero if no adjustments
+    if (layer.basicAdjustment) {
+      setBasicAdjustment({ ...layer.basicAdjustment });
+    } else {
+      setBasicAdjustment({ brightness: 0, contrast: 0, saturation: 0 });
     }
   });
 
