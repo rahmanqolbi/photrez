@@ -40,13 +40,25 @@ export function AdjustmentsPanel() {
     layerId: string;
   } | null>(null);
 
-  // Reset slider values and cached base bitmap whenever the selected layer changes
+  // Reset slider values whenever the selected layer changes
   createEffect(() => {
     selectedLayerId();
     batch(() => {
       setBasicAdjustment({ brightness: 0, contrast: 0, saturation: 0 });
       setAdjustmentBase(null);
     });
+  });
+
+  // Sync slider values from layer adjustments (for undo/redo)
+  createEffect(() => {
+    const layer = activeLayer();
+    if (layer?.basicAdjustment) {
+      // Only sync if not currently adjusting (to avoid fighting with live preview)
+      const base = adjustmentBase();
+      if (!base || base.layerId !== layer.id) {
+        setBasicAdjustment({ ...layer.basicAdjustment });
+      }
+    }
   });
 
   const activeLayer = () => {
