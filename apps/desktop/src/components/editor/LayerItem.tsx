@@ -230,6 +230,16 @@ export function LayerItem(props: LayerItemProps) {
         </button>
       </div>
 
+      {/* Adjustments Indicator */}
+      <Show when={props.layer.hasAdjustments}>
+        <div
+          class="text-editor-accent size-6 flex items-center justify-center mr-1"
+          title="Layer has basic adjustments (brightness/contrast/saturation) applied"
+        >
+          <Icon name="sliders" class="size-3.5 shrink-0" strokeWidth={1.75} />
+        </div>
+      </Show>
+
       {/* Lock Indicator */}
       <button
         onClick={(e) => props.onToggleLock(e, props.layer.id)}

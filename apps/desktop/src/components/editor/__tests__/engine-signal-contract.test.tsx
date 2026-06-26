@@ -33,7 +33,10 @@ vi.mock("@/tauri/native", () => ({
   ),
 }));
 
+let originalCreateImageBitmap: typeof globalThis.createImageBitmap;
+
 beforeEach(() => {
+  originalCreateImageBitmap = globalThis.createImageBitmap;
   globalThis.createImageBitmap = vi.fn().mockResolvedValue({ width: 100, height: 100 } as ImageBitmap);
 });
 
@@ -112,6 +115,7 @@ describe("Engine ↔ Signal contract", () => {
   });
 
   afterEach(() => {
+    globalThis.createImageBitmap = originalCreateImageBitmap;
     if (dispose) dispose();
     if (container.parentNode) {
       container.parentNode.removeChild(container);

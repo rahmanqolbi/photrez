@@ -10,6 +10,8 @@ import { useLayerActions } from "./useLayerActions";
 import { cancelLayerTransformSession } from "./transformSession";
 import { useDialog } from "./DialogProvider";
 import { showToast } from "./Toast";
+import { showSaveDialog } from "@/tauri/native";
+import { serializeAndSaveProject } from "./projectSerialize";
 
 export const NATIVE_MENU_EVENT = "photrez://native-menu";
 export const EDITOR_COMMAND_EVENT = "photrez://editor-command";
@@ -17,6 +19,8 @@ export const EDITOR_COMMAND_EVENT = "photrez://editor-command";
 export type EditorCommand =
   | "file.new"
   | "file.open"
+  | "file.save"
+  | "file.save-as"
   | "file.export"
   | "edit.undo"
   | "edit.redo"
@@ -46,6 +50,8 @@ export type EditorCommand =
 const EDITOR_COMMANDS: ReadonlySet<string> = new Set<EditorCommand>([
   "file.new",
   "file.open",
+  "file.save",
+  "file.save-as",
   "file.export",
   "edit.undo",
   "edit.redo",
@@ -87,7 +93,9 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
   const layerActions = useLayerActions();
 
   const requiresDocument = (command: EditorCommand) => (
-    command === "file.export"
+    command === "file.save"
+    || command === "file.save-as"
+    || command === "file.export"
     || command === "edit.undo"
     || command === "edit.redo"
     || command.startsWith("edit.")
@@ -207,6 +215,48 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
       case "file.open":
         void editor.openImage();
         break;
+      case "file.save": {
+        const session = editor.workspace.getActiveSession();
+        if (!session) break;
+        if (session.sourcePath) {
+          void (async () => {
+            try {
+              await serializeAndSaveProject(session.engine, session.sourcePath!);
+              session.dirty = false;
+              showToast("Project saved successfully", "info");
+              editor.scheduler.requestRender();
+            } catch (err) {
+              showToast(`Failed to save project: ${err}`, "error");
+            }
+          })();
+        } else {
+          execute("file.save-as");
+        }
+        break;
+      }
+      case "file.save-as": {
+        const session = editor.workspace.getActiveSession();
+        if (!session) break;
+        void (async () => {
+          try {
+            const defaultName = session.displayName.endsWith(".ptz")
+              ? session.displayName
+              : `${session.displayName.split(".")[0]}.ptz`;
+            const path = await showSaveDialog(defaultName);
+            if (!path) return;
+
+            await serializeAndSaveProject(session.engine, path);
+            session.sourcePath = path;
+            session.displayName = path.split(/[/\\]/).pop() || session.displayName;
+            session.dirty = false;
+            showToast("Project saved successfully", "info");
+            editor.scheduler.requestRender();
+          } catch (err) {
+            showToast(`Failed to save project: ${err}`, "error");
+          }
+        })();
+        break;
+      }
       case "file.export":
         if (editor.activeDocumentId()) editor.setShowExportDialog(true);
         break;
@@ -338,7 +388,9 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
       else if (commandKey && key === "y") command = "edit.redo";
       else if (commandKey && key === "n") command = "file.new";
       else if (commandKey && key === "o") command = "file.open";
-      else if (commandKey && key === "s") command = "file.export";
+      else if (commandKey && event.shiftKey && key === "s") command = "file.save-as";
+      else if (commandKey && key === "s") command = "file.save";
+      else if (commandKey && key === "e") command = "file.export";
       else if (commandKey && key === "1") command = "view.actual-size";
 
       if (command) {

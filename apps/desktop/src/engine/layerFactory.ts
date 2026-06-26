@@ -46,7 +46,8 @@ export function duplicateLayerNode(layer: LayerNode): LayerNode {
     transform: { ...layer.transform },
     width: layer.width,
     height: layer.height,
-    imageBitmap: clonedBitmap
+    imageBitmap: clonedBitmap,
+    hasAdjustments: layer.hasAdjustments
   };
 }
 

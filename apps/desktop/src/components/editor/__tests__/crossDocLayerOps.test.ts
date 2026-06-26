@@ -4,16 +4,16 @@ import type { BlendMode, LayerNode } from "@/engine/types";
 import type { LayerDragPayload } from "../dragTypes";
 import { resetToasts } from "../Toast";
 
-const mockShowToast = vi.fn();
+const { mockShowToast } = vi.hoisted(() => ({
+  mockShowToast: vi.fn(),
+}));
 
-vi.mock(import("../Toast"), async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    showToast: (msg: string, severity: "info" | "warn" | "error" = "info") =>
-      mockShowToast(msg, severity),
-  };
-});
+vi.mock("../Toast", () => ({
+  showToast: (msg: string, severity: "info" | "warn" | "error" = "info") =>
+    mockShowToast(msg, severity),
+  resetToasts: vi.fn(),
+  ToastHost: () => null,
+}));
 
 const basePayload: LayerDragPayload = {
   version: 1,

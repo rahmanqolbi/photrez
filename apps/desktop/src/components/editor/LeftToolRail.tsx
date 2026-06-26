@@ -104,6 +104,7 @@ export function LeftToolRail(props: { disabled?: boolean }) {
         <div 
           class="absolute bottom-0 right-0 size-[28px] rounded-full border border-white/20 shadow-md cursor-pointer overflow-hidden transition-transform duration-100 hover:scale-105"
           style={{ "background-color": bgColor() }}
+          title="Background Color"
         >
           <input
             type="color"
@@ -118,8 +119,9 @@ export function LeftToolRail(props: { disabled?: boolean }) {
 
         {/* Foreground Swatch with Native Color Input */}
         <div 
-          class="absolute top-0 left-0 size-[28px] rounded-full border border-black/30 shadow-md cursor-pointer overflow-hidden transition-transform duration-100 hover:scale-105"
+          class="absolute top-0 left-0 size-[28px] rounded-full border border-white/30 outline outline-1 outline-black/40 shadow-md cursor-pointer overflow-hidden z-10 transition-transform duration-100 hover:scale-105"
           style={{ "background-color": fgColor() }}
+          title="Foreground Color"
         >
           <input
             type="color"
@@ -136,7 +138,7 @@ export function LeftToolRail(props: { disabled?: boolean }) {
         <Tooltip content="Swap Colors" shortcut="X" placement="right">
           <button
             onClick={handleSwapColors}
-            class="absolute -top-1.5 -right-1.5 size-4 bg-editor-toolbar border border-editor-divider rounded-full flex items-center justify-center text-editor-icon hover:text-editor-text scale-0 group-hover:scale-100 transition-transform duration-150 shadow"
+            class="absolute -top-1.5 -right-1.5 z-20 size-4 bg-editor-toolbar border border-editor-divider rounded-full flex items-center justify-center text-editor-icon hover:text-editor-text scale-0 group-hover:scale-100 transition-transform duration-150 shadow cursor-pointer"
           >
             <Icon name="rotate" class="size-2.5" />
           </button>

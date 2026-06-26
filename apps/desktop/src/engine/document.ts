@@ -592,9 +592,19 @@ setLayerImageBitmap(id: LayerId, bitmap: ImageBitmap): void {
     ctx.putImageData(imageData, 0, 0);
 
     layer.imageBitmap = canvas.transferToImageBitmap();
+    layer.hasAdjustments = adjustment.brightness !== 0 || adjustment.contrast !== 0 || adjustment.saturation !== 0;
     this.model.dirty = true;
     this.markLayerDirty(id);
     this.notifyVisualChange();
+  }
+
+  clearBasicAdjustments(id: LayerId): void {
+    const layer = this.getLayer(id);
+    if (layer) {
+      layer.hasAdjustments = false;
+      this.model.dirty = true;
+      this.notifyChange();
+    }
   }
 
   // ─── Texture Handles ───

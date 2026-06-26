@@ -60,6 +60,7 @@ Status labels:
 | `env_logger` | Log output (dev) | `0.11.x` | MIT/Apache-2.0 | Approved | Negligible | Dev-only, not in release builds |
 | `bytemuck` | Safe byte casting | `1.x` | MIT/Apache-2.0 | Provisional | Negligible | Pixel buffer manipulation |
 | `lz4_flex` | Compression | Latest stable | MIT/Apache-2.0 | Research | Low | History snapshot compression (if needed) |
+| `zip` | Zipping/Unzipping project format | `2.2.0` | MIT | Approved | Low | Used to pack/unpack .ptz project archives |
 
 ### Testing
 

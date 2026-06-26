@@ -9,6 +9,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tauri-plugin-dialog = "2"
 base64 = "0.22"
+zip = { version = "2.2.0", default-features = false, features = ["deflate"] }
 
 [build-dependencies]
 tauri-build = { version = "2.0.0", features = [] }

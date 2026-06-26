@@ -183,4 +183,29 @@ describe("PropertiesPanel basic adjustments", () => {
     expect(lockedAdjustments.container.textContent).toContain("Layer is locked. Unlock it before applying pixel adjustments.");
     lockedAdjustments.dispose();
   });
+
+  it("renders the selected layer and selected document cards appropriately", async () => {
+    const workspace = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("test-doc", "Test Document", 800, 600);
+    workspace.addDocument(session);
+
+    // Test case 1: Selected Layer Card is displayed (default selection is Background layer)
+    const { container, dispose } = renderPropertiesPanel(workspace);
+    await tick();
+
+    expect(container.textContent).toContain("Selected Layer");
+    expect(container.textContent).toContain("Background");
+    expect(container.textContent).toContain("Image layer · 800 × 600 px");
+
+    // Test case 2: Selected Document Card is displayed when no layer is selected
+    session.engine.setActiveLayer(null);
+    await tick();
+
+    expect(container.textContent).toContain("Selected Document");
+    expect(container.textContent).toContain("Test Document");
+    expect(container.textContent).toContain("Canvas · 800 × 600 px");
+
+    dispose();
+  });
 });
+

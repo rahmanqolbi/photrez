@@ -337,7 +337,8 @@ fn get_contract_info() -> Result<Value, Value> {
         "version": CONTRACT_VERSION,
         "supported_commands": [
             "ping", "get_contract_info",
-            "read_file_bytes", "write_file_bytes"
+            "read_file_bytes", "write_file_bytes",
+            "save_project", "load_project"
         ]
     }))
 }
@@ -398,6 +399,94 @@ fn write_file_bytes(path: String, data: String) -> Result<Value, Value> {
     }
 }
 
+#[tauri::command]
+fn save_project(
+    path: String,
+    document_json: String,
+    layers: std::collections::HashMap<String, String>,
+) -> Result<Value, Value> {
+    validate_path_extension(&path, &["ptz"], "save project")?;
+
+    let file = std::fs::File::create(&path)
+        .map_err(|e| error_value("E_IO", &format!("Failed to create project file: {}", e)))?;
+
+    let mut zip = zip::ZipWriter::new(file);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+
+    zip.start_file("document.json", options)
+        .map_err(|e| error_value("E_IO", &format!("Failed to start document.json: {}", e)))?;
+    use std::io::Write;
+    zip.write_all(document_json.as_bytes())
+        .map_err(|e| error_value("E_IO", &format!("Failed to write document.json: {}", e)))?;
+
+    for (layer_id, base64_data) in layers {
+        use base64::Engine;
+        let bytes = base64::engine::general_purpose::STANDARD.decode(&base64_data)
+            .map_err(|e| error_value("E_VALIDATION", &format!("Invalid base64 for layer {}: {}", layer_id, e)))?;
+
+        let zip_layer_path = format!("layers/{}.png", layer_id);
+        zip.start_file(&zip_layer_path, options)
+            .map_err(|e| error_value("E_IO", &format!("Failed to start layer file {}: {}", zip_layer_path, e)))?;
+        zip.write_all(&bytes)
+            .map_err(|e| error_value("E_IO", &format!("Failed to write layer {}: {}", layer_id, e)))?;
+    }
+
+    zip.finish()
+        .map_err(|e| error_value("E_IO", &format!("Failed to finish project archive: {}", e)))?;
+
+    ok_response(serde_json::json!({ "path": path }))
+}
+
+#[tauri::command]
+fn load_project(path: String) -> Result<Value, Value> {
+    validate_path_extension(&path, &["ptz"], "load project")?;
+
+    let file = std::fs::File::open(&path)
+        .map_err(|e| error_value("E_IO", &format!("Failed to open project file: {}", e)))?;
+
+    let mut archive = zip::ZipArchive::new(file)
+        .map_err(|e| error_value("E_IO", &format!("Failed to read project archive: {}", e)))?;
+
+    let mut document_json = String::new();
+    let mut layers = std::collections::HashMap::new();
+
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)
+            .map_err(|e| error_value("E_IO", &format!("Failed to read index {} inside project archive: {}", i, e)))?;
+
+        let name = file.name().to_string();
+        if name == "document.json" {
+            use std::io::Read;
+            file.read_to_string(&mut document_json)
+                .map_err(|e| error_value("E_IO", &format!("Failed to read document.json: {}", e)))?;
+        } else if name.starts_with("layers/") && name.ends_with(".png") {
+            let layer_id = name.strip_prefix("layers/")
+                .and_then(|s| s.strip_suffix(".png"))
+                .unwrap_or(&name)
+                .to_string();
+
+            use std::io::Read;
+            let mut bytes = Vec::new();
+            file.read_to_end(&mut bytes)
+                .map_err(|e| error_value("E_IO", &format!("Failed to read layer file {}: {}", name, e)))?;
+
+            use base64::Engine;
+            let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+            layers.insert(layer_id, b64);
+        }
+    }
+
+    if document_json.is_empty() {
+        return err_response("E_IO", "document.json not found in the project archive");
+    }
+
+    ok_response(serde_json::json!({
+        "document_json": document_json,
+        "layers": layers,
+    }))
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -442,6 +531,8 @@ fn main() {
             get_contract_info,
             read_file_bytes,
             write_file_bytes,
+            save_project,
+            load_project,
         ])
         .run(tauri::generate_context!())
         .expect("Error while running Photrez");
@@ -595,7 +686,9 @@ mod tests {
                 "ping",
                 "get_contract_info",
                 "read_file_bytes",
-                "write_file_bytes"
+                "write_file_bytes",
+                "save_project",
+                "load_project"
             ]
         );
     }

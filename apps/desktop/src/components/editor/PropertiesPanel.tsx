@@ -4,6 +4,7 @@ import { EditableNumField, PropRow, SelectField, Slider } from "./primitives";
 import { useEditor } from "./EditorContext";
 import { SectionHeader } from "./SectionHeader";
 import { CanvasProperties } from "./CanvasProperties";
+import { LayerThumb } from "./LayerThumb";
 import type { Transform2D } from "@/engine/types";
 
 const ANCHOR_POSITIONS = ["top-left", "top-center", "top-right", "middle-left", "center", "middle-right", "bottom-left", "bottom-center", "bottom-right"] as const;
@@ -123,85 +124,106 @@ export function PropertiesPanel() {
             fallback={<CanvasProperties />}
           >
             {(layer) => (
-              <div class="border-b border-editor-divider px-4 py-3.5">
-                <SectionHeader
-                  icon="move"
-                  iconClass="text-editor-text-dim"
-                  label="Transform"
-                  trailing={
-                    <Icon
-                      name="chevron-up"
-                      class="size-4 text-editor-text-dim"
-                      strokeWidth={1.75}
-                    />
-                  }
-                />
-
-                <div class="mt-3 flex flex-col gap-2.5">
-                  <Show when={transformStatusText()}>
-                    {(message) => <StatusHint>{message()}</StatusHint>}
-                  </Show>
-                  <PropRow label="Position">
-                    <EditableNumField label="X" value={layer().transform.x} suffix="px" onSubmit={handlePositionField("x")} disabled={layer().lockPosition || layer().locked} class="flex-1" />
-                    <EditableNumField label="Y" value={layer().transform.y} suffix="px" onSubmit={handlePositionField("y")} disabled={layer().lockPosition || layer().locked} class="flex-1" />
-                  </PropRow>
-                  <PropRow label="Size">
-                    <EditableNumField label="W" value={layer().width * layer().transform.scaleX} suffix="px" onSubmit={handleSizeField("w")} disabled={layer().locked} class="flex-1" />
-                    <EditableNumField label="H" value={layer().height * layer().transform.scaleY} suffix="px" onSubmit={handleSizeField("h")} disabled={layer().locked} class="flex-1" />
-                  </PropRow>
-                  <PropRow label="Rotation">
-                    <EditableNumField label="R" value={layer().transform.rotation} suffix="deg" onSubmit={handleRotationField} disabled={layer().lockRotation || layer().locked} class="flex-1" />
-                  </PropRow>
-                  <PropRow label="Scale">
-                    <EditableNumField label="X" value={layer().transform.scaleX * 100} suffix="%" onSubmit={handleScaleField("x")} disabled={layer().locked} class="flex-1" />
-                    <EditableNumField label="Y" value={layer().transform.scaleY * 100} suffix="%" onSubmit={handleScaleField("y")} disabled={layer().locked} class="flex-1" />
-                    <button
-                      class={`flex size-[26px] shrink-0 items-center justify-center ${lockScale() ? "text-editor-accent" : "text-editor-text-dim"}`}
-                      aria-label="Lock scale"
-                      onClick={() => setLockScale(!lockScale())}
-                    >
-                      <Icon name="link" class="size-3.5" strokeWidth={1.75} />
-                    </button>
-                  </PropRow>
-                  <PropRow label="Opacity">
-                    <div class="flex-grow flex items-center gap-2.5">
-                      <div class="relative flex-grow flex items-center h-[14px]">
-                        <Slider
-                          percent={Math.round(layer().opacity * 100)}
-                          accent={true}
-                        />
-                        <input
-                          aria-label="Opacity"
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={Math.round(layer().opacity * 100)}
-                          disabled={layer().locked}
-                          onInput={(e) => handleOpacityChange(parseInt(e.currentTarget.value))}
-                          onPointerUp={finishOpacityEdit}
-                          onBlur={finishOpacityEdit}
-                          onChange={finishOpacityEdit}
-                          class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer disabled:pointer-events-none"
-                        />
-                      </div>
-                      <span class="w-[44px] shrink-0 text-right text-[12px] text-editor-text">
-                        {Math.round(layer().opacity * 100)} %
-                      </span>
+              <>
+                <div class="border-b border-editor-divider px-4 py-3.5">
+                  <SectionHeader
+                    icon="layers"
+                    iconClass="text-editor-text-dim"
+                    label="Selected Layer"
+                  />
+                  <div class="mt-3 flex items-center gap-3 rounded-[4px] border border-editor-divider bg-editor-field p-2.5">
+                    <LayerThumb layer={layer()} isActive={true} />
+                    <div class="min-w-0 flex-1">
+                      <p class="truncate text-[12.5px] font-medium text-editor-text leading-tight" title={layer().name}>
+                        {layer().name}
+                      </p>
+                      <p class="truncate text-[11px] text-editor-text-dim leading-snug mt-0.5">
+                        {layer().type === "raster" ? "Image layer" : `${layer().type.charAt(0).toUpperCase()}${layer().type.slice(1)} layer`} · {layer().width} × {layer().height} px
+                      </p>
                     </div>
-                  </PropRow>
-
-                  <div class="flex items-start gap-2.5 pt-1">
-                    <span class="w-[58px] shrink-0 text-[12px] text-editor-text-dim">
-                      Anchor
-                    </span>
-                    <AnchorGrid value={anchor()} onSelect={setAnchor} />
                   </div>
-
-                  <PropRow label="Constrain">
-                    <SelectField value="Lock Aspect Ratio" class="flex-1" />
-                  </PropRow>
                 </div>
-              </div>
+
+                <div class="border-b border-editor-divider px-4 py-3.5">
+                  <SectionHeader
+                    icon="move"
+                    iconClass="text-editor-text-dim"
+                    label="Transform"
+                    trailing={
+                      <Icon
+                        name="chevron-up"
+                        class="size-4 text-editor-text-dim"
+                        strokeWidth={1.75}
+                      />
+                    }
+                  />
+
+                  <div class="mt-3 flex flex-col gap-2.5">
+                    <Show when={transformStatusText()}>
+                      {(message) => <StatusHint>{message()}</StatusHint>}
+                    </Show>
+                    <PropRow label="Position">
+                      <EditableNumField label="X" value={layer().transform.x} suffix="px" onSubmit={handlePositionField("x")} disabled={layer().lockPosition || layer().locked} class="flex-1" />
+                      <EditableNumField label="Y" value={layer().transform.y} suffix="px" onSubmit={handlePositionField("y")} disabled={layer().lockPosition || layer().locked} class="flex-1" />
+                    </PropRow>
+                    <PropRow label="Size">
+                      <EditableNumField label="W" value={layer().width * layer().transform.scaleX} suffix="px" onSubmit={handleSizeField("w")} disabled={layer().locked} class="flex-1" />
+                      <EditableNumField label="H" value={layer().height * layer().transform.scaleY} suffix="px" onSubmit={handleSizeField("h")} disabled={layer().locked} class="flex-1" />
+                    </PropRow>
+                    <PropRow label="Rotation">
+                      <EditableNumField label="R" value={layer().transform.rotation} suffix="deg" onSubmit={handleRotationField} disabled={layer().lockRotation || layer().locked} class="flex-1" />
+                    </PropRow>
+                    <PropRow label="Scale">
+                      <EditableNumField label="X" value={layer().transform.scaleX * 100} suffix="%" onSubmit={handleScaleField("x")} disabled={layer().locked} class="flex-1" />
+                      <EditableNumField label="Y" value={layer().transform.scaleY * 100} suffix="%" onSubmit={handleScaleField("y")} disabled={layer().locked} class="flex-1" />
+                      <button
+                        class={`flex size-[26px] shrink-0 items-center justify-center ${lockScale() ? "text-editor-accent" : "text-editor-text-dim"}`}
+                        aria-label="Lock scale"
+                        onClick={() => setLockScale(!lockScale())}
+                      >
+                        <Icon name="link" class="size-3.5" strokeWidth={1.75} />
+                      </button>
+                    </PropRow>
+                    <PropRow label="Opacity">
+                      <div class="flex-grow flex items-center gap-2.5">
+                        <div class="relative flex-grow flex items-center h-[14px]">
+                          <Slider
+                            percent={Math.round(layer().opacity * 100)}
+                            accent={true}
+                          />
+                          <input
+                            aria-label="Opacity"
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={Math.round(layer().opacity * 100)}
+                            disabled={layer().locked}
+                            onInput={(e) => handleOpacityChange(parseInt(e.currentTarget.value))}
+                            onPointerUp={finishOpacityEdit}
+                            onBlur={finishOpacityEdit}
+                            onChange={finishOpacityEdit}
+                            class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer disabled:pointer-events-none"
+                          />
+                        </div>
+                        <span class="w-[44px] shrink-0 text-right text-[12px] text-editor-text">
+                          {Math.round(layer().opacity * 100)} %
+                        </span>
+                      </div>
+                    </PropRow>
+
+                    <div class="flex items-start gap-2.5 pt-1">
+                      <span class="w-[58px] shrink-0 text-[12px] text-editor-text-dim">
+                        Anchor
+                      </span>
+                      <AnchorGrid value={anchor()} onSelect={setAnchor} />
+                    </div>
+
+                    <PropRow label="Constrain">
+                      <SelectField value="Lock Aspect Ratio" class="flex-1" />
+                    </PropRow>
+                  </div>
+                </div>
+              </>
             )}
           </Show>
         </Show>

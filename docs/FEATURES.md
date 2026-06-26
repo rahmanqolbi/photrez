@@ -45,6 +45,7 @@
 | ✅ DONE      | Properties Transform fields — editable X/Y, W/H, Rotation, and Scale controls with history checkpointing, lock guards, and mounted wiring coverage |
 | ✅ DONE      | Properties state hints — inline guidance for locked layers, position/rotation locks, and layers without pixel data |
 | ✅ DONE      | Properties history polish — opacity slider creates one undo checkpoint per edit session and Properties edits use descriptive History labels |
+| ✅ DONE      | Adjustments row marker — sliders icon next to layer lock when basic adjustments are active |
 
 ---
 
@@ -283,6 +284,7 @@
 | ✅ DONE      | File open dialog (Ctrl+O)                  |
 | ✅ DONE      | Native menu integration (mirrors custom menu; shared command routing) |
 | ✅ DONE      | Window state persistence (size/position/maximized, manual core-API impl in `main.rs`) |
+| ✅ DONE      | Project saving and loading (.ptz) locally — zipping layers/metadata and restored session rebuilds |
 
 ---
 
@@ -291,6 +293,8 @@
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Right Dock layout flexibility (Side-by-Side vs Stacked columns saved in localStorage) and unified Inspector tab structure (Library, Adjust, Presets) with compact child tabs under Adjust (Properties, Adjustments) |
+| ✅ DONE      | Dynamic Info Card — "Selected Layer" details card (thumbnail, name, details) and "Selected Document" card (icon, name, canvas details) at the top of PropertiesPanel, CanvasProperties, and AdjustmentsPanel |
+| ✅ DONE      | Polished Accordion Compartments — upgraded coming soon sections with detailed feature descriptions, lock/sparkle indicators, and recessed styling |
 | ✅ DONE      | Photon Amber accent (#E15A17)              |
 | ✅ DONE      | Zero-tint neutral gray surfaces            |
 | ✅ DONE      | Tool Rail (Raw Pro with mechanical dividers) |

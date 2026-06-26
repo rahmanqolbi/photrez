@@ -51,16 +51,18 @@ vi.mock("@/tauri/native", () => ({
 }));
 
 let mockElementFromPoint: ReturnType<typeof vi.fn>;
+let originalCreateImageBitmap: typeof globalThis.createImageBitmap;
 
 beforeEach(() => {
   tauriState.capturedCallback = null;
   tauriState.unlisten = vi.fn();
+  originalCreateImageBitmap = globalThis.createImageBitmap;
   globalThis.createImageBitmap = vi.fn().mockResolvedValue({
     width: 100,
     height: 100,
     close: () => {},
   } as ImageBitmap);
-  // jsdom 29 does not implement elementFromPoint ΓÇö polyfill it on the
+  // jsdom 29 does not implement elementFromPoint — polyfill it on the
   // document instance so crossDocDropDispatch can call it.
   mockElementFromPoint = vi.fn().mockReturnValue(null);
   (document as any).elementFromPoint = mockElementFromPoint;
@@ -68,10 +70,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  globalThis.createImageBitmap = originalCreateImageBitmap;
   vi.restoreAllMocks();
 });
 
-// ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ————————————————————————————————————————————————————————————————————————————
 //  Pure function: findDropZoneAtPoint
 // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 

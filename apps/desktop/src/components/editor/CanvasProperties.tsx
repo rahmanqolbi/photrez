@@ -14,11 +14,15 @@ export function CanvasProperties() {
     viewportWidth,
     viewportHeight,
     setShowResizeDialog,
+    documents,
+    activeDocumentId,
   } = useEditor();
 
   const engine = () => workspace.getActiveEngine();
   const w = () => docWidth();
   const h = () => docHeight();
+  const activeDoc = () => documents().find(d => d.id === activeDocumentId());
+  const docName = () => activeDoc()?.displayName || "Untitled";
 
   const handleFitToScreen = () => {
     const e = engine();
@@ -34,6 +38,27 @@ export function CanvasProperties() {
 
   return (
     <>
+      <div class="border-b border-editor-divider px-4 py-3.5">
+        <SectionHeader
+          icon="image"
+          iconClass="text-editor-text-dim"
+          label="Selected Document"
+        />
+        <div class="mt-3 flex items-center gap-3 rounded-[4px] border border-editor-divider bg-editor-field p-2.5">
+          <div class="flex size-[34px] shrink-0 items-center justify-center rounded-[3px] border border-black/40 bg-white/[0.05] text-editor-text-dim">
+            <Icon name="image" class="size-5" strokeWidth={1.5} />
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-[12.5px] font-medium text-editor-text leading-tight" title={docName()}>
+              {docName()}
+            </p>
+            <p class="truncate text-[11px] text-editor-text-dim leading-snug mt-0.5">
+              Canvas · {w()} × {h()} px
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div class="border-b border-editor-divider px-4 py-3.5">
         <SectionHeader
           icon="image"

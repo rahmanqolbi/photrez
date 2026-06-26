@@ -13,7 +13,10 @@ const MENU_DEFINITIONS: Record<MenuItem, readonly MenuEntry[]> = {
     { kind: "item", label: "New Document", command: "file.new", shortcut: "Ctrl+N" },
     { kind: "item", label: "Open Image…", command: "file.open", shortcut: "Ctrl+O" },
     { kind: "separator" },
-    { kind: "item", label: "Export…", command: "file.export", shortcut: "Ctrl+S" },
+    { kind: "item", label: "Save Project", command: "file.save", shortcut: "Ctrl+S" },
+    { kind: "item", label: "Save As…", command: "file.save-as", shortcut: "Ctrl+Shift+S" },
+    { kind: "separator" },
+    { kind: "item", label: "Export…", command: "file.export", shortcut: "Ctrl+E" },
   ],
   Edit: [
     { kind: "item", label: "Undo", command: "edit.undo", shortcut: "Ctrl+Z" },

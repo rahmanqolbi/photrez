@@ -35,9 +35,11 @@ describe("addLayerFromCrossDoc — real engine integration", () => {
   let targetDocId: string;
   let sourceLayerId: string;
   let basePayload: LayerDragPayload;
+  let originalCreateImageBitmap: typeof globalThis.createImageBitmap;
 
   beforeEach(() => {
     resetToasts();
+    originalCreateImageBitmap = globalThis.createImageBitmap;
     nativeMock.readFileBytes.mockResolvedValue(
       new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]),
     );
@@ -77,6 +79,7 @@ describe("addLayerFromCrossDoc — real engine integration", () => {
   });
 
   afterEach(() => {
+    globalThis.createImageBitmap = originalCreateImageBitmap;
     vi.restoreAllMocks();
   });
 
@@ -206,15 +209,18 @@ describe("addLayerFromCrossDoc — real engine integration", () => {
 
 describe("addFilesAsLayers — real engine decode-first contract", () => {
   let ws: WorkspaceManager;
+  let originalCreateImageBitmap: typeof globalThis.createImageBitmap;
 
   beforeEach(() => {
     resetToasts();
     ws = new WorkspaceManager();
     ws.addDocument(WorkspaceManager.createBlankDocument("docA", "DocA", 800, 600));
+    originalCreateImageBitmap = globalThis.createImageBitmap;
     globalThis.createImageBitmap = vi.fn().mockResolvedValue({ width: 100, height: 100 } as ImageBitmap);
   });
 
   afterEach(() => {
+    globalThis.createImageBitmap = originalCreateImageBitmap;
     vi.restoreAllMocks();
   });
 

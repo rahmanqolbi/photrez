@@ -27,6 +27,7 @@ export interface LayerNode {
   lockTransparency?: boolean;
   lockPosition?: boolean;
   lockRotation?: boolean;
+  hasAdjustments?: boolean;
   blendMode: BlendMode;
   transform: Transform2D;
   width: number;

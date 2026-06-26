@@ -1,5 +1,8 @@
-import { showOpenImageDialog, readFileBytes } from "@/tauri/native";
-import { WorkspaceManager } from "@/engine/workspace";
+import { showOpenImageDialog, readFileBytes, loadProject } from "@/tauri/native";
+import { WorkspaceManager, DocumentSession } from "@/engine/workspace";
+import { DocumentEngine } from "@/engine/document";
+import { CommandHistory } from "@/engine/history";
+import { DocumentModel } from "@/engine/types";
 import type { WebGL2Backend } from "@/renderer/webgl2";
 import type { RenderScheduler } from "@/renderer/scheduler";
 
@@ -66,6 +69,11 @@ export async function openImage(params: OpenImageParams) {
     for (const path of paths) {
       if (params.workspace.isFull()) break;
 
+      if (path.toLowerCase().endsWith(".ptz")) {
+        await loadProjectFile(path, params);
+        continue;
+      }
+
       const bytes = await readFileBytes(path);
       const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
       const blob = new Blob([buffer]);
@@ -84,4 +92,46 @@ export async function openImage(params: OpenImageParams) {
   } catch (e) {
     reportError(`Failed to open image: ${e}`);
   }
+}
+
+async function loadProjectFile(path: string, params: OpenImageParams) {
+  const result = await loadProject(path);
+  const model = JSON.parse(result.document_json) as DocumentModel;
+
+  for (const layer of model.layers) {
+    const base64Data = result.layers[layer.id];
+    if (base64Data) {
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: "image/png" });
+      layer.imageBitmap = await createImageBitmap(blob);
+    } else {
+      layer.imageBitmap = null;
+    }
+  }
+
+  const engine = new DocumentEngine(model.id, model.name, model.width, model.height);
+  engine.restore(model, { restoreViewport: true });
+  engine.clearDirty();
+
+  const session: DocumentSession = {
+    engine,
+    history: new CommandHistory(),
+    displayName: model.name,
+    sourcePath: path,
+    dirty: false,
+  };
+
+  params.workspace.addDocument(session);
+
+  for (const layer of engine.getLayers()) {
+    if (layer.imageBitmap) {
+      params.renderer.uploadImage(layer.id, layer.imageBitmap);
+    }
+  }
+
+  params.scheduler.requestRender();
 }

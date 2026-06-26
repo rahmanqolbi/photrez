@@ -1,7 +1,8 @@
-import { For, Show, createSignal } from "solid-js";
+import { For, Show, createSignal, createEffect, batch } from "solid-js";
 import { Icon, type IconName } from "./icons";
 import { useEditor } from "./EditorContext";
 import { SectionHeader } from "./SectionHeader";
+import { LayerThumb } from "./LayerThumb";
 import type { BasicAdjustment } from "@/engine/layerAdjustments";
 
 const COMING_SOON_SECTIONS: readonly {
@@ -20,6 +21,14 @@ const COMING_SOON_SECTIONS: readonly {
   },
 ] as const;
 
+const COMING_SOON_DESCRIPTIONS: Record<string, string> = {
+  "Tone Curve": "Non-destructive spline-based RGB tone and contrast adjustment.",
+  "HSL / Color": "Selective color tuning for Hue, Saturation, and Luminance channels.",
+  "Color Grading": "Three-way color wheels control for shadows, midtones, and highlights.",
+  "Detail": "Unsharp masking, high-pass sharpening, and bilateral noise reduction.",
+  "Lens Corrections": "Chromatic aberration control, barrel distortion, and vignette corrections.",
+};
+
 export function AdjustmentsPanel() {
   const { workspace, layers, selectedLayerId, scheduler, activeDocumentId, renderer } = useEditor();
   const [basicAdjustment, setBasicAdjustment] = createSignal<BasicAdjustment>({
@@ -31,6 +40,15 @@ export function AdjustmentsPanel() {
     layerId: string;
     bitmap: ImageBitmap;
   } | null>(null);
+
+  // Reset slider values and cached base bitmap whenever the selected layer changes
+  createEffect(() => {
+    selectedLayerId();
+    batch(() => {
+      setBasicAdjustment({ brightness: 0, contrast: 0, saturation: 0 });
+      setAdjustmentBase(null);
+    });
+  });
 
   const activeLayer = () => {
     const id = selectedLayerId();
@@ -121,6 +139,25 @@ export function AdjustmentsPanel() {
           >
             {(layer) => (
               <>
+                <div class="border-b border-editor-divider px-4 py-3.5">
+                  <SectionHeader
+                    icon="layers"
+                    iconClass="text-editor-text-dim"
+                    label="Selected Layer"
+                  />
+                  <div class="mt-3 flex items-center gap-3 rounded-[4px] border border-editor-divider bg-editor-field p-2.5">
+                    <LayerThumb layer={layer()} isActive={true} />
+                    <div class="min-w-0 flex-1">
+                      <p class="truncate text-[12.5px] font-medium text-editor-text leading-tight" title={layer().name}>
+                        {layer().name}
+                      </p>
+                      <p class="truncate text-[11px] text-editor-text-dim leading-snug mt-0.5">
+                        {layer().type === "raster" ? "Image layer" : `${layer().type.charAt(0).toUpperCase()}${layer().type.slice(1)} layer`} · {layer().width} × {layer().height} px
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="border-b border-editor-divider px-4 py-3.5">
                   <SectionHeader
                     icon="sun"
@@ -293,7 +330,15 @@ function CollapsibleSection(props: {
       </button>
       <Show when={open()}>
         <div class="px-4 pb-3">
-          <p class="text-[11px] text-editor-text-dim">Coming soon</p>
+          <div class="flex flex-col gap-2 rounded-[4px] border border-editor-field-border bg-editor-field p-2.5">
+            <div class="flex items-center gap-1.5 text-editor-accent text-[10px] font-semibold uppercase tracking-wider">
+              <Icon name="sparkles" class="size-3" strokeWidth={2} />
+              <span>In Development</span>
+            </div>
+            <p class="text-[11px] leading-relaxed text-editor-text-dim">
+              {COMING_SOON_DESCRIPTIONS[props.label] || "This professional adjustment tool is currently in development."}
+            </p>
+          </div>
         </div>
       </Show>
     </div>

@@ -23,10 +23,20 @@ function asError(result: ApiError): Error {
 export async function showOpenImageDialog(): Promise<string[] | null> {
   const selected = await open({
     multiple: true,
-    filters: [{
-      name: "Images",
-      extensions: ["png", "jpg", "jpeg", "webp", "bmp"]
-    }]
+    filters: [
+      {
+        name: "Supported Formats",
+        extensions: ["ptz", "png", "jpg", "jpeg", "webp", "bmp"]
+      },
+      {
+        name: "Photrez Project (*.ptz)",
+        extensions: ["ptz"]
+      },
+      {
+        name: "Images",
+        extensions: ["png", "jpg", "jpeg", "webp", "bmp"]
+      }
+    ]
   });
 
   if (!selected) return null;
@@ -39,6 +49,21 @@ export async function showSaveDialog(defaultName: string): Promise<string | null
     defaultPath: defaultName,
     filters: [{ name: ext.toUpperCase(), extensions: [ext] }]
   });
+}
+
+export async function saveProject(
+  path: string,
+  documentJson: string,
+  layers: Record<string, string>
+): Promise<void> {
+  const result = await invoke("save_project", { path, documentJson, layers }) as ApiResponse;
+  if (!result.ok) throw asError(result);
+}
+
+export async function loadProject(path: string): Promise<{ document_json: string; layers: Record<string, string> }> {
+  const result = await invoke("load_project", { path }) as ApiResponse<{ document_json: string; layers: Record<string, string> }>;
+  if (!result.ok) throw asError(result);
+  return result.data;
 }
 
 // ─── File I/O ───
