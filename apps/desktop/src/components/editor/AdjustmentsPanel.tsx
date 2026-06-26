@@ -38,7 +38,6 @@ export function AdjustmentsPanel() {
   });
   const [adjustmentBase, setAdjustmentBase] = createSignal<{
     layerId: string;
-    bitmap: ImageBitmap;
   } | null>(null);
 
   // Reset slider values and cached base bitmap whenever the selected layer changes
@@ -64,12 +63,12 @@ export function AdjustmentsPanel() {
 
     let base = adjustmentBase();
     if (!base || base.layerId !== layer.id) {
-      base = { layerId: layer.id, bitmap: layer.imageBitmap };
+      base = { layerId: layer.id };
       setAdjustmentBase(base);
       history.commit(engine.snapshot(), label);
     }
 
-    engine.applyBasicAdjustment(layer.id, next, base.bitmap);
+    engine.applyBasicAdjustment(layer.id, next);
     const updated = engine.getLayer(layer.id);
     if (updated?.imageBitmap) {
       renderer.uploadImage(layer.id, updated.imageBitmap);
@@ -99,12 +98,19 @@ export function AdjustmentsPanel() {
 
   const resetBasicAdjustment = () => {
     const engine = workspace.getActiveEngine();
-    const base = adjustmentBase();
-    if (engine && base) {
-      engine.setLayerImageBitmap(base.layerId, base.bitmap);
-      renderer.uploadImage(base.layerId, base.bitmap);
-      workspace.notifyVisualChange();
-      scheduler.requestRender();
+    const layer = activeLayer();
+    if (engine && layer) {
+      try {
+        engine.clearBasicAdjustments(layer.id);
+        const updated = engine.getLayer(layer.id);
+        if (updated?.imageBitmap) {
+          renderer.uploadImage(layer.id, updated.imageBitmap);
+        }
+        workspace.notifyVisualChange();
+        scheduler.requestRender();
+      } catch (e) {
+        console.error("Failed to reset adjustments:", e);
+      }
     }
     setAdjustmentBase(null);
     setBasicAdjustment({ brightness: 0, contrast: 0, saturation: 0 });

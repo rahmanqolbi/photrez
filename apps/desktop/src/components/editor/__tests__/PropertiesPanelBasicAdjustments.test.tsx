@@ -93,7 +93,6 @@ describe("PropertiesPanel basic adjustments", () => {
         contrast: 0,
         saturation: 0,
       },
-      fakeBitmap,
     );
     expect(applySpy).toHaveBeenCalledTimes(2);
     expect(renderer.uploadImage).toHaveBeenCalledWith(layer.id, fakeBitmap);

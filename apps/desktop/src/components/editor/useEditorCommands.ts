@@ -188,6 +188,8 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
       for (const layer of engine.getLayers()) {
         if (layer.imageBitmap) editor.renderer.uploadImage(layer.id, layer.imageBitmap);
       }
+      // Notify workspace to trigger UI sync (layers, history panel, adjustments, etc.)
+      editor.workspace.notifyVisualChange();
       editor.scheduler.requestRender();
     } catch (error) {
       console.error(`${direction === "undo" ? "Undo" : "Redo"} failed:`, error);
