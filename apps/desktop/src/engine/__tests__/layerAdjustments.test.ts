@@ -16,7 +16,9 @@ describe("basic layer adjustments", () => {
       { brightness: 10, contrast: 0, saturation: 0 },
     );
 
-    expect(Array.from(adjusted)).toEqual([36, 46, 56, 128]);
+    // Nonlinear curve: lifts shadows more, preserves highlights.
+    // At t=0.1: pixel 10 → 10 + (255-10)*0.05 = 22, etc.
+    expect(Array.from(adjusted)).toEqual([22, 32, 41, 128]);
   });
 
   it("can desaturate a color toward luminance", () => {

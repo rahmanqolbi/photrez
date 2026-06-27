@@ -30,15 +30,36 @@ export function applyBasicAdjustmentToPixels(
 ): Uint8ClampedArray {
   const next = new Uint8ClampedArray(pixels);
   const normalized = normalizeBasicAdjustment(adjustment);
-  const brightness = normalized.brightness * 2.55;
+  // ponytail: nonlinear brightness (modern mode). The old linear formula
+  // (brightness * 2.55) shifted all pixel values equally — equivalent to
+  // Photoshop's "Use Legacy" mode which clips highlights/shadows. This
+  // curve lifts shadows more than highlights (brighten) or pulls
+  // highlights more than shadows (darken), preserving detail at extremes.
+  const t = normalized.brightness / 100; // -1 to 1
   const contrastFactor = (259 * (normalized.contrast + 255)) / (255 * (259 - normalized.contrast));
   const saturationFactor = 1 + normalized.saturation / 100;
 
   for (let i = 0; i < next.length; i += 4) {
-    let r = contrastFactor * (next[i] - 128) + 128 + brightness;
-    let g = contrastFactor * (next[i + 1] - 128) + 128 + brightness;
-    let b = contrastFactor * (next[i + 2] - 128) + 128 + brightness;
+    // Apply contrast first (standard S-curve around midtone 128)
+    let r = contrastFactor * (next[i] - 128) + 128;
+    let g = contrastFactor * (next[i + 1] - 128) + 128;
+    let b = contrastFactor * (next[i + 2] - 128) + 128;
 
+    // Nonlinear brightness: preserves highlights when brightening,
+    // preserves shadows when darkening. Scale 0.5 keeps +100/−100
+    // from reaching full white/black.
+    if (t >= 0) {
+      r = r + (255 - r) * t * 0.5;
+      g = g + (255 - g) * t * 0.5;
+      b = b + (255 - b) * t * 0.5;
+    } else {
+      const f = -t;
+      r = r - r * f * 0.5;
+      g = g - g * f * 0.5;
+      b = b - b * f * 0.5;
+    }
+
+    // Luminance-weighted saturation (ITU-R BT.709)
     const luminance = r * 0.2126 + g * 0.7152 + b * 0.0722;
     r = luminance + (r - luminance) * saturationFactor;
     g = luminance + (g - luminance) * saturationFactor;
