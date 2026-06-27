@@ -1,0 +1,109 @@
+// ─── API Response Envelope ───
+//
+// Standardised JSON response shapes for all Tauri IPC commands.
+// Every command returns `Result<Value, Value>` where Ok is an
+// ApiSuccessResponse envelope and Err is an ApiErrorResponse envelope.
+
+use serde::Serialize;
+use serde_json::Value;
+
+pub const CONTRACT_VERSION: &str = "2.0.0";
+
+#[derive(Serialize)]
+struct ApiSuccessResponse {
+    ok: bool,
+    contract_version: String,
+    data: Value,
+}
+
+#[derive(Serialize)]
+struct ApiErrorPayload {
+    code: String,
+    message: String,
+    details: Value,
+}
+
+#[derive(Serialize)]
+struct ApiErrorResponse {
+    ok: bool,
+    contract_version: String,
+    error: ApiErrorPayload,
+}
+
+pub fn ok_response<T: Serialize>(data: T) -> Result<Value, Value> {
+    let data = serde_json::to_value(data)
+        .map_err(|e| internal_error_value(&format!("Failed to serialize response data: {}", e)))?;
+    let success = ApiSuccessResponse {
+        ok: true,
+        contract_version: CONTRACT_VERSION.to_string(),
+        data,
+    };
+    serde_json::to_value(&success)
+        .map_err(|e| internal_error_value(&format!("Failed to serialize success envelope: {}", e)))
+}
+
+pub fn err_response(code: &str, message: &str) -> Result<Value, Value> {
+    Err(error_value(code, message))
+}
+
+pub fn error_value(code: &str, message: &str) -> Value {
+    let error = ApiErrorResponse {
+        ok: false,
+        contract_version: CONTRACT_VERSION.to_string(),
+        error: ApiErrorPayload {
+            code: code.to_string(),
+            message: message.to_string(),
+            details: Value::Null,
+        },
+    };
+    serde_json::to_value(&error)
+        .unwrap_or_else(|_| internal_error_value("Failed to serialize error envelope"))
+}
+
+pub fn internal_error_value(message: &str) -> Value {
+    serde_json::json!({
+        "ok": false,
+        "contract_version": CONTRACT_VERSION,
+        "error": {
+            "code": "E_INTERNAL",
+            "message": message,
+            "details": null
+        }
+    })
+}
+
+pub fn validate_path_extension(path: &str, allowed: &[&str], operation: &str) -> Result<(), Value> {
+    let ext = std::path::Path::new(path)
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase());
+
+    if let Some(ext) = ext {
+        if allowed.iter().any(|allowed_ext| *allowed_ext == ext) {
+            return Ok(());
+        }
+    }
+
+    Err(error_value(
+        "E_VALIDATION",
+        &format!(
+            "Unsupported file extension for {}; supported extensions: {}",
+            operation,
+            allowed.join(", ")
+        ),
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_error_response_uses_contract_version() {
+        let result = err_response("E_VALIDATION", "bad input");
+        assert!(result.is_err());
+        let value = result.unwrap_err();
+        assert_eq!(value["contract_version"], CONTRACT_VERSION);
+        assert_eq!(value["error"]["code"], "E_VALIDATION");
+    }
+}

@@ -209,28 +209,16 @@ describe("addLayerFromCrossDoc — real engine integration", () => {
 
 describe("addFilesAsLayers — real engine decode-first contract", () => {
   let ws: WorkspaceManager;
-  let savedCreateImageBitmap: typeof globalThis.createImageBitmap;
 
   beforeEach(() => {
     resetToasts();
     ws = new WorkspaceManager();
     ws.addDocument(WorkspaceManager.createBlankDocument("docA", "DocA", 800, 600));
-    // Save whatever globalThis.createImageBitmap currently is (could be undefined in Node)
-    savedCreateImageBitmap = globalThis.createImageBitmap;
-  });
-
-  afterEach(() => {
-    // Restore exactly what we saved — no pollution
-    if (savedCreateImageBitmap === undefined) {
-      delete (globalThis as any).createImageBitmap;
-    } else {
-      globalThis.createImageBitmap = savedCreateImageBitmap;
-    }
   });
 
   it("does not commit history or create empty layers when any file fails before mutation", async () => {
     // Provide a working default for this test
-    globalThis.createImageBitmap = vi.fn().mockResolvedValue({ width: 100, height: 100 } as ImageBitmap);
+    vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue({ width: 100, height: 100 } as ImageBitmap));
 
     const engine = ws.getEngine("docA")!;
     const history = ws.getHistory("docA")!;
@@ -257,11 +245,11 @@ describe("addFilesAsLayers — real engine decode-first contract", () => {
   it("closes already-decoded bitmaps when a later file fails (no GPU leak)", async () => {
     const closeFn1 = vi.fn();
     let callCount = 0;
-    globalThis.createImageBitmap = vi.fn().mockImplementation(async () => {
+    vi.stubGlobal("createImageBitmap", vi.fn().mockImplementation(async () => {
       callCount++;
       if (callCount === 2) throw new Error("corrupt file");
       return { width: 100, height: 100, close: closeFn1 } as unknown as ImageBitmap;
-    });
+    }));
 
     // Both files readable; use PNG magic header so isSupportedImageBytes passes
     const pngHeader = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]);
