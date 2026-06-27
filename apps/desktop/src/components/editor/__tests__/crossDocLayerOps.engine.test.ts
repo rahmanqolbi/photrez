@@ -209,22 +209,29 @@ describe("addLayerFromCrossDoc — real engine integration", () => {
 
 describe("addFilesAsLayers — real engine decode-first contract", () => {
   let ws: WorkspaceManager;
-  let originalCreateImageBitmap: typeof globalThis.createImageBitmap;
+  let savedCreateImageBitmap: typeof globalThis.createImageBitmap;
 
   beforeEach(() => {
     resetToasts();
     ws = new WorkspaceManager();
     ws.addDocument(WorkspaceManager.createBlankDocument("docA", "DocA", 800, 600));
-    originalCreateImageBitmap = globalThis.createImageBitmap;
-    globalThis.createImageBitmap = vi.fn().mockResolvedValue({ width: 100, height: 100 } as ImageBitmap);
+    // Save whatever globalThis.createImageBitmap currently is (could be undefined in Node)
+    savedCreateImageBitmap = globalThis.createImageBitmap;
   });
 
   afterEach(() => {
-    globalThis.createImageBitmap = originalCreateImageBitmap;
-    vi.restoreAllMocks();
+    // Restore exactly what we saved — no pollution
+    if (savedCreateImageBitmap === undefined) {
+      delete (globalThis as any).createImageBitmap;
+    } else {
+      globalThis.createImageBitmap = savedCreateImageBitmap;
+    }
   });
 
   it("does not commit history or create empty layers when any file fails before mutation", async () => {
+    // Provide a working default for this test
+    globalThis.createImageBitmap = vi.fn().mockResolvedValue({ width: 100, height: 100 } as ImageBitmap);
+
     const engine = ws.getEngine("docA")!;
     const history = ws.getHistory("docA")!;
     const commitSpy = vi.spyOn(history, "commit");
