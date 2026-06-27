@@ -1,5 +1,5 @@
 import { createMemo, Show } from "solid-js";
-import { useEditor } from "./EditorContext";
+import { useEditor } from "./shell/EditorContext";
 import type { CropRect } from "@/viewport/cropGeometry";
 import type { CropSnapTargets } from "@/viewport/cropSnap";
 import type { SnapLine } from "@/viewport/smartGuides";

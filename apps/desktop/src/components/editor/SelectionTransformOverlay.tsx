@@ -1,5 +1,5 @@
 import { Show, For, createMemo } from "solid-js";
-import { useEditor } from "./EditorContext";
+import { useEditor } from "./shell/EditorContext";
 import type { HudMode } from "./TransformHud";
 import type { SnapRect, SnapResult } from "@/viewport/smartGuides";
 import { getCursorForHandle } from "@/viewport/transformGeometry";

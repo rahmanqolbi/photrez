@@ -1,7 +1,7 @@
 import { Show, createSignal, For } from "solid-js";
-import { useEditor } from "./EditorContext";
+import { useEditor } from "./shell/EditorContext";
 import { clampPaintPercent, clampPaintSize, clampPaintSmoothing, BRUSH_PRESETS, applyPaintPreset, sizeSliderToPaintSize, paintSizeToSizeSlider } from "./brushToolState";
-import { ToolPill, MoreDropdown, Divider } from "./OptionBarShared";
+import { ToolPill, MoreDropdown, Divider } from "./shell/OptionBarShared";
 import { Icon } from "./icons";
 
 function formatPercent(value: number): number {

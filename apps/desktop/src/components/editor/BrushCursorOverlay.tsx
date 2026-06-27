@@ -1,5 +1,5 @@
 import { createSignal, onMount, onCleanup, Show, createEffect, createMemo } from "solid-js";
-import { useEditor } from "./EditorContext";
+import { useEditor } from "./shell/EditorContext";
 import { getActivePaintToolSettings } from "./brushToolState";
 import { getBrushCursorRadiusScale } from "./brushHardnessProfile";
 

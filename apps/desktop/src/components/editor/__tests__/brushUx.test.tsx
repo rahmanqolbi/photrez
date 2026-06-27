@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { useCanvasPointerTools } from "../useCanvasPointerTools";
-import * as EditorContextModule from "../EditorContext";
+import { useCanvasPointerTools } from "../canvas/useCanvasPointerTools";
+import * as EditorContextModule from "../shell/EditorContext";
 import { createRoot, createSignal } from "solid-js";
 
 // Helper to create mock editor context values

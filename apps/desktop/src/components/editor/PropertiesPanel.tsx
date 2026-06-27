@@ -1,10 +1,10 @@
 import { For, Show, createSignal } from "solid-js";
 import { Icon } from "./icons";
 import { EditableNumField, PropRow, SelectField, Slider } from "./primitives";
-import { useEditor } from "./EditorContext";
-import { SectionHeader } from "./SectionHeader";
-import { CanvasProperties } from "./CanvasProperties";
-import { LayerThumb } from "./LayerThumb";
+import { useEditor } from "./shell/EditorContext";
+import { SectionHeader } from "./layers/SectionHeader";
+import { CanvasProperties } from "./canvas/CanvasProperties";
+import { LayerThumb } from "./layers/LayerThumb";
 import type { Transform2D } from "@/engine/types";
 
 const ANCHOR_POSITIONS = ["top-left", "top-center", "top-right", "middle-left", "center", "middle-right", "bottom-left", "bottom-center", "bottom-right"] as const;

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
-import { EditorProvider } from "../EditorContext";
+import { EditorProvider } from "../shell/EditorContext";
 import { PropertiesPanel } from "../PropertiesPanel";
 import { AdjustmentsPanel } from "../AdjustmentsPanel";
 import { WorkspaceManager } from "@/engine/workspace";

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render } from "solid-js/web";
 import { createSignal } from "solid-js";
 import { CropOptionBar } from "../CropOptionBar";
-import * as EditorContextModule from "../EditorContext";
+import * as EditorContextModule from "../shell/EditorContext";
 
 function clickPill(container: HTMLElement, label: string) {
   let searchLabel = label;

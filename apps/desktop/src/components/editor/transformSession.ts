@@ -1,5 +1,5 @@
 import type { DocumentModel, Transform2D } from "@/engine/types";
-import type { LayerTransformSession } from "./editorState";
+import type { LayerTransformSession } from "./tools/editorState";
 
 export interface TransformSessionEngine {
   getId(): string;

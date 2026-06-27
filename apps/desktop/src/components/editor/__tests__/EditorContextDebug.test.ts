@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render } from "solid-js/web";
-import { shouldExposeEditorDebugHandle, useEditor } from "../EditorContext";
+import { shouldExposeEditorDebugHandle, useEditor } from "../shell/EditorContext";
 
 describe("EditorContext debug handle exposure", () => {
   it("exposes window.__photrezEditor in dev and test modes", () => {

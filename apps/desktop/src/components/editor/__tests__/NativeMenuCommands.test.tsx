@@ -4,8 +4,8 @@ import type { Event } from "@tauri-apps/api/event";
 import type { WebGL2Backend } from "@/renderer/webgl2";
 import type { RenderScheduler } from "@/renderer/scheduler";
 import { WorkspaceManager } from "@/engine/workspace";
-import { EditorProvider, useEditor } from "../EditorContext";
-import { AppTitleBar } from "../AppTitleBar";
+import { EditorProvider, useEditor } from "../shell/EditorContext";
+import { AppTitleBar } from "../shell/AppTitleBar";
 
 const eventMock = vi.hoisted(() => ({
   listener: undefined as ((event: Event<string>) => void) | undefined,

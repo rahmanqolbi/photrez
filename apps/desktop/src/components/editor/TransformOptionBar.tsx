@@ -2,8 +2,8 @@ import { Show, createMemo } from "solid-js";
 import { Icon } from "./icons";
 import { NumField, EditableNumField } from "./primitives";
 import { clsx } from "clsx";
-import { useEditor } from "./EditorContext";
-import { ToggleBtn, Divider } from "./OptionBarShared";
+import { useEditor } from "./shell/EditorContext";
+import { ToggleBtn, Divider } from "./shell/OptionBarShared";
 import { cancelLayerTransformSession, commitLayerTransformSession, resetLayerTransformPreview } from "./transformSession";
 import type { Transform2D } from "@/engine/types";
 

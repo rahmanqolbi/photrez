@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import * as EditorContextModule from "../EditorContext";
+import * as EditorContextModule from "../shell/EditorContext";
 import { useBrushOverlay } from "../useBrushOverlay";
 
 function createImageData(width: number, height: number): ImageData {

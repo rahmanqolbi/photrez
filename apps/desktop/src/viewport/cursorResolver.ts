@@ -1,4 +1,4 @@
-import type { ToolId } from "@/components/editor/toolTypes";
+import type { ToolId } from "@/components/editor/tools/toolTypes";
 import { getCursorForHandle } from "./transformGeometry";
 import { getRotateCursorByPos, getRotateCursorForHandle } from "./cursorRotate";
 

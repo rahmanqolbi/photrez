@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
-import { EditorProvider, useEditor } from "../EditorContext";
-import { useCanvasKeyboard } from "../useCanvasKeyboard";
+import { EditorProvider, useEditor } from "../shell/EditorContext";
+import { useCanvasKeyboard } from "../canvas/useCanvasKeyboard";
 import { WorkspaceManager } from "@/engine/workspace";
 import { SelectionOperations } from "@/features/selection/SelectionOperations";
 import type { ToolType } from "@/viewport/input-handler";

@@ -1,7 +1,7 @@
 import { Show } from "solid-js";
-import { useEditor } from "./EditorContext";
+import { useEditor } from "./shell/EditorContext";
 import { EditableNumField } from "./primitives";
-import { ToolPill, MoreDropdown, Divider, ToggleBtn } from "./OptionBarShared";
+import { ToolPill, MoreDropdown, Divider, ToggleBtn } from "./shell/OptionBarShared";
 import { Icon } from "./icons";
 import { SelectionOperations } from "@/features/selection/SelectionOperations";
 

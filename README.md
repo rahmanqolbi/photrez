@@ -105,8 +105,8 @@ docs/reference/     Runtime contracts, shortcuts, file formats, and inventories
 docs/decisions/     Architecture and project decision records
 docs/ARCHITECTURE.md
 docs/FEATURES.md
-DESIGN.md           Visual design system
-PRODUCT.md          Product context
+docs/DESIGN.md      Visual design system
+docs/PRODUCT.md     Product context
 ```
 
 ## Documentation
@@ -119,7 +119,7 @@ PRODUCT.md          Product context
 - [Command Contract](docs/reference/command-contract-spec.md)
 - [Keyboard Shortcuts](docs/reference/keyboard-shortcut-map.md)
 - [File Format Support](docs/reference/file-format-support.md)
-- [Design System](DESIGN.md)
+- [Design System](docs/DESIGN.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security Policy](SECURITY.md)
 

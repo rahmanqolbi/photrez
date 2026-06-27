@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
-import { EditorProvider } from "../EditorContext";
-import { useEditor } from "../EditorContext";
-import { useCanvasKeyboard } from "../useCanvasKeyboard";
+import { EditorProvider } from "../shell/EditorContext";
+import { useEditor } from "../shell/EditorContext";
+import { useCanvasKeyboard } from "../canvas/useCanvasKeyboard";
 import { WorkspaceManager } from "@/engine/workspace";
 
 function KeyboardHarness(props: { captureEditor: (editor: ReturnType<typeof useEditor>) => void }) {

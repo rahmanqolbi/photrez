@@ -1,5 +1,5 @@
 import { createSignal, createMemo, onMount, onCleanup } from "solid-js";
-import { useEditor } from "./EditorContext";
+import { useEditor } from "./shell/EditorContext";
 import type { DocumentModel, Transform2D } from "@/engine/types";
 import type { HudMode } from "./TransformHud";
 import type { SnapRect, SnapResult } from "@/viewport/smartGuides";

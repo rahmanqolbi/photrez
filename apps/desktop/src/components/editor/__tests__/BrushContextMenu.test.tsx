@@ -2,7 +2,7 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import { render } from "solid-js/web";
 import { createSignal } from "solid-js";
 import { BrushContextMenu } from "../BrushContextMenu";
-import * as EditorContextModule from "../EditorContext";
+import * as EditorContextModule from "../shell/EditorContext";
 
 function createMockEditor(overrides: Record<string, any> = {}) {
   const defaults: Record<string, any> = {

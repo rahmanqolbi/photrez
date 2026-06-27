@@ -1,4 +1,4 @@
-import { useEditor } from "./EditorContext";
+import { useEditor } from "./shell/EditorContext";
 import { useDragController } from "./DragController";
 import { useTauriDragDrop } from "./useTauriDragDrop";
 import { dispatchTauriFileDrop, findDropZoneAtPoint, type DropDispatchDeps } from "./crossDocDropDispatch";

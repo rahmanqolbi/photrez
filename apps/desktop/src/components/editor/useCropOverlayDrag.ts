@@ -9,7 +9,7 @@ import {
 } from "@/viewport/cropGeometry";
 import { getCursorForHandle, normalizeRotation } from "@/viewport/transformGeometry";
 import { getRotateCursorByPos } from "@/viewport/cursorRotate";
-import { useEditor } from "./EditorContext";
+import { useEditor } from "./shell/EditorContext";
 import { snapCropRect, type CropSnapTargets } from "@/viewport/cropSnap";
 import type { SnapLine } from "@/viewport/smartGuides";
 import { createCropRectFromDocumentPoints } from "./cropToolActions";

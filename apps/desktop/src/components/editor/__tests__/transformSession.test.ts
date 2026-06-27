@@ -5,7 +5,7 @@ import {
   resetLayerTransformPreview,
 } from "../transformSession";
 import type { Transform2D, DocumentModel } from "@/engine/types";
-import type { LayerTransformSession } from "../editorState";
+import type { LayerTransformSession } from "../tools/editorState";
 
 const original: Transform2D = { x: 10, y: 20, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false };
 const preview: Transform2D = { x: 10, y: 20, scaleX: 2, scaleY: 1, rotation: 15, flipH: false, flipV: false };

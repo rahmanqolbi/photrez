@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render } from "solid-js/web";
 import { createSignal } from "solid-js";
 import { MoveOptionBar } from "../MoveOptionBar";
-import * as EditorContextModule from "../EditorContext";
+import * as EditorContextModule from "../shell/EditorContext";
 import type { LayerNode } from "@/engine/types";
 
 function tick(): Promise<void> {

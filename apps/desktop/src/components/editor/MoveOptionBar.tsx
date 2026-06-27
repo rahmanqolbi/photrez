@@ -2,8 +2,8 @@ import { Show, createMemo } from "solid-js";
 import { Icon } from "./icons";
 import { NumField, EditableNumField } from "./primitives";
 import { clsx } from "clsx";
-import { useEditor } from "./EditorContext";
-import { ToggleBtn, Divider, ToolPill, MoreDropdown } from "./OptionBarShared";
+import { useEditor } from "./shell/EditorContext";
+import { ToggleBtn, Divider, ToolPill, MoreDropdown } from "./shell/OptionBarShared";
 
 export function MoveOptionBar() {
   const {

@@ -1,8 +1,8 @@
 import { For, Show, createSignal, createEffect, batch } from "solid-js";
 import { Icon, type IconName } from "./icons";
-import { useEditor } from "./EditorContext";
-import { SectionHeader } from "./SectionHeader";
-import { LayerThumb } from "./LayerThumb";
+import { useEditor } from "./shell/EditorContext";
+import { SectionHeader } from "./layers/SectionHeader";
+import { LayerThumb } from "./layers/LayerThumb";
 import type { BasicAdjustment } from "@/engine/layerAdjustments";
 
 const COMING_SOON_SECTIONS: readonly {

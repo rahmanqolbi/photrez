@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
-import { BottomStatusBar } from "../BottomStatusBar";
-import { EditorProvider } from "../EditorContext";
-import { EmptyWorkspace } from "../EmptyWorkspace";
-import { RightDock } from "../RightDock";
+import { BottomStatusBar } from "../shell/BottomStatusBar";
+import { EditorProvider } from "../shell/EditorContext";
+import { EmptyWorkspace } from "../shell/EmptyWorkspace";
+import { RightDock } from "../shell/RightDock";
 import { WorkspaceManager } from "@/engine/workspace";
 
 function renderWithEditor(renderChildren: () => any, workspace = new WorkspaceManager()) {

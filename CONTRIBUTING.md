@@ -54,7 +54,7 @@ cargo test --workspace
 - TypeScript is strict. Avoid `any`; prefer explicit types and narrowing.
 - Keep document state changes history-safe: commit undo history before mutation.
 - Use existing editor commands, layer actions, and selection operations instead of adding parallel mutation paths.
-- Keep UI compact and consistent with `DESIGN.md`.
+- Keep UI compact and consistent with `docs/DESIGN.md`.
 
 ## Review Process
 

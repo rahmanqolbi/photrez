@@ -3,7 +3,7 @@ import { render as solidRender } from "solid-js/web";
 import { createSignal, type JSX } from "solid-js";
 import { CropOverlay } from "../CropOverlay";
 import { ModernCropOverlay } from "../ModernCropOverlay";
-import * as EditorContextModule from "../EditorContext";
+import * as EditorContextModule from "../shell/EditorContext";
 import { ViewportCamera } from "../../../viewport/viewportCamera";
 import { WorkspaceManager } from "@/engine/workspace";
 import type { WebGL2Backend } from "@/renderer/webgl2";

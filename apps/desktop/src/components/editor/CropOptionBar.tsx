@@ -1,11 +1,11 @@
 import { Show, For, createMemo, createSignal, createEffect, onMount, on, untrack } from "solid-js";
 import { NumField, EditableNumField } from "./primitives";
-import { useEditor } from "./EditorContext";
+import { useEditor } from "./shell/EditorContext";
 import { CROP_PRESETS, PILL_PRESETS } from "@/viewport/cropPresets";
 import { toUnit, fromUnit } from "@/viewport/unitConversion";
 import { fitCropRectToAspect } from "@/viewport/cropAutoFit";
 import { getDefaultModernCropFrame, getModernCropApplyRotation, modernFrameToCropRect } from "@/viewport/modernCropGeometry";
-import { ToggleBtn, Divider, ToolPill, MoreDropdown } from "./OptionBarShared";
+import { ToggleBtn, Divider, ToolPill, MoreDropdown } from "./shell/OptionBarShared";
 import { Icon } from "./icons";
 import { discardCropSession, resetCropPreviewToCanvas, applyCropPreview } from "./cropToolActions";
 

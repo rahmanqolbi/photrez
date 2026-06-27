@@ -1,5 +1,5 @@
 import { createEffect, createSignal, Show, onMount, onCleanup } from "solid-js";
-import { useEditor } from "./EditorContext";
+import { useEditor } from "./shell/EditorContext";
 import { Icon } from "./icons";
 
 interface NavigatorPoint {

@@ -16,11 +16,11 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render } from "solid-js/web";
-import { EditorProvider, useEditor } from "../EditorContext";
+import { EditorProvider, useEditor } from "../shell/EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
 import { GlobalDragDropHost } from "../GlobalDragDropHost";
-import { LayerItem } from "../LayerItem";
-import { DocumentTabsBar } from "../DocumentTabsBar";
+import { LayerItem } from "../layers/LayerItem";
+import { DocumentTabsBar } from "../shell/DocumentTabsBar";
 import { DragControllerProvider, useDragController } from "../DragController";
 import { findDropZoneAtPoint, dispatchTauriFileDrop } from "../crossDocDropDispatch";
 import { resetToasts } from "../Toast";

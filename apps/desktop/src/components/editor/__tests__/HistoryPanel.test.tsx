@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
-import { EditorProvider } from "../EditorContext";
+import { EditorProvider } from "../shell/EditorContext";
 import { HistoryPanel } from "../HistoryPanel";
 import { WorkspaceManager, type DocumentSession } from "@/engine/workspace";
 import type { WebGL2Backend } from "@/renderer/webgl2";

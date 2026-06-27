@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
 import { createSignal } from "solid-js";
 import { BrushCursorOverlay } from "../BrushCursorOverlay";
-import * as EditorContextModule from "../EditorContext";
+import * as EditorContextModule from "../shell/EditorContext";
 import { ViewportCamera } from "../../../viewport/viewportCamera";
 
 describe("BrushCursorOverlay", () => {

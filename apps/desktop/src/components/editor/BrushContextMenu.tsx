@@ -1,5 +1,5 @@
 import { createSignal, onMount, onCleanup, Show } from "solid-js";
-import { useEditor } from "./EditorContext";
+import { useEditor } from "./shell/EditorContext";
 import { clampPaintPercent, clampPaintSize, BRUSH_PRESETS, applyPaintPreset, sizeSliderToPaintSize, paintSizeToSizeSlider } from "./brushToolState";
 
 export function BrushContextMenu() {

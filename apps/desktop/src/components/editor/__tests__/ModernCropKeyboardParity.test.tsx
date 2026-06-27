@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
-import { useCanvasKeyboard } from "../useCanvasKeyboard";
+import { useCanvasKeyboard } from "../canvas/useCanvasKeyboard";
 import { applyCropPreview } from "../cropToolActions";
 
 const editorMock = vi.hoisted(() => ({ current: null as any }));
 
-vi.mock("../EditorContext", () => ({
+vi.mock("../shell/EditorContext", () => ({
   useEditor: () => editorMock.current,
 }));
 

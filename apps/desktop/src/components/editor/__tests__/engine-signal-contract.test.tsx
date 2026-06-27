@@ -19,7 +19,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render } from "solid-js/web";
-import { EditorProvider, useEditor } from "../EditorContext";
+import { EditorProvider, useEditor } from "../shell/EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
 import { addLayerFromCrossDoc, addFilesAsLayers, createNewDocsFromFiles } from "../crossDocLayerOps";
 import type { LayerDragPayload } from "../dragTypes";

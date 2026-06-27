@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
-import { BottomStatusBar } from "../BottomStatusBar";
-import { EditorProvider, useEditor } from "../EditorContext";
+import { BottomStatusBar } from "../shell/BottomStatusBar";
+import { EditorProvider, useEditor } from "../shell/EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
 import type { WebGL2Backend } from "@/renderer/webgl2";
 import type { RenderScheduler } from "@/renderer/scheduler";

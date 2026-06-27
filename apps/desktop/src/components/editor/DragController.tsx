@@ -1,6 +1,6 @@
 import { createContext, useContext, createSignal, onMount, onCleanup, ParentProps, Show } from "solid-js";
 import type { LayerDragPayload, DropTarget } from "./dragTypes";
-import { useEditor } from "./EditorContext";
+import { useEditor } from "./shell/EditorContext";
 
 const HOVER_TAB_DURATION_MS = 500;
 

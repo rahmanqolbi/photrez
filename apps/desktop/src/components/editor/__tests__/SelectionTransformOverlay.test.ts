@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render } from "solid-js/web";
-import { EditorProvider, useEditor } from "../EditorContext";
+import { EditorProvider, useEditor } from "../shell/EditorContext";
 import { SelectionTransformOverlay } from "../SelectionTransformOverlay";
 import { WorkspaceManager } from "@/engine/workspace";
 

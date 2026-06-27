@@ -1,5 +1,5 @@
 import { For, Show } from "solid-js";
-import { useEditor } from "./EditorContext";
+import { useEditor } from "./shell/EditorContext";
 import { Icon, type IconName } from "./icons";
 import { clsx } from "clsx";
 

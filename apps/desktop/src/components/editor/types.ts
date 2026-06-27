@@ -1,5 +1,5 @@
 import type { IconName } from "./icons";
-import type { ToolId } from "./toolTypes";
+import type { ToolId } from "./tools/toolTypes";
 
 export type MenuItem = "File" | "Edit" | "Image" | "Layer" | "View" | "Window" | "Help";
 

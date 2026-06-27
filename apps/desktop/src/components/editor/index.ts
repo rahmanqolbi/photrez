@@ -1,1 +1,1 @@
-export { EditorShell } from "./EditorShell";
+export { EditorShell } from "./shell/EditorShell";

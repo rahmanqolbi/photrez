@@ -1,4 +1,4 @@
-import { useEditor } from "./EditorContext";
+import { useEditor } from "./shell/EditorContext";
 import type { DocumentEngine } from "@/engine/document";
 import type { CommandHistory } from "@/engine/history";
 import { getPaintToolBlockReason, type PaintToolSettings } from "./brushToolState";

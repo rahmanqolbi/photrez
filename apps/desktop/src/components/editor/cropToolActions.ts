@@ -2,7 +2,7 @@ import type { WorkspaceManager } from "@/engine/workspace";
 import type { WebGL2Backend } from "@/renderer/webgl2";
 import type { RenderScheduler } from "@/renderer/scheduler";
 import type { CropPreview } from "./cropState";
-import type { ToolId } from "./toolTypes";
+import type { ToolId } from "./tools/toolTypes";
 import type { Point } from "@/viewport/transformGeometry";
 import type { CropRect } from "@/viewport/cropGeometry";
 
