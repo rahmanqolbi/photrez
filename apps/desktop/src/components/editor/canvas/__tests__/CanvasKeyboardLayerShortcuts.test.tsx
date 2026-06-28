@@ -1,9 +1,11 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
 import { EditorProvider } from "../../shell/EditorContext";
 import { useEditor } from "../../shell/EditorContext";
 import { useCanvasKeyboard } from "../useCanvasKeyboard";
+import { useEditorCommands } from "../../useEditorCommands";
 import { WorkspaceManager } from "@/engine/workspace";
+import { easeOutCubic } from "@/viewport/easing";
 
 function installOffscreenCanvasMock(bitmap: ImageBitmap) {
   vi.stubGlobal("OffscreenCanvas", class {
@@ -111,9 +113,275 @@ describe("canvas layer keyboard shortcuts", () => {
     vi.restoreAllMocks();
   });
 
-  it.skip("zooms immediately with a stronger keyboard step (moved to useEditorCommands)", async () => {
-    // This test was for useCanvasKeyboard zoom handling, which has been moved to useEditorCommands
-    // Zoom keyboard shortcuts are now tested in AppMenuBarWiring.test.tsx and keyboardZoomAnimation.test.tsx
+  // ─── Zoom keyboard wiring tests ──────────────────────────────────────────
+  // These tests verify that Ctrl+=, Ctrl+-, Ctrl+1, and Ctrl+0 dispatch
+  // through useEditorCommands to the real camera.  The camera animation is
+  // ticked manually because requestAnimationFrame doesn't run in jsdom.
+
+  /** Harness that mounts both useEditorCommands (zoom shortcuts) and
+   *  useCanvasKeyboard (Ctrl+0 fit-to-screen, pan, etc.).  Captures the
+   *  editor context so tests can read camera state directly. */
+  function ZoomCommandHarness(props: {
+    captureEditor: (e: ReturnType<typeof useEditor>) => void;
+    fitToScreenAndRender?: (animated?: boolean) => void;
+  }) {
+    const editor = useEditor();
+    props.captureEditor(editor);
+    useEditorCommands(() => undefined);
+    useCanvasKeyboard({
+      isSpacePressed: () => false,
+      setIsSpacePressed: vi.fn(),
+      isAltPressed: () => false,
+      setIsAltPressed: vi.fn(),
+      isPanning: () => false,
+      setIsPanning: vi.fn(),
+      stopMomentum: vi.fn(),
+      fitToScreenAndRender: props.fitToScreenAndRender ?? vi.fn(),
+      syncViewport: vi.fn(),
+      getCanvasContainerRef: () => undefined,
+    });
+    return null;
+  }
+
+  function tickCamera(camera: import("@/viewport/viewportCamera").ViewportCamera): number {
+    const startTime = performance.now();
+    let iterations = 0;
+    while (camera.isAnimating() && iterations < 100) {
+      camera.tick(startTime + 300);
+      iterations++;
+    }
+    return iterations;
+  }
+
+  it("Ctrl+= triggers zoom-in animation through useEditorCommands", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("zoom-in-doc", "Zoom In", 800, 600);
+    ws.addDocument(session);
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let captured: ReturnType<typeof useEditor> | undefined;
+
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <ZoomCommandHarness captureEditor={(e) => { captured = e; }} />
+        </EditorProvider>
+      ),
+      container,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const editor = captured!;
+    editor.camera.setViewportSize(1000, 700);
+    editor.camera.setState({ x: 0, y: 0, zoom: 1 });
+
+    window.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "=", ctrlKey: true, bubbles: true,
+    }));
+
+    expect(editor.camera.isAnimating()).toBe(true);
+    tickCamera(editor.camera);
+    expect(editor.camera.isAnimating()).toBe(false);
+    expect(editor.camera.getState().zoom).toBeCloseTo(1.25, 2);
+
+    dispose();
+  });
+
+  it("Ctrl+- triggers zoom-out animation through useEditorCommands", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("zoom-out-doc", "Zoom Out", 800, 600);
+    ws.addDocument(session);
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let captured: ReturnType<typeof useEditor> | undefined;
+
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <ZoomCommandHarness captureEditor={(e) => { captured = e; }} />
+        </EditorProvider>
+      ),
+      container,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const editor = captured!;
+    editor.camera.setViewportSize(1000, 700);
+    editor.camera.setState({ x: 0, y: 0, zoom: 1 });
+
+    window.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "-", ctrlKey: true, bubbles: true,
+    }));
+
+    expect(editor.camera.isAnimating()).toBe(true);
+    tickCamera(editor.camera);
+    expect(editor.camera.isAnimating()).toBe(false);
+    expect(editor.camera.getState().zoom).toBeCloseTo(0.8, 2);
+
+    dispose();
+  });
+
+  it("Ctrl+1 triggers actual-size animation from zoomed state", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("actual-size-doc", "Actual Size", 800, 600);
+    ws.addDocument(session);
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let captured: ReturnType<typeof useEditor> | undefined;
+
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <ZoomCommandHarness captureEditor={(e) => { captured = e; }} />
+        </EditorProvider>
+      ),
+      container,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const editor = captured!;
+    editor.camera.setViewportSize(1000, 700);
+    editor.camera.setState({ x: 100, y: 80, zoom: 2.5 });
+
+    window.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "1", ctrlKey: true, bubbles: true,
+    }));
+
+    expect(editor.camera.isAnimating()).toBe(true);
+    tickCamera(editor.camera);
+    expect(editor.camera.isAnimating()).toBe(false);
+    expect(editor.camera.getState().zoom).toBeCloseTo(1.0, 2);
+
+    dispose();
+  });
+
+  it("Ctrl+= still works when a range slider has focus (regression: isEditableTarget)", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("range-focus-doc", "Range Focus", 800, 600);
+    ws.addDocument(session);
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let captured: ReturnType<typeof useEditor> | undefined;
+
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <ZoomCommandHarness captureEditor={(e) => { captured = e; }} />
+        </EditorProvider>
+      ),
+      container,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const editor = captured!;
+    editor.camera.setViewportSize(1000, 700);
+    editor.camera.setState({ x: 0, y: 0, zoom: 1 });
+
+    // Place a range input and focus it — simulates the user having just
+    // dragged a brightness/opacity slider, leaving focus on the <input>.
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.setAttribute("aria-label", "Bright");
+    container.appendChild(slider);
+    slider.focus();
+    expect(document.activeElement).toBe(slider);
+
+    window.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "=", ctrlKey: true, bubbles: true,
+    }));
+
+    // Zoom must NOT be blocked by isEditableTarget(range input)
+    expect(editor.camera.isAnimating()).toBe(true);
+    tickCamera(editor.camera);
+    expect(editor.camera.getState().zoom).toBeCloseTo(1.25, 2);
+
+    dispose();
+  });
+
+  it("rapid Ctrl+= presses only result in final zoom (animation cancel)", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("rapid-doc", "Rapid Zoom", 800, 600);
+    ws.addDocument(session);
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let captured: ReturnType<typeof useEditor> | undefined;
+
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <ZoomCommandHarness captureEditor={(e) => { captured = e; }} />
+        </EditorProvider>
+      ),
+      container,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const editor = captured!;
+    editor.camera.setViewportSize(1000, 700);
+    editor.camera.setState({ x: 0, y: 0, zoom: 1 });
+
+    // Three rapid Ctrl+= dispatches (all before tick — each computes
+    // from the SAME camera state since animation hasn't started yet)
+    window.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "=", ctrlKey: true, bubbles: true,
+    }));
+    window.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "=", ctrlKey: true, bubbles: true,
+    }));
+    window.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "=", ctrlKey: true, bubbles: true,
+    }));
+
+    // Each dispatch cancels the previous animation (but since no tick
+    // has happened, they all compute the same target from zoom=1)
+    expect(editor.camera.isAnimating()).toBe(true);
+    tickCamera(editor.camera);
+    expect(editor.camera.isAnimating()).toBe(false);
+    expect(editor.camera.getState().zoom).toBeCloseTo(1.25, 2);
+
+    dispose();
+  });
+
+  it("zoom keyboard shortcuts silently ignored when no document is open", async () => {
+    const ws = new WorkspaceManager(); // no documents
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let captured: ReturnType<typeof useEditor> | undefined;
+
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <ZoomCommandHarness captureEditor={(e) => { captured = e; }} />
+        </EditorProvider>
+      ),
+      container,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const editor = captured!;
+    editor.camera.setViewportSize(1000, 700);
+    editor.camera.setState({ x: 0, y: 0, zoom: 1 });
+
+    // Zoom commands require a document — should be silently ignored
+    window.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "=", ctrlKey: true, bubbles: true,
+    }));
+    expect(editor.camera.isAnimating()).toBe(false);
+    expect(editor.camera.getState().zoom).toBe(1);
+
+    dispose();
   });
 
   it("routes Ctrl+0 to instant fit-to-screen", async () => {

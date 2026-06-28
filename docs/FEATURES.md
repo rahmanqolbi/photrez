@@ -224,6 +224,7 @@
 | Status       | Fitur                                      |
 | ------------ | ------------------------------------------ |
 | ✅ DONE      | Zoom in/out (Ctrl+wheel + keyboard shortcuts, 1.25x in / 0.8x out, slider removed) |
+| ✅ DONE      | Zoom keyboard wiring tests — Ctrl+=/Ctrl+-/Ctrl+1 dispatch through useEditorCommands verified with real camera animation (tick to completion), range slider focus regression test, no-document guard, rapid dispatch |
 | ✅ DONE      | Zoom level display (status bar)            |
 | ✅ DONE      | Zoom via scroll wheel (Ctrl+scroll)        |
 | ✅ DONE      | Pan canvas (Space+drag)                    |
