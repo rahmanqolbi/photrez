@@ -61,7 +61,7 @@ yarn-error.log*
 .github/instructions/
 .github/prompts/
 .github/copilot-instructions.md
-.impeccable/critique/
+.impeccable/
 .opencode/
 .superpowers/
 .cursorrules
@@ -79,9 +79,13 @@ docs/AI_CURRENT_TASK.md
 docs/AI_HISTORY.md
 docs/archive/AI_CURRENT_TASK_ARCHIVE.md
 docs/archive/AI_HISTORY_ARCHIVE.md
+docs/archive/audits/ponytail-doctrine/
+docs/archive/superpowers-plans/
+docs/archive/superpowers-specs/
+docs/plans/task.md
 
 # Tauri specific (optional, usually handled by src-tauri/.gitignore if exists, but safe to add globally)
-src-tauri/gen/
+**/src-tauri/gen/
 src-tauri/wix/
 
 # Workspace Cleanliness: Scratch Scripts, Reference Files & Archives
