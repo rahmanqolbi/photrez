@@ -384,7 +384,117 @@ describe("canvas layer keyboard shortcuts", () => {
     dispose();
   });
 
-  it("routes Ctrl+0 to instant fit-to-screen", async () => {
+  it("Ctrl+NumpadAdd triggers zoom-in (key '+' variant)", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("numpad-add-doc", "Numpad Add", 800, 600);
+    ws.addDocument(session);
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let captured: ReturnType<typeof useEditor> | undefined;
+
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <ZoomCommandHarness captureEditor={(e) => { captured = e; }} />
+        </EditorProvider>
+      ),
+      container,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const editor = captured!;
+    editor.camera.setViewportSize(1000, 700);
+    editor.camera.setState({ x: 0, y: 0, zoom: 1 });
+
+    // NumpadAdd sends key "+"
+    window.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "+", code: "NumpadAdd", ctrlKey: true, bubbles: true,
+    }));
+
+    expect(editor.camera.isAnimating()).toBe(true);
+    tickCamera(editor.camera);
+    expect(editor.camera.getState().zoom).toBeCloseTo(1.25, 2);
+
+    dispose();
+  });
+
+  it("Ctrl+NumpadSubtract triggers zoom-out (key '-' variant)", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("numpad-sub-doc", "Numpad Sub", 800, 600);
+    ws.addDocument(session);
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let captured: ReturnType<typeof useEditor> | undefined;
+
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <ZoomCommandHarness captureEditor={(e) => { captured = e; }} />
+        </EditorProvider>
+      ),
+      container,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const editor = captured!;
+    editor.camera.setViewportSize(1000, 700);
+    editor.camera.setState({ x: 0, y: 0, zoom: 1 });
+
+    // NumpadSubtract sends key "-"
+    window.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "-", code: "NumpadSubtract", ctrlKey: true, bubbles: true,
+    }));
+
+    expect(editor.camera.isAnimating()).toBe(true);
+    tickCamera(editor.camera);
+    expect(editor.camera.getState().zoom).toBeCloseTo(0.8, 2);
+
+    dispose();
+  });
+
+  it("Ctrl+0 through useEditorCommands calls engine.fitToScreen (production path)", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("fit-editor-cmds", "Fit Cmds", 800, 600);
+    ws.addDocument(session);
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let captured: ReturnType<typeof useEditor> | undefined;
+    const fitToScreenSpy = vi.spyOn(session.engine, "fitToScreen");
+
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <ZoomCommandHarness captureEditor={(e) => { captured = e; }} />
+        </EditorProvider>
+      ),
+      container,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const editor = captured!;
+    editor.camera.setViewportSize(1000, 700);
+
+    // editor.viewportWidth()/Height are EditorContext signals (default 800×600
+    // in test), NOT the camera viewport size we set above.
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "0", code: "Digit0", ctrlKey: true }));
+
+    // useEditorCommands path: engine.fitToScreen + syncViewport + requestRender
+    expect(fitToScreenSpy).toHaveBeenCalledOnce();
+    expect(fitToScreenSpy).toHaveBeenCalledWith(expect.any(Number), expect.any(Number));
+    expect(scheduler.requestRender).toHaveBeenCalled();
+
+    // useCanvasKeyboard path must NOT fire because useEditorCommands
+    // handles Ctrl+0 first and prevents default.  ZoomCommandHarness
+    // passes a vi.fn() as fitToScreenAndRender — check it was NOT called.
+    dispose();
+  });
+
+  it("routes Ctrl+0 to instant fit-to-screen (useCanvasKeyboard-only path)", async () => {
     const session = WorkspaceManager.createBlankDocument("fit-keyboard", "Fit Keyboard", 800, 600);
     const ws = new WorkspaceManager();
     const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
