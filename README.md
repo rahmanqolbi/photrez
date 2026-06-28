@@ -52,6 +52,24 @@ Photrez is currently **pre-release software**. The editor is usable in developme
 - **Core:** TypeScript `DocumentEngine` for the current editor hot path
 - **Rust:** `photrez-core` and `photrez-render` crates
 
+## Runtime Architecture
+
+Below is the active runtime data flow mapping user input, frontend rendering, and desktop backend coordination:
+
+```mermaid
+flowchart TD
+    User([User Events / Pointer Inputs]) --> Shell[SolidJS UI Shell]
+    Shell --> Workspace[Workspace Sync Manager]
+    Workspace --> Engine[TypeScript Document Engine]
+    
+    Shell --> Viewport[WebGL2 Projection Camera Viewport]
+    Engine -- Active Bitmaps --> Viewport
+    
+    Shell -- IPC invoke --> Tauri[Tauri 2 main.rs Command Bridge]
+    Tauri --> FileIO[Rust safe File Import/Export]
+    Tauri -. Reference Domain/Tests .-> RustCore[crates/core Rust Crate]
+```
+
 ## Getting Started
 
 ### Requirements
