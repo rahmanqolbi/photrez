@@ -11,7 +11,8 @@
     "test:dialogs": "pnpm --filter photrez-desktop test:dialogs",
     "audit": "pnpm audit --prod && cargo audit",
     "perf:paint-history": "pnpm --filter photrez-desktop perf:paint-history",
-    "verify": "pnpm --filter photrez-desktop test --run && pnpm run build && cargo test -p photrez-core && cargo test --workspace",
+    "perf:budget": "node scripts/performance-budget.mjs",
+    "verify": "pnpm --filter photrez-desktop test --run && pnpm run build && pnpm run perf:budget && cargo test -p photrez-core && cargo test --workspace",
     "tauri": "tauri",
     "prepare": "husky"
   },
