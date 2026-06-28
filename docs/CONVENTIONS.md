@@ -223,7 +223,7 @@ Rules specific to the Move Tool subsystem:
 ## 6. Tool Creation Recipe (9-12 wiring steps)
 
 > **Origin:** This pattern was extracted after repeated investigation of "every new tool passes test but fails in frontend". Root cause is always the same: **wiring missed 1+ steps**, usually step 3 (pointer handler) or step 5 (option bar).
-> Reference: `docs/plans/2026-06-14-test-overhaul-reference.md` §Phase 2.
+> Reference: `docs/archive/plans/2026-06-14-test-overhaul-reference.md` §Phase 2.
 
 ### Recipe
 

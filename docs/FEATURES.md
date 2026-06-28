@@ -355,7 +355,7 @@
 
 | Status | Item |
 | ------ | ---- |
-| PLANNED | Post-MVP UI backlog preserved with entry gates and delivery order: `docs/plans/2026-06-20-post-mvp-ui-backlog.md` |
+| PLANNED | Post-MVP UI backlog preserved with entry gates and delivery order: `docs/archive/plans/2026-06-20-post-mvp-ui-backlog.md` |
 | PARTIAL | Native Tauri release smoke evidence: NATIVE-001 launch passed with retry warning; NATIVE-002 through NATIVE-007 remain pending interactive verification |
 | DONE | FAANG review pointer capture helper: canvas pointer tools now use shared safe capture/release helpers with focused pointer regression tests |
 | DONE | FAANG review paint command boundary: brush/eraser bitmap commits now share `commitPaintBitmap()` for history snapshot, engine mutation, texture upload, and render scheduling |
@@ -380,12 +380,12 @@
 | DONE | Production bug risk register created: `docs/production-risk-register/` with release gates and per-feature/tool risk checklists |
 | DONE | Viewport tool alignment browser QA hardened: Playwright smoke now covers Move Tool transform geometry across fit, zoom, and pan |
 | DONE | Viewport camera regression recovery executed: one viewport there ispter + reactive overlay alignment fixes |
-| DONE | Viewport camera regression recovery todo created: `docs/plans/2026-06-13-viewport-camera-regression-recovery-todo.md` |
-| SUPERSEDED | GPU-Accelerated smooth zoom viewport camera implementation plan: `docs/plans/2026-06-13-gpu-smooth-zoom-transitions-design.md` |
+| DONE | Viewport camera regression recovery todo created: `docs/archive/plans/2026-06-13-viewport-camera-regression-recovery-todo.md` |
+| SUPERSEDED | GPU-Accelerated smooth zoom viewport camera implementation plan: `docs/archive/plans/2026-06-13-gpu-smooth-zoom-transitions-design.md` |
 | DONE | Brush visual calibration and pixel QA plan executed: `docs/superpowers/plans/2026-06-11-brush-visual-calibration-and-qa.md` |
 | DONE | CPU brush-tip rasterizer refactored to cached single-channel Float32 alpha with calibrated padded support, pixel-center sampling, and preserved Uint8 mask/WebGL2 production wiring |
 | DONE | Brush-tip mask engine implementation plan executed: `docs/superpowers/plans/2026-06-11-brush-tip-mask-engine.md` |
 | DONE | Brush hardness distance-field soft-edge implementation: `docs/superpowers/plans/2026-06-11-brush-hardness-distance-field-soft-edge.md` |
 | DONE | Brush and Eraser tool improvement plan created: `docs/superpowers/plans/2026-06-06-brush-eraser-tool-improvements.md` |
 | DONE | Crop Hidden Preview Restore correction plan created: `docs/superpowers/plans/2026-06-05-crop-interaction-model-plan.md` |
-| DONE | Scalability and maintainability refactor plan created: `docs/plans/2026-06-04-scalability-maintainability-refactor-plan.md` |
+| DONE | Scalability and maintainability refactor plan created: `docs/archive/plans/2026-06-04-scalability-maintainability-refactor-plan.md` |

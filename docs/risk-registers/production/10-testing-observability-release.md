@@ -8,7 +8,7 @@ Hotspots:
 - `apps/desktop/vite.config.ts`
 - `apps/desktop/playwright.config.ts`
 - `scripts/validate-all.ps1`
-- `docs/plans/2026-06-14-test-overhaul-reference.md`
+- `docs/archive/plans/2026-06-14-test-overhaul-reference.md`
 - `AGENTS.md`
 
 ## Potential Production Bugs
