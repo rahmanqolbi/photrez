@@ -13,7 +13,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { WorkspaceManager } from "@/engine/workspace";
-import { addLayerFromCrossDoc, addFilesAsLayers, createNewDocsFromFiles, type WorkspaceFacade } from "../crossDocLayerOps";
+import { addLayerFromCrossDoc, addFilesAsLayers, addFilesAsLayersFromFileDrop, createNewDocsFromFiles, type WorkspaceFacade } from "../crossDocLayerOps";
 import type { LayerDragPayload } from "../dragTypes";
 import { resetToasts } from "../Toast";
 
@@ -245,11 +245,14 @@ describe("addFilesAsLayers — real engine decode-first contract", () => {
   it("closes already-decoded bitmaps when a later file fails (no GPU leak)", async () => {
     const closeFn1 = vi.fn();
     let callCount = 0;
-    vi.stubGlobal("createImageBitmap", vi.fn().mockImplementation(async () => {
+    // Use direct assignment (not vi.stubGlobal) to match the pattern used
+    // by other tests in this file — avoids subtle stubGlobal × restoreAllMocks
+    // ordering issues during full-suite runs.
+    globalThis.createImageBitmap = vi.fn().mockImplementation(async () => {
       callCount++;
       if (callCount === 2) throw new Error("corrupt file");
       return { width: 100, height: 100, close: closeFn1 } as unknown as ImageBitmap;
-    }));
+    });
 
     // Both files readable; use PNG magic header so isSupportedImageBytes passes
     const pngHeader = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]);
@@ -265,5 +268,156 @@ describe("addFilesAsLayers — real engine decode-first contract", () => {
     expect(created).toEqual([]);
     // First bitmap was decoded then freed
     expect(closeFn1).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("addFilesAsLayersFromFileDrop — real engine integration (HTML5 file drop)", () => {
+  let ws: WorkspaceManager;
+  let originalCreateImageBitmap: typeof globalThis.createImageBitmap;
+
+  function makeFileBitmap(width = 100, height = 100): ImageBitmap {
+    return { width, height, close: vi.fn() } as unknown as ImageBitmap;
+  }
+
+  beforeEach(() => {
+    resetToasts();
+    originalCreateImageBitmap = globalThis.createImageBitmap;
+    globalThis.createImageBitmap = vi.fn().mockResolvedValue(makeFileBitmap(200, 150));
+    ws = new WorkspaceManager();
+    ws.addDocument(WorkspaceManager.createBlankDocument("docA", "DocA", 800, 600));
+  });
+
+  afterEach(() => {
+    globalThis.createImageBitmap = originalCreateImageBitmap;
+    vi.restoreAllMocks();
+  });
+
+  it("creates layers from File objects using browser createImageBitmap", async () => {
+    const engine = ws.getEngine("docA")!;
+    const file = new File(["fake-png"], "photo.png", { type: "image/png" });
+    const created = await addFilesAsLayersFromFileDrop(
+      [file],
+      { type: "canvas" },
+      { x: 50, y: 60 },
+      ws,
+    );
+
+    expect(created).toHaveLength(1);
+    const { layerId, bitmap } = created[0];
+    expect(layerId).toBeTruthy();
+    expect(bitmap).toBeTruthy();
+    const layer = engine.getLayer(layerId);
+    expect(layer).toBeDefined();
+    expect(layer!.name).toBe("photo.png");
+    expect(layer!.width).toBe(200);
+    expect(layer!.height).toBe(150);
+    expect(layer!.transform.x).toBe(50);
+    expect(layer!.transform.y).toBe(60);
+    expect(layer!.imageBitmap).toBe(bitmap);
+    expect(globalThis.createImageBitmap).toHaveBeenCalledWith(file);
+  });
+
+  it("commits history before mutation (undo-friendly)", async () => {
+    const history = ws.getHistory("docA")!;
+    const commitSpy = vi.spyOn(history, "commit");
+    const file = new File(["fake-png"], "undo-test.png", { type: "image/png" });
+
+    await addFilesAsLayersFromFileDrop([file], { type: "canvas" }, { x: 0, y: 0 }, ws);
+
+    expect(commitSpy).toHaveBeenCalledTimes(1);
+    expect(history.getUndoCount()).toBe(1);
+  });
+
+  it("targets active document when target is canvas", async () => {
+    const engine = ws.getEngine("docA")!;
+    const file = new File(["fake"], "img.png", { type: "image/png" });
+    const created = await addFilesAsLayersFromFileDrop(
+      [file],
+      { type: "canvas" },
+      { x: 0, y: 0 },
+      ws,
+    );
+
+    expect(created).toHaveLength(1);
+    expect(engine.getLayer(created[0].layerId)).toBeDefined();
+  });
+
+  it("returns empty array and error toast when createImageBitmap fails", async () => {
+    globalThis.createImageBitmap = vi.fn().mockRejectedValue(new Error("corrupt image"));
+    const file = new File(["bad-data"], "broken.png", { type: "image/png" });
+
+    const created = await addFilesAsLayersFromFileDrop(
+      [file],
+      { type: "canvas" },
+      { x: 0, y: 0 },
+      ws,
+    );
+
+    expect(created).toEqual([]);
+    // No layer was added
+    const engine = ws.getEngine("docA")!;
+    expect(engine.getLayers()).toHaveLength(1); // only the background
+  });
+
+  it("closes decoded bitmaps when a later file fails (no GPU leak)", async () => {
+    let callCount = 0;
+    const closeFn = vi.fn();
+    globalThis.createImageBitmap = vi.fn().mockImplementation(async () => {
+      callCount++;
+      if (callCount === 2) throw new Error("corrupt");
+      return { width: 100, height: 100, close: closeFn } as unknown as ImageBitmap;
+    });
+
+    const created = await addFilesAsLayersFromFileDrop(
+      [new File(["ok"], "ok.png"), new File(["bad"], "bad.png")],
+      { type: "canvas" },
+      { x: 0, y: 0 },
+      ws,
+    );
+
+    expect(created).toEqual([]);
+    expect(closeFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("handles multiple files with cascading positions", async () => {
+    const files = [
+      new File(["a"], "a.png"),
+      new File(["b"], "b.png"),
+      new File(["c"], "c.png"),
+    ];
+
+    const created = await addFilesAsLayersFromFileDrop(
+      files,
+      { type: "canvas" },
+      { x: 100, y: 200 },
+      ws,
+    );
+
+    expect(created).toHaveLength(3);
+    const engine = ws.getEngine("docA")!;
+    expect(engine.getLayers()).toHaveLength(4); // 1 bg + 3 new
+    // Each file has a cascaded position
+    expect(engine.getLayer(created[1].layerId)!.transform).toEqual(
+      expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
+    );
+  });
+
+  it("bails with toast when adding files exceeds max 100 layers", async () => {
+    const engine = ws.getEngine("docA")!;
+    // Fill to max
+    for (let i = 0; i < 99; i++) engine.addLayer(`fill-${i}`);
+    expect(engine.getLayers()).toHaveLength(100);
+
+    const file = new File(["x"], "overflow.png", { type: "image/png" });
+    const created = await addFilesAsLayersFromFileDrop(
+      [file],
+      { type: "canvas" },
+      { x: 0, y: 0 },
+      ws,
+    );
+
+    expect(created).toEqual([]);
+    // layer count unchanged
+    expect(engine.getLayers()).toHaveLength(100);
   });
 });

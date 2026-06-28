@@ -4,7 +4,7 @@ import fjord from "@/assets/fjord.jpg";
 import { Icon } from "../icons";
 import { useEditor } from "../shell/EditorContext";
 import { useDragController } from "../DragController";
-import { addLayerFromCrossDoc, addFilesAsLayers } from "../crossDocLayerOps";
+import { addLayerFromCrossDoc, addFilesAsLayers, addFilesAsLayersFromFileDrop } from "../crossDocLayerOps";
 import { LayerNode } from "@/engine/types";
 import type { DocumentModel } from "@/engine/types";
 import { BLEND_MODE_OPTIONS, isBlendMode } from "@/engine/blendModes";
@@ -375,12 +375,23 @@ export function LayersPanel() {
               ? state.dropTarget
               : { type: "layers-panel" as const };
             addLayerFromCrossDoc(state.payload, target, { x: 0, y: 0 }, workspace);
-          } else if (state.dragKind === "file" && state.filePaths) {
-            const created = await addFilesAsLayers(state.filePaths, { type: "layers-panel" }, { x: 0, y: 0 }, workspace);
-            for (const { layerId, bitmap } of created) {
-              renderer.uploadImage(layerId, bitmap);
+          } else if (state.dragKind === "file") {
+            if (state.filePaths && state.filePaths.length > 0) {
+              // In-app file drag — pre-resolved file paths
+              const created = await addFilesAsLayers(state.filePaths, { type: "layers-panel" }, { x: 0, y: 0 }, workspace);
+              for (const { layerId, bitmap } of created) {
+                renderer.uploadImage(layerId, bitmap);
+              }
+              if (created.length) scheduler.requestRender();
+            } else if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+              // OS file drop (Explorer / Finder) — read File objects directly
+              const files = Array.from(e.dataTransfer.files);
+              const created = await addFilesAsLayersFromFileDrop(files, { type: "layers-panel" }, { x: 0, y: 0 }, workspace);
+              for (const { layerId, bitmap } of created) {
+                renderer.uploadImage(layerId, bitmap);
+              }
+              if (created.length) scheduler.requestRender();
             }
-            if (created.length) scheduler.requestRender();
           }
           dragController.endDrag();
         }}

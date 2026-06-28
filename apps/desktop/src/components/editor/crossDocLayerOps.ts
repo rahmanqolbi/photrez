@@ -177,7 +177,22 @@ export function addLayerFromCrossDoc(
     targetEngine.setLayerVisibility(newId, sourceLayer.visible);
     targetEngine.setLayerLocked(newId, sourceLayer.locked);
     if (sourceLayer.imageBitmap) {
-      targetEngine.setLayerImageBitmap(newId, sourceLayer.imageBitmap);
+      // Clone the bitmap so source and target don't share a reference.
+      // Without this, deleteLayer on the source (move) or a subsequent
+      // adjustment (copy) would close the bitmap the target now holds.
+      try {
+        const canvas = new OffscreenCanvas(sourceLayer.width, sourceLayer.height);
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(sourceLayer.imageBitmap, 0, 0);
+          targetEngine.setLayerImageBitmap(newId, canvas.transferToImageBitmap());
+        } else {
+          targetEngine.setLayerImageBitmap(newId, sourceLayer.imageBitmap);
+        }
+      } catch {
+        // OffscreenCanvas unavailable (node test env) — fall back to sharing
+        targetEngine.setLayerImageBitmap(newId, sourceLayer.imageBitmap);
+      }
     }
   }
 
@@ -254,6 +269,75 @@ export async function addFilesAsLayers(
     // Layers we successfully created keep their bitmaps (engine owns
     // them now via setLayerImageBitmap); leftover bitmaps in `decoded`
     // that the engine never accepted are still ours to free.
+    for (let i = created.length; i < decoded.length; i++) {
+      decoded[i].bitmap.close();
+    }
+    showToast(`Failed to add layer: ${err}`, "error");
+    return created;
+  }
+  return created;
+}
+
+/**
+ * Add files from an HTML5 drag-drop `FileList` (OS file manager drop) as new
+ * layers.  Uses the browser's native `createImageBitmap(file)` decoder instead
+ * of Tauri's `readFileBytes` + `decodeImageBytes` path.
+ */
+export async function addFilesAsLayersFromFileDrop(
+  files: File[],
+  target: DropTarget,
+  basePos: Point,
+  ws: WorkspaceFacade
+): Promise<CreatedLayer[]> {
+  const targetDocId = target && target.type === "tab" && target.docId
+    ? target.docId
+    : ws.getActiveDocumentId();
+  if (!targetDocId) return [];
+  const targetEngine = ws.getEngine(targetDocId);
+  if (!targetEngine) return [];
+  if (targetEngine.getLayers().length + files.length > MAX_LAYERS) {
+    showToast(`Adding ${files.length} files exceeds max 100 layers`, "error");
+    return [];
+  }
+
+  const decoded: Array<{ name: string; pos: Point; bitmap: ImageBitmap }> = [];
+  // ponytail: on any failure path, free every bitmap we've decoded so far
+  // to avoid GPU buffer leaks.
+  const freeDecoded = () => {
+    for (const { bitmap } of decoded) bitmap.close();
+  };
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const pos = computeCascadePosition(basePos, i);
+    try {
+      // ponytail: createImageBitmap is a browser built-in — the WebView2
+      // runtime decodes PNG/JPEG/WebP/etc. natively with no Tauri IPC.
+      const bitmap = await createImageBitmap(file);
+      decoded.push({ name: file.name, pos, bitmap });
+    } catch (err) {
+      freeDecoded();
+      showToast(`Failed to load ${file.name}: ${err}`, "error");
+      return [];
+    }
+  }
+
+  const targetHistory = ws.getHistory(targetDocId);
+  if (targetHistory) targetHistory.commit(targetEngine.snapshot());
+
+  const created: CreatedLayer[] = [];
+  try {
+    for (const { name, pos, bitmap } of decoded) {
+      const added = targetEngine.addLayer(name, bitmap.width, bitmap.height);
+      const newId = added.id;
+      if (!newId) {
+        bitmap.close();
+        continue;
+      }
+      targetEngine.moveLayer(newId, pos.x, pos.y);
+      targetEngine.setLayerImageBitmap(newId, bitmap);
+      created.push({ docId: targetDocId, layerId: newId, bitmap });
+    }
+  } catch (err) {
     for (let i = created.length; i < decoded.length; i++) {
       decoded[i].bitmap.close();
     }

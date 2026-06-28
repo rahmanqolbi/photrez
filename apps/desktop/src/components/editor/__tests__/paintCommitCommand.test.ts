@@ -43,6 +43,39 @@ describe("commitPaintBitmap", () => {
     expect(previous?.layers.find((entry) => entry.id === layer.id)?.imageBitmap).toBe(originalBitmap);
   });
 
+  it("after paint+undo, original bitmap is NOT closed (regression: detached-image-source)", () => {
+    const engine = new DocumentEngine("doc-1", "Paint Doc", 10, 10);
+    const layer = engine.addLayer("Paint Layer", 10, 10);
+    const history = new CommandHistory();
+    const originalClose = vi.fn();
+    const originalBitmap = { width: 10, height: 10, close: originalClose } as unknown as ImageBitmap;
+    const nextBitmap = { width: 10, height: 10, close: vi.fn() } as unknown as ImageBitmap;
+    const uploader = { uploadImage: vi.fn() };
+    const requestRender = vi.fn();
+
+    engine.setLayerImageBitmap(layer.id, originalBitmap);
+
+    // User paints: commit before mutation, then replace bitmap
+    const committed = commitPaintBitmap(
+      { engine, history, uploader, requestRender },
+      { layerId: layer.id, bitmap: nextBitmap },
+    );
+
+    expect(committed).toBe(true);
+    // Critical assertion: setLayerImageBitmap must NOT close the old bitmap
+    // because it's referenced in the committed history snapshot.
+    expect(originalClose).not.toHaveBeenCalled();
+    expect(engine.getLayer(layer.id)?.imageBitmap).toBe(nextBitmap);
+
+    // Undo — restore pre-paint state
+    const prev = history.undo(engine.snapshot());
+    expect(prev).not.toBeNull();
+    engine.restore(prev!);
+    expect(engine.getLayer(layer.id)?.imageBitmap).toBe(originalBitmap);
+    // The restored bitmap must still be alive (not closed)
+    expect(originalClose).not.toHaveBeenCalled();
+  });
+
   it("closes the generated bitmap and skips mutation when the target layer is gone", () => {
     const engine = new DocumentEngine("doc-1", "Paint Doc", 10, 10);
     const history = new CommandHistory();

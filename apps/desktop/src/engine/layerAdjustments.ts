@@ -7,7 +7,9 @@ export type BasicAdjustment = {
 const clampChannel = (value: number): number => {
   if (value < 0) return 0;
   if (value > 255) return 255;
-  return Math.round(value);
+  // Ponytail: no Math.round here — Uint8ClampedArray assignment already
+  // rounds to the nearest integer, so an explicit round is redundant.
+  return value;
 };
 
 const clampPercent = (value: number): number => {

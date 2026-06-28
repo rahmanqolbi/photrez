@@ -85,6 +85,23 @@ describe("DragGlobalGuard — document-level dragover preventDefault", () => {
     }
   });
 
+  it("detects OS file drag and sets dragKind to 'file' with empty paths (Explorer → browser)", () => {
+    const ctx = setup();
+    try {
+      // No layer drag; simulate OS file drag from Explorer/Finder.
+      const evt = new Event("dragover", { bubbles: true, cancelable: true }) as any;
+      evt.dataTransfer = { types: ["Files"] };
+      document.dispatchEvent(evt);
+
+      expect(evt.defaultPrevented).toBe(true);
+      expect(ctx.probe().state().dragKind).toBe("file");
+      expect(ctx.probe().state().filePaths).toEqual([]);
+    } finally {
+      ctx.dispose();
+      document.body.replaceChildren();
+    }
+  });
+
   it("removes the document listener on unmount", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);

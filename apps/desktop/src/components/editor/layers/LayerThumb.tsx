@@ -36,7 +36,11 @@ export function LayerThumb(props: LayerThumbProps) {
       const dx = (34 - nw) / 2;
       const dy = (34 - nh) / 2;
 
-      ctx.drawImage(bitmap, dx, dy, nw, nh);
+      try {
+        ctx.drawImage(bitmap, dx, dy, nw, nh);
+      } catch {
+        // bitmap may be closed/detached (snapshot reference)
+      }
     }
   });
 

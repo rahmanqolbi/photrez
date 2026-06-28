@@ -287,4 +287,136 @@ describe("Editable Basic Adjustments", () => {
     expect(croppedLayer.basicAdjustment).toEqual({ brightness: 10, contrast: 20, saturation: -30 });
     expect(croppedLayer.hasAdjustments).toBe(true);
   });
+
+  // --- Regression tests for audit bug fixes ---
+
+  it("restore() does not close any bitmaps (snapshot safety — redo stack may reference them)", () => {
+    const engine = new DocumentEngine("doc-1", "Test Doc", 100, 100);
+    const layer = engine.addLayer("Layer 1");
+    const initialBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
+    engine.setLayerImageBitmap(layer.id, initialBitmap);
+
+    // Snapshot A — captures initialBitmap
+    const snapA = engine.snapshot();
+
+    // Apply adjustment → new imageBitmap, caches initialBitmap as baseImageBitmap
+    engine.applyBasicAdjustment(layer.id, { brightness: 10, contrast: 0, saturation: 0 });
+    const adjustedBitmap = layer.imageBitmap!;
+
+    // Snapshot B — captures adjustedBitmap + baseImageBitmap
+    const snapB = engine.snapshot();
+
+    // Restore to snapA — must NOT close any bitmap because the redo stack
+    // (snapB) still references adjustedBitmap.  Closing it would cause
+    // "image source is detached" on subsequent drawImage calls.
+    engine.restore(snapA);
+    expect(adjustedBitmap.close).not.toHaveBeenCalled();
+    expect(initialBitmap.close).not.toHaveBeenCalled();
+    // Re-fetch layer — restore() replaces the model, old reference is stale
+    const restored = engine.getLayer(layer.id)!;
+    expect(restored.imageBitmap).toBe(initialBitmap);
+  });
+
+  it("setLayerImageBitmap no longer closes baseImageBitmap (snapshot safety)", () => {
+    const engine = new DocumentEngine("doc-1", "Test Doc", 100, 100);
+    const layer = engine.addLayer("Layer 1");
+    const initialBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
+    engine.setLayerImageBitmap(layer.id, initialBitmap);
+
+    // Apply adjustment → caches initialBitmap as baseImageBitmap
+    engine.applyBasicAdjustment(layer.id, { brightness: 10, contrast: 0, saturation: 0 });
+    expect(layer.baseImageBitmap).toBe(initialBitmap);
+
+    // Overwrite with a new bitmap (simulates paint commit)
+    const paintBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
+    engine.setLayerImageBitmap(layer.id, paintBitmap);
+
+    // baseImageBitmap should NOT be closed — snapshots may still reference it
+    expect(initialBitmap.close).not.toHaveBeenCalled();
+    // Layer state should be updated
+    expect(layer.imageBitmap).toBe(paintBitmap);
+    expect(layer.baseImageBitmap).toBeNull();
+    expect(layer.basicAdjustment).toBeUndefined();
+  });
+
+  it("clearBasicAdjustments notifies visual change (not just structural change)", () => {
+    const engine = new DocumentEngine("doc-1", "Test Doc", 100, 100);
+    const layer = engine.addLayer("Layer 1");
+    const initialBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
+    engine.setLayerImageBitmap(layer.id, initialBitmap);
+
+    const visualCb = vi.fn();
+    engine.onVisualChange(visualCb);
+
+    engine.applyBasicAdjustment(layer.id, { brightness: 10, contrast: 0, saturation: 0 });
+    visualCb.mockClear();
+
+    engine.clearBasicAdjustments(layer.id);
+
+    // clearBasicAdjustments must trigger visual change (bitmap was restored)
+    expect(visualCb).toHaveBeenCalled();
+    expect(layer.imageBitmap).toBe(initialBitmap);
+    expect(layer.baseImageBitmap).toBeNull();
+    expect(layer.basicAdjustment).toBeUndefined();
+  });
+
+  it("restore() redo after undo does not close baseImageBitmap referenced by snapshot", () => {
+    const engine = new DocumentEngine("doc-redo", "Redo Test", 100, 100);
+    const layer = engine.addLayer("Layer 1");
+    const initialBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
+    engine.setLayerImageBitmap(layer.id, initialBitmap);
+
+    // Snapshot S0 — pre-adjustment state
+    const snapS0 = engine.snapshot();
+
+    // Apply adjustment → imageBitmap=B, baseImageBitmap=A
+    engine.applyBasicAdjustment(layer.id, { brightness: 20, contrast: 0, saturation: 0 });
+    const adjustedBitmap = layer.imageBitmap!;
+
+    // Snapshot S1 — post-adjustment state
+    const snapS1 = engine.snapshot();
+
+    // Undo → restore S0 (closes B, A survives)
+    engine.restore(snapS0);
+    expect(initialBitmap.close).not.toHaveBeenCalled();
+    const afterUndo = engine.getLayer(layer.id)!;
+    expect(afterUndo.imageBitmap).toBe(initialBitmap);
+    expect(afterUndo.baseImageBitmap).toBeNull();
+
+    // Redo → restore S1 (A must NOT be closed — it's snapS1.baseImageBitmap)
+    engine.restore(snapS1);
+    const afterRedo = engine.getLayer(layer.id)!;
+    expect(afterRedo.imageBitmap).toBe(adjustedBitmap);
+    expect(afterRedo.baseImageBitmap).toBe(initialBitmap);
+    expect(initialBitmap.close).not.toHaveBeenCalled();
+  });
+
+  it("restore() after setLayerImageBitmap does not produce broken bitmap references", () => {
+    const engine = new DocumentEngine("doc-1", "Test Doc", 100, 100);
+    const layer = engine.addLayer("Layer 1");
+    const initialBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
+    engine.setLayerImageBitmap(layer.id, initialBitmap);
+
+    // Apply adjustment — creates baseImageBitmap + adjusted imageBitmap
+    engine.applyBasicAdjustment(layer.id, { brightness: 10, contrast: 0, saturation: 0 });
+    const snapAfterAdj = engine.snapshot();
+
+    // Paint commit replaces bitmap entirely (clears baseImageBitmap)
+    const paintBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
+    engine.setLayerImageBitmap(layer.id, paintBitmap);
+    const snapAfterPaint = engine.snapshot();
+
+    // Undo paint — restore to snapAfterAdj
+    engine.restore(snapAfterAdj);
+    const restored1 = engine.getLayer(layer.id)!;
+    expect(restored1.baseImageBitmap).toBe(initialBitmap);
+    expect(restored1.basicAdjustment).toEqual({ brightness: 10, contrast: 0, saturation: 0 });
+
+    // Redo paint — restore to snapAfterPaint
+    engine.restore(snapAfterPaint);
+    const restored2 = engine.getLayer(layer.id)!;
+    expect(restored2.baseImageBitmap).toBeNull();
+    expect(restored2.basicAdjustment).toBeUndefined();
+    expect(restored2.imageBitmap).toBe(paintBitmap);
+  });
 });

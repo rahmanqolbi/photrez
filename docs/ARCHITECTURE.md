@@ -215,7 +215,7 @@ Historical workspace, layer, crop, and export command names describe earlier Rus
 ## File Structure (Key Paths)
 
 ```
-image-studio/
+photrez/
 â”œâ”€â”€ apps/
 â”‚   â””â”€â”€ desktop/
 â”‚       â”œâ”€â”€ src/                    # SolidJS Frontend

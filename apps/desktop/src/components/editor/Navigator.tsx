@@ -87,25 +87,29 @@ export function Navigator() {
       if (!layer.visible || !layer.imageBitmap) continue;
 
       ctx.save();
-      ctx.translate(ox, oy);
-      ctx.scale(s, s);
-      ctx.globalAlpha = layer.opacity;
+      try {
+        ctx.translate(ox, oy);
+        ctx.scale(s, s);
+        ctx.globalAlpha = layer.opacity;
 
-      const lw = layer.width;
-      const lh = layer.height;
-      const sx = layer.transform.scaleX;
-      const sy = layer.transform.scaleY;
-      const cx = layer.transform.x + (lw * Math.abs(sx)) / 2;
-      const cy = layer.transform.y + (lh * Math.abs(sy)) / 2;
+        const lw = layer.width;
+        const lh = layer.height;
+        const sx = layer.transform.scaleX;
+        const sy = layer.transform.scaleY;
+        const cx = layer.transform.x + (lw * Math.abs(sx)) / 2;
+        const cy = layer.transform.y + (lh * Math.abs(sy)) / 2;
 
-      ctx.translate(cx, cy);
-      if (layer.transform.rotation) {
-        ctx.rotate((layer.transform.rotation * Math.PI) / 180);
+        ctx.translate(cx, cy);
+        if (layer.transform.rotation) {
+          ctx.rotate((layer.transform.rotation * Math.PI) / 180);
+        }
+        const flipX = layer.transform.flipH ? -1 : 1;
+        const flipY = layer.transform.flipV ? -1 : 1;
+        ctx.scale(sx * flipX, sy * flipY);
+        ctx.drawImage(layer.imageBitmap, -lw / 2, -lh / 2);
+      } catch {
+        // bitmap may be closed/detached (snapshot reference)
       }
-      const flipX = layer.transform.flipH ? -1 : 1;
-      const flipY = layer.transform.flipV ? -1 : 1;
-      ctx.scale(sx * flipX, sy * flipY);
-      ctx.drawImage(layer.imageBitmap, -lw / 2, -lh / 2);
       ctx.restore();
     }
 

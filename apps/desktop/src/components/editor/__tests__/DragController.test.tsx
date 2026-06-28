@@ -84,6 +84,14 @@ describe("DragController", () => {
     expect(result.state().dragStartPosition).toEqual({ x: 100, y: 200 });
   });
 
+  it("beginFileDrag with empty paths (OS file drop path)", () => {
+    const { result } = renderHook(() => useDragController(), { wrapper });
+    result.beginFileDrag([], { x: 100, y: 200 });
+    expect(result.state().dragKind).toBe("file");
+    expect(result.state().filePaths).toEqual([]);
+    expect(result.state().dragStartPosition).toEqual({ x: 100, y: 200 });
+  });
+
   it("endDrag clears hover state", () => {
     const switchDocument = vi.fn();
     const { result } = renderHook(() => useDragController(), {

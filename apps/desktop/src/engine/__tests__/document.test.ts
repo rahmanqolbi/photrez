@@ -517,7 +517,7 @@ describe('DocumentEngine', () => {
       return bitmap;
     }
 
-    it('closes the bitmap when deleteLayer removes its layer', () => {
+    it('does NOT close bitmaps when deleteLayer removes its layer (snapshot safety)', () => {
       const engine = new DocumentEngine('doc', 'D', 800, 600);
       // Start with two layers so we can delete one and still have
       // another standing (the engine refuses to delete the last).
@@ -529,17 +529,21 @@ describe('DocumentEngine', () => {
       engine.deleteLayer(other.id); // unrelated — should not close anything
       expect(bitmap.close).not.toHaveBeenCalled();
       engine.deleteLayer(target.id);
-      expect(bitmap.close).toHaveBeenCalledTimes(1);
+      // Bitmaps are intentionally NOT closed — undo stack snapshots
+      // may hold a reference to them.
+      expect(bitmap.close).not.toHaveBeenCalled();
     });
 
-    it('closes the previous bitmap when setLayerImageBitmap replaces it', () => {
+    it('does NOT close the previous bitmap when setLayerImageBitmap replaces it (snapshot safety)', () => {
       const engine = new DocumentEngine('doc', 'D', 800, 600);
       const l1 = engine.addLayer('L1', 100, 100);
       const oldBitmap = makeBitmap();
       const newBitmap = makeBitmap();
       engine.setLayerImageBitmap(l1.id, oldBitmap);
       engine.setLayerImageBitmap(l1.id, newBitmap);
-      expect(oldBitmap.close).toHaveBeenCalledTimes(1);
+      // oldBitmap is intentionally NOT closed — undo stack snapshots
+      // hold a reference to it.
+      expect(oldBitmap.close).not.toHaveBeenCalled();
       expect(newBitmap.close).not.toHaveBeenCalled();
     });
 

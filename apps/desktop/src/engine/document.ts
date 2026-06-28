@@ -245,26 +245,16 @@ export class DocumentEngine {
       this.model.layers = this.model.layers.filter(l => l.id !== id);
       this.dirtyLayerIds.delete(id);
       this.textureHandles.delete(id);
-      // Free the GPU memory held by the bitmap. Shared references
-      // (e.g. cross-doc copy left source + target pointing at the
-      // same ImageBitmap) are still safe — closing an ImageBitmap
-      // only signals the platform that the underlying buffer can
-      // be released; consumers holding a reference will see a
-      // closed (zero-size) bitmap if they read it after close.
-      if (removed.imageBitmap) {
-        try {
-          removed.imageBitmap.close();
-        } catch {
-          // jsdom and some test doubles don't implement close().
-        }
-      }
-      if (removed.baseImageBitmap) {
-        try {
-          removed.baseImageBitmap.close();
-        } catch {
-          // jsdom and some test doubles don't implement close().
-        }
-      }
+      // NOTE: we intentionally do NOT close any bitmaps from the
+      // removed layer here.  Snapshots in the undo/redo stack may
+      // hold a reference to them; closing them here would make
+      // those snapshots point to closed/detached bitmaps, causing
+      // "image source is detached" errors on restore (undo/redo).
+      // Memory is reclaimed by GC once no snapshot or layer
+      // references remain.
+      //  ponytail: deleteLayer is called AFTER history.commit() in
+      // every production path, so the undo-stack snapshot already
+      // holds a reference to these bitmaps.
 
       // Select another layer
       if (this.model.activeLayerId === id) {
@@ -568,24 +558,12 @@ export class DocumentEngine {
       if (!bitmap) {
         throw new TypeError("Bitmap cannot be null");
       }
-      // Free the previous bitmap before replacing the reference —
-      // otherwise the GPU buffer stays pinned until the layer is
-      // deleted (and beyond if the bitmap was shared across layers).
-      if (layer.imageBitmap && layer.imageBitmap !== bitmap) {
-        try {
-          layer.imageBitmap.close();
-        } catch {
-          // jsdom and some test doubles don't implement close().
-        }
-      }
-      // Also free the baseImageBitmap if it exists
-      if (layer.baseImageBitmap && layer.baseImageBitmap !== layer.imageBitmap && layer.baseImageBitmap !== bitmap) {
-        try {
-          layer.baseImageBitmap.close();
-        } catch {
-          // jsdom and some test doubles don't implement close().
-        }
-      }
+      // NOTE: we intentionally do NOT close the old imageBitmap here.
+      // Snapshots in the undo/redo stack may hold a reference to it;
+      // closing it here would make those snapshots point to a closed/
+      // detached bitmap, causing "image source is detached" errors on
+      // restore (undo/redo).  Memory is reclaimed by GC once no
+      // snapshot or layer references remain.
       layer.imageBitmap = bitmap;
       layer.baseImageBitmap = null;
       layer.basicAdjustment = undefined;
@@ -617,14 +595,12 @@ export class DocumentEngine {
     imageData.data.set(applyBasicAdjustmentToPixels(imageData.data, adjustment));
     ctx.putImageData(imageData, 0, 0);
 
-    // Close the old imageBitmap ONLY if it's not the baseImageBitmap
-    if (layer.imageBitmap && layer.imageBitmap !== layer.baseImageBitmap) {
-      try {
-        layer.imageBitmap.close();
-      } catch {
-        // jsdom and some test doubles don't implement close().
-      }
-    }
+    // NOTE: we intentionally do NOT close the old imageBitmap here.
+    // Snapshots in the undo/redo stack may hold a reference to it;
+    // closing it here would make those snapshots point to a closed/
+    // detached bitmap, causing "image source is detached" errors on
+    // restore (undo/redo).  Cleanup happens in restore() when the
+    // snapshot that owns the reference is no longer the active one.
 
     layer.imageBitmap = canvas.transferToImageBitmap();
     layer.basicAdjustment = adjustment;
@@ -636,15 +612,10 @@ export class DocumentEngine {
 
   clearBasicAdjustments(id: LayerId): void {
     const layer = this.getLayer(id);
-    if (layer) {
+    if (layer && !layer.locked) {
       if (layer.baseImageBitmap) {
-        if (layer.imageBitmap && layer.imageBitmap !== layer.baseImageBitmap) {
-          try {
-            layer.imageBitmap.close();
-          } catch {
-            // jsdom and some test doubles don't implement close().
-          }
-        }
+        // NOTE: we intentionally do NOT close the old imageBitmap here.
+        // Same reason as applyBasicAdjustment — snapshots hold a reference.
         layer.imageBitmap = layer.baseImageBitmap;
         layer.baseImageBitmap = null;
       }
@@ -652,7 +623,7 @@ export class DocumentEngine {
       layer.hasAdjustments = false;
       this.model.dirty = true;
       this.markLayerDirty(id);
-      this.notifyChange();
+      this.notifyVisualChange();
     }
   }
 
@@ -734,10 +705,18 @@ export class DocumentEngine {
 
   restore(snapshot: DocumentModel, options?: { restoreViewport?: boolean }): void {
     const currentViewport = { ...this.model.viewport };
+
+    // NOTE: we intentionally do NOT close any bitmaps from the current model
+    // here.  Snapshots in the undo/redo history stack may hold references to
+    // those bitmaps; closing them would make future restore() calls point to
+    // closed/detached bitmaps ("image source is detached" errors).  Bitmap
+    // memory is reclaimed by GC once no snapshot or layer references remain.
+
     this.model = restoreSnapshot(snapshot);
     if (!options?.restoreViewport) {
       this.model.viewport = currentViewport;
     }
+
     // Clean up stale texture handles for layers that no longer exist
     const currentIds = new Set(this.model.layers.map(l => l.id));
     for (const existingId of this.textureHandles.keys()) {

@@ -1,4 +1,4 @@
-import { onCleanup, onMount } from "solid-js";
+﻿import { onCleanup, onMount } from "solid-js";
 import { listen } from "@tauri-apps/api/event";
 import { isEditableTarget } from "@/lib/dom";
 import { isTauriRuntime, runTauriWindowAction } from "@/lib/desktop";
@@ -159,7 +159,9 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
   };
 
   const restoreHistorySnapshot = (direction: "undo" | "redo") => {
-    if (cancelActiveTransformSession()) return;
+    if (cancelActiveTransformSession()) {
+      return;
+    }
 
     if (editor.activeTool() === "crop") {
       const state = direction === "undo"
@@ -175,16 +177,26 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
     try {
       const engine = editor.workspace.getActiveEngine();
       const history = editor.workspace.getActiveHistory();
-      if (!engine || !history) return;
+      if (!engine || !history) {
+        return;
+      }
 
       const canRestore = direction === "undo" ? history.canUndo() : history.canRedo();
-      if (!canRestore) return;
+      if (!canRestore) {
+        return;
+      }
       const snapshot = direction === "undo"
         ? history.undo(engine.snapshot())
         : history.redo(engine.snapshot());
-      if (!snapshot) return;
+      if (!snapshot) {
+        return;
+      }
+
 
       engine.restore(snapshot);
+
+      const restoredLayer = engine.getLayers()[0];
+
       for (const layer of engine.getLayers()) {
         if (layer.imageBitmap) editor.renderer.uploadImage(layer.id, layer.imageBitmap);
       }
@@ -204,7 +216,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
         // ponytail: guard against MAX_OPEN_DOCUMENTS to surface a toast
         // instead of letting workspace.addDocument throw silently.
         if (editor.workspace.isFull()) {
-          showToast(`Workspace full — close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
+          showToast(`Workspace full â€” close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
           break;
         }
         const id = `doc-${crypto.randomUUID()}`;

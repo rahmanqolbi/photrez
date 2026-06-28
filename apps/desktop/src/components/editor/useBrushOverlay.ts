@@ -255,6 +255,13 @@ export function useBrushOverlay() {
 
     const snapshot = new OffscreenCanvas(w, h);
     const sCtx = snapshot.getContext("2d")!;
+    // Ponytail: composites onto the current imageBitmap, which may already
+    // include brightness/contrast/saturation adjustments.  When the stroke
+    // is committed via commitPaintBitmap → setLayerImageBitmap, the
+    // baseImageBitmap and adjustment metadata are reset — so painting
+    // permanently bakes in any active adjustments.  This is intentional:
+    // it matches how raster editors (Photoshop, GIMP) handle paint-on-
+    // adjusted-layer.
     if (layer.imageBitmap) {
       sCtx.drawImage(layer.imageBitmap, 0, 0);
     }

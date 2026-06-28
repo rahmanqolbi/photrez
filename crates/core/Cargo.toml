@@ -2,6 +2,10 @@
 name = "photrez-core"
 version = "0.1.0"
 edition = "2021"
+license = "AGPL-3.0-or-later"
+description = "Core image editing engine for Photrez"
+repository = "https://github.com/rahmanqolbi/photrez"
+
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }

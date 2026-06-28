@@ -133,7 +133,15 @@ export function DragGlobalGuard() {
   const dragController = useDragController();
   onMount(() => {
     const onDragOver = (e: DragEvent) => {
-      if (dragController.state().dragKind !== null) {
+      const state = dragController.state();
+      if (state.dragKind !== null) {
+        e.preventDefault();
+      } else if (e.dataTransfer?.types?.includes("Files")) {
+        // OS external file drag detected — set dragKind so the browser
+        // allows the drop and shows the "copy" cursor.  File paths are
+        // unknown at dragover time; the drop handler reads them from
+        // e.dataTransfer.files instead of state.filePaths.
+        dragController.beginFileDrag([], { x: e.clientX, y: e.clientY });
         e.preventDefault();
       }
     };

@@ -231,13 +231,11 @@ describe("SelectionOperations — real pixel operations", () => {
       const bitmap = offscreen.transferToImageBitmap();
       // Debug: check bitmap was actually filled
       const buf = (bitmap as any)._buffer;
-      console.log("Source bitmap pixel (5,5):", buf[4 * (5 * 100 + 5) + 0], buf[4 * (5 * 100 + 5) + 1]);
       engine.setLayerImageBitmap(layer.id, bitmap);
 
       engine.createSelection(0, 0, 10, 10);
       const result = SelectionOperations.copySelection(engine);
       expect(result).not.toBeNull();
-      console.log("Result data sample:", result!.data[0], result!.data[1], result!.data[2], result!.data[3]);
       // Center pixel should be green (0, 255, 0, 255)
       const idx = 4 * (5 * 10 + 5); // row 5, col 5
       expect(result!.data[idx + 0]).toBe(0);     // R

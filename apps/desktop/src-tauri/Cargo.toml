@@ -2,6 +2,10 @@
 name = "photrez-desktop"
 version = "0.2.0"
 edition = "2021"
+license = "AGPL-3.0-or-later"
+description = "Desktop application for Photrez powered by Tauri"
+repository = "https://github.com/rahmanqolbi/photrez"
+
 
 [dependencies]
 tauri = { version = "2.0.0", features = [] }

@@ -111,6 +111,13 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
 
       options.stopMomentum();
 
+      // Dev-only: F5 reloads the webview when HMR gets stuck
+      if (import.meta.env.DEV && e.key === "F5") {
+        e.preventDefault();
+        window.location.reload();
+        return;
+      }
+
       const engine = workspace.getActiveEngine();
       if (!engine) return;
 

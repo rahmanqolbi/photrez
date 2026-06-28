@@ -13,7 +13,7 @@ import { useCanvasPointerTools } from "./useCanvasPointerTools";
 import { useCanvasLayerDrag } from "../layers/useCanvasLayerDrag";
 import { useCanvasDerivedState } from "./useCanvasDerivedState";
 import { useDragController } from "../DragController";
-import { addLayerFromCrossDoc, addFilesAsLayers } from "../crossDocLayerOps";
+import { addLayerFromCrossDoc, addFilesAsLayers, addFilesAsLayersFromFileDrop } from "../crossDocLayerOps";
 import { ViewportCamera } from "@/viewport/viewportCamera";
 import { SelectionTransformOverlay } from "../SelectionTransformOverlay";
 import { HoverHighlight } from "./HoverHighlight";
@@ -718,8 +718,12 @@ export function CanvasViewport() {
       data-drag-over={dragController.state().dropTarget?.type === "canvas" ? "canvas" : null}
       class="flex-1 relative overflow-hidden bg-editor-canvas"
       onDragOver={(e) => {
-        if (dragController.state().dragKind === null) return;
+        // ponytail: always preventDefault so the browser allows the drop
+        // even for OS file drags (dragKind may be null at first dragover).
+        // Without this the browser shows the ❌ no-drop cursor and blocks
+        // the drop event entirely.
         e.preventDefault();
+        if (dragController.state().dragKind === null) return;
         dragController.setDropTarget({ type: "canvas" });
         dragController.cancelTabHover();
       }}
@@ -736,13 +740,25 @@ export function CanvasViewport() {
         if (state.dragKind === "layer" && state.payload) {
           const docPos = camera.screenToDocument(e.clientX, e.clientY);
           addLayerFromCrossDoc(state.payload, { type: "canvas" }, docPos, workspace);
-        } else if (state.dragKind === "file" && state.filePaths) {
-          const docPos = camera.screenToDocument(e.clientX, e.clientY);
-          const created = await addFilesAsLayers(state.filePaths, { type: "canvas" }, docPos, workspace);
-          for (const { layerId, bitmap } of created) {
-            renderer.uploadImage(layerId, bitmap);
+        } else if (state.dragKind === "file") {
+          if (state.filePaths && state.filePaths.length > 0) {
+            // In-app file drag — pre-resolved file paths
+            const docPos = camera.screenToDocument(e.clientX, e.clientY);
+            const created = await addFilesAsLayers(state.filePaths, { type: "canvas" }, docPos, workspace);
+            for (const { layerId, bitmap } of created) {
+              renderer.uploadImage(layerId, bitmap);
+            }
+            if (created.length) scheduler.requestRender();
+          } else if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+            // OS file drop (Explorer / Finder) — read File objects directly
+            const files = Array.from(e.dataTransfer.files);
+            const docPos = camera.screenToDocument(e.clientX, e.clientY);
+            const created = await addFilesAsLayersFromFileDrop(files, { type: "canvas" }, docPos, workspace);
+            for (const { layerId, bitmap } of created) {
+              renderer.uploadImage(layerId, bitmap);
+            }
+            if (created.length) scheduler.requestRender();
           }
-          if (created.length) scheduler.requestRender();
         }
         dragController.endDrag();
       }}

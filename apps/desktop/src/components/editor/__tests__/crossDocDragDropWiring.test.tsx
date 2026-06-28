@@ -23,6 +23,7 @@ import { LayerItem } from "../layers/LayerItem";
 import { DocumentTabsBar } from "../shell/DocumentTabsBar";
 import { DragControllerProvider, useDragController } from "../DragController";
 import { findDropZoneAtPoint, dispatchTauriFileDrop } from "../crossDocDropDispatch";
+import { addFilesAsLayersFromFileDrop } from "../crossDocLayerOps";
 import { resetToasts } from "../Toast";
 import type { LayerNode } from "@/engine/types";
 
@@ -649,5 +650,135 @@ describe("DocumentTabsBar wiring (hover-to-switch)", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+// ————————————————————————————————————————————————————————————————————————————
+//  HTML5 file drop wiring — when DragController has dragKind=file with
+//  empty filePaths (set by DragGlobalGuard), the CanvasViewport / LayersPanel
+//  drop handler must read `e.dataTransfer.files` directly and call
+//  addFilesAsLayersFromFileDrop.
+// ————————————————————————————————————————————————————————————————————————————
+
+describe("HTML5 file drop wiring (OS file drop on drop zone)", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+  let probeRef: { current: ReturnType<typeof useDragController> | null };
+
+  function FileDropHost(props: { onFileDrop: typeof addFilesAsLayersFromFileDrop }) {
+    const dragController = useDragController();
+    return (
+      <div
+        data-test-drop-zone=""
+        onDrop={async (e) => {
+          e.preventDefault();
+          const state = dragController.state();
+          if (state.dragKind === "file") {
+            if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+              const files = Array.from(e.dataTransfer.files);
+              // Mirror production handler: CanvasViewport + LayersPanel
+              await props.onFileDrop(files, { type: "canvas" }, { x: 0, y: 0 }, ws);
+            }
+          }
+          dragController.endDrag();
+        }}
+      />
+    );
+  }
+
+  beforeEach(() => {
+    ws = new WorkspaceManager();
+    ws.addDocument(WorkspaceManager.createBlankDocument("doc-a", "A", 800, 600));
+    renderer = { uploadImage: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    probeRef = { current: null };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    dispose?.();
+    document.body.replaceChildren();
+  });
+
+  function Probe() {
+    probeRef.current = useDragController();
+    return null;
+  }
+
+  function fireDrop(el: Element, files: File[]) {
+    const evt = new Event("drop", { bubbles: true, cancelable: true }) as any;
+    evt.dataTransfer = { files };
+    el.dispatchEvent(evt);
+    return evt;
+  }
+
+  it("calls addFilesAsLayersFromFileDrop when dragKind=file and OS files are dropped", async () => {
+    const onFileDrop = vi.fn(addFilesAsLayersFromFileDrop);
+    const created = vi.fn().mockResolvedValue([]);
+    onFileDrop.mockImplementation(created);
+
+    dispose = render(
+      () => (
+        <DragControllerProvider workspaceOverride={{ switchDocument: vi.fn() }}>
+          <FileDropHost onFileDrop={onFileDrop} />
+          <Probe />
+        </DragControllerProvider>
+      ),
+      container,
+    );
+
+    // Simulate DragGlobalGuard having set this on dragover
+    probeRef.current!.beginFileDrag([], { x: 100, y: 200 });
+
+    const el = container.querySelector("[data-test-drop-zone]")!;
+    const files = [new File(["fake"], "photo.png", { type: "image/png" })];
+    fireDrop(el, files);
+
+    // Wait for async handler to settle
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(onFileDrop).toHaveBeenCalledWith(
+      files,
+      { type: "canvas" },
+      { x: 0, y: 0 },
+      ws,
+    );
+    // endDrag was called — dragKind is cleared
+    expect(probeRef.current!.state().dragKind).toBeNull();
+  });
+
+  it("does NOT call addFilesAsLayersFromFileDrop when dragKind is 'layer' (type guard)", async () => {
+    const onFileDrop = vi.fn(addFilesAsLayersFromFileDrop);
+    const created = vi.fn().mockResolvedValue([]);
+    onFileDrop.mockImplementation(created);
+
+    dispose = render(
+      () => (
+        <DragControllerProvider workspaceOverride={{ switchDocument: vi.fn() }}>
+          <FileDropHost onFileDrop={onFileDrop} />
+          <Probe />
+        </DragControllerProvider>
+      ),
+      container,
+    );
+
+    // Set layer drag state (not file)
+    probeRef.current!.beginLayerDrag(
+      { version: 1, sourceDocId: "doc-a", layerId: "l1", sourceName: "L1", isAltPressed: false },
+      null,
+    );
+
+    const el = container.querySelector("[data-test-drop-zone]")!;
+    fireDrop(el, [new File(["fake"], "photo.png")]);
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(onFileDrop).not.toHaveBeenCalled();
+    // endDrag was still called
+    expect(probeRef.current!.state().dragKind).toBeNull();
   });
 });
