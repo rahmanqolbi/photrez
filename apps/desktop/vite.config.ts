@@ -78,7 +78,7 @@ export default defineConfig({
           exclude: defaultTestExcludes,
           css: true,
           pool: "threads",
-          isolate: false,
+          isolate: true,
         },
       },
       {
