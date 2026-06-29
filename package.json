@@ -1,6 +1,7 @@
 {
   "name": "photrez-workspace",
   "private": true,
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "dev": "pnpm --filter photrez-desktop dev",
     "build": "pnpm --filter photrez-desktop build",
