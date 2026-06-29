@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- Definitions for Gradients -->
+  <defs>
+    <!-- Warm Orange-Yellow Gradient for the main P body -->
+    <linearGradient id="pageGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFB31A" />   <!-- Brightened Golden Orange (+5% lightness for low-brightness screens) -->
+      <stop offset="100%" stop-color="#E15A17" /> <!-- Photon Amber at the bottom -->
+    </linearGradient>
+  </defs>
+
+  <!-- Windows-Style Rounded Box (Zero-Tint Dark Gray - rx=28 for Win11 style consistency) -->
+  <rect x="16" y="16" width="480" height="480" rx="28" fill="#1A1A1A" />
+
+  <!-- Main Group (Shifted left for perfect optical balance) -->
+  <g transform="translate(-20, 15)">
+    <!-- Badan P Miring Geometris Flat (Koreksi Kepala Pendek 8% & Tangkai Y=440) -->
+    <path d="M 240 50
+             L 460 50
+             L 390 310
+             L 253 310
+             L 219 440
+             L 136 440
+             Z" 
+          fill="url(#pageGradient)" />
+
+    <!-- Matahari V18 Final (R=30 - Penyelarasan Optik 5% lebih kecil untuk keanggunan) -->
+    <!-- Digeser ke cx=352, cy=175 agar tertutup sebagian oleh lereng kiri gunung -->
+    <!-- Menghasilkan setengah lingkaran terbit yang sangat tegas di sisi kanan puncak gunung -->
+    <!-- Lebar area matahari yang terlihat adalah 42px (10.5px pada skala 128px, 100% legibel) -->
+    <circle cx="352" cy="175" r="30" fill="#FFE57F" />
+
+    <!-- Lubang P / Gunung dengan Puncak Dilembutkan (Puncak Flat 6px) -->
+    <!-- Dipotong menggunakan warna background #1A1A1A untuk kontras mutlak -->
+    <polygon points="270,310 337,127 343,127 330,310" fill="#1A1A1A" />
+  </g>
+</svg>

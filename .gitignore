@@ -83,6 +83,7 @@ docs/archive/audits/ponytail-doctrine/
 docs/archive/superpowers-plans/
 docs/archive/superpowers-specs/
 docs/plans/task.md
+docs/superpowers/
 
 # Tauri specific (optional, usually handled by src-tauri/.gitignore if exists, but safe to add globally)
 **/src-tauri/gen/
