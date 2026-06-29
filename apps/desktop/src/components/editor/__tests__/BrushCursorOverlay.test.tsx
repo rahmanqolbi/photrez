@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render } from "solid-js/web";
 import { createSignal } from "solid-js";
 import { BrushCursorOverlay } from "../BrushCursorOverlay";
@@ -97,6 +97,52 @@ describe("BrushCursorOverlay", () => {
 
     dispose();
     root.remove();
+    vi.restoreAllMocks();
+  });
+
+  it("responds to window pointermove event (wiring test)", () => {
+    const [activeTool] = createSignal("brush");
+    const [zoom] = createSignal(1);
+
+    // Provide a viewport container so updatePosition() can compute document coords
+    const vpContainer = document.createElement("div");
+    vpContainer.setAttribute("data-viewport-container", "");
+    document.body.appendChild(vpContainer);
+
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue({
+      activeTool,
+      zoom,
+      camera: new ViewportCamera(),
+      brushSize: () => 24,
+      brushHardness: () => 0.97,
+      brushOpacity: () => 1,
+      eraserSize: () => 40,
+      eraserHardness: () => 1,
+      eraserOpacity: () => 1,
+    } as any);
+
+    const root = document.createElement("svg");
+    document.body.appendChild(root);
+    const dispose = render(() => BrushCursorOverlay(), root);
+
+    // Before any pointer move, cursor should NOT be visible
+    expect(root.querySelector("[data-paint-cursor-outer]")).toBeNull();
+
+    // Fire pointermove — this exercises the production event listener
+    window.dispatchEvent(new PointerEvent("pointermove", {
+      clientX: 100,
+      clientY: 200,
+      bubbles: true,
+    }));
+
+    // Cursor circle should now be rendered
+    const circle = root.querySelector("[data-paint-cursor-outer]");
+    expect(circle).not.toBeNull();
+    expect(circle?.getAttribute("r")).toBe("12");
+
+    dispose();
+    root.remove();
+    vpContainer.remove();
     vi.restoreAllMocks();
   });
 });

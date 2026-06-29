@@ -76,7 +76,7 @@ describe("ExportDialog", () => {
   });
 
   it("exports through the production handler and reports the saved file", async () => {
-    exportActiveDocumentMock.mockResolvedValue("C:\\Pictures\\result.webp");
+    exportActiveDocumentMock.mockResolvedValue("./output/result.webp");
     const view = renderDialog();
     const dialog = view.dialog()!;
     button(dialog, "WebP").click();

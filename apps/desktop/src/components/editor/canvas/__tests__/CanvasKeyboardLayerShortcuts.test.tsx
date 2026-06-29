@@ -794,3 +794,129 @@ describe("canvas layer keyboard shortcuts", () => {
     dispose();
   });
 });
+
+describe("useCanvasKeyboard keyup/blur wiring", () => {
+  let container: HTMLDivElement;
+  let dispose: () => void;
+  let setIsSpacePressed: (...args: unknown[]) => void;
+  let setIsAltPressed: (...args: unknown[]) => void;
+  let setIsPanning: (...args: unknown[]) => void;
+
+  beforeEach(() => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    setIsSpacePressed = vi.fn();
+    setIsAltPressed = vi.fn();
+    setIsPanning = vi.fn();
+  });
+
+  afterEach(() => {
+    dispose?.();
+    container.remove();
+  });
+
+  it("keyup Space calls setIsSpacePressed(false)", () => {
+    const ws = new WorkspaceManager();
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <KeyUpHarness
+            setIsSpacePressed={setIsSpacePressed}
+            setIsAltPressed={setIsAltPressed}
+            setIsPanning={setIsPanning}
+          />
+        </EditorProvider>
+      ),
+      container,
+    );
+    window.dispatchEvent(new KeyboardEvent("keyup", { code: "Space", key: " " }));
+    expect(setIsSpacePressed).toHaveBeenCalledWith(false);
+  });
+
+  it("keyup Alt calls setIsAltPressed(false)", () => {
+    const ws = new WorkspaceManager();
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <KeyUpHarness
+            setIsSpacePressed={setIsSpacePressed}
+            setIsAltPressed={setIsAltPressed}
+            setIsPanning={setIsPanning}
+          />
+        </EditorProvider>
+      ),
+      container,
+    );
+    window.dispatchEvent(new KeyboardEvent("keyup", { key: "Alt" }));
+    expect(setIsAltPressed).toHaveBeenCalledWith(false);
+  });
+
+  it("window blur resets space, panning, and alt", () => {
+    const ws = new WorkspaceManager();
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <KeyUpHarness
+            setIsSpacePressed={setIsSpacePressed}
+            setIsAltPressed={setIsAltPressed}
+            setIsPanning={setIsPanning}
+          />
+        </EditorProvider>
+      ),
+      container,
+    );
+    window.dispatchEvent(new Event("blur"));
+    expect(setIsSpacePressed).toHaveBeenCalledWith(false);
+    expect(setIsPanning).toHaveBeenCalledWith(false);
+    expect(setIsAltPressed).toHaveBeenCalledWith(false);
+  });
+
+  it("cleans up listeners on unmount", () => {
+    const ws = new WorkspaceManager();
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <KeyUpHarness
+            setIsSpacePressed={setIsSpacePressed}
+            setIsAltPressed={setIsAltPressed}
+            setIsPanning={setIsPanning}
+          />
+        </EditorProvider>
+      ),
+      container,
+    );
+    dispose(); // unmount
+    dispose = () => {};
+
+    window.dispatchEvent(new KeyboardEvent("keyup", { code: "Space", key: " " }));
+    expect(setIsSpacePressed).not.toHaveBeenCalled();
+  });
+});
+
+function KeyUpHarness(props: {
+  setIsSpacePressed: (...args: unknown[]) => void;
+  setIsAltPressed: (...args: unknown[]) => void;
+  setIsPanning: (...args: unknown[]) => void;
+}) {
+  useCanvasKeyboard({
+    isSpacePressed: () => false,
+    setIsSpacePressed: props.setIsSpacePressed,
+    isAltPressed: () => false,
+    setIsAltPressed: props.setIsAltPressed,
+    isPanning: () => false,
+    setIsPanning: props.setIsPanning,
+    stopMomentum: vi.fn(),
+    fitToScreenAndRender: vi.fn(),
+    syncViewport: vi.fn(),
+    getCanvasContainerRef: () => undefined,
+  });
+  return null;
+}

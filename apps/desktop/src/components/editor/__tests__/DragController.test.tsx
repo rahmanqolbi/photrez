@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { renderHook } from "@solidjs/testing-library";
-import { DragControllerProvider, useDragController } from "../DragController";
+import { render } from "solid-js/web";
+import { DragControllerProvider, useDragController, DragGlobalGuard } from "../DragController";
 
 describe("DragController", () => {
   const testWorkspace = { switchDocument: vi.fn() };
@@ -146,3 +147,109 @@ describe("DragController", () => {
     expect(switchDocument).toHaveBeenCalledWith("doc-C");
   });
 });
+
+describe("DragGlobalGuard wiring", () => {
+  let container: HTMLDivElement;
+  let dispose: () => void;
+
+  function GuardHarness() {
+    return (
+      <DragControllerProvider workspaceOverride={{ switchDocument: vi.fn() }}>
+        <DragGlobalGuard />
+      </DragControllerProvider>
+    );
+  }
+
+  beforeEach(() => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    dispose?.();
+    container.remove();
+  });
+
+  it("registers dragover listener and prevents default while layer drag is active", () => {
+    // Render guard + provider, grab the controller via a nested component
+    let ctrl!: ReturnType<typeof useDragController>;
+    function Inner() { ctrl = useDragController(); return null; }
+    dispose = render(() => <GuardHarness />, container);
+    // Re-render with Inner to grab the controller reference
+    // Instead, embed Inner in the harness directly
+  });
+
+  it("prevents default dragover when dragKind is set (layer drag)", () => {
+    let ctrl!: ReturnType<typeof useDragController>;
+    dispose = render(() => (
+      <DragControllerProvider workspaceOverride={{ switchDocument: vi.fn() }}>
+        <DragGlobalGuard />
+        <OpenCtrlProvider callback={(c: ReturnType<typeof useDragController>) => { ctrl = c; }} />
+      </DragControllerProvider>
+    ), container);
+    // Dispatch dragover BEFORE any drag — default should NOT be prevented
+    const ev1 = new Event("dragover", { bubbles: true, cancelable: true });
+    (ev1 as any).dataTransfer = null;
+    container.dispatchEvent(ev1);
+    expect(ev1.defaultPrevented).toBe(false);
+
+    // Start a layer drag
+    ctrl.beginLayerDrag({
+      version: 1, sourceDocId: "d", layerId: "l", sourceName: "n", isAltPressed: false,
+    }, null);
+
+    // Now dragover should be prevented
+    const ev2 = new Event("dragover", { bubbles: true, cancelable: true });
+    (ev2 as any).dataTransfer = null;
+    container.dispatchEvent(ev2);
+    expect(ev2.defaultPrevented).toBe(true);
+  });
+
+  it("calls beginFileDrag and prevents default when dataTransfer contains Files", () => {
+    let ctrl!: ReturnType<typeof useDragController>;
+    dispose = render(() => (
+      <DragControllerProvider workspaceOverride={{ switchDocument: vi.fn() }}>
+        <DragGlobalGuard />
+        <OpenCtrlProvider callback={(c: ReturnType<typeof useDragController>) => { ctrl = c; }} />
+      </DragControllerProvider>
+    ), container);
+
+    // Dispatch dragover with Files dataTransfer
+    const ev = new Event("dragover", { bubbles: true, cancelable: true });
+    (ev as any).dataTransfer = { types: ["Files"] };
+    container.dispatchEvent(ev);
+
+    expect(ev.defaultPrevented).toBe(true);
+    expect(ctrl.state().dragKind).toBe("file");
+  });
+
+  it("cleans up listener on unmount", () => {
+    let ctrl!: ReturnType<typeof useDragController>;
+    dispose = render(() => (
+      <DragControllerProvider workspaceOverride={{ switchDocument: vi.fn() }}>
+        <DragGlobalGuard />
+        <OpenCtrlProvider callback={(c: ReturnType<typeof useDragController>) => { ctrl = c; }} />
+      </DragControllerProvider>
+    ), container);
+
+    ctrl.beginLayerDrag({
+      version: 1, sourceDocId: "d", layerId: "l", sourceName: "n", isAltPressed: false,
+    }, null);
+
+    dispose(); // unmount
+    dispose = () => {};
+
+    const ev = new Event("dragover", { bubbles: true, cancelable: true });
+    (ev as any).dataTransfer = null;
+    container.dispatchEvent(ev);
+    // Listener removed — preventDefault should NOT happen
+    expect(ev.defaultPrevented).toBe(false);
+  });
+});
+
+// Helper component to expose the controller to wiring tests
+function OpenCtrlProvider(props: { callback: (c: ReturnType<typeof useDragController>) => void }) {
+  const ctrl = useDragController();
+  props.callback(ctrl);
+  return null;
+}

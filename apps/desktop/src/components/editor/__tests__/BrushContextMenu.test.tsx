@@ -115,9 +115,17 @@ describe("BrushContextMenu", () => {
     document.body.appendChild(root);
     const dispose = render(() => <BrushContextMenu />, root);
 
-    container.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, clientX: 200, clientY: 150 }));
+    container.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        clientX: 200,
+        clientY: 150,
+      }),
+    );
 
-    const sizeSlider = root.querySelector<HTMLInputElement>("[data-context-size]")!;
+    const sizeSlider = root.querySelector<HTMLInputElement>(
+      "[data-context-size]",
+    )!;
     expect(sizeSlider).toBeTruthy();
     // slider is 0-100 non-linear; size=30 maps to slider ~4
     expect(sizeSlider.value).toBe("4");
@@ -142,11 +150,55 @@ describe("BrushContextMenu", () => {
     document.body.appendChild(root);
     const dispose = render(() => <BrushContextMenu />, root);
 
-    container.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, clientX: 100, clientY: 100 }));
+    container.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
     expect(root.textContent).toContain("Size");
 
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
     expect(root.textContent).toBe("");
+
+    dispose();
+  });
+
+  it("targets the active tool's preset store even if the tool changes after mount", () => {
+    const mock = createMockEditor({
+      activeTool: "brush",
+      brushPresetId: "brush-preset",
+      eraserPresetId: "eraser-preset",
+    });
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mock as any);
+
+    container = document.createElement("div");
+    container.id = "canvas-container";
+    document.body.appendChild(container);
+
+    root = document.createElement("div");
+    document.body.appendChild(root);
+    const dispose = render(() => <BrushContextMenu />, root);
+
+    mock.setActiveTool("eraser");
+    container.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        clientX: 100,
+        clientY: 100,
+      }),
+    );
+
+    const resetButton = Array.from(root.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Reset",
+    ) as HTMLButtonElement;
+    resetButton.click();
+
+    expect(mock.eraserPresetId()).toBeNull();
+    expect(mock.brushPresetId()).toBe("brush-preset");
 
     dispose();
   });

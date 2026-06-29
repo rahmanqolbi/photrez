@@ -298,6 +298,57 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
     });
   });
 
+  /* ponytail: extracted IIFEs → createMemo + <For> for identity-based DOM diffing */
+  const expansionRects = createMemo(() => {
+    const cr = props.canvasScreenRect;
+    if (!cr) return [];
+    const sr = screenRect();
+    const rects: Array<{ x: number; y: number; w: number; h: number }> = [];
+    const lW = cr.x - sr.x;
+    if (lW > 0) rects.push({ x: sr.x, y: sr.y, w: lW, h: sr.h });
+    const rW = sr.x + sr.w - (cr.x + cr.w);
+    if (rW > 0) rects.push({ x: cr.x + cr.w, y: sr.y, w: rW, h: sr.h });
+    const tW = Math.min(sr.x + sr.w, cr.x + cr.w) - Math.max(sr.x, cr.x);
+    const tH = cr.y - sr.y;
+    if (tW > 0 && tH > 0)
+      rects.push({ x: Math.max(sr.x, cr.x), y: sr.y, w: tW, h: tH });
+    const bH = sr.y + sr.h - (cr.y + cr.h);
+    if (tW > 0 && bH > 0)
+      rects.push({ x: Math.max(sr.x, cr.x), y: cr.y + cr.h, w: tW, h: bH });
+    return rects;
+  });
+
+  const darkRects = createMemo(() => {
+    const sr = screenRect();
+    const vw = props.viewportWidth;
+    const vh = props.viewportHeight;
+    const rects: Array<{ x: number; y: number; w: number; h: number }> = [];
+    const lW = sr.x;
+    if (lW > 0) rects.push({ x: 0, y: 0, w: lW, h: vh });
+    const rW = vw - (sr.x + sr.w);
+    if (rW > 0) rects.push({ x: sr.x + sr.w, y: 0, w: rW, h: vh });
+    const tW = Math.min(vw, sr.w);
+    const tH = sr.y;
+    if (tW > 0 && tH > 0)
+      rects.push({ x: Math.max(0, sr.x), y: 0, w: tW, h: tH });
+    const bH = vh - (sr.y + sr.h);
+    if (tW > 0 && bH > 0)
+      rects.push({ x: Math.max(0, sr.x), y: sr.y + sr.h, w: tW, h: bH });
+    return rects;
+  });
+
+  const isExpanded = createMemo(() => {
+    const sr = screenRect();
+    const cr = props.canvasScreenRect;
+    if (!cr) return false;
+    return (
+      sr.x < cr.x ||
+      sr.y < cr.y ||
+      sr.x + sr.w > cr.x + cr.w ||
+      sr.y + sr.h > cr.y + cr.h
+    );
+  });
+
   return (
     <svg
       ref={svgRef}
@@ -331,23 +382,8 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
     >
       <defs></defs>
       {/* Canvas expansion fill — non-overlapping strips for areas where frame exceeds canvas */}
-      {(() => {
-        const cr = props.canvasScreenRect;
-        if (!cr) return null;
-        const sr = screenRect();
-        const rects: Array<{ x: number; y: number; w: number; h: number }> = [];
-        const lW = cr.x - sr.x;
-        if (lW > 0) rects.push({ x: sr.x, y: sr.y, w: lW, h: sr.h });
-        const rW = sr.x + sr.w - (cr.x + cr.w);
-        if (rW > 0) rects.push({ x: cr.x + cr.w, y: sr.y, w: rW, h: sr.h });
-        const tW = Math.min(sr.x + sr.w, cr.x + cr.w) - Math.max(sr.x, cr.x);
-        const tH = cr.y - sr.y;
-        if (tW > 0 && tH > 0)
-          rects.push({ x: Math.max(sr.x, cr.x), y: sr.y, w: tW, h: tH });
-        const bH = sr.y + sr.h - (cr.y + cr.h);
-        if (tW > 0 && bH > 0)
-          rects.push({ x: Math.max(sr.x, cr.x), y: cr.y + cr.h, w: tW, h: bH });
-        return rects.map((r) => (
+      <For each={expansionRects()}>
+        {(r) => (
           <rect
             x={r.x}
             y={r.y}
@@ -356,31 +392,10 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
             fill="rgba(255,255,255,0.08)"
             style={{ "pointer-events": "none" }}
           />
-        ));
-      })()}
-      {(() => {
-        const sr = screenRect();
-        const vw = props.viewportWidth;
-        const vh = props.viewportHeight;
-        const darkRects: Array<{ x: number; y: number; w: number; h: number }> =
-          [];
-        const lW = sr.x;
-        if (lW > 0) darkRects.push({ x: 0, y: 0, w: lW, h: vh });
-        const rW = vw - (sr.x + sr.w);
-        if (rW > 0) darkRects.push({ x: sr.x + sr.w, y: 0, w: rW, h: vh });
-        const tW = Math.min(vw, sr.w);
-        const tH = sr.y;
-        if (tW > 0 && tH > 0)
-          darkRects.push({ x: Math.max(0, sr.x), y: 0, w: tW, h: tH });
-        const bH = vh - (sr.y + sr.h);
-        if (tW > 0 && bH > 0)
-          darkRects.push({
-            x: Math.max(0, sr.x),
-            y: sr.y + sr.h,
-            w: tW,
-            h: bH,
-          });
-        return darkRects.map((r) => (
+        )}
+      </For>
+      <For each={darkRects()}>
+        {(r) => (
           <rect
             x={r.x}
             y={r.y}
@@ -389,8 +404,8 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
             fill="rgba(0,0,0,0.55)"
             style={{ "pointer-events": "none" }}
           />
-        ));
-      })()}
+        )}
+      </For>
       <rect
         x={screenRect().x}
         y={screenRect().y}
@@ -412,19 +427,7 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
         style={{ "pointer-events": "none" }}
       />
       {/* Canvas expansion indicator — dashed outline of original canvas when frame exceeds it */}
-      <Show
-        when={(() => {
-          const sr = screenRect();
-          const cr = props.canvasScreenRect;
-          if (!cr) return false;
-          return (
-            sr.x < cr.x ||
-            sr.y < cr.y ||
-            sr.x + sr.w > cr.x + cr.w ||
-            sr.y + sr.h > cr.y + cr.h
-          );
-        })()}
-      >
+      <Show when={isExpanded()}>
         <rect
           x={props.canvasScreenRect!.x}
           y={props.canvasScreenRect!.y}

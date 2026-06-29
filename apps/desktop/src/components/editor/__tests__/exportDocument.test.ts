@@ -264,7 +264,7 @@ describe("encodeComposite", () => {
 
 const { mockWriteFileBytes, mockShowSaveDialog } = vi.hoisted(() => ({
   mockWriteFileBytes: vi.fn().mockResolvedValue(undefined),
-  mockShowSaveDialog: vi.fn().mockResolvedValue("/tmp/test.png"),
+  mockShowSaveDialog: vi.fn().mockResolvedValue("./output/test.png"),
 }));
 
 vi.mock("@/tauri/native", () => ({
@@ -296,7 +296,7 @@ describe("exportActiveDocument", () => {
 
     expect(mockShowSaveDialog).toHaveBeenCalled();
     expect(mockWriteFileBytes).toHaveBeenCalled();
-    expect(result).toBe("/tmp/test.png");
+    expect(result).toBe("./output/test.png");
   });
 
   it("does not write bytes when the save dialog is cancelled", async () => {

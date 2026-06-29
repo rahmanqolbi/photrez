@@ -4,6 +4,7 @@ import { createSignal } from "solid-js";
 import { MoveOptionBar } from "../MoveOptionBar";
 import * as EditorContextModule from "../shell/EditorContext";
 import type { LayerNode } from "@/engine/types";
+import { mockEditorContext } from "../../../__tests__/test-builders";
 
 function tick(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
@@ -56,7 +57,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -84,7 +85,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -112,7 +113,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -141,7 +142,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -171,7 +172,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -204,7 +205,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -238,7 +239,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -276,7 +277,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -314,7 +315,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -353,7 +354,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -388,7 +389,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -431,7 +432,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -468,7 +469,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -503,7 +504,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -538,7 +539,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -573,7 +574,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -608,7 +609,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -643,7 +644,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -677,7 +678,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -713,7 +714,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -743,7 +744,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -788,7 +789,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -831,7 +832,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -874,7 +875,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -922,7 +923,7 @@ describe("MoveOptionBar", () => {
       docWidth: () => 800,
       docHeight: () => 600,
     };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
 
     const container = document.createElement("div");
     document.body.appendChild(container);

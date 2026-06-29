@@ -179,4 +179,20 @@ describe("custom application menu wiring", () => {
     expect(document.activeElement).toBe(button(host.container, "Help"));
     host.dispose();
   });
+
+  it("closes dropdown when pointerdown outside nav (document listener wiring)", () => {
+    const host = renderTitleBar();
+
+    // Open the File menu
+    button(host.container, "File").click();
+    expect(host.container.querySelector<HTMLElement>('[role="menu"]')).not.toBeNull();
+
+    // Click outside the nav — dispatch on the container (parent of nav)
+    // This exercises the document.addEventListener("pointerdown") from onMount
+    host.container.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+    // Menu should now be closed — no popup
+    expect(host.container.querySelector<HTMLElement>('[role="menu"]')).toBeNull();
+    host.dispose();
+  });
 });

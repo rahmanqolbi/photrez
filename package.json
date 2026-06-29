@@ -12,7 +12,7 @@
     "audit": "pnpm audit --prod && cargo audit",
     "perf:paint-history": "pnpm --filter photrez-desktop perf:paint-history",
     "perf:budget": "node scripts/performance-budget.mjs",
-    "verify": "pnpm --filter photrez-desktop test --run && pnpm run build && pnpm run perf:budget && cargo test -p photrez-core && cargo test --workspace",
+    "verify": "pnpm run type-check && pnpm run lint && pnpm audit --prod && pnpm --filter photrez-desktop test --run && pnpm run build && pnpm run perf:budget && cargo test -p photrez-core && cargo test --workspace",
     "tauri": "tauri",
     "prepare": "husky"
   },

@@ -5,6 +5,7 @@ import { CommandHistory } from "@/engine/history";
 import { DocumentModel } from "@/engine/types";
 import type { WebGL2Backend } from "@/renderer/webgl2";
 import type { RenderScheduler } from "@/renderer/scheduler";
+import { isTauriRuntime } from "@/lib/desktop/tauriWindow";
 
 interface OpenImageParams {
   workspace: WorkspaceManager;
@@ -14,14 +15,6 @@ interface OpenImageParams {
   // to the user via the existing Toast host instead of console.error only.
   // Keeping it optional preserves the existing call sites and tests.
   onError?: (message: string) => void;
-}
-
-// ponytail: Tauri 2 does not ship a typed `__TAURI_IPC__` global, so the
-// runtime check has to widen the window object locally. Kept to one
-// helper instead of `as any` so the cast has a single point of truth
-// and the rest of the file stays typed.
-function isTauriRuntime(): boolean {
-  return typeof window !== "undefined" && "__TAURI_IPC__" in window;
 }
 
 export async function openImage(params: OpenImageParams) {

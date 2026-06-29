@@ -3,6 +3,8 @@ import { render } from "solid-js/web";
 import { EditorProvider, useEditor } from "../shell/EditorContext";
 import { SelectionTransformOverlay } from "../SelectionTransformOverlay";
 import { WorkspaceManager } from "@/engine/workspace";
+import { WebGL2Backend } from "@/renderer/webgl2";
+import { RenderScheduler } from "@/renderer/scheduler";
 
 function h(tag: any, props: Record<string, unknown> | null, ...children: any[]): any {
   return () => {
@@ -17,8 +19,8 @@ describe("Resize pointer-capture fix", () => {
     const session = WorkspaceManager.createBlankDocument("alignment", "Alignment", 472, 709);
     session.engine.setViewport({ panX: 100, panY: 50, zoom: 0.6 });
 
-    const mockRenderer = {} as any;
-    const mockScheduler = { requestRender: vi.fn() } as any;
+    const mockRenderer = {} as unknown as WebGL2Backend;
+    const mockScheduler = { requestRender: vi.fn() } as unknown as RenderScheduler;
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -55,8 +57,8 @@ describe("Resize pointer-capture fix", () => {
 
     const ws = new WorkspaceManager();
     const session = WorkspaceManager.createBlankDocument("cursor-root", "Cursor Root", 800, 600);
-    const mockRenderer = {} as any;
-    const mockScheduler = { requestRender: vi.fn() } as any;
+    const mockRenderer = {} as unknown as WebGL2Backend;
+    const mockScheduler = { requestRender: vi.fn() } as unknown as RenderScheduler;
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -88,8 +90,8 @@ describe("Resize pointer-capture fix", () => {
   it("keeps the active resize cursor on the root SVG during pointer-captured resize drag", async () => {
     const ws = new WorkspaceManager();
     const session = WorkspaceManager.createBlankDocument("cursor-drag", "Cursor Drag", 800, 600);
-    const mockRenderer = {} as any;
-    const mockScheduler = { requestRender: vi.fn() } as any;
+    const mockRenderer = {} as unknown as WebGL2Backend;
+    const mockScheduler = { requestRender: vi.fn() } as unknown as RenderScheduler;
     const origSet = SVGElement.prototype.setPointerCapture;
     const setSpy = vi.fn();
     SVGElement.prototype.setPointerCapture = setSpy;
@@ -142,8 +144,8 @@ describe("Resize pointer-capture fix", () => {
   it("move-zone is a click-through passthrough (canvas hook handles layer drag)", async () => {
     const ws = new WorkspaceManager();
     const session = WorkspaceManager.createBlankDocument("passthrough", "Passthrough", 800, 600);
-    const mockRenderer = {} as any;
-    const mockScheduler = { requestRender: vi.fn() } as any;
+    const mockRenderer = {} as unknown as WebGL2Backend;
+    const mockScheduler = { requestRender: vi.fn() } as unknown as RenderScheduler;
     const origSet = SVGElement.prototype.setPointerCapture;
     const setSpy = vi.fn();
     SVGElement.prototype.setPointerCapture = setSpy;
@@ -211,8 +213,8 @@ describe("Resize pointer-capture fix", () => {
     const ws = new WorkspaceManager();
     const session = WorkspaceManager.createBlankDocument("test", "Test", 800, 600);
 
-    const mockRenderer = {} as any;
-    const mockScheduler = { requestRender: vi.fn() } as any;
+    const mockRenderer = {} as unknown as WebGL2Backend;
+    const mockScheduler = { requestRender: vi.fn() } as unknown as RenderScheduler;
 
     const origSet = SVGElement.prototype.setPointerCapture;
     const setSpy = vi.fn();
@@ -271,8 +273,8 @@ describe("Resize pointer-capture fix", () => {
     const ws = new WorkspaceManager();
     const session = WorkspaceManager.createBlankDocument("test2", "Test", 800, 600);
 
-    const mockRenderer = {} as any;
-    const mockScheduler = { requestRender: vi.fn() } as any;
+    const mockRenderer = {} as unknown as WebGL2Backend;
+    const mockScheduler = { requestRender: vi.fn() } as unknown as RenderScheduler;
 
     const origSet = SVGElement.prototype.setPointerCapture;
     const setSpy = vi.fn();
@@ -334,8 +336,8 @@ describe("Resize pointer-capture fix", () => {
     const session = WorkspaceManager.createBlankDocument("test3", "Test", 800, 600);
 
     const requestRender = vi.fn();
-    const mockRenderer = {} as any;
-    const mockScheduler = { requestRender } as any;
+    const mockRenderer = {} as unknown as WebGL2Backend;
+    const mockScheduler = { requestRender } as unknown as RenderScheduler;
 
     const origSet = SVGElement.prototype.setPointerCapture;
     const origRelease = SVGElement.prototype.releasePointerCapture;
@@ -411,8 +413,8 @@ describe("Snap line cleanup", () => {
     const ws = new WorkspaceManager();
     const session = WorkspaceManager.createBlankDocument("snap-test", "Test", 800, 600);
 
-    const mockRenderer = {} as any;
-    const mockScheduler = { requestRender: vi.fn() } as any;
+    const mockRenderer = {} as unknown as WebGL2Backend;
+    const mockScheduler = { requestRender: vi.fn() } as unknown as RenderScheduler;
 
     const origSet = SVGElement.prototype.setPointerCapture;
     const origRelease = SVGElement.prototype.releasePointerCapture;
@@ -544,8 +546,8 @@ describe("Snap line cleanup", () => {
 
     const ws = new WorkspaceManager();
     const sessionDoc = WorkspaceManager.createBlankDocument("session-test", "Test", 800, 600);
-    const mockRenderer = {} as any;
-    const mockScheduler = { requestRender: vi.fn() } as any;
+    const mockRenderer = {} as unknown as WebGL2Backend;
+    const mockScheduler = { requestRender: vi.fn() } as unknown as RenderScheduler;
 
     const origSet = SVGElement.prototype.setPointerCapture;
     const setSpy = vi.fn();
@@ -614,8 +616,8 @@ describe("Snap line cleanup", () => {
 
     const ws = new WorkspaceManager();
     const sessionDoc = WorkspaceManager.createBlankDocument("escape-test", "Test", 800, 600);
-    const mockRenderer = {} as any;
-    const mockScheduler = { requestRender: vi.fn() } as any;
+    const mockRenderer = {} as unknown as WebGL2Backend;
+    const mockScheduler = { requestRender: vi.fn() } as unknown as RenderScheduler;
 
     const origSet = SVGElement.prototype.setPointerCapture;
     const setSpy = vi.fn();
@@ -668,8 +670,8 @@ describe("Space+pan navigation mode", () => {
     const ws = new WorkspaceManager();
     const session = WorkspaceManager.createBlankDocument("nav-test", "Test", 800, 600);
 
-    const mockRenderer = {} as any;
-    const mockScheduler = { requestRender: vi.fn() } as any;
+    const mockRenderer = {} as unknown as WebGL2Backend;
+    const mockScheduler = { requestRender: vi.fn() } as unknown as RenderScheduler;
 
     const origSet = SVGElement.prototype.setPointerCapture;
     const setSpy = vi.fn();

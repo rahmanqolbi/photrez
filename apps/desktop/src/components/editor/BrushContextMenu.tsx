@@ -1,35 +1,58 @@
-import { createSignal, onMount, onCleanup, Show } from "solid-js";
+import { createSignal, onMount, onCleanup, Show, For } from "solid-js";
 import { useEditor } from "./shell/EditorContext";
-import { clampPaintPercent, clampPaintSize, BRUSH_PRESETS, applyPaintPreset, sizeSliderToPaintSize, paintSizeToSizeSlider } from "./brushToolState";
+import {
+  clampPaintPercent,
+  clampPaintSize,
+  BRUSH_PRESETS,
+  applyPaintPreset,
+  sizeSliderToPaintSize,
+  paintSizeToSizeSlider,
+} from "./brushToolState";
 
 export function BrushContextMenu() {
   const {
     activeTool,
-    brushSize, setBrushSize,
-    brushHardness, setBrushHardness,
-    brushOpacity, setBrushOpacity,
-    brushFlow, setBrushFlow,
-    brushSmoothing, setBrushSmoothing,
-    eraserSize, setEraserSize,
-    eraserHardness, setEraserHardness,
-    eraserOpacity, setEraserOpacity,
-    eraserFlow, setEraserFlow,
-    eraserSmoothing, setEraserSmoothing,
-    brushPresetId, setBrushPresetId,
-    eraserPresetId, setEraserPresetId,
+    brushSize,
+    setBrushSize,
+    brushHardness,
+    setBrushHardness,
+    brushOpacity,
+    setBrushOpacity,
+    brushFlow,
+    setBrushFlow,
+    brushSmoothing,
+    setBrushSmoothing,
+    eraserSize,
+    setEraserSize,
+    eraserHardness,
+    setEraserHardness,
+    eraserOpacity,
+    setEraserOpacity,
+    eraserFlow,
+    setEraserFlow,
+    eraserSmoothing,
+    setEraserSmoothing,
+    brushPresetId,
+    setBrushPresetId,
+    eraserPresetId,
+    setEraserPresetId,
   } = useEditor();
 
   const [isOpen, setIsOpen] = createSignal(false);
   const [menuPos, setMenuPos] = createSignal({ x: 0, y: 0 });
 
   const isEraser = () => activeTool() === "eraser";
-  const isPaintTool = () => activeTool() === "brush" || activeTool() === "eraser";
+  const isPaintTool = () =>
+    activeTool() === "brush" || activeTool() === "eraser";
 
   const size = () => (isEraser() ? eraserSize() : brushSize());
   const hardness = () => (isEraser() ? eraserHardness() : brushHardness());
   const opacity = () => (isEraser() ? eraserOpacity() : brushOpacity());
   const presetId = () => (isEraser() ? eraserPresetId() : brushPresetId());
-  const setPresetId = isEraser() ? setEraserPresetId : setBrushPresetId;
+  const setPresetId = (value: string | null) => {
+    if (isEraser()) setEraserPresetId(value);
+    else setBrushPresetId(value);
+  };
 
   const clearPresetId = () => setPresetId(null);
 
@@ -54,7 +77,7 @@ export function BrushContextMenu() {
     else setBrushOpacity(next);
   };
 
-  const applyPreset = (preset: typeof BRUSH_PRESETS[number]) => {
+  const applyPreset = (preset: (typeof BRUSH_PRESETS)[number]) => {
     const tool = isEraser() ? "eraser" : "brush";
     const changes = applyPaintPreset(preset, tool, {
       brushSize: brushSize(),
@@ -70,16 +93,22 @@ export function BrushContextMenu() {
     });
     if (isEraser()) {
       if (changes.eraserSize !== undefined) setEraserSize(changes.eraserSize);
-      if (changes.eraserHardness !== undefined) setEraserHardness(changes.eraserHardness);
-      if (changes.eraserOpacity !== undefined) setEraserOpacity(changes.eraserOpacity);
+      if (changes.eraserHardness !== undefined)
+        setEraserHardness(changes.eraserHardness);
+      if (changes.eraserOpacity !== undefined)
+        setEraserOpacity(changes.eraserOpacity);
       if (changes.eraserFlow !== undefined) setEraserFlow(changes.eraserFlow);
-      if (changes.eraserSmoothing !== undefined) setEraserSmoothing(changes.eraserSmoothing);
+      if (changes.eraserSmoothing !== undefined)
+        setEraserSmoothing(changes.eraserSmoothing);
     } else {
       if (changes.brushSize !== undefined) setBrushSize(changes.brushSize);
-      if (changes.brushHardness !== undefined) setBrushHardness(changes.brushHardness);
-      if (changes.brushOpacity !== undefined) setBrushOpacity(changes.brushOpacity);
+      if (changes.brushHardness !== undefined)
+        setBrushHardness(changes.brushHardness);
+      if (changes.brushOpacity !== undefined)
+        setBrushOpacity(changes.brushOpacity);
       if (changes.brushFlow !== undefined) setBrushFlow(changes.brushFlow);
-      if (changes.brushSmoothing !== undefined) setBrushSmoothing(changes.brushSmoothing);
+      if (changes.brushSmoothing !== undefined)
+        setBrushSmoothing(changes.brushSmoothing);
     }
     setPresetId(preset.id);
     setIsOpen(false);
@@ -123,7 +152,7 @@ export function BrushContextMenu() {
     <Show when={isOpen()}>
       <div class="fixed inset-0 z-40" onClick={close} />
       <div
-        class="fixed z-50 flex flex-col gap-3 rounded-[6px] border border-editor-field-border bg-editor-panel p-3 shadow-xl"
+        class="fixed z-50 flex flex-col gap-3 rounded-md border border-editor-field-border bg-editor-panel p-3 shadow-xl"
         style={{
           left: `${Math.min(menuPos().x, window.innerWidth - 220)}px`,
           top: `${Math.min(menuPos().y, window.innerHeight - 260)}px`,
@@ -131,20 +160,26 @@ export function BrushContextMenu() {
         }}
       >
         <div class="flex flex-col gap-1">
-          <span class="text-[10px] font-medium text-editor-text-dim">Size: {size()}px</span>
+          <span class="text-[10px] font-medium text-editor-text-dim">
+            Size: {size()}px
+          </span>
           <input
             data-context-size
             type="range"
             min="0"
             max="100"
             value={paintSizeToSizeSlider(size())}
-            onInput={(e) => setSizeValue(sizeSliderToPaintSize(Number(e.currentTarget.value)))}
+            onInput={(e) =>
+              setSizeValue(sizeSliderToPaintSize(Number(e.currentTarget.value)))
+            }
             class="w-full h-1 accent-editor-accent"
           />
         </div>
 
         <div class="flex flex-col gap-1">
-          <span class="text-[10px] font-medium text-editor-text-dim">Hardness: {Math.round(hardness() * 100)}%</span>
+          <span class="text-[10px] font-medium text-editor-text-dim">
+            Hardness: {Math.round(hardness() * 100)}%
+          </span>
           <input
             data-context-hardness
             type="range"
@@ -157,7 +192,9 @@ export function BrushContextMenu() {
         </div>
 
         <div class="flex flex-col gap-1">
-          <span class="text-[10px] font-medium text-editor-text-dim">Strength: {Math.round(opacity() * 100)}%</span>
+          <span class="text-[10px] font-medium text-editor-text-dim">
+            Strength: {Math.round(opacity() * 100)}%
+          </span>
           <input
             data-context-strength
             type="range"
@@ -170,19 +207,21 @@ export function BrushContextMenu() {
         </div>
 
         <div class="grid grid-cols-2 gap-1">
-          {filteredPresets().map((preset) => (
-            <button
-              type="button"
-              class={`rounded-[3px] px-2 py-1 text-[10px] text-left border ${
-                preset.id === presetId()
-                  ? "border-editor-accent/40 bg-editor-accent/10 text-editor-accent"
-                  : "border-editor-field-border bg-editor-field text-editor-text hover:border-editor-accent"
-              }`}
-              onClick={() => applyPreset(preset)}
-            >
-              {preset.name}
-            </button>
-          ))}
+          <For each={filteredPresets()}>
+            {(preset) => (
+              <button
+                type="button"
+                class={`rounded-[3px] px-2 py-1 text-[10px] text-left border ${
+                  preset.id === presetId()
+                    ? "border-editor-accent/40 bg-editor-accent/10 text-editor-accent"
+                    : "border-editor-field-border bg-editor-field text-editor-text hover:border-editor-accent"
+                }`}
+                onClick={() => applyPreset(preset)}
+              >
+                {preset.name}
+              </button>
+            )}
+          </For>
         </div>
 
         <button
