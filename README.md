@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="./logo.svg" width="96" height="96" alt="Photrez Logo" />
+</p>
+
+<p align="center">
   <strong>Photrez</strong>
 </p>
 
