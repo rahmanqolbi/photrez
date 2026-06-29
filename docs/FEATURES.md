@@ -207,6 +207,19 @@
 
 ---
 
+## 🖨️ Print
+
+| Status  | Fitur                                                                                                                              |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| ✅ DONE | File > Print (Ctrl+P) — opens custom PrintDialog preview modal inside Photrez                                                     |
+| ✅ DONE | PrintDialog shows document name, dimensions, and JPEG preview thumbnail                                                            |
+| ✅ DONE | Uses `encodeComposite(engine, "png", 100)` to render full document composite to PNG                                                |
+| ✅ DONE | Saves composite to temp `.png` file via `writeFileBytes` Tauri command                                                             |
+| ✅ DONE | `print_image` Rust command — Windows: `ShellExecuteW("print")` opens compact native print dialog; macOS/Linux: `open::that()` fallback |
+| ✅ DONE | `window.print()` approach rejected — WebView2 print dialog is full-screen and cannot be resized by app                            |
+
+---
+
 ## ↩️ History (Undo/Redo)
 
 | Status  | Fitur                                                                                                                                           |

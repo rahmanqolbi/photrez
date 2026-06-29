@@ -92,12 +92,20 @@ export function DesktopDialog(props: DesktopDialogProps) {
           data-dialog-titlebar
           class="flex h-9 items-center gap-2 border-b border-editor-divider bg-editor-topbar px-3"
         >
-          <div
-            aria-hidden="true"
-            class="flex size-[18px] shrink-0 items-center justify-center rounded-[4px] bg-editor-brand text-[8px] font-bold lowercase tracking-tight text-white"
-          >
-            pz
-          </div>
+          <svg viewBox="0 0 512 512" class="size-[18px] shrink-0" aria-hidden="true">
+            <defs>
+              <linearGradient id="pageGradientDialog" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#FFB31A" />
+                <stop offset="100%" stop-color="#E15A17" />
+              </linearGradient>
+            </defs>
+            <rect x="16" y="16" width="480" height="480" rx="28" fill="#1A1A1A" />
+            <g transform="translate(-20, 15)">
+              <path d="M 240 50 L 460 50 L 390 310 L 253 310 L 219 440 L 136 440 Z" fill="url(#pageGradientDialog)" />
+              <circle cx="322" cy="175" r="30" fill="#FFE57F" />
+              <polygon points="270,310 337,127 343,127 330,310" fill="#1A1A1A" />
+            </g>
+          </svg>
           <h2 id={titleId} class="text-[12px] font-medium tracking-[0.01em] text-editor-text">
             {props.title}
           </h2>

@@ -55,6 +55,7 @@ export function createEditorState() {
   const [selectionEditMode, setSelectionEditMode] = createSignal(false);
   const [showResizeDialog, setShowResizeDialog] = createSignal(false);
   const [showExportDialog, setShowExportDialog] = createSignal(false);
+  const [showPrintDialog, setShowPrintDialog] = createSignal(false);
 
   return {
     activeTool, setActiveTool,
@@ -94,5 +95,6 @@ export function createEditorState() {
     eraserPresetId, setEraserPresetId,
     showResizeDialog, setShowResizeDialog,
     showExportDialog, setShowExportDialog,
+    showPrintDialog, setShowPrintDialog,
   };
 }

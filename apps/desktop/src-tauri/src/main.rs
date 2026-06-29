@@ -53,6 +53,7 @@ fn main() {
             commands::write_file_bytes,
             commands::save_project,
             commands::load_project,
+            commands::print_image,
         ])
         .run(tauri::generate_context!())
         .expect("Error while running Photrez");

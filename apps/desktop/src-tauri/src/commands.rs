@@ -173,6 +173,68 @@ pub(crate) fn load_project(path: String) -> Result<Value, Value> {
     }))
 }
 
+/// Print an image file using the system's native print dialog.
+/// On Windows, calls ShellExecuteW("print") which opens the compact
+/// Windows print dialog (same one used by Paint, Photoshop, etc.)
+#[tauri::command]
+pub(crate) fn print_image(path: String) -> Result<Value, Value> {
+    let p = std::path::PathBuf::from(&path);
+    if !p.exists() {
+        return err_response("E_IO", &format!("File not found: {}", path));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::ffi::OsStr;
+        use std::os::windows::ffi::OsStrExt;
+        use std::ptr::null_mut;
+
+        let wide: Vec<u16> = OsStr::new("print")
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+        let file_wide: Vec<u16> = p.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+
+        extern "system" {
+            fn ShellExecuteW(
+                hwnd: *mut std::ffi::c_void,
+                operation: *const u16,
+                file: *const u16,
+                parameters: *const u16,
+                directory: *const u16,
+                show_cmd: i32,
+            ) -> isize;
+        }
+
+        let result = unsafe {
+            ShellExecuteW(
+                null_mut(),
+                wide.as_ptr(),
+                file_wide.as_ptr(),
+                null_mut(),
+                null_mut(),
+                1, // SW_SHOWNORMAL
+            )
+        };
+
+        // ShellExecute returns > 32 on success
+        if result as i32 <= 32 {
+            return err_response("E_IO", &format!("ShellExecuteW returned {}", result));
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        // Fallback: use open crate (available on macOS/Linux)
+        match open::that(&p) {
+            Ok(_) => {}
+            Err(e) => return err_response("E_IO", &format!("Failed to open file: {}", e)),
+        }
+    }
+
+    ok_response(serde_json::json!({ "printed": path }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

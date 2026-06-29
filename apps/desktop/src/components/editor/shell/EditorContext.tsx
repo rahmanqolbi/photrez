@@ -165,6 +165,8 @@ export interface EditorContextValue {
   setShowResizeDialog: Setter<boolean>;
   showExportDialog: Accessor<boolean>;
   setShowExportDialog: Setter<boolean>;
+  showPrintDialog: Accessor<boolean>;
+  setShowPrintDialog: Setter<boolean>;
 
   // Feature flag: GPU camera image transform for Modern Crop
   useGPUCameraForModernCrop: Accessor<boolean>;

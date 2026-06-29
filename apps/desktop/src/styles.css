@@ -177,3 +177,19 @@ img {
 .tab-scrollbar::-webkit-scrollbar-thumb:hover {
   background: color-mix(in oklch, var(--editor-text-dim), transparent 25%) !important;
 }
+
+@media print {
+  body > *:not(#print-container) {
+    display: none !important;
+  }
+  #print-container {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+}

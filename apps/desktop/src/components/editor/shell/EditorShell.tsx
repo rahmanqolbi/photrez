@@ -10,6 +10,7 @@ import { useDesktopGuards, useDesktopShortcuts } from "@/lib/desktop";
 import { EmptyWorkspace } from "./EmptyWorkspace";
 import { ResizeCanvasModal } from "../dialogs/ResizeCanvasModal";
 import { ExportDialog } from "../dialogs/ExportDialog";
+import { PrintDialog } from "../dialogs/PrintDialog";
 import { ToastHost } from "../Toast";
 import { GlobalDragDropHost } from "../GlobalDragDropHost";
 import { DragGlobalGuard } from "../DragController";
@@ -63,6 +64,7 @@ function EditorLayout(props: {
       <BottomStatusBar />
       <ResizeCanvasModal />
       <ExportDialog />
+      <PrintDialog />
       <ToastHost />
     </div>
   );

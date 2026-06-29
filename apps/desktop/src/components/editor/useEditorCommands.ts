@@ -23,6 +23,7 @@ export type EditorCommand =
   | "file.save"
   | "file.save-as"
   | "file.export"
+  | "file.print"
   | "edit.undo"
   | "edit.redo"
   | "edit.cut"
@@ -54,6 +55,7 @@ const EDITOR_COMMANDS: ReadonlySet<string> = new Set<EditorCommand>([
   "file.save",
   "file.save-as",
   "file.export",
+  "file.print",
   "edit.undo",
   "edit.redo",
   "edit.cut",
@@ -97,6 +99,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
     command === "file.save"
     || command === "file.save-as"
     || command === "file.export"
+    || command === "file.print"
     || command === "edit.undo"
     || command === "edit.redo"
     || command.startsWith("edit.")
@@ -275,6 +278,9 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
       case "file.export":
         if (editor.activeDocumentId()) editor.setShowExportDialog(true);
         break;
+      case "file.print":
+        if (editor.activeDocumentId()) editor.setShowPrintDialog(true);
+        break;
       case "edit.undo":
         restoreHistorySnapshot("undo");
         break;
@@ -412,6 +418,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
       else if (commandKey && event.shiftKey && key === "s") command = "file.save-as";
       else if (commandKey && key === "s") command = "file.save";
       else if (commandKey && key === "e") command = "file.export";
+      else if (commandKey && key === "p") command = "file.print";
       else if (commandKey && key === "1") command = "view.actual-size";
       else if (commandKey && key === "0") command = "view.fit-canvas";
       else if (commandKey && (key === "=" || key === "+")) command = "view.zoom-in";
