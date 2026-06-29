@@ -3,6 +3,7 @@ import { useEditor } from "./shell/EditorContext";
 import { clampPaintPercent, clampPaintSize, clampPaintSmoothing, BRUSH_PRESETS, applyPaintPreset, sizeSliderToPaintSize, paintSizeToSizeSlider } from "./brushToolState";
 import { ToolPill, MoreDropdown, Divider } from "./shell/OptionBarShared";
 import { Icon } from "./icons";
+import { Slider } from "./primitives";
 
 function formatPercent(value: number): number {
   return Math.round(value * 100);
@@ -132,15 +133,21 @@ export function BrushOptionBar() {
           <span class="text-[10px] text-editor-text-dim">px</span>
         </label>
 
-        <input
-          data-paint-size-slider
-          type="range"
-          min="0"
-          max="100"
-          value={paintSizeToSizeSlider(size())}
-          onInput={(event) => setSize(sizeSliderToPaintSize(Number(event.currentTarget.value)))}
-          class="w-[72px] h-1 accent-editor-accent @max-[900px]:hidden"
-        />
+        <div class="relative w-[72px] flex items-center h-[14px] @max-[900px]:hidden">
+          <Slider
+            percent={paintSizeToSizeSlider(size())}
+            type="brush-size"
+          />
+          <input
+            data-paint-size-slider
+            type="range"
+            min="0"
+            max="100"
+            value={paintSizeToSizeSlider(size())}
+            onInput={(event) => setSize(sizeSliderToPaintSize(Number(event.currentTarget.value)))}
+            class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer"
+          />
+        </div>
       </div>
 
       {/* Secondary Options on Main Bar (always visible) */}

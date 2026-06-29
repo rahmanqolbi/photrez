@@ -1,9 +1,10 @@
-﻿import { For, Show, createSignal, createEffect, batch } from "solid-js";
+import { For, Show, createSignal, createEffect, batch } from "solid-js";
 import { Icon, type IconName } from "./icons";
 import { useEditor } from "./shell/EditorContext";
 import { SectionHeader } from "./layers/SectionHeader";
 import { LayerThumb } from "./layers/LayerThumb";
 import type { BasicAdjustment } from "@/engine/layerAdjustments";
+import { Slider } from "./primitives";
 
 const COMING_SOON_SECTIONS: readonly {
   icon: IconName;
@@ -375,20 +376,12 @@ function AdjustmentSliderRow(props: {
   value: number;
   onInput: (value: number) => void;
 }) {
-  const percent = () => props.value + 100;
   const displayValue = () => props.value > 0 ? `+${props.value}` : `${props.value}`;
-  const trackFillStyle = () => {
-    const position = percent() / 2;
-    if (props.value >= 0) {
-      return {
-        left: "50%",
-        width: `${position - 50}%`,
-      };
-    }
-    return {
-      left: `${position}%`,
-      width: `${50 - position}%`,
-    };
+  const type = () => {
+    if (props.label === "Bright") return "brightness";
+    if (props.label === "Contrast") return "contrast";
+    if (props.label === "Saturate") return "saturation";
+    return "default";
   };
 
   return (
@@ -398,26 +391,10 @@ function AdjustmentSliderRow(props: {
       </span>
       <div class="flex flex-1 items-center gap-2.5">
         <div class="relative flex h-[18px] flex-1 items-center">
-          <div
-            aria-hidden="true"
-            class="absolute left-0 right-0 top-1/2 h-[4px] -translate-y-1/2 rounded-full border border-black/30 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]"
-            style={{
-              "background-image": "linear-gradient(to right, rgba(59,130,246,0.56), rgba(114,114,122,0.56) 50%, rgba(245,158,11,0.58))",
-            }}
-          />
-          <div
-            aria-hidden="true"
-            class="absolute top-1/2 h-[4px] -translate-y-1/2 rounded-full bg-editor-accent shadow-[0_0_10px_rgba(74,144,226,0.28)]"
-            style={trackFillStyle()}
-          />
-          <div
-            aria-hidden="true"
-            class="absolute left-1/2 top-1/2 h-[12px] w-px -translate-x-1/2 -translate-y-1/2 bg-editor-text/45"
-          />
-          <div
-            aria-hidden="true"
-            class="absolute top-1/2 size-[12px] -translate-y-1/2 rounded-full border border-black/55 bg-[#d8dce2] shadow-[0_1px_2px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.18)]"
-            style={{ left: `calc(${percent() / 2}% - 6px)` }}
+          <Slider
+            percent={(props.value + 100) / 2}
+            value={props.value}
+            type={type()}
           />
           <input
             aria-label={props.label}

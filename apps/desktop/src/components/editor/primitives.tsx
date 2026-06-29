@@ -60,37 +60,127 @@ export function PropRow(props: { label: string; children: JSX.Element }) {
   );
 }
 
+export type SliderType =
+  | "default"
+  | "opacity"
+  | "brightness"
+  | "contrast"
+  | "saturation"
+  | "zoom"
+  | "brush-size"
+  | "brush-hardness"
+  | "brush-strength";
+
 export function Slider(props: {
   percent: number;
+  value?: number; // Raw value for center-origin calculations (-100..100)
+  type?: SliderType;
   accent?: boolean;
-  gradient?: string;
-  centerTick?: boolean;
 }) {
+  const type = () => props.type || "default";
+
+  // Center-origin active fill calculation:
+  const getCenterFillStyle = () => {
+    const rawVal = props.value !== undefined ? props.value : 0;
+    if (rawVal >= 0) {
+      return {
+        left: "50%",
+        width: `${rawVal / 2}%`,
+      };
+    } else {
+      const pos = (rawVal + 100) / 2;
+      return {
+        left: `${pos}%`,
+        width: `${50 - pos}%`,
+      };
+    }
+  };
+
+  const getBackgroundStyle = () => {
+    switch (type()) {
+      case "opacity":
+      case "brush-strength":
+        return {
+          "background-image": `linear-gradient(to right, transparent, var(--color-editor-accent, #E15A17)), conic-gradient(#2d3139 0.25turn, #1a1d24 0.25turn 0.5turn, #2d3139 0.5turn 0.75turn, #1a1d24 0.75turn)`,
+          "background-size": "auto, 8px 8px",
+        };
+      case "brightness":
+        return {
+          "background-image": "linear-gradient(to right, #09090b, #52525b 50%, #ffffff)",
+        };
+      case "contrast":
+        return {
+          "background-image": "linear-gradient(to right, #09090b, #71717a 50%, #ffffff)",
+        };
+      case "saturation":
+        return {
+          "background-image": "linear-gradient(to right, #52525b, #71717a 35%, #ef4444 60%, #eab308 80%, #3b82f6 100%)",
+        };
+      case "brush-hardness":
+        return {
+          "background-image": "linear-gradient(to right, rgba(225, 90, 23, 0.15), var(--color-editor-accent, #E15A17))",
+        };
+      case "brush-size":
+        return {
+          "clip-path": "polygon(0% 65%, 100% 15%, 100% 85%, 0% 65%)",
+          background: "var(--color-editor-field-border, #343941)",
+        };
+      default:
+        return undefined;
+    }
+  };
+
+  const isCenterOrigin = () => {
+    return ["brightness", "contrast", "saturation"].includes(type());
+  };
+
   return (
     <div
       class={clsx(
-        "relative h-[3px] flex-1 rounded-full",
-        props.gradient ? "" : "bg-editor-field-border",
+        "relative flex-1 select-none",
+        type() === "brush-size" ? "h-[8px]" : "h-[4px]",
       )}
-      style={
-        props.gradient ? { "background-image": props.gradient } : undefined
-      }
     >
-      <Show when={!props.gradient}>
-        <div
-          class={clsx(
-            "absolute inset-y-0 left-0 rounded-full",
-            props.accent ? "bg-editor-accent" : "bg-editor-text/55",
-          )}
-          style={{ width: `${props.percent}%` }}
-        />
-      </Show>
-      <Show when={props.centerTick}>
-        <div class="absolute left-1/2 top-1/2 size-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/40" />
-      </Show>
+      {/* Track Background & Fills */}
       <div
-        class="absolute top-1/2 size-[10px] -translate-y-1/2 rounded-full border border-black/40 bg-[#d4d4d4] shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
-        style={{ left: `calc(${props.percent}% - 5px)` }}
+        class={clsx(
+          "absolute inset-0 overflow-hidden",
+          type() !== "brush-size" && "rounded-full",
+          !getBackgroundStyle() && "bg-editor-field-border",
+        )}
+        style={getBackgroundStyle()}
+      >
+        {/* Center Origin Fills */}
+        <Show when={isCenterOrigin()}>
+          <div
+            class={clsx(
+              "absolute inset-y-0 rounded-full",
+              type() === "brightness" && "bg-zinc-100 shadow-[0_0_8px_rgba(255,255,255,0.45)]",
+              type() === "contrast" && "bg-zinc-300 shadow-[0_0_8px_rgba(212,212,216,0.35)]",
+              type() === "saturation" && "bg-gradient-to-r from-pink-500 to-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.45)]",
+            )}
+            style={getCenterFillStyle()}
+          />
+          {/* Neutral center tick mark */}
+          <div class="absolute left-1/2 top-0 bottom-0 w-px bg-white/45 -translate-x-1/2" />
+        </Show>
+
+        {/* Left-Aligned Fills */}
+        <Show when={!isCenterOrigin() && type() !== "opacity" && type() !== "brush-strength"}>
+          <div
+            class={clsx(
+              "absolute inset-y-0 left-0 rounded-full",
+              props.accent !== false ? "bg-editor-accent" : "bg-editor-text/55",
+            )}
+            style={{ width: `${props.percent}%` }}
+          />
+        </Show>
+      </div>
+
+      {/* Unified Thumb */}
+      <div
+        class="absolute top-1/2 size-[12px] -translate-y-1/2 rounded-full border border-black/55 bg-[#d8dce2] shadow-[0_1px_2px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.18)] transition-transform hover:scale-110 pointer-events-none"
+        style={{ left: `calc(${props.percent}% - 6px)` }}
       />
     </div>
   );

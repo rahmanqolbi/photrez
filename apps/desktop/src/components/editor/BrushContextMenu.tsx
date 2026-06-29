@@ -8,6 +8,7 @@ import {
   sizeSliderToPaintSize,
   paintSizeToSizeSlider,
 } from "./brushToolState";
+import { Slider } from "./primitives";
 
 export function BrushContextMenu() {
   const {
@@ -163,47 +164,65 @@ export function BrushContextMenu() {
           <span class="text-[10px] font-medium text-editor-text-dim">
             Size: {size()}px
           </span>
-          <input
-            data-context-size
-            type="range"
-            min="0"
-            max="100"
-            value={paintSizeToSizeSlider(size())}
-            onInput={(e) =>
-              setSizeValue(sizeSliderToPaintSize(Number(e.currentTarget.value)))
-            }
-            class="w-full h-1 accent-editor-accent"
-          />
+          <div class="relative flex items-center h-[14px]">
+            <Slider
+              percent={paintSizeToSizeSlider(size())}
+              type="brush-size"
+            />
+            <input
+              data-context-size
+              type="range"
+              min="0"
+              max="100"
+              value={paintSizeToSizeSlider(size())}
+              onInput={(e) =>
+                setSizeValue(sizeSliderToPaintSize(Number(e.currentTarget.value)))
+              }
+              class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer"
+            />
+          </div>
         </div>
 
         <div class="flex flex-col gap-1">
           <span class="text-[10px] font-medium text-editor-text-dim">
             Hardness: {Math.round(hardness() * 100)}%
           </span>
-          <input
-            data-context-hardness
-            type="range"
-            min="0"
-            max="100"
-            value={Math.round(hardness() * 100)}
-            onInput={(e) => setHardnessValue(Number(e.currentTarget.value))}
-            class="w-full h-1 accent-editor-accent"
-          />
+          <div class="relative flex items-center h-[14px]">
+            <Slider
+              percent={Math.round(hardness() * 100)}
+              type="brush-hardness"
+            />
+            <input
+              data-context-hardness
+              type="range"
+              min="0"
+              max="100"
+              value={Math.round(hardness() * 100)}
+              onInput={(e) => setHardnessValue(Number(e.currentTarget.value))}
+              class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer"
+            />
+          </div>
         </div>
 
         <div class="flex flex-col gap-1">
           <span class="text-[10px] font-medium text-editor-text-dim">
             Strength: {Math.round(opacity() * 100)}%
           </span>
-          <input
-            data-context-strength
-            type="range"
-            min="0"
-            max="100"
-            value={Math.round(opacity() * 100)}
-            onInput={(e) => setOpacityValue(Number(e.currentTarget.value))}
-            class="w-full h-1 accent-editor-accent"
-          />
+          <div class="relative flex items-center h-[14px]">
+            <Slider
+              percent={Math.round(opacity() * 100)}
+              type="brush-strength"
+            />
+            <input
+              data-context-strength
+              type="range"
+              min="0"
+              max="100"
+              value={Math.round(opacity() * 100)}
+              onInput={(e) => setOpacityValue(Number(e.currentTarget.value))}
+              class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer"
+            />
+          </div>
         </div>
 
         <div class="grid grid-cols-2 gap-1">

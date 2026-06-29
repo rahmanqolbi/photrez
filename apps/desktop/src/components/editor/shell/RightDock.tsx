@@ -7,6 +7,7 @@ import { AdjustmentsPanel } from "../AdjustmentsPanel";
 import { HistoryPanel } from "../HistoryPanel";
 import { Navigator } from "../Navigator";
 import { useEditor } from "./EditorContext";
+import { Slider } from "../primitives";
 
 type RightDockProps = {
   open: boolean;
@@ -263,24 +264,30 @@ function LayerDock(props: Pick<RightDockProps, "onClose">) {
             >
               -
             </button>
-            <input
-              type="range"
-              min="5"
-              max="400"
-              value={Math.round(zoom() * 100)}
-              onInput={(e) => {
-                const engine = workspace.getActiveEngine();
-                if (engine) {
-                  setViewportState({
-                    x: pan().x,
-                    y: pan().y,
-                    zoom: parseInt(e.target.value) / 100,
-                  });
-                  scheduler.requestRender();
-                }
-              }}
-              class="h-[3px] w-full accent-editor-accent bg-editor-field-border rounded-full appearance-none cursor-pointer"
-            />
+            <div class="relative flex-grow flex items-center h-[14px]">
+              <Slider
+                percent={((zoom() - 0.05) / 3.95) * 100}
+                type="zoom"
+              />
+              <input
+                type="range"
+                min="5"
+                max="400"
+                value={Math.round(zoom() * 100)}
+                onInput={(e) => {
+                  const engine = workspace.getActiveEngine();
+                  if (engine) {
+                    setViewportState({
+                      x: pan().x,
+                      y: pan().y,
+                      zoom: parseInt(e.currentTarget.value) / 100,
+                    });
+                    scheduler.requestRender();
+                  }
+                }}
+                class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer"
+              />
+            </div>
             <button 
               onClick={() => {
                 const engine = workspace.getActiveEngine();

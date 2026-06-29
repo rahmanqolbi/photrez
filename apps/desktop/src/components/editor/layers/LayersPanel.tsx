@@ -14,6 +14,7 @@ import { LayerItem } from "./LayerItem";
 import { useLayerActions } from "./useLayerActions";
 import { cancelLayerTransformSession } from "../transformSession";
 import { ContextMenu, type ContextMenuEntry } from "../ContextMenu";
+import { Slider } from "../primitives";
 
 export function LayersPanel() {
   const {
@@ -247,37 +248,43 @@ export function LayersPanel() {
                   {activeLayer() ? Math.round(activeLayer()!.opacity * 100) : 100}%
                 </span>
               </div>
-              <input
-                data-layer-opacity
-                type="range"
-                min="0"
-                max="100"
-                disabled={activeLayer()?.locked}
-                value={activeLayer() ? Math.round(activeLayer()!.opacity * 100) : 100}
-                onInput={(e) => {
-                  const engine = workspace.getActiveEngine();
-                  const id = activeLayerId();
-                  if (engine && id) {
-                    if (layerTransformSession()) {
-                      cancelActiveTransformSession();
+              <div class="relative flex items-center h-[14px]">
+                <Slider
+                  percent={activeLayer() ? Math.round(activeLayer()!.opacity * 100) : 100}
+                  type="opacity"
+                />
+                <input
+                  data-layer-opacity
+                  type="range"
+                  min="0"
+                  max="100"
+                  disabled={activeLayer()?.locked}
+                  value={activeLayer() ? Math.round(activeLayer()!.opacity * 100) : 100}
+                  onInput={(e) => {
+                    const engine = workspace.getActiveEngine();
+                    const id = activeLayerId();
+                    if (engine && id) {
+                      if (layerTransformSession()) {
+                        cancelActiveTransformSession();
+                      }
+                      if (!opacityHistorySnapshot()) {
+                        setOpacityHistorySnapshot(engine.snapshot());
+                      }
+                      engine.setLayerOpacity(id, parseInt(e.currentTarget.value) / 100);
+                      scheduler.requestRender();
                     }
-                    if (!opacityHistorySnapshot()) {
-                      setOpacityHistorySnapshot(engine.snapshot());
+                  }}
+                  onChange={() => {
+                    const history = workspace.getActiveHistory();
+                    const snapshot = opacityHistorySnapshot();
+                    if (history && snapshot) {
+                      history.commit(snapshot, "Layer Opacity");
+                      setOpacityHistorySnapshot(null);
                     }
-                    engine.setLayerOpacity(id, parseInt(e.target.value) / 100);
-                    scheduler.requestRender();
-                  }
-                }}
-                onChange={() => {
-                  const history = workspace.getActiveHistory();
-                  const snapshot = opacityHistorySnapshot();
-                  if (history && snapshot) {
-                    history.commit(snapshot, "Layer Opacity");
-                    setOpacityHistorySnapshot(null);
-                  }
-                }}
-                class="h-[3px] w-full accent-editor-accent bg-editor-field-border rounded-full appearance-none cursor-pointer"
-              />
+                  }}
+                  class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer disabled:pointer-events-none"
+                />
+              </div>
             </div>
           </Show>
         </div>

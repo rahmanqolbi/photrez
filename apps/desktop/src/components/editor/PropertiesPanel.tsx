@@ -189,7 +189,7 @@ export function PropertiesPanel() {
                         <div class="relative flex-grow flex items-center h-[14px]">
                           <Slider
                             percent={Math.round(layer().opacity * 100)}
-                            accent={true}
+                            type="opacity"
                           />
                           <input
                             aria-label="Opacity"
