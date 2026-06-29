@@ -12,17 +12,18 @@ Thanks for helping improve Photrez. This project is still pre-release, so the be
 
 ## Development Setup
 
-Install dependencies:
+This project uses **pnpm** (not npm or yarn). The required version is specified in `package.json` under `"packageManager"`.
+
+If you have pnpm installed, it will auto-detect the correct version. If not:
 
 ```bash
+npm install -g pnpm
+# or enable Corepack (Node.js built-in):
+corepack enable
 pnpm install
 ```
 
-Run the desktop app:
-
-```bash
-pnpm dev
-```
+Install dependencies and start the desktop app:
 
 Run the main verification gate:
 
