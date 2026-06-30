@@ -279,10 +279,10 @@ describe("addLayerFromCrossDoc â€” validation", () => {
 
   it("error toast + abort when target has MAX_LAYERS", () => {
     const sourceEngine = makeEngine({ id: "doc-A" });
-    const targetEngine = makeEngine({ id: "doc-B", layerCount: 100 });
+    const targetEngine = makeEngine({ id: "doc-B", layerCount: 200 });
     const ws = makeWorkspace({ "doc-A": sourceEngine, "doc-B": targetEngine });
     addLayerFromCrossDoc(basePayload, { type: "canvas" }, { x: 0, y: 0 }, ws);
-    expect(mockShowToast).toHaveBeenCalledWith(expect.stringContaining("100"), "error");
+    expect(mockShowToast).toHaveBeenCalledWith(expect.stringContaining("200"), "error");
   });
 });
 

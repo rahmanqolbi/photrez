@@ -144,7 +144,7 @@ export function addLayerFromCrossDoc(
   const targetEngine = ws.getEngine(targetDocId);
   if (!targetEngine) return { newLayerId: null };
   if (targetEngine.getLayers().length >= MAX_LAYERS) {
-    showToast("Target document reached max 100 layers", "error");
+    showToast(`Target document reached max ${MAX_LAYERS} layers`, "error");
     return { newLayerId: null };
   }
 
@@ -215,7 +215,7 @@ export async function addFilesAsLayers(
   const targetEngine = ws.getEngine(targetDocId);
   if (!targetEngine) return [];
   if (targetEngine.getLayers().length + paths.length > MAX_LAYERS) {
-    showToast(`Adding ${paths.length} files would exceed max 100 layers`, "error");
+    showToast(`Adding ${paths.length} files would exceed max ${MAX_LAYERS} layers`, "error");
     return [];
   }
 
@@ -292,7 +292,7 @@ export async function addFilesAsLayersFromFileDrop(
   const targetEngine = ws.getEngine(targetDocId);
   if (!targetEngine) return [];
   if (targetEngine.getLayers().length + files.length > MAX_LAYERS) {
-    showToast(`Adding ${files.length} files exceeds max 100 layers`, "error");
+    showToast(`Adding ${files.length} files exceeds max ${MAX_LAYERS} layers`, "error");
     return [];
   }
 

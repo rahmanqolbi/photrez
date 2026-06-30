@@ -8,6 +8,7 @@ import { cancelLayerTransformSession, commitLayerTransformSession } from "../tra
 import { discardCropSession, applyCropPreview } from "../cropToolActions";
 import { PAINT_SIZE_STEP, PAINT_SIZE_STEP_HARDNESS, adjustPaintSize, adjustPaintHardness } from "../brushToolState";
 import { SelectionOperations } from "@/features/selection/SelectionOperations";
+import { showToast } from "../Toast";
 
 interface CanvasKeyboardOptions {
   isSpacePressed: () => boolean;
@@ -459,11 +460,15 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         const activeId = engine.getActiveLayerId();
         if (activeId) {
           history.commit(engine.snapshot(), "Duplicate Layer");
-          const dup = engine.duplicateLayer(activeId);
-          if (dup.imageBitmap) {
-            renderer.uploadImage(dup.id, dup.imageBitmap);
+          try {
+            const dup = engine.duplicateLayer(activeId);
+            if (dup.imageBitmap) {
+              renderer.uploadImage(dup.id, dup.imageBitmap);
+            }
+            scheduler.requestRender();
+          } catch (err) {
+            showToast(`Cannot duplicate layer: ${(err as Error).message}`, "error");
           }
-          scheduler.requestRender();
         }
         return;
       }
@@ -473,8 +478,12 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         e.preventDefault();
         e.stopPropagation();
         history.commit(engine.snapshot(), "New Layer");
-        engine.addLayer(`Layer ${engine.getLayers().length + 1}`);
-        scheduler.requestRender();
+        try {
+          engine.addLayer(`Layer ${engine.getLayers().length + 1}`);
+          scheduler.requestRender();
+        } catch (err) {
+          showToast(`Cannot add layer: ${(err as Error).message}`, "error");
+        }
         return;
       }
 

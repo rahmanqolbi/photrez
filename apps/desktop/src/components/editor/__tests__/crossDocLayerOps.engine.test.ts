@@ -402,11 +402,11 @@ describe("addFilesAsLayersFromFileDrop — real engine integration (HTML5 file d
     );
   });
 
-  it("bails with toast when adding files exceeds max 100 layers", async () => {
+  it("bails with toast when adding files exceeds max layers", async () => {
     const engine = ws.getEngine("docA")!;
     // Fill to max
-    for (let i = 0; i < 99; i++) engine.addLayer(`fill-${i}`);
-    expect(engine.getLayers()).toHaveLength(100);
+    for (let i = 0; i < 199; i++) engine.addLayer(`fill-${i}`);
+    expect(engine.getLayers()).toHaveLength(200);
 
     const file = new File(["x"], "overflow.png", { type: "image/png" });
     const created = await addFilesAsLayersFromFileDrop(
@@ -418,6 +418,6 @@ describe("addFilesAsLayersFromFileDrop — real engine integration (HTML5 file d
 
     expect(created).toEqual([]);
     // layer count unchanged
-    expect(engine.getLayers()).toHaveLength(100);
+    expect(engine.getLayers()).toHaveLength(200);
   });
 });

@@ -2,6 +2,7 @@ import { useEditor } from "../shell/EditorContext";
 import { flattenAllLayers, mergeActiveLayerDown } from "./layerOperations";
 import { cancelLayerTransformSession } from "../transformSession";
 import { useDialog } from "../dialogs/DialogProvider";
+import { showToast } from "../Toast";
 
 export function useLayerActions() {
   const dialog = useDialog();
@@ -31,11 +32,15 @@ export function useLayerActions() {
     const activeId = activeLayerId();
     if (engine && history && activeId) {
       history.commit(engine.snapshot(), "Duplicate Layer");
-      const dup = engine.duplicateLayer(activeId);
-      if (dup.imageBitmap) {
-        renderer.uploadImage(dup.id, dup.imageBitmap);
+      try {
+        const dup = engine.duplicateLayer(activeId);
+        if (dup.imageBitmap) {
+          renderer.uploadImage(dup.id, dup.imageBitmap);
+        }
+        scheduler.requestRender();
+      } catch (err) {
+        showToast(`Cannot duplicate layer: ${(err as Error).message}`, "error");
       }
-      scheduler.requestRender();
     }
   };
 
@@ -167,8 +172,12 @@ export function useLayerActions() {
     const history = workspace.getActiveHistory();
     if (engine && history) {
       history.commit(engine.snapshot(), "New Layer");
-      engine.addLayer(`Layer ${engine.getLayers().length + 1}`);
-      scheduler.requestRender();
+      try {
+        engine.addLayer(`Layer ${engine.getLayers().length + 1}`);
+        scheduler.requestRender();
+      } catch (err) {
+        showToast(`Cannot add layer: ${(err as Error).message}`, "error");
+      }
     }
   };
 
