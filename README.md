@@ -2,9 +2,9 @@
   <img src="./logo.svg" width="96" height="96" alt="Photrez Logo" />
 </p>
 
-<p align="center">
+<h1 align="center">
   <strong>Photrez</strong>
-</p>
+</h1>
 
 <p align="center">
   A precise, lightweight desktop image editor built for practical image work.

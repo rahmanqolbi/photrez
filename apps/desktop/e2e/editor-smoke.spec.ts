@@ -57,7 +57,7 @@ test.describe("editor browser smoke", () => {
     await createBlankCanvas(page);
 
     await expect(page.getByRole("main").getByText("Untitled Canvas")).toBeVisible();
-    await expect(page.getByText("800 × 600 px")).toBeVisible();
+    await expect(page.getByText("800 × 600 px", { exact: true })).toBeVisible();
     await expect(page.getByText("Active:")).toBeVisible();
     await expect(page.getByText("Selected Layer:")).toBeVisible();
 
@@ -285,40 +285,44 @@ test.describe("export dialog", () => {
 
     await page.getByRole("button", { name: "Export" }).click();
 
-    const dialog = page.getByText("Export").first();
-    await expect(dialog).toBeVisible();
-    await expect(page.getByText("PNG")).toBeVisible();
-    await expect(page.getByText("JPEG")).toBeVisible();
-    await expect(page.getByText("WebP")).toBeVisible();
+    const exportDialog = page.getByRole("dialog", { name: "Export Image" });
+    await expect(exportDialog).toBeVisible();
 
-    // No quality slider visible for PNG
-    await expect(page.getByText("Quality:")).toHaveCount(0);
+    // Default format is PNG (in the dropdown trigger button)
+    const formatTrigger = exportDialog.locator('button[aria-haspopup="listbox"]');
+    await expect(formatTrigger).toContainText("PNG");
 
-    // JPEG shows quality slider
-    await page.getByText("JPEG").click();
+    // No quality slider visible for lossless PNG
+    await expect(page.getByText("Quality:", { exact: true })).toHaveCount(0);
+
+    // Open dropdown, select JPEG → quality slider appears
+    await formatTrigger.click();
+    await page.getByRole("button", { name: "JPEG" }).click();
     await expect(page.getByText("Quality", { exact: true })).toBeVisible();
     await expect(page.getByText("90%")).toBeVisible();
 
-    // WebP shows quality slider
-    await page.getByText("WebP").click();
+    // Open dropdown again, select WebP → quality slider still visible
+    await exportDialog.locator('button[aria-haspopup="listbox"]').click();
+    await page.getByRole("button", { name: "WebP" }).click();
     await expect(page.getByText("Quality", { exact: true })).toBeVisible();
     await expect(page.getByText("90%")).toBeVisible();
 
-    await page.getByText("Cancel").click();
+    // Close dialog
+    await exportDialog.getByRole("button", { name: "Cancel" }).click();
     await expect(page.getByText("PNG")).toHaveCount(0);
   });
 
-  test("Ctrl+S opens export dialog when document is open", async ({ page }) => {
+  test("Ctrl+E opens export dialog when document is open", async ({ page }) => {
     await page.goto("/");
     page.on("dialog", async (dialog) => {
       await dialog.accept(dialog.message().includes("width") ? "800" : "600");
     });
     await page.getByRole("button", { name: "New Canvas" }).click();
 
-    await page.keyboard.press("Control+s");
-    await expect(page.getByText("PNG")).toBeVisible();
+    await page.keyboard.press("Control+e");
+    await expect(page.getByRole("dialog", { name: "Export Image" })).toBeVisible();
 
-    await page.getByText("Cancel").click();
+    await page.getByRole("button", { name: "Cancel" }).click();
   });
 
   test("encodeComposite produces valid format headers matching canvas dimensions", async ({ page }) => {

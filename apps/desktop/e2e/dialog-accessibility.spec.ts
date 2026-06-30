@@ -103,11 +103,15 @@ test.describe("Precision Workbench dialogs", () => {
     await page.getByRole("button", { name: "File" }).click();
     await page.getByRole("menuitem", { name: "Export" }).click();
     const exportDialog = page.getByRole("dialog", { name: "Export Image" });
-    await expect(exportDialog.getByRole("button", { name: "PNG" })).toBeFocused();
-    await exportDialog.getByRole("button", { name: "JPEG" }).click();
+    await expect(exportDialog.locator('button[aria-haspopup="listbox"]')).toBeFocused();
+    // Open the format dropdown, then select JPEG
+    await exportDialog.locator('button[aria-haspopup="listbox"]').click();
+    await page.getByRole("button", { name: "JPEG" }).click();
     await expect(exportDialog.getByLabel("Quality")).toHaveValue("90");
     await expect(exportDialog.locator("[data-dialog-titlebar]")).toHaveCSS("height", "36px");
     await exportDialog.screenshot({ path: testInfo.outputPath("export-image-dialog.png") });
+    // Refocus inside the dialog so Escape is captured
+    await exportDialog.locator('button[aria-haspopup="listbox"]').focus();
     await page.keyboard.press("Escape");
     await expect(exportDialog).toHaveCount(0);
     await expect(page.getByRole("button", { name: "File" })).toBeFocused();
