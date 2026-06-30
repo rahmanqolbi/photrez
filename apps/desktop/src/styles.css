@@ -121,7 +121,7 @@ button {
 }
 
 /* Visible accent indicator for keyboard Tab / focus-visible navigation */
-:focus-visible {
+:focus-visible:not(input):not(textarea):not(select):not([contenteditable="true"]) {
   outline: none !important;
   box-shadow: inset 0 0 0 2px var(--editor-accent) !important;
 }

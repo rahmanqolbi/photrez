@@ -235,7 +235,8 @@ export function EditableNumField(props: {
   return (
     <div
       class={clsx(
-        "flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5",
+        "flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5 transition-colors",
+        "focus-within:border-editor-accent focus-within:ring-1 focus-within:ring-editor-accent/70",
         props.disabled && "opacity-40 pointer-events-none",
         props.class,
       )}
