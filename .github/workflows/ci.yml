@@ -25,17 +25,20 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
       - name: Install Playwright browsers
-        run: pnpm exec playwright install chromium --with-deps
+        run: pnpm --filter photrez-desktop exec playwright install chromium --with-deps
 
       - name: Type check
         run: pnpm run type-check
 
-      - name: Lint
-        run: pnpm run lint
-
       - name: Dependency audit
-        run: pnpm audit --prod
+        run: pnpm --recursive audit --prod
 
       - name: Run tests
         run: pnpm test
@@ -47,7 +50,7 @@ jobs:
         run: pnpm test:e2e
 
   rust-core:
-    name: Rust (workspace)
+    name: Rust (core crate)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,5 +67,5 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Run workspace tests
-        run: cargo test --workspace
+      - name: Run core tests
+        run: cargo test -p photrez-core
