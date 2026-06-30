@@ -10,15 +10,6 @@ interface TooltipProps {
   children: JSX.Element;
 }
 
-// Global state for IDE-like warm tooltips
-let lastTooltipHiddenTime = 0;
-const TOOLTIP_WARM_DELAY = 250; // ms
-
-export function resetTooltipWarmState() {
-  lastTooltipHiddenTime = 0;
-}
-
-
 export function Tooltip(props: TooltipProps) {
   let triggerRef!: HTMLDivElement;
   let tooltipRef!: HTMLDivElement;
@@ -37,10 +28,7 @@ export function Tooltip(props: TooltipProps) {
     if (Date.now() - lastClickTime < 400) return;
     if (hoverTimer) clearTimeout(hoverTimer);
 
-    const now = Date.now();
-    const isWarm = now - lastTooltipHiddenTime < TOOLTIP_WARM_DELAY;
-
-    if (instant || isWarm) {
+    if (instant) {
       setVisible(true);
     } else {
       hoverTimer = window.setTimeout(() => {
@@ -55,10 +43,7 @@ export function Tooltip(props: TooltipProps) {
 
   const hideTooltip = () => {
     if (hoverTimer) clearTimeout(hoverTimer);
-    if (visible()) {
-      setVisible(false);
-      lastTooltipHiddenTime = Date.now();
-    }
+    setVisible(false);
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {

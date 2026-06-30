@@ -1,11 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
-import { Tooltip, resetTooltipWarmState } from "../Tooltip";
+import { Tooltip } from "../Tooltip";
 
 describe("Tooltip Component", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    resetTooltipWarmState();
   });
 
   afterEach(() => {
