@@ -28,10 +28,13 @@ export function Tooltip(props: TooltipProps) {
   const [measured, setMeasured] = createSignal(false);
 
   let hoverTimer: number | null = null;
+  let lastClickTime = 0;
   const uniqueId = `tooltip-${Math.random().toString(36).substring(2, 9)}`;
 
   const showTooltip = (instant = false) => {
     if (props.disabled) return;
+    // Don't show tooltip right after a click (blocks UI during rapid tool switch)
+    if (Date.now() - lastClickTime < 400) return;
     if (hoverTimer) clearTimeout(hoverTimer);
 
     const now = Date.now();
@@ -44,6 +47,10 @@ export function Tooltip(props: TooltipProps) {
         setVisible(true);
       }, 400);
     }
+  };
+
+  const handleMouseDown = () => {
+    lastClickTime = Date.now();
   };
 
   const hideTooltip = () => {
@@ -120,6 +127,7 @@ export function Tooltip(props: TooltipProps) {
       target.addEventListener("mouseleave", onTargetLeave);
       target.addEventListener("focusin", onTargetFocus);
       target.addEventListener("focusout", onTargetBlur);
+      target.addEventListener("mousedown", handleMouseDown);
       window.addEventListener("keydown", handleKeyDown);
     }
   });
@@ -132,6 +140,7 @@ export function Tooltip(props: TooltipProps) {
       target.removeEventListener("mouseleave", onTargetLeave);
       target.removeEventListener("focusin", onTargetFocus);
       target.removeEventListener("focusout", onTargetBlur);
+      target.removeEventListener("mousedown", handleMouseDown);
       target.removeAttribute("aria-describedby");
     }
     window.removeEventListener("keydown", handleKeyDown);
