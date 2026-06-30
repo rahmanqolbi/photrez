@@ -82,7 +82,7 @@ export function LeftToolRail(props: { disabled?: boolean }) {
               <button
                 onClick={() => handleToolChange(tool.id)}
                 class={clsx(
-                  "flex size-9 shrink-0 items-center justify-center rounded-[5px] transition-all duration-100 relative focus-visible:!outline-none",
+                  "flex size-9 shrink-0 items-center justify-center rounded-[5px] transition-all duration-100 relative",
                   activeTool() === tool.id
                     ? "bg-white/5 text-editor-text"
                     : "text-editor-icon hover:bg-white/5 hover:text-editor-text"
@@ -101,38 +101,40 @@ export function LeftToolRail(props: { disabled?: boolean }) {
       {/* Overlapping Color Swatches Container */}
       <div class="relative size-[38px] shrink-0 group my-2">
         {/* Background Swatch with Native Color Input */}
-        <div 
-          class="absolute bottom-0 right-0 size-[28px] rounded-full border border-white/20 shadow-md cursor-pointer overflow-hidden transition-transform duration-100 hover:scale-105"
-          style={{ "background-color": bgColor() }}
-          title="Background Color"
-        >
-          <input
-            type="color"
-            value={bgColor()}
-            onInput={(e) => {
-              setBgColor(e.currentTarget.value);
-              scheduler.requestRender();
-            }}
-            class="opacity-0 absolute inset-0 cursor-pointer"
-          />
-        </div>
+        <Tooltip content="Background Color" placement="right">
+          <div 
+            class="absolute bottom-0 right-0 size-[28px] rounded-full border border-white/20 shadow-md cursor-pointer overflow-hidden transition-transform duration-100 hover:scale-105"
+            style={{ "background-color": bgColor() }}
+          >
+            <input
+              type="color"
+              value={bgColor()}
+              onInput={(e) => {
+                setBgColor(e.currentTarget.value);
+                scheduler.requestRender();
+              }}
+              class="opacity-0 absolute inset-0 cursor-pointer"
+            />
+          </div>
+        </Tooltip>
 
         {/* Foreground Swatch with Native Color Input */}
-        <div 
-          class="absolute top-0 left-0 size-[28px] rounded-full border border-white/30 outline outline-1 outline-black/40 shadow-md cursor-pointer overflow-hidden z-10 transition-transform duration-100 hover:scale-105"
-          style={{ "background-color": fgColor() }}
-          title="Foreground Color"
-        >
-          <input
-            type="color"
-            value={fgColor()}
-            onInput={(e) => {
-              setFgColor(e.currentTarget.value);
-              scheduler.requestRender();
-            }}
-            class="opacity-0 absolute inset-0 cursor-pointer"
-          />
-        </div>
+        <Tooltip content="Foreground Color" placement="right">
+          <div 
+            class="absolute top-0 left-0 size-[28px] rounded-full border border-white/30 outline outline-1 outline-black/40 shadow-md cursor-pointer overflow-hidden z-10 transition-transform duration-100 hover:scale-105"
+            style={{ "background-color": fgColor() }}
+          >
+            <input
+              type="color"
+              value={fgColor()}
+              onInput={(e) => {
+                setFgColor(e.currentTarget.value);
+                scheduler.requestRender();
+              }}
+              class="opacity-0 absolute inset-0 cursor-pointer"
+            />
+          </div>
+        </Tooltip>
 
         {/* Diagonal Swap Micro-Arrow Trigger */}
         <Tooltip content="Swap Colors" shortcut="X" placement="right">

@@ -16,6 +16,7 @@ export function useDesktopShortcuts(handlers: DesktopShortcutHandlers) {
 
       if (key === "f5" || (command && key === "r")) {
         event.preventDefault();
+        window.location.reload();
         return;
       }
 

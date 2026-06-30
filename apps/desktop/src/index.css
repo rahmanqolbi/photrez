@@ -50,8 +50,8 @@
 
 /* Visible accent indicator for keyboard Tab / focus-visible navigation */
 :focus-visible {
-  outline: 2px solid var(--color-accent, #E15A17) !important;
-  outline-offset: 2px !important;
+  outline: none !important;
+  box-shadow: inset 0 0 0 2px var(--editor-accent) !important;
 }
 
 /* 
