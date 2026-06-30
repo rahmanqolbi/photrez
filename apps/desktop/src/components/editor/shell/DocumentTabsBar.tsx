@@ -95,7 +95,6 @@ export function DocumentTabsBar() {
     if (layerTransformSession()) {
       cancelActiveTransformSession();
     }
-    // ponytail: guard against MAX_OPEN_DOCUMENTS to surface a toast
     // instead of letting workspace.addDocument throw silently.
     if (workspace.isFull()) {
       showToast(`Workspace full — close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
@@ -195,7 +194,6 @@ export function DocumentTabsBar() {
     e.preventDefault();
     const state = drag.state();
     if (state.dragKind === "file" && state.filePaths) {
-      // ponytail: WorkspaceManager is structurally a WorkspaceFacade, so
       // a single downcast replaces the previous `as unknown as ...[1]`
       // double-assert noise.
       const facade: WorkspaceFacade = workspace;
@@ -218,6 +216,20 @@ export function DocumentTabsBar() {
     }
   };
 
+  const handleTabListKeyDown = (e: KeyboardEvent) => {
+    const docs = documents();
+    if (docs.length < 2) return;
+    const currentIdx = docs.findIndex((d) => d.id === activeDocumentId());
+    if (currentIdx === -1) return;
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      e.preventDefault();
+      const nextIdx = e.key === "ArrowRight"
+        ? (currentIdx + 1) % docs.length
+        : (currentIdx - 1 + docs.length) % docs.length;
+      handleSwitchTab(docs[nextIdx].id);
+    }
+  };
+
   return (
     <div
       class="flex h-[44px] shrink-0 items-center border-b border-editor-divider bg-editor-topbar justify-between select-none"
@@ -226,11 +238,13 @@ export function DocumentTabsBar() {
       onDrop={handleTabBarDrop}
     >
       <div 
+        role="tablist"
         class={clsx(
           "flex items-stretch overflow-x-auto tab-scrollbar flex-1 h-full min-w-0",
           isHovered() && "is-hovered"
         )}
         onWheel={handleWheel}
+        onKeyDown={handleTabListKeyDown}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -243,6 +257,9 @@ export function DocumentTabsBar() {
             const isHovering = () => drag.state().hoverTabId === tab.id;
             return (
               <div
+                role="tab"
+                tabindex={activeDocumentId() === tab.id ? 0 : -1}
+                aria-selected={activeDocumentId() === tab.id}
                 data-document-tab={tab.id}
                 data-drag-over={isDragOver() ? "tab" : null}
                 data-hover-tab-progress={isHovering() ? "1" : null}

@@ -47,6 +47,7 @@ export function LeftToolRail(props: { disabled?: boolean }) {
 
   // Keyboard shortcut listener for X (swap) and D (reset)
   const handleKeyDown = (e: KeyboardEvent) => {
+    if (document.querySelector('[aria-modal="true"]')) return;
     if (props.disabled) return;
     const active = document.activeElement;
     if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;

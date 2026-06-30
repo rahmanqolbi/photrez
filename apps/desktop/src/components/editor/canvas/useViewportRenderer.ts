@@ -136,7 +136,6 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
       cancelAnimationFrame(animFrameId);
     };
 
-    // ponytail: ResizeObserver is optional (depends on the container
     // being mounted), but the cleanup must always register so canvas
     // listener, RAF, renderer, and camera animation hooks are released
     // on host unmount regardless of whether the container was present

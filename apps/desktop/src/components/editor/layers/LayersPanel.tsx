@@ -349,7 +349,6 @@ export function LayersPanel() {
         data-layers-panel-drop-zone
         data-drag-over={dragController.state().dropTarget?.type === "layers-panel" ? "layers-panel" : null}
         onDragOver={(e) => {
-          // ponytail: ALWAYS preventDefault so the cursor stays "copy"
           // (matching LayerItem's effectAllowed="copy"), even when
           // dragKind is null (e.g. dragstart hasn't fired yet because
           // the user hasn't moved past the native threshold). Without
@@ -378,7 +377,6 @@ export function LayersPanel() {
           e.preventDefault();
           const state = dragController.state();
           if (state.dragKind === "layer" && state.payload) {
-            // ponytail: pass the tracked dropTarget (with insertAt +
             // insertPosition) so the same-doc reorder lands at the
             // exact row the user aimed at. A bare `{ type: "layers-panel" }`
             // here would silently fall back to "move to end".

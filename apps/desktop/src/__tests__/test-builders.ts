@@ -1,6 +1,5 @@
 // Typed test builders — reduces `as any` in tests by providing properly typed
 // factory functions for engine, history, and tool context mocks.
-// ponytail: only covers methods used by input-handler tests. Add methods as needed.
 
 import { vi } from "vitest";
 import type { DocumentEngine } from "../engine/document";

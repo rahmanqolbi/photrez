@@ -147,7 +147,6 @@ export function AppMenuBar(props: AppMenuBarProps) {
       return props.isRightDockOpen ? "Hide Side Panels" : "Show Side Panels";
     }
     if (entry.command === "view.toggle-right-dock-layout") {
-      // ponytail: removed the silent try/catch fallback that returned
       // a hard-coded "Use Stacked Side Dock" label on failure. SolidJS
       // useContext is conditional-safe (unlike React hooks), so calling
       // it inside this per-item helper is fine. AppMenuBar is always

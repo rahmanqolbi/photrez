@@ -54,7 +54,6 @@ describe('Photrez high-fidelity UI slice tokens', () => {
 });
 
 describe('App.tsx integrity', () => {
-  // ponytail: reality-check the actual production App.tsx instead of
   // asserting on a stale high-fidelity slice comment block. The previous
   // suite passed via comments left in App.tsx ("tests pass but app fails"
   // anti-pattern from 2026-06-16). This block checks what the file

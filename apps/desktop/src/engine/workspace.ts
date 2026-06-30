@@ -45,7 +45,6 @@ export class WorkspaceManager {
       const index = Array.from(this.sessions.keys()).indexOf(id);
       this.sessions.delete(id);
 
-      // ponytail: cleaned up. The previous implementation did two
       // consecutive assignments to `this.activeDocumentId` where the
       // first (line 53) computed `keys.indexOf(id) + 1` against the
       // already-mutated `keys` array — `indexOf(id)` returned `-1`

@@ -39,7 +39,6 @@ interface UseCropOverlayDragParams {
 }
 
 export function useCropOverlayDrag(params: UseCropOverlayDragParams) {
-  // ponytail: removed the silent try/catch stub that returned no-op accessors
   // when called outside an EditorProvider. The previous behavior masked
   // missing-provider bugs as "drag does nothing" with no diagnostic. The
   // real `useEditor()` throws a clear error so the wiring mistake surfaces

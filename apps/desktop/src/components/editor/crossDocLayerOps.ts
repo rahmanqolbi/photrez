@@ -87,7 +87,6 @@ export function addLayerFromCrossDoc(
     return { newLayerId: null };
   }
 
-  // ponytail: same-doc drop means the user is reordering within their
   // own layer panel. When the drop handler provides insertAt +
   // insertPosition (tracked during dragover), honour that exact
   // landing position. Otherwise fall back to "move source to end of
@@ -99,7 +98,6 @@ export function addLayerFromCrossDoc(
     if (sourceHistory) sourceHistory.commit(sourceEngine.snapshot(), "Reorder Layer");
 
     const layers = sourceEngine.getLayers();
-    // ponytail: derive the final reorderLayer target from the
     // dragover-tracked (insertAt, insertPosition) hint. The naive
     // `splice+insert` math is sensitive to whether the source sits
     // before, at, or after the insertion point — get it wrong and
@@ -222,7 +220,6 @@ export async function addFilesAsLayers(
   }
 
   const decoded: Array<{ name: string; pos: Point; bitmap: ImageBitmap }> = [];
-  // ponytail: on any failure path, every bitmap we've already decoded must
   // be `.close()`d to release the GPU buffer — otherwise a partial batch
   // failure (file #3 corrupt out of 5) leaks ImageBitmap #1 and #2.
   const freeDecoded = () => {
@@ -265,7 +262,6 @@ export async function addFilesAsLayers(
       created.push({ docId: targetDocId, layerId: newId, bitmap });
     }
   } catch (err) {
-    // ponytail: engine refused to add (MAX_LAYERS / memory budget).
     // Layers we successfully created keep their bitmaps (engine owns
     // them now via setLayerImageBitmap); leftover bitmaps in `decoded`
     // that the engine never accepted are still ours to free.
@@ -301,7 +297,6 @@ export async function addFilesAsLayersFromFileDrop(
   }
 
   const decoded: Array<{ name: string; pos: Point; bitmap: ImageBitmap }> = [];
-  // ponytail: on any failure path, free every bitmap we've decoded so far
   // to avoid GPU buffer leaks.
   const freeDecoded = () => {
     for (const { bitmap } of decoded) bitmap.close();
@@ -310,7 +305,6 @@ export async function addFilesAsLayersFromFileDrop(
     const file = files[i];
     const pos = computeCascadePosition(basePos, i);
     try {
-      // ponytail: createImageBitmap is a browser built-in — the WebView2
       // runtime decodes PNG/JPEG/WebP/etc. natively with no Tauri IPC.
       const bitmap = await createImageBitmap(file);
       decoded.push({ name: file.name, pos, bitmap });
@@ -356,7 +350,6 @@ export async function createNewDocsFromFiles(
     return [];
   }
   const created: CreatedDoc[] = [];
-  // ponytail: same GPU-buffer leak guard as addFilesAsLayers — on any
   // failure (decode, ws.isFull mid-loop), every bitmap decoded so far
   // must be closed before we bail.
   const decodedBitmaps: ImageBitmap[] = [];

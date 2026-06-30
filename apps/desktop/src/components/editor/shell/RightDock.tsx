@@ -1,4 +1,8 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, Show, type JSX } from "solid-js";
+
+function FadeIn(props: { children: JSX.Element }) {
+  return <div class="animate-fade-in flex flex-col flex-1 min-h-0">{props.children}</div>;
+}
 import { clsx } from "clsx";
 import { Icon } from "../icons";
 import { Tooltip } from "../Tooltip";
@@ -50,6 +54,20 @@ function InspectorDock() {
     }
   };
 
+  const INSPECTOR_TABS = ["properties", "adjustments", "presets"] as const;
+
+  const handleInspectorKeyDown = (e: KeyboardEvent) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const current = activeTab();
+    const idx = INSPECTOR_TABS.indexOf(current as typeof INSPECTOR_TABS[number]);
+    if (idx === -1) return;
+    const next = e.key === "ArrowRight"
+      ? INSPECTOR_TABS[(idx + 1) % INSPECTOR_TABS.length]
+      : INSPECTOR_TABS[(idx - 1 + INSPECTOR_TABS.length) % INSPECTOR_TABS.length];
+    handleTabChange(next);
+  };
+
   return (
     <div
       class={clsx(
@@ -60,7 +78,7 @@ function InspectorDock() {
       )}
     >
       <div class="flex h-[44px] shrink-0 items-center border-b border-editor-divider bg-editor-panel pl-0">
-        <nav role="tablist" aria-label="Inspector tabs" class="flex h-full min-w-0 items-center overflow-hidden">
+        <nav role="tablist" aria-label="Inspector tabs" onKeyDown={handleInspectorKeyDown} class="flex h-full min-w-0 items-center overflow-hidden">
           <button
             type="button"
             role="tab"
@@ -106,8 +124,8 @@ function InspectorDock() {
         </nav>
       </div>
       <div class="flex-1 min-h-0 flex flex-col">
-        {activeTab() === "properties" && <PropertiesPanel />}
-        {activeTab() === "adjustments" && <AdjustmentsPanel />}
+        {activeTab() === "properties" && <FadeIn><PropertiesPanel /></FadeIn>}
+        {activeTab() === "adjustments" && <FadeIn><AdjustmentsPanel /></FadeIn>}
         {activeTab() === "presets" && (
           <div class="flex h-full flex-col items-center justify-center p-6 text-center">
             <Icon name="sparkles" class="size-6 text-editor-text-dim opacity-50 mb-3" strokeWidth={1.5} />
@@ -158,6 +176,20 @@ function LayerDock(props: Pick<RightDockProps, "onClose">) {
   const isStacked = () => rightDockLayout() === "stacked";
   const [navigatorCollapsed, setNavigatorCollapsed] = createSignal(false);
 
+  const LAYER_DOCK_TABS = ["layers", "history"] as const;
+
+  const handleLayerDockKeyDown = (e: KeyboardEvent) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const current = rightDockPanel();
+    const idx = LAYER_DOCK_TABS.indexOf(current as typeof LAYER_DOCK_TABS[number]);
+    if (idx === -1) return;
+    const next = e.key === "ArrowRight"
+      ? LAYER_DOCK_TABS[(idx + 1) % LAYER_DOCK_TABS.length]
+      : LAYER_DOCK_TABS[(idx - 1 + LAYER_DOCK_TABS.length) % LAYER_DOCK_TABS.length];
+    setRightDockPanel(next);
+  };
+
   return (
     <div
       class={clsx(
@@ -168,7 +200,7 @@ function LayerDock(props: Pick<RightDockProps, "onClose">) {
       )}
     >
       <div class="flex h-[44px] shrink-0 items-center border-b border-editor-divider bg-editor-panel pl-0">
-        <nav role="tablist" aria-label="Layer dock tabs" class="flex h-full min-w-0 items-center overflow-hidden">
+        <nav role="tablist" aria-label="Layer dock tabs" onKeyDown={handleLayerDockKeyDown} class="flex h-full min-w-0 items-center overflow-hidden">
           <button
             type="button"
             role="tab"
@@ -200,7 +232,7 @@ function LayerDock(props: Pick<RightDockProps, "onClose">) {
         </nav>
       </div>
       <div class="flex-1 min-h-0 flex flex-col">
-        {rightDockPanel() === "layers" ? <LayersPanel /> : <HistoryPanel />}
+        {rightDockPanel() === "layers" ? <FadeIn><LayersPanel /></FadeIn> : <FadeIn><HistoryPanel /></FadeIn>}
       </div>
 
       {/* Navigator panel */}

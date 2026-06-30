@@ -5,7 +5,6 @@ import { LayerItem } from "../LayerItem";
 import type { LayerDragPayload } from "../../dragTypes";
 import { WorkspaceManager } from "@/engine/workspace";
 
-// ponytail: LayerItem's "being dragged" highlight must reflect the
 // dragController state directly. No pointer-based parallel signal
 // system →`dragController.endDrag()` is the only "drag ended" path
 // and SolidJS reactivity wires the visual to that single source of

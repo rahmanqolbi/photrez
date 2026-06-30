@@ -251,7 +251,7 @@ export function AdjustmentsPanel() {
 
   return (
     <section class="flex flex-1 shrink-0 flex-col overflow-hidden bg-editor-panel">
-      <div class="flex-1 overflow-y-auto">
+      <div class="flex-1 overflow-y-auto" style={{ "scrollbar-gutter": "stable" }}>
         <Show
           when={activeDocumentId()}
           fallback={
@@ -444,13 +444,13 @@ function CollapsibleSection(props: {
         />
       </button>
       <Show when={open()}>
-        <div class="px-4 pb-3">
-          <div class="flex flex-col gap-2 rounded-[4px] border border-editor-field-border bg-editor-field p-2.5">
-            <div class="flex items-center gap-1.5 text-editor-accent text-[10px] font-semibold uppercase tracking-wider">
-              <Icon name="sparkles" class="size-3" strokeWidth={2} />
+        <div class="px-4 pt-2 pb-5">
+          <div class="flex flex-col gap-2 rounded-[6px] border border-dashed border-editor-field-border bg-white/[0.015] p-3 transition-colors hover:bg-white/[0.025]">
+            <div class="flex items-center gap-1.5 text-editor-text-dim text-[10px] font-bold uppercase tracking-wider">
+              <Icon name="sparkles" class="size-3 opacity-70" strokeWidth={2} />
               <span>In Development</span>
             </div>
-            <p class="text-[11px] leading-relaxed text-editor-text-dim">
+            <p class="text-[11.5px] leading-relaxed text-editor-text-dim">
               {COMING_SOON_DESCRIPTIONS[props.label] || "This professional adjustment tool is currently in development."}
             </p>
           </div>

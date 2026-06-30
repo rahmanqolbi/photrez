@@ -24,7 +24,6 @@ import type { HistoryItem } from "@/engine/history";
 import { cancelLayerTransformSession } from "../transformSession";
 
 
-
 export interface EditorContextValue {
   workspace: WorkspaceManager;
   renderer: WebGL2Backend;
@@ -239,7 +238,6 @@ export function EditorProvider(props: {
   const [activeHistoryIndex, setActiveHistoryIndex] = createSignal(0);
   const [rightDockPanel, setRightDockPanel] = createSignal<"layers" | "history">("layers");
 
-  // ponytail: validate raw localStorage value against the known union
   // before trusting it as a typed signal value. Corrupted state or a
   // schema drift from a future build would otherwise pass through and
   // produce a stale-typed state with no diagnostic.

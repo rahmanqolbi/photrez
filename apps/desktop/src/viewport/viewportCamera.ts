@@ -185,7 +185,6 @@ export class ViewportCamera {
   }
 
   public getViewProjectionMatrix(canvasW?: number, canvasH?: number): Float32Array {
-    // ponytail: this used to mutate viewportWidth/Height as a side
     // effect when canvasW/H were passed. Pure getter is the right
     // contract — callers that want to resize the camera must call
     // setViewportSize() explicitly. The optional params are still

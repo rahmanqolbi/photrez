@@ -82,7 +82,6 @@ describe("useDesktopGuards wiring", () => {
     dispose = render(() => GuardsHarness(), container);
     const generic = document.createElement("div");
     container.appendChild(generic);
-    // ponytail: jsdom lacks DragEvent; Event with dragstart type is sufficient
     // to verify the preventDefault wiring. Dispatch on a child element so
     // event.target is an Element (not Document — Document has no .closest).
     const ev = new Event("dragstart", { bubbles: true, cancelable: true });

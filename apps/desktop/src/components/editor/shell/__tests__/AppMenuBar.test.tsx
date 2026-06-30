@@ -19,7 +19,6 @@ function renderMenu(options?: {
   const execute = vi.fn<(command: EditorCommand) => void>();
   const container = document.createElement("div");
   document.body.appendChild(container);
-  // ponytail: AppMenuBar calls useEditor() to render the
   // right-dock-layout label conditionally. In production it is
   // always mounted inside EditorProvider (EditorShell.tsx renders
   // it under EditorProvider), so the test now wraps with the same

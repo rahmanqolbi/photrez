@@ -154,6 +154,16 @@ grid-template-columns: 280px 240px;
   to { transform: scaleX(1); }
 }
 
+/* ─── Enter animations ─── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dialog-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 [data-canvas-drop-zone][data-drag-over="canvas"] {
   outline: 2px dashed var(--color-editor-accent, #E15A17);
   outline-offset: -4px;

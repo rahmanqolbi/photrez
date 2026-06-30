@@ -42,7 +42,6 @@ describe("LayersPanel →in-panel reorder end-to-end", () => {
       container,
     );
 
-    // ponytail: jsdom returns zero rects for everything. The panel's
     // computeInsertionHint iterates row rects to decide which row the
     // pointer is over. Stub each row's getBoundingClientRect to
     // produce a known layout so the test is deterministic.

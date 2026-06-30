@@ -179,7 +179,6 @@ export function getEffectiveFlowMultiplier(_hardness: number): number {
 }
 
 export function getBrushDabSpacing(size: number, hardness: number, flow: number): number {
-  // ponytail: fixed 25% × size spacing matches reference spacing and produces
   // visible individual dabs (brush-stroke character) instead of a smooth blob.
   // Hardness already controls the soft profile inside the mask, so spacing
   // stays geometry-agnostic across the hardness range. Flow remains a stroke
@@ -219,7 +218,6 @@ export function stampBrushTip(
   centerY: number,
   alphaScale: number,
 ): void {
-  // ponytail: pre-multiplied source-over accumulation per dab so multiple
   // dabs on the same pixel accumulate toward saturation as
   //   1 - (1 - alpha)^N
   // matching established image editors. Opacity and flow act as the

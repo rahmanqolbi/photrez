@@ -10,7 +10,6 @@ import { Tooltip } from "./Tooltip";
 import { Icon } from "./icons";
 import { discardCropSession, resetCropPreviewToCanvas, applyCropPreview } from "./cropToolActions";
 
-// ponytail: tiny type guard for narrowing a raw <select> event value to a
 // known union. Avoids three separate `as any` casts scattered through the
 // component — one place to extend when new unit/mode values appear.
 function isCropSizeUnit(v: string): v is "px" | "cm" | "mm" | "in" {
@@ -760,6 +759,7 @@ export function CropOptionBar() {
                   }
                 }}
                 class="flex flex-1 size-[24px] items-center justify-center rounded-[3px] hover:bg-editor-field/50 text-editor-icon hover:text-editor-text transition-colors"
+                aria-label="Rotate 90 degrees counter-clockwise"
               >
                 <Icon name="rotate-ccw" class="size-4" strokeWidth={1.5} />
               </button>
@@ -781,6 +781,7 @@ export function CropOptionBar() {
                   }
                 }}
                 class="flex flex-1 size-[24px] items-center justify-center rounded-[3px] hover:bg-editor-field/50 text-editor-icon hover:text-editor-text transition-colors"
+                aria-label="Rotate 90 degrees clockwise"
               >
                 <Icon name="rotate-cw" class="size-4" strokeWidth={1.5} />
               </button>

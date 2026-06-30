@@ -15,7 +15,6 @@ export function EmptyWorkspace() {
   const { openImage, workspace, scheduler } = useEditor();
 
   const createCanvas = (width: number, height: number) => {
-    // ponytail: guard against MAX_OPEN_DOCUMENTS so the user gets a
     // toast instead of a silent throw from workspace.addDocument.
     // The other entry points (crossDocLayerOps, editorOpenImage)
     // already check isFull() before adding; this was the missing one.

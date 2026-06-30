@@ -1,4 +1,4 @@
-﻿import { onCleanup, onMount } from "solid-js";
+import { onCleanup, onMount } from "solid-js";
 import { listen } from "@tauri-apps/api/event";
 import { isEditableTarget } from "@/lib/dom";
 import { isTauriRuntime, runTauriWindowAction } from "@/lib/desktop";
@@ -216,10 +216,9 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
 
     switch (command) {
       case "file.new": {
-        // ponytail: guard against MAX_OPEN_DOCUMENTS to surface a toast
         // instead of letting workspace.addDocument throw silently.
         if (editor.workspace.isFull()) {
-          showToast(`Workspace full â€” close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
+          showToast(`Workspace full — close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
           break;
         }
         const id = `doc-${crypto.randomUUID()}`;
@@ -400,6 +399,8 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
 
   onMount(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (document.querySelector('[aria-modal="true"]')) return;
+
       if (
         event.defaultPrevented
         || isEditableTarget(event.target)

@@ -7,7 +7,6 @@ export type BasicAdjustment = {
 const clampChannel = (value: number): number => {
   if (value < 0) return 0;
   if (value > 255) return 255;
-  // Ponytail: no Math.round here — Uint8ClampedArray assignment already
   // rounds to the nearest integer, so an explicit round is redundant.
   return value;
 };
@@ -32,7 +31,6 @@ export function applyBasicAdjustmentToPixels(
 ): Uint8ClampedArray {
   const next = new Uint8ClampedArray(pixels);
   const normalized = normalizeBasicAdjustment(adjustment);
-  // ponytail: nonlinear brightness (modern mode). The old linear formula
   // (brightness * 2.55) shifted all pixel values equally — equivalent to
   // Photoshop's "Use Legacy" mode which clips highlights/shadows. This
   // curve lifts shadows more than highlights (brighten) or pulls

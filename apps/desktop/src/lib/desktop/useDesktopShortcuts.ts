@@ -9,6 +9,7 @@ type DesktopShortcutHandlers = {
 export function useDesktopShortcuts(handlers: DesktopShortcutHandlers) {
   onMount(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (document.querySelector('[aria-modal="true"]')) return;
       if (isEditableTarget(event.target)) return;
 
       const key = event.key.toLowerCase();

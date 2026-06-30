@@ -60,7 +60,6 @@ export function Tooltip(props: TooltipProps) {
     }
   };
 
-  // ponytail: named handlers so onMount + onCleanup can pair the same
   // reference. Inline `() => showTooltip(false)` lambdas in onMount
   // were leak-cleanup blind — onCleanup could only remove the one
   // listener (window keydown) whose reference it held.

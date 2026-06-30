@@ -718,7 +718,6 @@ export function CanvasViewport() {
       data-drag-over={dragController.state().dropTarget?.type === "canvas" ? "canvas" : null}
       class="flex-1 relative overflow-hidden bg-editor-canvas"
       onDragOver={(e) => {
-        // ponytail: always preventDefault so the browser allows the drop
         // even for OS file drags (dragKind may be null at first dragover).
         // Without this the browser shows the ❌ no-drop cursor and blocks
         // the drop event entirely.

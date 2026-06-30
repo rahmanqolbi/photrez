@@ -24,8 +24,6 @@ import { WorkspaceManager } from "@/engine/workspace";
 import { addLayerFromCrossDoc, addFilesAsLayers, createNewDocsFromFiles } from "../crossDocLayerOps";
 import type { LayerDragPayload } from "../dragTypes";
 
-// ponytail: provide createImageBitmap for jsdom (no browser API)
-// ponytail: mock readFileBytes to avoid actual Tauri IPC in tests
 vi.mock("@/tauri/native", () => ({
   readFileBytes: vi.fn().mockResolvedValue(
     // PNG magic header so isSupportedImageBytes passes

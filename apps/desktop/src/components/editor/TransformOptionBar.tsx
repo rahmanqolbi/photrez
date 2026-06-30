@@ -4,7 +4,7 @@ import { NumField, EditableNumField } from "./primitives";
 import { clsx } from "clsx";
 import { Tooltip } from "./Tooltip";
 import { useEditor } from "./shell/EditorContext";
-import { ToggleBtn, Divider } from "./shell/OptionBarShared";
+import { ToggleBtn, Divider, MoreDropdown } from "./shell/OptionBarShared";
 import { cancelLayerTransformSession, commitLayerTransformSession, resetLayerTransformPreview } from "./transformSession";
 import type { Transform2D } from "@/engine/types";
 
@@ -142,6 +142,7 @@ export function TransformOptionBar() {
               <div class="flex shrink-0 items-center gap-1">
                 <EditableNumField
                   label="X"
+                  labelClass="@max-[900px]:hidden"
                   value={layer().transform.x}
                   disabled={d}
                   onSubmit={handlePositionField("x")}
@@ -149,6 +150,7 @@ export function TransformOptionBar() {
                 />
                 <EditableNumField
                   label="Y"
+                  labelClass="@max-[900px]:hidden"
                   value={layer().transform.y}
                   disabled={d}
                   onSubmit={handlePositionField("y")}
@@ -159,6 +161,7 @@ export function TransformOptionBar() {
               <div class="flex shrink-0 items-center gap-1">
                 <EditableNumField
                   label="W"
+                  labelClass="@max-[900px]:hidden"
                   value={curW()}
                   disabled={d}
                   onSubmit={setPreviewWidth}
@@ -166,6 +169,7 @@ export function TransformOptionBar() {
                 />
                 <EditableNumField
                   label="H"
+                  labelClass="@max-[900px]:hidden"
                   value={curH()}
                   disabled={d}
                   onSubmit={setPreviewHeight}
@@ -175,46 +179,83 @@ export function TransformOptionBar() {
 
               <EditableNumField
                 label="R"
+                labelClass="@max-[900px]:hidden"
                 value={layer().transform.rotation}
                 suffix="°"
                 disabled={d}
                 onSubmit={handleRotateField}
                 class="w-[58px]"
               />
+
+              {/* Secondary controls — hidden at narrow widths */}
+              <div class="hidden @min-[880px]:flex items-center gap-1.5 shrink-0">
+                <Show when={session()}>
+                  {(s) => (
+                    <Tooltip content="Lock Aspect Ratio">
+                      <ToggleBtn
+                        active={s().lockRatio}
+                        onChange={setLockRatio}
+                        icon="link"
+                        label="Ratio"
+                      />
+                    </Tooltip>
+                  )}
+                </Show>
+
+                <Tooltip content="Reset preview transform values">
+                  <button
+                    onClick={resetPreview}
+                    disabled={isLocked()}
+                    class={clsx(
+                      "flex h-[24px] shrink-0 items-center rounded-[3px] border border-transparent px-2 text-[11px]",
+                      isLocked()
+                        ? "text-editor-text-dim/30 cursor-default"
+                        : "text-editor-text-dim hover:border-editor-field-border hover:text-editor-text",
+                    )}
+                  >
+                    Reset Preview
+                  </button>
+                </Tooltip>
+              </div>
             </>
           );
         }}
       </Show>
 
+      {/* Overflow dropdown for narrow container */}
       <Show when={session()}>
         {(s) => (
-          <Tooltip content="Lock Aspect Ratio">
-            <ToggleBtn
-              active={s().lockRatio}
-              onChange={setLockRatio}
-              icon="link"
-              label="Ratio"
-            />
-          </Tooltip>
+          <MoreDropdown>
+            <div class="flex flex-col gap-1.5">
+              <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Options</span>
+              <div class="flex items-center gap-2 bg-editor-field/30 p-1.5 rounded-[4px] border border-editor-field-border">
+                <Tooltip content="Lock Aspect Ratio">
+                  <ToggleBtn
+                    active={s().lockRatio}
+                    onChange={setLockRatio}
+                    icon="link"
+                    label="Ratio"
+                  />
+                </Tooltip>
+                <Tooltip content="Reset preview transform values">
+                  <button
+                    onClick={resetPreview}
+                    disabled={isLocked()}
+                    class={clsx(
+                      "flex h-[24px] items-center rounded-[3px] border border-transparent px-2 text-[11px]",
+                      isLocked()
+                        ? "text-editor-text-dim/30 cursor-default"
+                        : "text-editor-text-dim hover:border-editor-field-border hover:text-editor-text",
+                    )}
+                  >
+                    Reset
+                  </button>
+                </Tooltip>
+              </div>
+            </div>
+          </MoreDropdown>
         )}
       </Show>
-
-      <Divider />
-
-      <Tooltip content="Reset preview transform values">
-        <button
-          onClick={resetPreview}
-          disabled={isLocked()}
-          class={clsx(
-            "flex h-[24px] shrink-0 items-center rounded-[3px] border border-transparent px-2 text-[11px]",
-            isLocked()
-              ? "text-editor-text-dim/30 cursor-default"
-              : "text-editor-text-dim hover:border-editor-field-border hover:text-editor-text",
-          )}
-        >
-          Reset Preview
-        </button>
-      </Tooltip>
 
       <Divider />
 

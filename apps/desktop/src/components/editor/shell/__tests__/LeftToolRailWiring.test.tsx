@@ -47,4 +47,45 @@ describe("LeftToolRail Tooltip Wiring", () => {
     dispose();
     root.remove();
   });
+
+  it("clicking a tool button updates the active tool and applies active styling", () => {
+    const ws = new WorkspaceManager();
+    const doc = WorkspaceManager.createBlankDocument("test-doc", "Test Doc", 800, 600);
+    ws.addDocument(doc);
+
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+
+    const dispose = render(
+      () => (
+        <EditorProvider
+          workspace={ws}
+          renderer={{ uploadImage: vi.fn(), destroyTexture: vi.fn() } as any}
+          scheduler={{ requestRender: vi.fn() } as any}
+        >
+          <LeftToolRail />
+        </EditorProvider>
+      ),
+      root
+    );
+
+    const buttons = root.querySelectorAll<HTMLButtonElement>("button");
+
+    // Find the brush tool button (aria-label="Brush Tool")
+    const brushBtn = Array.from(buttons).find((b) => b.getAttribute("aria-label") === "Brush Tool");
+    expect(brushBtn).not.toBeNull();
+    brushBtn!.click();
+
+    // After click, brush button should have active styling
+    expect(brushBtn!.className).toContain("bg-white/5");
+    expect(brushBtn!.className).toContain("text-editor-text");
+
+    // Move tool button should NOT have active styling
+    const moveBtn = Array.from(buttons).find((b) => b.getAttribute("aria-label") === "Move Tool");
+    expect(moveBtn).not.toBeNull();
+    expect(moveBtn!.className).toContain("text-editor-icon");
+
+    dispose();
+    root.remove();
+  });
 });

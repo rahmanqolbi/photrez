@@ -15,7 +15,6 @@ export type DropTarget =
   | { type: "canvas" }
   | {
       type: "layers-panel";
-      // ponytail: insertion-position hint for in-panel layer reorder.
       // `insertAt` is the layer index in the panel's current stack where
       // the dropped layer should land. `insertPosition` distinguishes
       // "before" (drop above the row) vs "after" (drop below). When

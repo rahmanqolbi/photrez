@@ -11,7 +11,6 @@ interface OpenImageParams {
   workspace: WorkspaceManager;
   renderer: WebGL2Backend;
   scheduler: RenderScheduler;
-  // ponytail: optional error reporter so failed reads/decode surface
   // to the user via the existing Toast host instead of console.error only.
   // Keeping it optional preserves the existing call sites and tests.
   onError?: (message: string) => void;

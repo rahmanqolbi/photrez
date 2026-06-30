@@ -113,7 +113,6 @@ export const MAX_LAYERS = 100;
 export const MAX_OPEN_DOCUMENTS = 16;
 export const MAX_HISTORY_DEPTH = 50;
 export const MAX_PIXEL_BUDGET = 256 * 1024 * 1024; // 256 MB
-// ponytail: ceiling for canvas/layer dimensions. A 16384x16384 RGBA buffer
 // already costs 1 GB; anything above this is almost certainly a typo or
 // a malicious input and would OOM the WebView2 process. 16384 matches
 // WebGL2's common max texture size and the SavedWindowState clamp (Rust side).

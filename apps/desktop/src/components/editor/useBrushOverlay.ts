@@ -79,7 +79,6 @@ export function useBrushOverlay() {
       overlayCanvasRef.height = layer.height;
     }
 
-    // ponytail: every hardness now routes through the soft mask path so the
     // brush tip pipeline owns both soft and hard edges. The previous
     // ctx.lineCap=round shortcut for hardness>=1 produced browser-dependent
     // AA and bypassed the mask engine entirely.
@@ -255,7 +254,6 @@ export function useBrushOverlay() {
 
     const snapshot = new OffscreenCanvas(w, h);
     const sCtx = snapshot.getContext("2d")!;
-    // Ponytail: composites onto the current imageBitmap, which may already
     // include brightness/contrast/saturation adjustments.  When the stroke
     // is committed via commitPaintBitmap → setLayerImageBitmap, the
     // baseImageBitmap and adjustment metadata are reset — so painting

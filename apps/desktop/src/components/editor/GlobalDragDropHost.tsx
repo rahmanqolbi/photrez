@@ -3,7 +3,6 @@ import { useDragController } from "./DragController";
 import { useTauriDragDrop } from "./useTauriDragDrop";
 import { dispatchTauriFileDrop, findDropZoneAtPoint, type DropDispatchDeps } from "./crossDocDropDispatch";
 
-// ponytail: `dragDropEnabled: false` in tauri.conf.json disables
 // Tauri's native OS-level drag-drop events so HTML5 in-app drag
 // (layer reorder) works on Windows WebView2. As a trade-off,
 // `webview.onDragDropEvent` never fires, so this host is currently
@@ -24,7 +23,6 @@ export function GlobalDragDropHost() {
       else dragController.setDropTarget(null);
     },
     onDrop: (paths, position) => {
-      // ponytail: import the deps type directly instead of re-deriving it
       // via `Parameters<...>[2]` and double-asserting. The dep type is the
       // source of truth — anything else drifts on signature changes.
       const deps: DropDispatchDeps = { workspace, renderer, scheduler, camera };

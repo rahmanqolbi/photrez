@@ -7,7 +7,6 @@ import { LayerThumb } from "./LayerThumb";
 import { LAYER_DRAG_MIME, LayerDragPayload } from "../dragTypes";
 import { useDragController } from "../DragController";
 
-// ponytail: narrow fa→ade for the workspace/scheduler surface LayerItem
 // actually touches. Avoids the production `any` while staying decoupled
 // from the full WorkspaceManager/Scheduler types →LayerItem only needs
 // the read-and-request paths, not the document lifecycle.
@@ -80,7 +79,6 @@ export function LayerItem(props: LayerItemProps) {
       isAltPressed: e.altKey,
     };
     dt.setData(LAYER_DRAG_MIME, JSON.stringify(payload));
-    // ponytail: tell the browser the drag is a "move" operation.
     // Cross-doc drop creates a copy + (optionally with Alt) deletes
     // the source; same-doc drop reorders. Both are semantically
     // moves of the layer to a new position, not user-visible copies,
@@ -93,7 +91,6 @@ export function LayerItem(props: LayerItemProps) {
     dragController.endDrag();
   };
 
-  // ponytail: bind visual state directly to dragController so the
   // "drag ended" signal is unambiguous. `dragController.endDrag()` is
   // the only path that clears `dragKind`, so the source layer's
   // "being dragged" highlight disappears at the same instant the
@@ -105,7 +102,6 @@ export function LayerItem(props: LayerItemProps) {
     return payload !== null && payload.layerId === props.layer.id;
   };
 
-  // ponytail: insertion-bar highlight is also driven by dragController
   // state. The panel-level `dragover` handler keeps `dropTarget` in sync
   // with the pointer position so this accessor stays reactive without
   // any per-row subscription.
@@ -143,6 +139,7 @@ export function LayerItem(props: LayerItemProps) {
           data-layer-visibility
           onClick={(e) => props.onToggleVisibility(e, props.layer.id)}
           class="text-editor-icon hover:text-editor-text size-6 flex items-center justify-center z-10"
+          aria-label={props.layer.visible ? "Hide Layer" : "Show Layer"}
         >
           <Icon
             name="eye"
@@ -249,6 +246,7 @@ export function LayerItem(props: LayerItemProps) {
       <button
         onClick={(e) => props.onToggleLock(e, props.layer.id)}
         class="text-editor-icon hover:text-editor-text size-6 flex items-center justify-center"
+        aria-label={props.layer.locked ? "Unlock Layer" : "Lock Layer"}
       >
         <Icon
           name={props.layer.locked ? "lock" : "unlock"}

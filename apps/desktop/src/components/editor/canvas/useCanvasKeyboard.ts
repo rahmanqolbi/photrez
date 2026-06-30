@@ -109,6 +109,8 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         return;
       }
 
+      if (document.querySelector('[aria-modal="true"]')) return;
+
       options.stopMomentum();
       if (e.defaultPrevented) return;
 

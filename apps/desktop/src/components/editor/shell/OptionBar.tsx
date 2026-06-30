@@ -1,5 +1,9 @@
-import { lazy, Show, Suspense } from "solid-js";
+import { lazy, Show, Suspense, type JSX } from "solid-js";
 import { useEditor } from "./EditorContext";
+
+function FadeIn(props: { children: JSX.Element }) {
+  return <div class="animate-fade-in flex items-center gap-1.5">{props.children}</div>;
+}
 
 const MoveOptionBar = lazy(() => import("../MoveOptionBar").then(m => ({ default: m.MoveOptionBar })));
 const CropOptionBar = lazy(() => import("../CropOptionBar").then(m => ({ default: m.CropOptionBar })));
@@ -18,24 +22,24 @@ export function OptionBar() {
           fallback={
             <>
               <Show when={activeTool() === "selection"}>
-                <SelectionOptionBar />
+                <FadeIn><SelectionOptionBar /></FadeIn>
               </Show>
 
               <Show when={activeTool() === "move"}>
-                <MoveOptionBar />
+                <FadeIn><MoveOptionBar /></FadeIn>
               </Show>
 
               <Show when={activeTool() === "crop"}>
-                <CropOptionBar />
+                <FadeIn><CropOptionBar /></FadeIn>
               </Show>
 
               <Show when={activeTool() === "brush" || activeTool() === "eraser"}>
-                <BrushOptionBar />
+                <FadeIn><BrushOptionBar /></FadeIn>
               </Show>
             </>
           }
         >
-          <TransformOptionBar />
+          <FadeIn><TransformOptionBar /></FadeIn>
         </Show>
       </Suspense>
     </div>

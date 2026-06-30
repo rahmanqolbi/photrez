@@ -12,7 +12,6 @@ interface CropOverlayGuidesProps {
 function GridLines(props: { x: number; y: number; w: number; h: number; zoom: number }) {
   const n = () => Math.max(1, Math.ceil(Math.sqrt(props.w * props.h) / 64));
   const z = props.zoom;
-  // ponytail: Array.from(...) inside <For each={...}> produces a
   // brand-new array reference on every reactive evaluation. SolidJS
   // <For> uses referential equality to decide whether to reuse or
   // recreate children, so the entire grid re-renders every time any

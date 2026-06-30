@@ -66,7 +66,7 @@ export function DesktopDialog(props: DesktopDialogProps) {
   return (
     <>
       <div
-        class="fixed inset-0 z-[89] bg-black/45"
+        class="fixed inset-0 z-[89] bg-black/45 animate-dialog-fade-in"
         data-dialog-backdrop
         onPointerDown={props.onBackdropPointerDown}
       />
@@ -83,7 +83,7 @@ export function DesktopDialog(props: DesktopDialogProps) {
         data-dialog-tone={props.tone ?? "default"}
         data-photrez-dialog
         class={clsx(
-          "fixed left-1/2 top-1/2 z-[90] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[8px] border border-editor-field-border bg-editor-panel shadow-[0_18px_50px_rgba(0,0,0,0.55)]",
+          "fixed left-1/2 top-1/2 z-[90] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[8px] border border-editor-field-border bg-editor-panel shadow-[0_18px_50px_rgba(0,0,0,0.55)] animate-dialog-fade-in",
           props.widthClass ?? "w-[min(360px,calc(100vw-24px))]",
         )}
         onKeyDown={handleKeyDown}

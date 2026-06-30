@@ -90,7 +90,6 @@ export function BrushCursorOverlay(props?: {
       if (!props?.forceVisibleForTest) setVisible(false);
     };
     window.addEventListener("pointermove", handleMove);
-    // ponytail: `pointerleave` does not fire on `window` — that event only
     // applies to elements. The previous listener was a no-op and let the
     // brush ring stay painted at the last cursor position when the user
     // moved outside the window. `mouseleave` is the matching window-level
