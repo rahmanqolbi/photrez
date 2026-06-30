@@ -2,8 +2,9 @@ import { Show, createMemo } from "solid-js";
 import { Icon } from "./icons";
 import { NumField, EditableNumField } from "./primitives";
 import { clsx } from "clsx";
+import { Tooltip } from "./Tooltip";
 import { useEditor } from "./shell/EditorContext";
-import { ToggleBtn, Divider, ToolPill, MoreDropdown } from "./shell/OptionBarShared";
+import { ToggleBtn, Divider, ToolPill, MoreDropdown, OptionCheckbox } from "./shell/OptionBarShared";
 
 export function MoveOptionBar() {
   const {
@@ -174,21 +175,21 @@ export function MoveOptionBar() {
 
       <Divider />
 
-      <ToggleBtn
-        active={moveAutoSelect()}
-        onChange={setMoveAutoSelect}
-        icon="cursor"
-        label="Auto"
-        labelClass="@max-[900px]:hidden"
-      />
+      <Tooltip content="Auto-Select Layer on Hover">
+        <OptionCheckbox
+          checked={moveAutoSelect()}
+          onChange={setMoveAutoSelect}
+          label="Auto-Select"
+        />
+      </Tooltip>
 
-      <ToggleBtn
-        active={moveSnapEnabled()}
-        onChange={setMoveSnapEnabled}
-        icon="align-h"
-        label="Snap"
-        labelClass="@max-[900px]:hidden"
-      />
+      <Tooltip content="Enable Snapping">
+        <OptionCheckbox
+          checked={moveSnapEnabled()}
+          onChange={setMoveSnapEnabled}
+          label="Snap"
+        />
+      </Tooltip>
 
       <Show when={moveAutoSelect() && hoveredLayer()}>
         {(hl) => (
@@ -259,48 +260,66 @@ export function MoveOptionBar() {
 
           <div class={clsx("flex shrink-0 items-center gap-1 text-editor-icon", isLocked() && "opacity-30 pointer-events-none")}>
             <span class="text-[11px] text-editor-text-dim @max-[900px]:hidden">Align</span>
-            <button onClick={() => handleAlign("left")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align left" title="Align Left">
-              <Icon name="align-left" class="size-4" strokeWidth={1.5} />
-            </button>
-            <button onClick={() => handleAlign("center-h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center horizontal" title="Align Horizontal Center">
-              <Icon name="align-h" class="size-4" strokeWidth={1.5} />
-            </button>
-            <button onClick={() => handleAlign("right")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align right" title="Align Right">
-              <Icon name="align-right" class="size-4" strokeWidth={1.5} />
-            </button>
-            <button onClick={() => handleAlign("top")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align top" title="Align Top">
-              <Icon name="align-top" class="size-4" strokeWidth={1.5} />
-            </button>
-            <button onClick={() => handleAlign("center-v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center vertical" title="Align Vertical Center">
-              <Icon name="align-v" class="size-4" strokeWidth={1.5} />
-            </button>
-            <button onClick={() => handleAlign("bottom")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align bottom" title="Align Bottom">
-              <Icon name="align-bottom" class="size-4" strokeWidth={1.5} />
-            </button>
+            <Tooltip content="Align Left">
+              <button onClick={() => handleAlign("left")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align left">
+                <Icon name="align-left" class="size-4" strokeWidth={1.5} />
+              </button>
+            </Tooltip>
+            <Tooltip content="Align Horizontal Center">
+              <button onClick={() => handleAlign("center-h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center horizontal">
+                <Icon name="align-h" class="size-4" strokeWidth={1.5} />
+              </button>
+            </Tooltip>
+            <Tooltip content="Align Right">
+              <button onClick={() => handleAlign("right")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align right">
+                <Icon name="align-right" class="size-4" strokeWidth={1.5} />
+              </button>
+            </Tooltip>
+            <Tooltip content="Align Top">
+              <button onClick={() => handleAlign("top")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align top">
+                <Icon name="align-top" class="size-4" strokeWidth={1.5} />
+              </button>
+            </Tooltip>
+            <Tooltip content="Align Vertical Center">
+              <button onClick={() => handleAlign("center-v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center vertical">
+                <Icon name="align-v" class="size-4" strokeWidth={1.5} />
+              </button>
+            </Tooltip>
+            <Tooltip content="Align Bottom">
+              <button onClick={() => handleAlign("bottom")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align bottom">
+                <Icon name="align-bottom" class="size-4" strokeWidth={1.5} />
+              </button>
+            </Tooltip>
           </div>
 
           <Divider />
 
           <div class={clsx("flex shrink-0 items-center gap-1 text-editor-icon", isLocked() && "opacity-30 pointer-events-none")}>
             <span class="text-[11px] text-editor-text-dim @max-[900px]:hidden">Flip</span>
-            <button onClick={() => handleFlip("h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip horizontal" title="Flip Horizontal">
-              <Icon name="flip-h" class="size-4" strokeWidth={1.5} />
-            </button>
-            <button onClick={() => handleFlip("v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip vertical" title="Flip Vertical">
-              <Icon name="flip-v" class="size-4" strokeWidth={1.5} />
-            </button>
+            <Tooltip content="Flip Horizontal">
+              <button onClick={() => handleFlip("h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip horizontal">
+                <Icon name="flip-h" class="size-4" strokeWidth={1.5} />
+              </button>
+            </Tooltip>
+            <Tooltip content="Flip Vertical">
+              <button onClick={() => handleFlip("v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip vertical">
+                <Icon name="flip-v" class="size-4" strokeWidth={1.5} />
+              </button>
+            </Tooltip>
           </div>
 
           <Divider />
 
-          <button onClick={handleResetTransform} disabled={isLocked()} class={clsx(
-            "flex h-[24px] shrink-0 items-center rounded-[3px] border border-transparent px-2 text-[11px]",
-            isLocked()
-              ? "text-editor-text-dim/30 cursor-default"
-              : "text-editor-text-dim hover:border-editor-field-border hover:text-editor-text",
-          )}>
-            Reset
-          </button>
+          <Tooltip content="Reset Transform">
+            <button onClick={handleResetTransform} disabled={isLocked()} class={clsx(
+              "flex h-[24px] shrink-0 items-center rounded-[3px] border border-transparent px-2 text-[11px]",
+              isLocked()
+                ? "text-editor-text-dim/30 cursor-default"
+                : "text-editor-text-dim hover:border-editor-field-border hover:text-editor-text",
+            )}>
+              Reset
+            </button>
+          </Tooltip>
         </div>
 
         {/* Overflow dropdown for narrow container */}
@@ -308,53 +327,71 @@ export function MoveOptionBar() {
           <div class={clsx("flex flex-col gap-1.5 text-editor-icon", isLocked() && "opacity-30 pointer-events-none")}>
             <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Align</span>
             <div class="flex items-center gap-2 bg-editor-field/30 p-1.5 rounded-[4px] border border-editor-field-border">
-              <button onClick={() => handleAlign("left")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align left" title="Align Left">
-                <Icon name="align-left" class="size-4" strokeWidth={1.5} />
-              </button>
-              <button onClick={() => handleAlign("center-h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center horizontal" title="Align Horizontal Center">
-                <Icon name="align-h" class="size-4" strokeWidth={1.5} />
-              </button>
-              <button onClick={() => handleAlign("right")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align right" title="Align Right">
-                <Icon name="align-right" class="size-4" strokeWidth={1.5} />
-              </button>
-              <button onClick={() => handleAlign("top")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align top" title="Align Top">
-                <Icon name="align-top" class="size-4" strokeWidth={1.5} />
-              </button>
-              <button onClick={() => handleAlign("center-v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center vertical" title="Align Vertical Center">
-                <Icon name="align-v" class="size-4" strokeWidth={1.5} />
-              </button>
-              <button onClick={() => handleAlign("bottom")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align bottom" title="Align Bottom">
-                <Icon name="align-bottom" class="size-4" strokeWidth={1.5} />
-              </button>
+              <Tooltip content="Align Left">
+                <button onClick={() => handleAlign("left")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align left">
+                  <Icon name="align-left" class="size-4" strokeWidth={1.5} />
+                </button>
+              </Tooltip>
+              <Tooltip content="Align Horizontal Center">
+                <button onClick={() => handleAlign("center-h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center horizontal">
+                  <Icon name="align-h" class="size-4" strokeWidth={1.5} />
+                </button>
+              </Tooltip>
+              <Tooltip content="Align Right">
+                <button onClick={() => handleAlign("right")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align right">
+                  <Icon name="align-right" class="size-4" strokeWidth={1.5} />
+                </button>
+              </Tooltip>
+              <Tooltip content="Align Top">
+                <button onClick={() => handleAlign("top")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align top">
+                  <Icon name="align-top" class="size-4" strokeWidth={1.5} />
+                </button>
+              </Tooltip>
+              <Tooltip content="Align Vertical Center">
+                <button onClick={() => handleAlign("center-v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align center vertical">
+                  <Icon name="align-v" class="size-4" strokeWidth={1.5} />
+                </button>
+              </Tooltip>
+              <Tooltip content="Align Bottom">
+                <button onClick={() => handleAlign("bottom")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Align bottom">
+                  <Icon name="align-bottom" class="size-4" strokeWidth={1.5} />
+                </button>
+              </Tooltip>
             </div>
           </div>
 
           <div class={clsx("flex flex-col gap-1.5 text-editor-icon mt-1", isLocked() && "opacity-30 pointer-events-none")}>
             <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Flip</span>
             <div class="flex items-center gap-2 bg-editor-field/30 p-1.5 rounded-[4px] border border-editor-field-border">
-              <button onClick={() => handleFlip("h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip horizontal" title="Flip Horizontal">
-                <Icon name="flip-h" class="size-4" strokeWidth={1.5} />
-              </button>
-              <button onClick={() => handleFlip("v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip vertical" title="Flip Vertical">
-                <Icon name="flip-v" class="size-4" strokeWidth={1.5} />
-              </button>
+              <Tooltip content="Flip Horizontal">
+                <button onClick={() => handleFlip("h")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip horizontal">
+                  <Icon name="flip-h" class="size-4" strokeWidth={1.5} />
+                </button>
+              </Tooltip>
+              <Tooltip content="Flip Vertical">
+                <button onClick={() => handleFlip("v")} class="rounded-[3px] p-0.5 hover:text-editor-text" aria-label="Flip vertical">
+                  <Icon name="flip-v" class="size-4" strokeWidth={1.5} />
+                </button>
+              </Tooltip>
             </div>
           </div>
 
           <div class="h-px bg-editor-divider my-1" />
 
-          <button
-            onClick={handleResetTransform}
-            disabled={isLocked()}
-            class={clsx(
-              "flex h-[24px] w-full items-center justify-center rounded-[3px] border px-2 text-[11px] font-medium transition-colors",
-              isLocked()
-                ? "border-transparent text-editor-text-dim/30 cursor-default"
-                : "border-editor-field-border bg-editor-field text-editor-text hover:bg-editor-field/85",
-            )}
-          >
-            Reset Transform
-          </button>
+          <Tooltip content="Reset Transform">
+            <button
+              onClick={handleResetTransform}
+              disabled={isLocked()}
+              class={clsx(
+                "flex h-[24px] w-full items-center justify-center rounded-[3px] border px-2 text-[11px] font-medium transition-colors",
+                isLocked()
+                  ? "border-transparent text-editor-text-dim/30 cursor-default"
+                  : "border-editor-field-border bg-editor-field text-editor-text hover:bg-editor-field/85",
+              )}
+            >
+              Reset Transform
+            </button>
+          </Tooltip>
         </MoreDropdown>
       </Show>
     </>

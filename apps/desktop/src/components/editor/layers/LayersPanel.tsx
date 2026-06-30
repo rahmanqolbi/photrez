@@ -1,7 +1,7 @@
 import { For, Show, createSignal, createEffect } from "solid-js";
 import { clsx } from "clsx";
-import fjord from "@/assets/fjord.jpg";
 import { Icon } from "../icons";
+import { Tooltip } from "../Tooltip";
 import { useEditor } from "../shell/EditorContext";
 import { useDragController } from "../DragController";
 import { addLayerFromCrossDoc, addFilesAsLayers, addFilesAsLayersFromFileDrop } from "../crossDocLayerOps";
@@ -293,50 +293,54 @@ export function LayersPanel() {
       <div class={clsx("flex items-center gap-4 px-3.5 py-3", !activeDocumentId() && "opacity-50 pointer-events-none")}>
         <span class="text-[12px] text-editor-text-dim">Lock:</span>
         <div class="flex items-center gap-4 text-editor-icon">
-          <button
-            disabled={!activeLayer()}
-            onClick={(e) => activeLayer() && handleToggleLock(e, activeLayer()!.id)}
-            class={clsx(
-              "hover:text-editor-text transition-colors flex items-center justify-center size-4",
-              activeLayer()?.locked ? "text-editor-accent" : "text-editor-text-dim"
-            )}
-            title={activeLayer()?.locked ? "Unlock layer" : "Lock layer"}
-          >
-            <Icon name={activeLayer()?.locked ? "lock" : "unlock"} class="size-[15px]" strokeWidth={1.75} />
-          </button>
-          <button
-            disabled={!activeLayer() || activeLayer()?.locked}
-            onClick={(e) => activeLayer() && handleToggleLockTransparency(e, activeLayer()!.id)}
-            class={clsx(
-              "hover:text-editor-text transition-colors flex items-center justify-center size-4 disabled:opacity-30",
-              activeLayer()?.lockTransparency ? "text-editor-accent" : "text-editor-text-dim"
-            )}
-            title={activeLayer()?.lockTransparency ? "Unlock Transparency" : "Lock Transparency"}
-          >
-            <Icon name="paint-bucket" class="size-[15px]" strokeWidth={1.75} />
-          </button>
-          <button
-            disabled={!activeLayer() || activeLayer()?.locked}
-            onClick={(e) => activeLayer() && handleToggleLockPosition(e, activeLayer()!.id)}
-            class={clsx(
-              "hover:text-editor-text transition-colors flex items-center justify-center size-4 disabled:opacity-30",
-              activeLayer()?.lockPosition ? "text-editor-accent" : "text-editor-text-dim"
-            )}
-            title={activeLayer()?.lockPosition ? "Unlock Position" : "Lock Position"}
-          >
-            <Icon name="maximize" class="size-[15px]" strokeWidth={1.75} />
-          </button>
-          <button
-            disabled={!activeLayer() || activeLayer()?.locked}
-            onClick={(e) => activeLayer() && handleToggleLockRotation(e, activeLayer()!.id)}
-            class={clsx(
-              "hover:text-editor-text transition-colors flex items-center justify-center size-4 disabled:opacity-30",
-              activeLayer()?.lockRotation ? "text-editor-accent" : "text-editor-text-dim"
-            )}
-            title={activeLayer()?.lockRotation ? "Unlock Rotation" : "Lock Rotation"}
-          >
-            <Icon name="rotate" class="size-[15px]" strokeWidth={1.75} />
-          </button>
+          <Tooltip content={activeLayer()?.locked ? "Unlock layer" : "Lock layer"}>
+            <button
+              disabled={!activeLayer()}
+              onClick={(e) => activeLayer() && handleToggleLock(e, activeLayer()!.id)}
+              class={clsx(
+                "hover:text-editor-text transition-colors flex items-center justify-center size-4",
+                activeLayer()?.locked ? "text-editor-accent" : "text-editor-text-dim"
+              )}
+            >
+              <Icon name={activeLayer()?.locked ? "lock" : "unlock"} class="size-[15px]" strokeWidth={1.75} />
+            </button>
+          </Tooltip>
+          <Tooltip content={activeLayer()?.lockTransparency ? "Unlock Transparency" : "Lock Transparency"}>
+            <button
+              disabled={!activeLayer() || activeLayer()?.locked}
+              onClick={(e) => activeLayer() && handleToggleLockTransparency(e, activeLayer()!.id)}
+              class={clsx(
+                "hover:text-editor-text transition-colors flex items-center justify-center size-4 disabled:opacity-30",
+                activeLayer()?.lockTransparency ? "text-editor-accent" : "text-editor-text-dim"
+              )}
+            >
+              <Icon name="paint-bucket" class="size-[15px]" strokeWidth={1.75} />
+            </button>
+          </Tooltip>
+          <Tooltip content={activeLayer()?.lockPosition ? "Unlock Position" : "Lock Position"}>
+            <button
+              disabled={!activeLayer() || activeLayer()?.locked}
+              onClick={(e) => activeLayer() && handleToggleLockPosition(e, activeLayer()!.id)}
+              class={clsx(
+                "hover:text-editor-text transition-colors flex items-center justify-center size-4 disabled:opacity-30",
+                activeLayer()?.lockPosition ? "text-editor-accent" : "text-editor-text-dim"
+              )}
+            >
+              <Icon name="maximize" class="size-[15px]" strokeWidth={1.75} />
+            </button>
+          </Tooltip>
+          <Tooltip content={activeLayer()?.lockRotation ? "Unlock Rotation" : "Lock Rotation"}>
+            <button
+              disabled={!activeLayer() || activeLayer()?.locked}
+              onClick={(e) => activeLayer() && handleToggleLockRotation(e, activeLayer()!.id)}
+              class={clsx(
+                "hover:text-editor-text transition-colors flex items-center justify-center size-4 disabled:opacity-30",
+                activeLayer()?.lockRotation ? "text-editor-accent" : "text-editor-text-dim"
+              )}
+            >
+              <Icon name="rotate" class="size-[15px]" strokeWidth={1.75} />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -457,50 +461,55 @@ export function LayersPanel() {
 
       {/* Layer Actions footer */}
       <div class={clsx("flex shrink-0 items-center gap-5 border-t border-editor-divider bg-editor-panel px-4 py-2.5 text-editor-icon", !activeDocumentId() && "opacity-50 pointer-events-none")}>
-        <button
-          onClick={handleAddLayer}
-          class="hover:text-editor-text"
-          aria-label="New Layer"
-          title="New Layer"
-        >
-          <Icon name="plus" class="size-[17px]" strokeWidth={1.75} />
-        </button>
-        <button
-          onClick={handleDuplicateActiveLayer}
-          disabled={!activeLayer()}
-          class="hover:text-editor-text disabled:opacity-30"
-          aria-label="Duplicate Layer"
-          title="Duplicate Layer"
-        >
-          <Icon name="copy" class="size-[17px]" strokeWidth={1.75} />
-        </button>
-        <button
-          onClick={handleMergeActiveLayerDown}
-          disabled={!activeLayer() || layers().indexOf(activeLayer()!) === layers().length - 1}
-          class="hover:text-editor-text disabled:opacity-30"
-          aria-label="Merge Down"
-          title="Merge Down"
-        >
-          <Icon name="chevron-down" class="size-[17px]" strokeWidth={1.75} />
-        </button>
-        <button
-          onClick={handleFlattenAllLayers}
-          disabled={layers().length <= 1}
-          class="hover:text-editor-text disabled:opacity-30"
-          aria-label="Flatten All Layers"
-          title="Flatten All Layers"
-        >
-          <Icon name="square-dashed" class="size-[17px]" strokeWidth={1.75} />
-        </button>
-        <button
-          disabled={layers().length <= 1}
-          onClick={handleDeleteActiveLayer}
-          class="ml-auto hover:text-editor-accent disabled:opacity-30 disabled:hover:text-editor-icon"
-          aria-label="Delete Layer"
-          title="Delete Layer"
-        >
-          <Icon name="trash" class="size-[17px]" strokeWidth={1.75} />
-        </button>
+        <Tooltip content="New Layer">
+          <button
+            onClick={handleAddLayer}
+            class="hover:text-editor-text"
+            aria-label="New Layer"
+          >
+            <Icon name="plus" class="size-[17px]" strokeWidth={1.75} />
+          </button>
+        </Tooltip>
+        <Tooltip content="Duplicate Layer">
+          <button
+            onClick={handleDuplicateActiveLayer}
+            disabled={!activeLayer()}
+            class="hover:text-editor-text disabled:opacity-30"
+            aria-label="Duplicate Layer"
+          >
+            <Icon name="copy" class="size-[17px]" strokeWidth={1.75} />
+          </button>
+        </Tooltip>
+        <Tooltip content="Merge Down">
+          <button
+            onClick={handleMergeActiveLayerDown}
+            disabled={!activeLayer() || layers().indexOf(activeLayer()!) === layers().length - 1}
+            class="hover:text-editor-text disabled:opacity-30"
+            aria-label="Merge Down"
+          >
+            <Icon name="chevron-down" class="size-[17px]" strokeWidth={1.75} />
+          </button>
+        </Tooltip>
+        <Tooltip content="Flatten All Layers">
+          <button
+            onClick={handleFlattenAllLayers}
+            disabled={layers().length <= 1}
+            class="hover:text-editor-text disabled:opacity-30"
+            aria-label="Flatten All Layers"
+          >
+            <Icon name="square-dashed" class="size-[17px]" strokeWidth={1.75} />
+          </button>
+        </Tooltip>
+        <Tooltip content="Delete Layer">
+          <button
+            disabled={layers().length <= 1}
+            onClick={handleDeleteActiveLayer}
+            class="ml-auto hover:text-editor-accent disabled:opacity-30 disabled:hover:text-editor-icon"
+            aria-label="Delete Layer"
+          >
+            <Icon name="trash" class="size-[17px]" strokeWidth={1.75} />
+          </button>
+        </Tooltip>
       </div>
     </div>
   );

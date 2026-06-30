@@ -12,6 +12,7 @@ import {
   Brush,
   Camera,
   ChartSpline,
+  Check,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -73,6 +74,7 @@ export type IconName =
   | "minus"
   | "square"
   | "x"
+  | "check"
   | "chevron-down"
   | "chevron-up"
   | "chevron-right"
@@ -146,6 +148,7 @@ const ICONS: Record<IconName, LucideIcon> = {
   minus: Minus,
   square: Square,
   x: X,
+  check: Check,
   "chevron-down": ChevronDown,
   "chevron-up": ChevronUp,
   "chevron-right": ChevronRight,

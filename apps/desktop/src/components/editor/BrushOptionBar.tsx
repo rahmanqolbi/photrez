@@ -2,6 +2,7 @@ import { Show, createSignal, For } from "solid-js";
 import { useEditor } from "./shell/EditorContext";
 import { clampPaintPercent, clampPaintSize, clampPaintSmoothing, BRUSH_PRESETS, applyPaintPreset, sizeSliderToPaintSize, paintSizeToSizeSlider } from "./brushToolState";
 import { ToolPill, MoreDropdown, Divider } from "./shell/OptionBarShared";
+import { Tooltip } from "./Tooltip";
 import { Icon } from "./icons";
 import { Slider } from "./primitives";
 
@@ -210,15 +211,16 @@ export function BrushOptionBar() {
         </label>
 
         <div class="relative">
-          <button
-            type="button"
-            data-paint-preset
-            onClick={() => setShowPresets(!showPresets())}
-            class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:border-editor-accent"
-            title="Brush presets"
-          >
-            {currentPresetName()}
-          </button>
+          <Tooltip content="Brush presets">
+            <button
+              type="button"
+              data-paint-preset
+              onClick={() => setShowPresets(!showPresets())}
+              class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:border-editor-accent"
+            >
+              {currentPresetName()}
+            </button>
+          </Tooltip>
           <Show when={showPresets()}>
             <div class="absolute top-full left-0 z-50 mt-1 flex flex-col rounded-[4px] border border-editor-field-border bg-editor-panel py-1 shadow-lg">
               <div class="fixed inset-0 z-[-1]" onClick={() => setShowPresets(false)} />
@@ -238,23 +240,24 @@ export function BrushOptionBar() {
         </div>
 
         <Show when={isEraser()}>
-          <button
-            type="button"
-            class="h-[24px] rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:border-editor-accent"
-            aria-label="Set eraser to full hard strength"
-            title="Set eraser to full hard strength"
-            onClick={() => {
-              setEraserHardness(1);
-              setEraserOpacity(1);
-              setEraserFlow(1);
-              clearPresetId();
-            }}
-          >
-            Hard 100
-          </button>
+          <Tooltip content="Set eraser to full hard strength">
+            <button
+              type="button"
+              class="h-[24px] rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:border-editor-accent"
+              aria-label="Set eraser to full hard strength"
+              onClick={() => {
+                setEraserHardness(1);
+                setEraserOpacity(1);
+                setEraserFlow(1);
+                clearPresetId();
+              }}
+            >
+              Hard 100
+            </button>
+          </Tooltip>
         </Show>
       </div>
-
+ 
       {/* Overflow dropdown for narrow container */}
       <MoreDropdown>
         {/* Hardness */}
@@ -326,15 +329,16 @@ export function BrushOptionBar() {
         <div class="flex flex-col gap-1">
           <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Presets</span>
           <div class="relative">
-            <button
-              type="button"
-              onClick={() => setShowPresets(!showPresets())}
-              class="flex h-[24px] w-full items-center justify-between rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:border-editor-accent"
-              title="Brush presets"
-            >
-              <span>{currentPresetName()}</span>
-              <Icon name="chevron-down" class="size-3" strokeWidth={1.5} />
-            </button>
+            <Tooltip content="Brush presets">
+              <button
+                type="button"
+                onClick={() => setShowPresets(!showPresets())}
+                class="flex h-[24px] w-full items-center justify-between rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:border-editor-accent"
+              >
+                <span>{currentPresetName()}</span>
+                <Icon name="chevron-down" class="size-3" strokeWidth={1.5} />
+              </button>
+            </Tooltip>
             <Show when={showPresets()}>
               <div class="absolute bottom-full right-0 z-50 mb-1 flex flex-col rounded-[4px] border border-editor-field-border bg-editor-panel py-1 shadow-lg max-h-[150px] overflow-y-auto">
                 <div class="fixed inset-0 z-[-1]" onClick={() => setShowPresets(false)} />
@@ -356,20 +360,21 @@ export function BrushOptionBar() {
 
         {/* Eraser hard-100 helper */}
         <Show when={isEraser()}>
-          <button
-            type="button"
-            class="h-[24px] w-full rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors mt-1"
-            aria-label="Set eraser to full hard strength"
-            title="Set eraser to full hard strength"
-            onClick={() => {
-              setEraserHardness(1);
-              setEraserOpacity(1);
-              setEraserFlow(1);
-              clearPresetId();
-            }}
-          >
-            Hard 100
-          </button>
+          <Tooltip content="Set eraser to full hard strength">
+            <button
+              type="button"
+              class="h-[24px] w-full rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors mt-1"
+              aria-label="Set eraser to full hard strength"
+              onClick={() => {
+                setEraserHardness(1);
+                setEraserOpacity(1);
+                setEraserFlow(1);
+                clearPresetId();
+              }}
+            >
+              Hard 100
+            </button>
+          </Tooltip>
         </Show>
       </MoreDropdown>
     </>

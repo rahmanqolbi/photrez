@@ -1,6 +1,7 @@
 import { createSignal, Show } from "solid-js";
 import { clsx } from "clsx";
 import { Icon } from "../icons";
+import { Tooltip } from "../Tooltip";
 import { LayersPanel } from "../layers/LayersPanel";
 import { PropertiesPanel } from "../PropertiesPanel";
 import { AdjustmentsPanel } from "../AdjustmentsPanel";
@@ -122,20 +123,21 @@ function InspectorDock() {
 function LayoutToggleButton() {
   const { rightDockLayout, setRightDockLayout } = useEditor();
   return (
-    <button
-      onClick={() => setRightDockLayout(rightDockLayout() === "side-by-side" ? "stacked" : "side-by-side")}
-      class={clsx(
-        "flex size-7 items-center justify-center rounded-[4px] text-editor-icon hover:bg-white/[0.045] hover:text-editor-text",
-        rightDockLayout() === "stacked" && "text-editor-accent"
-      )}
-      title={rightDockLayout() === "side-by-side" ? "Switch to Stacked Dock" : "Switch to Side-by-Side Dock"}
-    >
-      <Icon
-        name="columns"
-        class="size-4"
-        strokeWidth={1.75}
-      />
-    </button>
+    <Tooltip content={rightDockLayout() === "side-by-side" ? "Switch to Stacked Dock" : "Switch to Side-by-Side Dock"}>
+      <button
+        onClick={() => setRightDockLayout(rightDockLayout() === "side-by-side" ? "stacked" : "side-by-side")}
+        class={clsx(
+          "flex size-7 items-center justify-center rounded-[4px] text-editor-icon hover:bg-white/[0.045] hover:text-editor-text",
+          rightDockLayout() === "stacked" && "text-editor-accent"
+        )}
+      >
+        <Icon
+          name="columns"
+          class="size-4"
+          strokeWidth={1.75}
+        />
+      </button>
+    </Tooltip>
   );
 }
 
@@ -221,26 +223,27 @@ function LayerDock(props: Pick<RightDockProps, "onClose">) {
             <span>Navigator</span>
           </button>
           <Show when={!navigatorCollapsed()}>
-            <button
-              onClick={() => {
-                const engine = workspace.getActiveEngine();
-                if (engine) {
-                  const container = document.getElementById("canvas-container");
-                  const rect = container?.getBoundingClientRect();
-                  if (rect) {
-                    engine.fitToScreen(rect.width, rect.height);
-                    syncViewport();
-                    const dpr = window.devicePixelRatio || 1;
-                    renderer.resizeToViewport(rect.width, rect.height, dpr);
-                    scheduler.requestRender();
+            <Tooltip content="Fit Screen">
+              <button
+                onClick={() => {
+                  const engine = workspace.getActiveEngine();
+                  if (engine) {
+                    const container = document.getElementById("canvas-container");
+                    const rect = container?.getBoundingClientRect();
+                    if (rect) {
+                      engine.fitToScreen(rect.width, rect.height);
+                      syncViewport();
+                      const dpr = window.devicePixelRatio || 1;
+                      renderer.resizeToViewport(rect.width, rect.height, dpr);
+                      scheduler.requestRender();
+                    }
                   }
-                }
-              }}
-              class="text-editor-text-dim hover:text-editor-text transition-colors p-1 rounded hover:bg-white/5"
-              title="Fit Screen"
-            >
-              <Icon name="maximize" class="size-3.5" strokeWidth={1.75} />
-            </button>
+                }}
+                class="text-editor-text-dim hover:text-editor-text transition-colors p-1 rounded hover:bg-white/5"
+              >
+                <Icon name="maximize" class="size-3.5" strokeWidth={1.75} />
+              </button>
+            </Tooltip>
           </Show>
         </div>
         

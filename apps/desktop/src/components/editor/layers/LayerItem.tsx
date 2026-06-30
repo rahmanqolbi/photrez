@@ -1,6 +1,7 @@
 import { Show } from "solid-js";
 import { clsx } from "clsx";
 import { Icon } from "../icons";
+import { Tooltip } from "../Tooltip";
 import { LayerNode, DocumentModel } from "@/engine/types";
 import { LayerThumb } from "./LayerThumb";
 import { LAYER_DRAG_MIME, LayerDragPayload } from "../dragTypes";
@@ -137,18 +138,19 @@ export function LayerItem(props: LayerItemProps) {
       )}
     >
       {/* Eye toggle button */}
-      <button
-        data-layer-visibility
-        onClick={(e) => props.onToggleVisibility(e, props.layer.id)}
-        class="text-editor-icon hover:text-editor-text size-6 flex items-center justify-center z-10"
-        title={props.layer.visible ? "Hide Layer" : "Show Layer"}
-      >
-        <Icon
-          name="eye"
-          class={clsx("size-4 shrink-0", !props.layer.visible && "opacity-30")}
-          strokeWidth={1.75}
-        />
-      </button>
+      <Tooltip content={props.layer.visible ? "Hide Layer" : "Show Layer"}>
+        <button
+          data-layer-visibility
+          onClick={(e) => props.onToggleVisibility(e, props.layer.id)}
+          class="text-editor-icon hover:text-editor-text size-6 flex items-center justify-center z-10"
+        >
+          <Icon
+            name="eye"
+            class={clsx("size-4 shrink-0", !props.layer.visible && "opacity-30")}
+            strokeWidth={1.75}
+          />
+        </button>
+      </Tooltip>
 
       {/* Layer Thumbnail */}
       <Show
@@ -212,32 +214,35 @@ export function LayerItem(props: LayerItemProps) {
 
       {/* Up and Down Chevrons for Reordering */}
       <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pr-1">
-        <button
-          disabled={props.idx === 0}
-          onClick={(e) => props.onMoveUp(e, props.idx)}
-          class="size-[22px] flex items-center justify-center hover:bg-white/10 rounded disabled:opacity-20 disabled:hover:bg-transparent"
-          title="Move Layer Up"
-        >
-          <Icon name="chevron-up" class="size-3.5" />
-        </button>
-        <button
-          disabled={props.idx === props.layersLength - 1}
-          onClick={(e) => props.onMoveDown(e, props.idx)}
-          class="size-[22px] flex items-center justify-center hover:bg-white/10 rounded disabled:opacity-20 disabled:hover:bg-transparent"
-          title="Move Layer Down"
-        >
-          <Icon name="chevron-down" class="size-3.5" />
-        </button>
+        <Tooltip content="Move Layer Up">
+          <button
+            disabled={props.idx === 0}
+            onClick={(e) => props.onMoveUp(e, props.idx)}
+            class="size-[22px] flex items-center justify-center hover:bg-white/10 rounded disabled:opacity-20 disabled:hover:bg-transparent"
+          >
+            <Icon name="chevron-up" class="size-3.5" />
+          </button>
+        </Tooltip>
+        <Tooltip content="Move Layer Down">
+          <button
+            disabled={props.idx === props.layersLength - 1}
+            onClick={(e) => props.onMoveDown(e, props.idx)}
+            class="size-[22px] flex items-center justify-center hover:bg-white/10 rounded disabled:opacity-20 disabled:hover:bg-transparent"
+          >
+            <Icon name="chevron-down" class="size-3.5" />
+          </button>
+        </Tooltip>
       </div>
 
       {/* Adjustments Indicator */}
       <Show when={props.layer.hasAdjustments}>
-        <div
-          class="text-editor-accent size-6 flex items-center justify-center mr-1"
-          title="Layer has basic adjustments (brightness/contrast/saturation) applied"
-        >
-          <Icon name="sliders" class="size-3.5 shrink-0" strokeWidth={1.75} />
-        </div>
+        <Tooltip content="Layer has basic adjustments (brightness/contrast/saturation) applied">
+          <div
+            class="text-editor-accent size-6 flex items-center justify-center mr-1"
+          >
+            <Icon name="sliders" class="size-3.5 shrink-0" strokeWidth={1.75} />
+          </div>
+        </Tooltip>
       </Show>
 
       {/* Lock Indicator */}

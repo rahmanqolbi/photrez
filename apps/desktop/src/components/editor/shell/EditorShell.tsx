@@ -1,4 +1,4 @@
-import { createSignal, onCleanup, Show } from "solid-js";
+import { createSignal, lazy, onCleanup, Show, Suspense } from "solid-js";
 import { AppTitleBar } from "./AppTitleBar";
 import { BottomStatusBar } from "./BottomStatusBar";
 import { CanvasViewport } from "../canvas/CanvasViewport";
@@ -8,9 +8,10 @@ import { OptionBar } from "./OptionBar";
 import { RightDock } from "./RightDock";
 import { useDesktopGuards, useDesktopShortcuts } from "@/lib/desktop";
 import { EmptyWorkspace } from "./EmptyWorkspace";
-import { ResizeCanvasModal } from "../dialogs/ResizeCanvasModal";
-import { ExportDialog } from "../dialogs/ExportDialog";
-import { PrintDialog } from "../dialogs/PrintDialog";
+
+const ResizeCanvasModal = lazy(() => import("../dialogs/ResizeCanvasModal").then(m => ({ default: m.ResizeCanvasModal })));
+const ExportDialog = lazy(() => import("../dialogs/ExportDialog").then(m => ({ default: m.ExportDialog })));
+const PrintDialog = lazy(() => import("../dialogs/PrintDialog").then(m => ({ default: m.PrintDialog })));
 import { ToastHost } from "../Toast";
 import { GlobalDragDropHost } from "../GlobalDragDropHost";
 import { DragGlobalGuard } from "../DragController";
@@ -62,9 +63,9 @@ function EditorLayout(props: {
       </main>
 
       <BottomStatusBar />
-      <ResizeCanvasModal />
-      <ExportDialog />
-      <PrintDialog />
+      <Suspense fallback={null}><ResizeCanvasModal /></Suspense>
+      <Suspense fallback={null}><ExportDialog /></Suspense>
+      <Suspense fallback={null}><PrintDialog /></Suspense>
       <ToastHost />
     </div>
   );

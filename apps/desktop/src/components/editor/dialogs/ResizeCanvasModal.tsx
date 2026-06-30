@@ -2,6 +2,7 @@ import { Show, createEffect, createSignal, on } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useEditor } from "../shell/EditorContext";
 import { Icon } from "../icons";
+import { Tooltip } from "../Tooltip";
 import { DesktopDialog, DesktopDialogButton, desktopDialogFieldClass } from "./DesktopDialog";
 import { getEffectiveMaxDim } from "@/engine/types";
 import { showToast } from "../Toast";
@@ -143,20 +144,21 @@ export function ResizeCanvasModal() {
             </div>
 
             <div class="flex h-6 items-center pl-[60px]">
-              <button
-                type="button"
-                onClick={() => setAspectLocked(!aspectLocked())}
-                aria-pressed={aspectLocked()}
-                class={`flex h-6 items-center gap-1.5 rounded-[6px] px-1.5 text-[11px] outline-none transition-all duration-75 focus-visible:ring-1 focus-visible:ring-editor-accent/50 ${
-                  aspectLocked()
-                    ? "border border-editor-accent/40 bg-editor-accent/10 text-editor-accent shadow-[inset_0_1px_2px_rgba(225,90,23,0.15)]"
-                    : "border border-transparent bg-transparent text-editor-text-dim hover:bg-white/[0.05] hover:text-editor-text"
-                }`}
-                title={aspectLocked() ? "Unlock aspect ratio" : "Lock aspect ratio"}
-              >
-                <Icon name={aspectLocked() ? "link" : "unlock"} class="size-3.5" strokeWidth={1.75} />
-                Keep proportions
-              </button>
+              <Tooltip content={aspectLocked() ? "Unlock aspect ratio" : "Lock aspect ratio"}>
+                <button
+                  type="button"
+                  onClick={() => setAspectLocked(!aspectLocked())}
+                  aria-pressed={aspectLocked()}
+                  class={`flex h-6 items-center gap-1.5 rounded-[6px] px-1.5 text-[11px] outline-none transition-all duration-75 focus-visible:ring-1 focus-visible:ring-editor-accent/50 ${
+                    aspectLocked()
+                      ? "border border-editor-accent/40 bg-editor-accent/10 text-editor-accent shadow-[inset_0_1px_2px_rgba(225,90,23,0.15)]"
+                      : "border border-transparent bg-transparent text-editor-text-dim hover:bg-white/[0.05] hover:text-editor-text"
+                  }`}
+                >
+                  <Icon name={aspectLocked() ? "link" : "unlock"} class="size-3.5" strokeWidth={1.75} />
+                  Keep proportions
+                </button>
+              </Tooltip>
             </div>
 
             <div class="flex items-center gap-2">

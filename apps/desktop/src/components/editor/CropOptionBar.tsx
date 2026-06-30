@@ -6,6 +6,7 @@ import { toUnit, fromUnit } from "@/viewport/unitConversion";
 import { fitCropRectToAspect } from "@/viewport/cropAutoFit";
 import { getDefaultModernCropFrame, getModernCropApplyRotation, modernFrameToCropRect } from "@/viewport/modernCropGeometry";
 import { ToggleBtn, Divider, ToolPill, MoreDropdown } from "./shell/OptionBarShared";
+import { Tooltip } from "./Tooltip";
 import { Icon } from "./icons";
 import { discardCropSession, resetCropPreviewToCanvas, applyCropPreview } from "./cropToolActions";
 
@@ -470,15 +471,16 @@ export function CropOptionBar() {
             }}
             class="w-[62px]"
           />
-          <button
-            type="button"
-            onClick={handleSwap}
-            class="flex size-[20px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors cursor-pointer"
-            aria-label="Swap width and height"
-            title="Swap Width/Height"
-          >
-            <Icon name="swap" class="size-3.5" strokeWidth={1.5} />
-          </button>
+          <Tooltip content="Swap Width/Height">
+            <button
+              type="button"
+              onClick={handleSwap}
+              class="flex size-[20px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors cursor-pointer"
+              aria-label="Swap width and height"
+            >
+              <Icon name="swap" class="size-3.5" strokeWidth={1.5} />
+            </button>
+          </Tooltip>
           <EditableNumField
             label="H"
             value={customHVal()}
@@ -513,15 +515,16 @@ export function CropOptionBar() {
             }}
             class="w-[68px]"
           />
-          <button
-            type="button"
-            onClick={handleSwap}
-            class="flex size-[20px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors cursor-pointer"
-            aria-label="Swap width and height"
-            title="Swap Width/Height"
-          >
-            <Icon name="swap" class="size-3.5" strokeWidth={1.5} />
-          </button>
+          <Tooltip content="Swap Width/Height">
+            <button
+              type="button"
+              onClick={handleSwap}
+              class="flex size-[20px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors cursor-pointer"
+              aria-label="Swap width and height"
+            >
+              <Icon name="swap" class="size-3.5" strokeWidth={1.5} />
+            </button>
+          </Tooltip>
           <EditableNumField
             label="H"
             value={sizeHVal()}
@@ -587,48 +590,50 @@ export function CropOptionBar() {
 
         {/* Rotation Buttons */}
         <div class="flex items-center gap-1">
-          <button
-            onClick={() => {
-              if (cropInteractionMode() === "modern") {
-                setModernCropImageTransform((prev) => ({ ...prev, rotation: prev.rotation - 90 }));
-              } else {
-                const rect = cropRect();
-                if (rect) {
-                  commitCropState(rect, cropRotation());
-                  const cx = rect.x + rect.w / 2;
-                  const cy = rect.y + rect.h / 2;
-                  setCropRect({ x: cx - rect.h / 2, y: cy - rect.w / 2, w: rect.h, h: rect.w });
+          <Tooltip content="Rotate 90° CCW">
+            <button
+              onClick={() => {
+                if (cropInteractionMode() === "modern") {
+                  setModernCropImageTransform((prev) => ({ ...prev, rotation: prev.rotation - 90 }));
+                } else {
+                  const rect = cropRect();
+                  if (rect) {
+                    commitCropState(rect, cropRotation());
+                    const cx = rect.x + rect.w / 2;
+                    const cy = rect.y + rect.h / 2;
+                    setCropRect({ x: cx - rect.h / 2, y: cy - rect.w / 2, w: rect.h, h: rect.w });
+                  }
+                  setCropRotation(cropRotation() - 90);
                 }
-                setCropRotation(cropRotation() - 90);
-              }
-            }}
-            class="flex size-[24px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors"
-            aria-label="Rotate 90 degrees counter-clockwise"
-            title="Rotate 90° CCW"
-          >
-            <Icon name="rotate-ccw" class="size-4" strokeWidth={1.5} />
-          </button>
-          <button
-            onClick={() => {
-              if (cropInteractionMode() === "modern") {
-                setModernCropImageTransform((prev) => ({ ...prev, rotation: prev.rotation + 90 }));
-              } else {
-                const rect = cropRect();
-                if (rect) {
-                  commitCropState(rect, cropRotation());
-                  const cx = rect.x + rect.w / 2;
-                  const cy = rect.y + rect.h / 2;
-                  setCropRect({ x: cx - rect.h / 2, y: cy - rect.w / 2, w: rect.h, h: rect.w });
+              }}
+              class="flex size-[24px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors"
+              aria-label="Rotate 90 degrees counter-clockwise"
+            >
+              <Icon name="rotate-ccw" class="size-4" strokeWidth={1.5} />
+            </button>
+          </Tooltip>
+          <Tooltip content="Rotate 90° CW">
+            <button
+              onClick={() => {
+                if (cropInteractionMode() === "modern") {
+                  setModernCropImageTransform((prev) => ({ ...prev, rotation: prev.rotation + 90 }));
+                } else {
+                  const rect = cropRect();
+                  if (rect) {
+                    commitCropState(rect, cropRotation());
+                    const cx = rect.x + rect.w / 2;
+                    const cy = rect.y + rect.h / 2;
+                    setCropRect({ x: cx - rect.h / 2, y: cy - rect.w / 2, w: rect.h, h: rect.w });
+                  }
+                  setCropRotation(cropRotation() + 90);
                 }
-                setCropRotation(cropRotation() + 90);
-              }
-            }}
-            class="flex size-[24px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors"
-            aria-label="Rotate 90 degrees clockwise"
-            title="Rotate 90° CW"
-          >
-            <Icon name="rotate-cw" class="size-4" strokeWidth={1.5} />
-          </button>
+              }}
+              class="flex size-[24px] shrink-0 items-center justify-center rounded-[3px] border border-transparent text-editor-icon hover:border-editor-field-border hover:text-editor-text transition-colors"
+              aria-label="Rotate 90 degrees clockwise"
+            >
+              <Icon name="rotate-cw" class="size-4" strokeWidth={1.5} />
+            </button>
+          </Tooltip>
         </div>
 
         <Divider />
@@ -660,51 +665,55 @@ export function CropOptionBar() {
         <Divider />
 
         {/* Delete pixels toggle */}
-        <ToggleBtn
-          active={cropDeletePixels()}
-          onChange={setCropDeletePixels}
-          icon="trash"
-          label="Delete"
-          labelClass="@max-[900px]:hidden"
-          title={cropDeletePixels() ? "Delete Cropped Pixels (Destructive)" : "Keep Cropped Pixels (Non-Destructive)"}
-        />
+        <Tooltip content={cropDeletePixels() ? "Delete Cropped Pixels (Destructive)" : "Keep Cropped Pixels (Non-Destructive)"}>
+          <ToggleBtn
+            active={cropDeletePixels()}
+            onChange={setCropDeletePixels}
+            icon="trash"
+            label="Delete"
+            labelClass="@max-[900px]:hidden"
+          />
+        </Tooltip>
 
         <Divider />
 
-        <ToggleBtn
-          active={cropFillEnabled()}
-          onChange={setCropFillEnabled}
-          icon="paint-bucket"
-          label="Fill BG"
-          labelClass="@max-[900px]:hidden"
-          title={cropFillEnabled() ? "Fill empty crop areas" : "Leave empty crop areas transparent"}
-        />
+        <Tooltip content={cropFillEnabled() ? "Fill empty crop areas" : "Leave empty crop areas transparent"}>
+          <ToggleBtn
+            active={cropFillEnabled()}
+            onChange={setCropFillEnabled}
+            icon="paint-bucket"
+            label="Fill BG"
+            labelClass="@max-[900px]:hidden"
+          />
+        </Tooltip>
 
         <Show when={cropFillEnabled()}>
           <div
             class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1"
             data-crop-fill-source={cropFillSource()}
           >
-            <input
-              data-crop-fill-color
-              type="color"
-              value={resolvedCropFillColor()}
-              onInput={(e) => {
-                setCropFillSource("custom");
-                setCropFillCustomColor(e.currentTarget.value);
-              }}
-              class="h-[18px] w-[22px] cursor-pointer rounded-[2px] border border-editor-field-border bg-transparent p-0"
-              title="Crop fill color"
-            />
-            <button
-              data-crop-fill-use-bg
-              type="button"
-              onClick={() => setCropFillSource("background")}
-              class="h-[18px] rounded-[2px] px-1.5 text-[10px] text-editor-text-dim hover:bg-editor-hover hover:text-editor-text"
-              title="Use Background Color"
-            >
-              Use BG
-            </button>
+            <Tooltip content="Crop fill color">
+              <input
+                data-crop-fill-color
+                type="color"
+                value={resolvedCropFillColor()}
+                onInput={(e) => {
+                  setCropFillSource("custom");
+                  setCropFillCustomColor(e.currentTarget.value);
+                }}
+                class="h-[18px] w-[22px] cursor-pointer rounded-[2px] border border-editor-field-border bg-transparent p-0"
+              />
+            </Tooltip>
+            <Tooltip content="Use Background Color">
+              <button
+                data-crop-fill-use-bg
+                type="button"
+                onClick={() => setCropFillSource("background")}
+                class="h-[18px] rounded-[2px] px-1.5 text-[10px] text-editor-text-dim hover:bg-editor-hover hover:text-editor-text"
+              >
+                Use BG
+              </button>
+            </Tooltip>
           </div>
         </Show>
       </div>
@@ -734,46 +743,48 @@ export function CropOptionBar() {
         <div class="flex flex-col gap-1.5 mt-1.5">
           <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Rotate</span>
           <div class="flex items-center gap-1 bg-editor-field/30 p-1.5 rounded-[4px] border border-editor-field-border">
-            <button
-              onClick={() => {
-                if (cropInteractionMode() === "modern") {
-                  setModernCropImageTransform((prev) => ({ ...prev, rotation: prev.rotation - 90 }));
-                } else {
-                  const rect = cropRect();
-                  if (rect) {
-                    commitCropState(rect, cropRotation());
-                    const cx = rect.x + rect.w / 2;
-                    const cy = rect.y + rect.h / 2;
-                    setCropRect({ x: cx - rect.h / 2, y: cy - rect.w / 2, w: rect.h, h: rect.w });
+            <Tooltip content="Rotate 90° CCW">
+              <button
+                onClick={() => {
+                  if (cropInteractionMode() === "modern") {
+                    setModernCropImageTransform((prev) => ({ ...prev, rotation: prev.rotation - 90 }));
+                  } else {
+                    const rect = cropRect();
+                    if (rect) {
+                      commitCropState(rect, cropRotation());
+                      const cx = rect.x + rect.w / 2;
+                      const cy = rect.y + rect.h / 2;
+                      setCropRect({ x: cx - rect.h / 2, y: cy - rect.w / 2, w: rect.h, h: rect.w });
+                    }
+                    setCropRotation(cropRotation() - 90);
                   }
-                  setCropRotation(cropRotation() - 90);
-                }
-              }}
-              class="flex flex-1 size-[24px] items-center justify-center rounded-[3px] hover:bg-editor-field/50 text-editor-icon hover:text-editor-text transition-colors"
-              title="Rotate 90° CCW"
-            >
-              <Icon name="rotate-ccw" class="size-4" strokeWidth={1.5} />
-            </button>
-            <button
-              onClick={() => {
-                if (cropInteractionMode() === "modern") {
-                  setModernCropImageTransform((prev) => ({ ...prev, rotation: prev.rotation + 90 }));
-                } else {
-                  const rect = cropRect();
-                  if (rect) {
-                    commitCropState(rect, cropRotation());
-                    const cx = rect.x + rect.w / 2;
-                    const cy = rect.y + rect.h / 2;
-                    setCropRect({ x: cx - rect.h / 2, y: cy - rect.w / 2, w: rect.h, h: rect.w });
+                }}
+                class="flex flex-1 size-[24px] items-center justify-center rounded-[3px] hover:bg-editor-field/50 text-editor-icon hover:text-editor-text transition-colors"
+              >
+                <Icon name="rotate-ccw" class="size-4" strokeWidth={1.5} />
+              </button>
+            </Tooltip>
+            <Tooltip content="Rotate 90° CW">
+              <button
+                onClick={() => {
+                  if (cropInteractionMode() === "modern") {
+                    setModernCropImageTransform((prev) => ({ ...prev, rotation: prev.rotation + 90 }));
+                  } else {
+                    const rect = cropRect();
+                    if (rect) {
+                      commitCropState(rect, cropRotation());
+                      const cx = rect.x + rect.w / 2;
+                      const cy = rect.y + rect.h / 2;
+                      setCropRect({ x: cx - rect.h / 2, y: cy - rect.w / 2, w: rect.h, h: rect.w });
+                    }
+                    setCropRotation(cropRotation() + 90);
                   }
-                  setCropRotation(cropRotation() + 90);
-                }
-              }}
-              class="flex flex-1 size-[24px] items-center justify-center rounded-[3px] hover:bg-editor-field/50 text-editor-icon hover:text-editor-text transition-colors"
-              title="Rotate 90° CW"
-            >
-              <Icon name="rotate-cw" class="size-4" strokeWidth={1.5} />
-            </button>
+                }}
+                class="flex flex-1 size-[24px] items-center justify-center rounded-[3px] hover:bg-editor-field/50 text-editor-icon hover:text-editor-text transition-colors"
+              >
+                <Icon name="rotate-cw" class="size-4" strokeWidth={1.5} />
+              </button>
+            </Tooltip>
           </div>
         </div>
 
@@ -807,49 +818,53 @@ onChange={(e) => {
         <div class="h-px bg-editor-divider my-1.5" />
 
         {/* Delete pixels toggle */}
-        <ToggleBtn
-          active={cropDeletePixels()}
-          onChange={setCropDeletePixels}
-          icon="trash"
-          label="Delete"
-          labelClass="flex"
-          class="w-full justify-center"
-          title={cropDeletePixels() ? "Delete Cropped Pixels (Destructive)" : "Keep Cropped Pixels (Non-Destructive)"}
-        />
+        <Tooltip content={cropDeletePixels() ? "Delete Cropped Pixels (Destructive)" : "Keep Cropped Pixels (Non-Destructive)"}>
+          <ToggleBtn
+            active={cropDeletePixels()}
+            onChange={setCropDeletePixels}
+            icon="trash"
+            label="Delete"
+            labelClass="flex"
+            class="w-full justify-center"
+          />
+        </Tooltip>
 
         {/* Fill BG toggle */}
-        <ToggleBtn
-          active={cropFillEnabled()}
-          onChange={setCropFillEnabled}
-          icon="paint-bucket"
-          label="Fill BG"
-          labelClass="flex"
-          class="w-full justify-center"
-          title={cropFillEnabled() ? "Fill empty crop areas" : "Leave empty crop areas transparent"}
-        />
+        <Tooltip content={cropFillEnabled() ? "Fill empty crop areas" : "Leave empty crop areas transparent"}>
+          <ToggleBtn
+            active={cropFillEnabled()}
+            onChange={setCropFillEnabled}
+            icon="paint-bucket"
+            label="Fill BG"
+            labelClass="flex"
+            class="w-full justify-center"
+          />
+        </Tooltip>
 
         <Show when={cropFillEnabled()}>
           <div
             class="flex h-[24px] w-full items-center gap-1.5 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5"
           >
-            <input
-              type="color"
-              value={resolvedCropFillColor()}
-              onInput={(e) => {
-                setCropFillSource("custom");
-                setCropFillCustomColor(e.currentTarget.value);
-              }}
-              class="h-[18px] w-[22px] cursor-pointer rounded-[2px] border border-editor-field-border bg-transparent p-0"
-              title="Crop fill color"
-            />
-            <button
-              type="button"
-              onClick={() => setCropFillSource("background")}
-              class="h-[18px] flex-1 rounded-[2px] px-1.5 text-[10px] text-editor-text-dim hover:bg-editor-hover hover:text-editor-text border border-editor-field-border bg-editor-field/50"
-              title="Use Background Color"
-            >
+            <Tooltip content="Crop fill color">
+              <input
+                type="color"
+                value={resolvedCropFillColor()}
+                onInput={(e) => {
+                  setCropFillSource("custom");
+                  setCropFillCustomColor(e.currentTarget.value);
+                }}
+                class="h-[18px] w-[22px] cursor-pointer rounded-[2px] border border-editor-field-border bg-transparent p-0"
+              />
+            </Tooltip>
+            <Tooltip content="Use Background Color">
+              <button
+                type="button"
+                onClick={() => setCropFillSource("background")}
+                class="h-[18px] flex-1 rounded-[2px] px-1.5 text-[10px] text-editor-text-dim hover:bg-editor-hover hover:text-editor-text border border-editor-field-border bg-editor-field/50"
+              >
               Use BG
             </button>
+            </Tooltip>
           </div>
         </Show>
       </MoreDropdown>

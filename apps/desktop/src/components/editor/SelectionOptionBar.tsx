@@ -2,6 +2,7 @@ import { Show } from "solid-js";
 import { useEditor } from "./shell/EditorContext";
 import { EditableNumField } from "./primitives";
 import { ToolPill, MoreDropdown, Divider, ToggleBtn } from "./shell/OptionBarShared";
+import { Tooltip } from "./Tooltip";
 import { Icon } from "./icons";
 import { SelectionOperations } from "@/features/selection/SelectionOperations";
 
@@ -192,73 +193,79 @@ export function SelectionOptionBar() {
       <div class="hidden @min-[880px]:flex items-center gap-1.5 shrink-0">
         <Show when={hasSelection()}>
           <Divider />
-
-          <ToggleBtn
-            active={selectionEditMode()}
-            onChange={setSelectionEditMode}
-            icon="maximize"
-            label="Transform"
-            labelClass="@max-[900px]:hidden"
-            title="Show resize/rotate handles (Ctrl+T)"
-          />
-
-          <Divider />
-
-          <button
-            onClick={handleCut}
-            class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
-            title="Cut Selection (Ctrl+X)"
-          >
-            <Icon name="slice" class="size-3" strokeWidth={1.5} />
-            Cut
-          </button>
-
-          <button
-            onClick={handleCopy}
-            class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
-            title="Copy Selection (Ctrl+C)"
-          >
-            <Icon name="copy" class="size-3" strokeWidth={1.5} />
-            Copy
-          </button>
-
-          <button
-            onClick={handlePaste}
-            class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
-            title="Paste (Ctrl+V)"
-          >
-            <Icon name="square-dashed" class="size-3" strokeWidth={1.5} />
-            Paste
-          </button>
+          <Tooltip content="Show resize/rotate handles" shortcut="Ctrl+T">
+            <ToggleBtn
+              active={selectionEditMode()}
+              onChange={setSelectionEditMode}
+              icon="maximize"
+              label="Transform"
+              labelClass="@max-[900px]:hidden"
+            />
+          </Tooltip>
 
           <Divider />
 
-          <button
-            onClick={handleInvert}
-            class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
-            title="Invert Selection (Ctrl+I)"
-          >
-            <Icon name="flip-h" class="size-3" strokeWidth={1.5} />
-            Invert
-          </button>
+          <Tooltip content="Cut Selection" shortcut="Ctrl+X">
+            <button
+              onClick={handleCut}
+              class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
+            >
+              <Icon name="slice" class="size-3" strokeWidth={1.5} />
+              Cut
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={handleDelete}
-            class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
-            title="Delete Selection Pixels (Del)"
-          >
-            <Icon name="trash" class="size-3" strokeWidth={1.5} />
-            Delete
-          </button>
+          <Tooltip content="Copy Selection" shortcut="Ctrl+C">
+            <button
+              onClick={handleCopy}
+              class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
+            >
+              <Icon name="copy" class="size-3" strokeWidth={1.5} />
+              Copy
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={handleDeselect}
-            class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
-            title="Deselect (Ctrl+D or Esc)"
-          >
-            <Icon name="x" class="size-3" strokeWidth={1.5} />
-            Deselect
-          </button>
+          <Tooltip content="Paste" shortcut="Ctrl+V">
+            <button
+              onClick={handlePaste}
+              class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
+            >
+              <Icon name="square-dashed" class="size-3" strokeWidth={1.5} />
+              Paste
+            </button>
+          </Tooltip>
+
+          <Divider />
+
+          <Tooltip content="Invert Selection" shortcut="Ctrl+I">
+            <button
+              onClick={handleInvert}
+              class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
+            >
+              <Icon name="flip-h" class="size-3" strokeWidth={1.5} />
+              Invert
+            </button>
+          </Tooltip>
+
+          <Tooltip content="Delete Selection Pixels" shortcut="Del">
+            <button
+              onClick={handleDelete}
+              class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
+            >
+              <Icon name="trash" class="size-3" strokeWidth={1.5} />
+              Delete
+            </button>
+          </Tooltip>
+
+          <Tooltip content="Deselect" shortcut="Esc">
+            <button
+              onClick={handleDeselect}
+              class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
+            >
+              <Icon name="x" class="size-3" strokeWidth={1.5} />
+              Deselect
+            </button>
+          </Tooltip>
         </Show>
       </div>
 
@@ -295,54 +302,60 @@ export function SelectionOptionBar() {
           <div class="h-px bg-editor-divider my-1" />
 
           <div class="grid grid-cols-2 gap-1.5">
-            <button
-              onClick={handleCut}
-              class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
-              title="Cut Selection (Ctrl+X)"
-            >
-              <Icon name="slice" class="size-3" strokeWidth={1.5} />
-              Cut
-            </button>
-            <button
-              onClick={handleCopy}
-              class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
-              title="Copy Selection (Ctrl+C)"
-            >
-              <Icon name="copy" class="size-3" strokeWidth={1.5} />
-              Copy
-            </button>
-            <button
-              onClick={handlePaste}
-              class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
-              title="Paste (Ctrl+V)"
-            >
-              <Icon name="square-dashed" class="size-3" strokeWidth={1.5} />
-              Paste
-            </button>
-            <button
-              onClick={handleInvert}
-              class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
-              title="Invert Selection (Ctrl+I)"
-            >
-              <Icon name="flip-h" class="size-3" strokeWidth={1.5} />
-              Invert
-            </button>
-            <button
-              onClick={handleDelete}
-              class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
-              title="Delete Selection Pixels (Del)"
-            >
-              <Icon name="trash" class="size-3" strokeWidth={1.5} />
-              Delete
-            </button>
-            <button
-              onClick={handleDeselect}
-              class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
-              title="Deselect (Ctrl+D or Esc)"
-            >
-              <Icon name="x" class="size-3" strokeWidth={1.5} />
-              Deselect
-            </button>
+            <Tooltip content="Cut Selection" shortcut="Ctrl+X">
+              <button
+                onClick={handleCut}
+                class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
+              >
+                <Icon name="slice" class="size-3" strokeWidth={1.5} />
+                Cut
+              </button>
+            </Tooltip>
+            <Tooltip content="Copy Selection" shortcut="Ctrl+C">
+              <button
+                onClick={handleCopy}
+                class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
+              >
+                <Icon name="copy" class="size-3" strokeWidth={1.5} />
+                Copy
+              </button>
+            </Tooltip>
+            <Tooltip content="Paste" shortcut="Ctrl+V">
+              <button
+                onClick={handlePaste}
+                class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
+              >
+                <Icon name="square-dashed" class="size-3" strokeWidth={1.5} />
+                Paste
+              </button>
+            </Tooltip>
+            <Tooltip content="Invert Selection" shortcut="Ctrl+I">
+              <button
+                onClick={handleInvert}
+                class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
+              >
+                <Icon name="flip-h" class="size-3" strokeWidth={1.5} />
+                Invert
+              </button>
+            </Tooltip>
+            <Tooltip content="Delete Selection Pixels" shortcut="Del">
+              <button
+                onClick={handleDelete}
+                class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
+              >
+                <Icon name="trash" class="size-3" strokeWidth={1.5} />
+                Delete
+              </button>
+            </Tooltip>
+            <Tooltip content="Deselect" shortcut="Esc">
+              <button
+                onClick={handleDeselect}
+                class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
+              >
+                <Icon name="x" class="size-3" strokeWidth={1.5} />
+                Deselect
+              </button>
+            </Tooltip>
           </div>
         </Show>
 

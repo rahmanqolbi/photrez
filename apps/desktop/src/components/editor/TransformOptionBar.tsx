@@ -2,6 +2,7 @@ import { Show, createMemo } from "solid-js";
 import { Icon } from "./icons";
 import { NumField, EditableNumField } from "./primitives";
 import { clsx } from "clsx";
+import { Tooltip } from "./Tooltip";
 import { useEditor } from "./shell/EditorContext";
 import { ToggleBtn, Divider } from "./shell/OptionBarShared";
 import { cancelLayerTransformSession, commitLayerTransformSession, resetLayerTransformPreview } from "./transformSession";
@@ -187,49 +188,54 @@ export function TransformOptionBar() {
 
       <Show when={session()}>
         {(s) => (
-          <ToggleBtn
-            active={s().lockRatio}
-            onChange={setLockRatio}
-            icon="link"
-            label="Ratio"
-          />
+          <Tooltip content="Lock Aspect Ratio">
+            <ToggleBtn
+              active={s().lockRatio}
+              onChange={setLockRatio}
+              icon="link"
+              label="Ratio"
+            />
+          </Tooltip>
         )}
       </Show>
 
       <Divider />
 
-      <button
-        onClick={resetPreview}
-        disabled={isLocked()}
-        class={clsx(
-          "flex h-[24px] shrink-0 items-center rounded-[3px] border border-transparent px-2 text-[11px]",
-          isLocked()
-            ? "text-editor-text-dim/30 cursor-default"
-            : "text-editor-text-dim hover:border-editor-field-border hover:text-editor-text",
-        )}
-        title="Reset preview transform values"
-      >
-        Reset Preview
-      </button>
+      <Tooltip content="Reset preview transform values">
+        <button
+          onClick={resetPreview}
+          disabled={isLocked()}
+          class={clsx(
+            "flex h-[24px] shrink-0 items-center rounded-[3px] border border-transparent px-2 text-[11px]",
+            isLocked()
+              ? "text-editor-text-dim/30 cursor-default"
+              : "text-editor-text-dim hover:border-editor-field-border hover:text-editor-text",
+          )}
+        >
+          Reset Preview
+        </button>
+      </Tooltip>
 
       <Divider />
 
-      <button
-        type="button"
-        class="h-6 px-2.5 rounded-[4px] border border-editor-accent/50 bg-editor-accent/15 text-editor-text text-[11px] font-semibold"
-        onClick={apply}
-        title="Apply transform (Enter)"
-      >
-        Apply
-      </button>
-      <button
-        type="button"
-        class="h-6 px-2.5 rounded-[4px] border border-editor-border bg-editor-surface-2 text-editor-text-dim text-[11px] font-semibold hover:text-editor-text"
-        onClick={cancel}
-        title="Cancel transform (Esc)"
-      >
-        Cancel
-      </button>
+      <Tooltip content="Apply transform" shortcut="Enter">
+        <button
+          type="button"
+          class="h-6 px-2.5 rounded-[4px] border border-editor-accent/50 bg-editor-accent/15 text-editor-text text-[11px] font-semibold"
+          onClick={apply}
+        >
+          Apply
+        </button>
+      </Tooltip>
+      <Tooltip content="Cancel transform" shortcut="Esc">
+        <button
+          type="button"
+          class="h-6 px-2.5 rounded-[4px] border border-editor-border bg-editor-surface-2 text-editor-text-dim text-[11px] font-semibold hover:text-editor-text"
+          onClick={cancel}
+        >
+          Cancel
+        </button>
+      </Tooltip>
     </>
   );
 }

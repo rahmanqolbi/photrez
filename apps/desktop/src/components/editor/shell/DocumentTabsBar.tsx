@@ -1,6 +1,7 @@
 import { For, Show, createSignal } from "solid-js";
 import { clsx } from "clsx";
 import { Icon } from "../icons";
+import { Tooltip } from "../Tooltip";
 import { useEditor } from "./EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
 import { MAX_OPEN_DOCUMENTS } from "@/engine/types";
@@ -29,20 +30,21 @@ function ExportButton() {
 function LayoutToggleButton() {
   const { rightDockLayout, setRightDockLayout } = useEditor();
   return (
-    <button
-      onClick={() => setRightDockLayout(rightDockLayout() === "side-by-side" ? "stacked" : "side-by-side")}
-      class={clsx(
-        "flex size-7 items-center justify-center rounded-[4px] text-editor-icon hover:bg-white/[0.045] hover:text-editor-text",
-        rightDockLayout() === "stacked" && "text-editor-accent"
-      )}
-      title={rightDockLayout() === "side-by-side" ? "Switch to Stacked Dock" : "Switch to Side-by-Side Dock"}
-    >
-      <Icon
-        name="columns"
-        class="size-4"
-        strokeWidth={1.75}
-      />
-    </button>
+    <Tooltip content={rightDockLayout() === "side-by-side" ? "Switch to Stacked Dock" : "Switch to Side-by-Side Dock"}>
+      <button
+        onClick={() => setRightDockLayout(rightDockLayout() === "side-by-side" ? "stacked" : "side-by-side")}
+        class={clsx(
+          "flex size-7 items-center justify-center rounded-[4px] text-editor-icon hover:bg-white/[0.045] hover:text-editor-text",
+          rightDockLayout() === "stacked" && "text-editor-accent"
+        )}
+      >
+        <Icon
+          name="columns"
+          class="size-4"
+          strokeWidth={1.75}
+        />
+      </button>
+    </Tooltip>
   );
 }
 
