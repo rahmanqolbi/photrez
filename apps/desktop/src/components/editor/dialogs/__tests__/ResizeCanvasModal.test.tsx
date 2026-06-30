@@ -77,7 +77,7 @@ describe("ResizeCanvasModal", () => {
     expect(dialog.textContent).toContain("Resize Canvas");
     expect([...inputs].map((input) => input.value)).toEqual(["1024", "768"]);
     expect(document.activeElement).toBe(inputs[0]);
-    expect(dialog.querySelector('[aria-pressed="true"]')).toHaveAttribute("title", "Unlock aspect ratio");
+    expect(dialog.querySelector('[aria-pressed="true"]')).toHaveTextContent("Keep proportions");
     view.dispose();
   });
 

@@ -1041,7 +1041,7 @@ describe("CropOptionBar", () => {
 
     const dispose = render(() => <CropOptionBar />, container);
 
-    const swapBtn = container.querySelector('button[title="Swap Width/Height"]') as HTMLButtonElement | null;
+    const swapBtn = container.querySelector('button[aria-label="Swap width and height"]') as HTMLButtonElement | null;
     expect(swapBtn).not.toBeNull();
 
     swapBtn!.click();

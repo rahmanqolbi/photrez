@@ -105,7 +105,7 @@ describe("LayersPanel interactions", () => {
     const { renderer, container, dispose } = renderLayersPanel(session);
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const mergeButton = container.querySelector('button[title="Merge Down"]') as HTMLButtonElement | null;
+    const mergeButton = container.querySelector('button[aria-label="Merge Down"]') as HTMLButtonElement | null;
     if (!mergeButton) throw new Error("Merge Down button was not rendered");
 
     mergeButton.click();
@@ -162,7 +162,7 @@ describe("LayersPanel interactions", () => {
     const { renderer, container, dispose } = renderLayersPanel(session);
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const flattenButton = container.querySelector('button[title="Flatten All Layers"]') as HTMLButtonElement | null;
+    const flattenButton = container.querySelector('button[aria-label="Flatten All Layers"]') as HTMLButtonElement | null;
     if (!flattenButton) throw new Error("Flatten All Layers button was not rendered");
 
     flattenButton.click();

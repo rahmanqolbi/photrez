@@ -402,4 +402,13 @@
 | DONE       | Brush hardness distance-field soft-edge implementation: `docs/superpowers/plans/2026-06-11-brush-hardness-distance-field-soft-edge.md`                                                                                                                        |
 | DONE       | Brush and Eraser tool improvement plan created: `docs/superpowers/plans/2026-06-06-brush-eraser-tool-improvements.md`                                                                                                                                         |
 | DONE       | Crop Hidden Preview Restore correction plan created: `docs/superpowers/plans/2026-06-05-crop-interaction-model-plan.md`                                                                                                                                       |
-| DONE       | Scalability and maintainability refactor plan created: `docs/archive/plans/2026-06-04-scalability-maintainability-refactor-plan.md`                                                                                                                           |
+| DONE       | Scalability and maintainability refactor plan created: `docs/archive/plans/2026-06-04-scalability-maintainability-refactor-plan.md`
+| ✅ DONE | Tooltip migration: ~50 native `title` attributes → `<Tooltip>` component across shell, option bars, layers, and dialogs for warm delay, Escape dismiss, viewport clamping, and shortcut display |
+
+---
+
+## 🎨 UI Polish
+
+| Status  | Fitur |
+| ------- | ----- |
+| ✅ DONE | Tooltip migration: replaced ~50 native `title` attributes with `<Tooltip>` component across 12 files (shell, option bars, layers panel, dialogs). Uses warm delay, Escape dismiss, viewport boundary clamping, and `shortcut` prop for keyboard shortcuts (Ctrl+C/X/V/I, Del, Esc, Enter). Removed unused `title` prop from `ToggleBtn`.                                                                                                                           |

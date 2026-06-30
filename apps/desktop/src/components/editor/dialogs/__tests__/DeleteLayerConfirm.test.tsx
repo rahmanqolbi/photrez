@@ -100,7 +100,7 @@ describe("Delete layer confirmation", () => {
 
     const l2 = s.engine.addLayer("Layer 2");
 
-    const deleteBtn = container.querySelector<HTMLButtonElement>("button[title='Delete Layer']");
+    const deleteBtn = container.querySelector<HTMLButtonElement>("button[aria-label='Delete Layer']");
     expect(deleteBtn).toBeTruthy();
     deleteBtn!.click();
     await new Promise<void>((resolve) => queueMicrotask(resolve));
@@ -125,7 +125,7 @@ describe("Delete layer confirmation", () => {
 
     s.engine.addLayer("Layer 2");
 
-    const deleteBtn = container.querySelector<HTMLButtonElement>("button[title='Delete Layer']");
+    const deleteBtn = container.querySelector<HTMLButtonElement>("button[aria-label='Delete Layer']");
     expect(deleteBtn).toBeTruthy();
     deleteBtn!.click();
     await new Promise<void>((resolve) => queueMicrotask(resolve));
@@ -144,7 +144,7 @@ describe("Delete layer confirmation", () => {
 
     const { container, session: s, dispose } = renderLayersPanel(session);
 
-    const deleteBtn = container.querySelector<HTMLButtonElement>("button[title='Delete Layer']");
+    const deleteBtn = container.querySelector<HTMLButtonElement>("button[aria-label='Delete Layer']");
     expect(deleteBtn).toBeTruthy();
     deleteBtn!.click();
 
@@ -158,7 +158,7 @@ describe("Delete layer confirmation", () => {
     const first = WorkspaceManager.createBlankDocument("first", "First", 800, 600);
     first.engine.addLayer("Layer 2");
     const { ws, container, dispose } = renderLayersPanel(first);
-    const deleteBtn = container.querySelector<HTMLButtonElement>("button[title='Delete Layer']")!;
+    const deleteBtn = container.querySelector<HTMLButtonElement>("button[aria-label='Delete Layer']")!;
     deleteBtn.click();
     await new Promise<void>((resolve) => queueMicrotask(resolve));
 
