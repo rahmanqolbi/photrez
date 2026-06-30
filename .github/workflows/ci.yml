@@ -38,7 +38,8 @@ jobs:
         run: pnpm run type-check
 
       - name: Dependency audit
-        run: pnpm --filter photrez-desktop audit --prod
+        working-directory: apps/desktop
+        run: pnpm audit --prod
 
       - name: Run tests
         run: pnpm test
