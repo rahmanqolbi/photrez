@@ -7,6 +7,11 @@ import { useEditorCommands } from "../../useEditorCommands";
 import { WorkspaceManager } from "@/engine/workspace";
 import { easeOutCubic } from "@/viewport/easing";
 
+vi.mock("../../dialogs/DialogProvider", () => ({
+  useDialog: () => ({ confirm: () => Promise.resolve(true), alert: () => Promise.resolve() }),
+  DialogProvider: (props: { children: any }) => props.children,
+}));
+
 function installOffscreenCanvasMock(bitmap: ImageBitmap) {
   vi.stubGlobal("OffscreenCanvas", class {
     width: number;
@@ -680,6 +685,7 @@ describe("canvas layer keyboard shortcuts", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete" }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(session.engine.getLayers()).toHaveLength(initialCount - 1);
     expect(session.engine.getLayer(top.id)).toBeUndefined();
@@ -699,6 +705,7 @@ describe("canvas layer keyboard shortcuts", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace" }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(session.engine.getLayers()).toHaveLength(initialCount - 1);
     expect(session.engine.getLayer(top.id)).toBeUndefined();

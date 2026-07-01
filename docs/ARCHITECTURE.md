@@ -10,7 +10,7 @@
 Photrez is a lightweight desktop image editor built for practical digital and print workflows.
 
 **MVP Runtime:** Tauri 2 (shell) + SolidJS/TypeScript (frontend) + **TypeScript DocumentEngine** (core) + **WebGL2** (renderer).
-**Future target:** Rust (photrez-core) + wgpu (photrez-render) â€” see `docs/AI_CURRENT_TASK.md` Architecture Migration v2.
+**Future target:** Rust Core via WASM (photrez-core â†’ wasm-pack) for hot-path compute (brush, transform, tile, encode) + WebGL2 remains the renderer. wgpu deferred until compute-shader features are required.
 
 ---
 
@@ -18,7 +18,8 @@ Photrez is a lightweight desktop image editor built for practical digital and pr
 
 - **Phase**: Post-MVP polish & bug-fix (2026-06-13). GPU viewport migration, brush calibration, crop UX improvements, and multi-cycle bug-fix passes completed. Multi-document workspace implemented.
 - **Core Crate**: Document model, layer management, bitmap buffers, selection, transform, brush/eraser, import decode, export encode, and workspace management exist. Core tests pass (`cargo test -p photrez-core`: 85 tests). Workspace total: 92 tests (`cargo test --workspace`).
-- **Render Crate**: wgpu renderer code exists as a future target and is not part of the MVP hot path. The latest recorded `cargo test --workspace` gate passes; MVP rendering remains **WebGL2** (`apps/desktop/src/renderer/webgl2.ts`).
+- **Render Crate**: wgpu renderer crate (`photrez-render`) removed from workspace members — pre-existing `STATUS_ENTRYPOINT_NOT_FOUND` on Windows. MVP rendering remains **WebGL2** (`apps/desktop/src/renderer/webgl2.ts`). Future rendering direction: keep WebGL2; only reintroduce wgpu when compute shaders or advanced blend modes exceed WebGL2 capabilities.
+- **WASM Strategy (2026-06-30)**: `photrez-core` is the source for WASM compilation (`wasm-pack` target). Hot-path operations (brush mask, tile ops, transform math, color space, export encode) will be ported from TypeScript to Rust and exposed as zero-copy WASM modules — no Tauri IPC overhead.
 - **Frontend**: Full UI shell with multi-document workspace, document tabs, empty state, drag/drop, and all core editing interactions. Artboard renders via WebGL2 projection-matrix-driven camera viewport.
 - **Testing**: Current verified gates are tracked in `docs/AI_CURRENT_TASK.md` and `docs/AI_HISTORY.md`. Latest recorded frontend verification on 2026-06-20 passes (86 files / 1261 tests), type-check and production build pass; the latest recorded Rust gates pass for `photrez-core` (85 tests) and the workspace.
 - **Recovery Reference** (historical): `docs/archive/usable-mvp-recovery-plan.md`.
@@ -34,9 +35,10 @@ Photrez is a lightweight desktop image editor built for practical digital and pr
 | Build Tool       | Vite 8                                                 |
 | Styling          | Tailwind CSS v4 (`@theme` based tokens)                |
 | Core Engine (MVP) | TypeScript `DocumentEngine` (`apps/desktop/src/engine/document.ts`) |
-| Core Engine (future) | Rust `photrez-core` (crates/core/) â€” reference/tests |
+| Core Engine (future) | Rust `photrez-core` compiled via WASM (wasm-pack) â€” zero-copy from TS, no IPC |
 | GPU Renderer (MVP) | WebGL2 (`apps/desktop/src/renderer/webgl2.ts`)          |
-| GPU Renderer (future) | wgpu `photrez-render` (crates/render/) â€” deferred   |
+| GPU Renderer (future) | WebGL2 remains; wgpu deferred until compute-shader features required |
+| Compute (future hot-path) | Rust WASM modules: brush mask, tile split/compose, transform math, color conversion, export encode |
 | State (Backend)  | `tauri::State<'_, T>` + `Mutex` (Rust managed state)  |
 | State (Frontend) | SolidJS `createSignal` / `createStore`                 |
 | Package Manager  | pnpm (monorepo workspace)                              |
@@ -64,15 +66,22 @@ SolidJS editor shell
         |      - compositing / preview
         |      - viewport readback where required
         |
-        +--> Tauri 2 shell commands
+        +--> Rust WASM modules (future hot-path)
+        |      - brush mask generation
+        |      - tile split / compose
+        |      - transform matrix math
+        |      - color space conversion
+        |      - export encode (via Rust `image` crate)
+        |      - zero-copy: called directly from TS, no IPC
+        |
+        +--> Tauri 2 shell commands (cold-path only)
                - ping
                - get_contract_info
                - read_file_bytes  (image import allowlist, 256MB cap)
                - write_file_bytes (image export allowlist, 256MB cap)
 
-Rust crates today:
-  - photrez-core: reference/domain model and tests
-  - photrez-render: future wgpu target, not active in the MVP hot path
+Rust crate:
+  - photrez-core: source for WASM compilation + domain model + 85 tests
 ```
 
 ### Historical / Future-Target Reference
@@ -163,24 +172,38 @@ Note 2026-06-19: the diagram below is historical and retained only for ownership
 
 ## Data Flow
 
+### Hot Path (WASM / TypeScript â€” no IPC)
+
 ```text
 1. User action (click/drag/shortcut) in SolidJS frontend
         â†“
-2. Frontend memanggil invoke("command_name", { params })
+2. TS DocumentEngine mutates state synchronously (zero IPC)
+        â†“
+3. Future: WASM module called for compute-heavy ops:
+   - brushMask(radius, hardness, size)   â†’ Uint8Array
+   - splitIntoTiles(bitmap, tileSize)    â†’ Tile[]
+   - composeFromTiles(tiles, w, h)        â†’ ImageBitmap
+   - exportEncode(pixels, format, quality) â†’ Uint8Array
+        â†“
+4. history.commit(snapshot) before mutation
+        â†“
+5. scheduler.requestRender() â†’ WebGL2 next frame
+```
+
+### Cold Path (Tauri IPC â€” file I/O only)
+
+```text
+1. User triggers file open / save / export
+        â†“
+2. Frontend memanggil invoke("read_file_bytes" / "write_file_bytes")
         â†“
 3. Tauri IPC bridge forwards to #[tauri::command] handler
         â†“
-4. Handler mengakses EditorState (Mutex lock)
+4. Rust reads/writes file from disk via std::fs
         â†“
-5. history.commit(current_state)  â† snapshot SEBELUM mutasi
+5. Returns base64-encoded bytes (256MB cap)
         â†“
-6. Document/Layer/Core dimutasi
-        â†“
-7. Handler returns ok_response(updated_doc) or err_response(code, msg)
-        â†“
-8. Frontend menerima response, update SolidJS signals
-        â†“
-9. SolidJS reactivity otomatis re-render affected UI
+6. Frontend decodes, creates ImageBitmap (import) or Blob (export)
 ```
 
 ---
@@ -195,7 +218,7 @@ Note 2026-06-19: the diagram below is historical and retained only for ownership
 { "ok": false, "contract_version": "2.0.0", "error": { "code": "...", "message": "...", "details": null } }
 ```
 
-Detail lengkap: `docs/reference/command-contract-spec.md`. The current Tauri shell runtime exposes a small file-IO contract; most editor operations remain in the TypeScript MVP hot path and are not registered as Tauri commands.
+Detail lengkap: `docs/reference/command-contract-spec.md`. The current Tauri shell runtime exposes a small file-IO contract; most editor operations remain in the TypeScript MVP hot path (and future WASM compute hot path) and are not registered as Tauri commands.
 
 ---
 
@@ -288,19 +311,19 @@ photrez/
 
 ### Module Boundaries
 
-| Module          | Owns                                           | Must NOT Own                            |
-| --------------- | ----------------------------------------------- | --------------------------------------- |
-| Shell (Tauri)   | App lifecycle, file dialogs, command routing     | Image processing, document state logic  |
-| Core (Rust)     | Document model, layers, transforms, brush, export | Rendering, UI state, window management  |
-| Renderer (wgpu) | Frame rendering, texture upload, compositing     | Persistence, document rules, UI state   |
-| Frontend (Solid)| UI state (tool, zoom, panel), user interaction   | Document truth, pixel manipulation      |
+| Module            | Owns                                                    | Must NOT Own                            |
+| ----------------- | ------------------------------------------------------- | --------------------------------------- |
+| Shell (Tauri)     | App lifecycle, file dialogs, cold-path file I/O          | Image processing, document state logic  |
+| Core (Rust WASM)  | Hot-path compute: brush mask, tile ops, transform math, color conversion, export encode | Rendering, UI state, file I/O |
+| Renderer (WebGL2) | Frame rendering, texture upload, compositing             | Persistence, document rules, UI state   |
+| Frontend (Solid)  | UI state (tool, zoom, panel), user interaction, TS DocumentEngine | Document truth (MVP), pixel manipulation (future: WASM) |
 
 ### Source of Truth
 
 - **Document state (MVP)**: In TypeScript `DocumentEngine` (`apps/desktop/src/engine/document.ts`). Rust `photrez-core` retains the domain model as reference + test coverage.
-- **Document state (future)**: Will migrate to Rust Core on explicit runtime migration task.
+- **Document state (future)**: Stays in TS `DocumentEngine`. Rust WASM modules are called for compute, not ownership — no dual-state synchronization problem.
 - **UI state**: In SolidJS signals (tool selection, zoom level, panel visibility).
-- **Pixel data (MVP)**: `ImageBitmap` per layer in `DocumentEngine`, rendered by WebGL2. Rust crates do not hold bitmaps for the MVP hot-path.
+- **Pixel data (MVP)**: `ImageBitmap` per layer in `DocumentEngine`, rendered by WebGL2. Future WASM modules operate on `Uint8Array` zero-copy from JS.
 - **NEVER** duplicate document state in the frontend as a mutable source.
 
 ---

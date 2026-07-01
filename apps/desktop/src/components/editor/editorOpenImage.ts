@@ -6,6 +6,7 @@ import { DocumentModel } from "@/engine/types";
 import type { WebGL2Backend } from "@/renderer/webgl2";
 import type { RenderScheduler } from "@/renderer/scheduler";
 import { isTauriRuntime } from "@/lib/desktop/tauriWindow";
+import { showToast } from "./Toast";
 
 interface OpenImageParams {
   workspace: WorkspaceManager;
@@ -58,6 +59,8 @@ export async function openImage(params: OpenImageParams) {
     const paths = await showOpenImageDialog();
     if (!paths || paths.length === 0) return;
 
+    showToast(`Opening ${paths.length} file${paths.length > 1 ? "s" : ""}...`, "info");
+
     for (const path of paths) {
       if (params.workspace.isFull()) break;
 
@@ -81,6 +84,8 @@ export async function openImage(params: OpenImageParams) {
       params.renderer.uploadImage(bgLayerId, bitmap);
       params.scheduler.requestRender();
     }
+
+    showToast("File(s) loaded", "info");
   } catch (e) {
     reportError(`Failed to open image: ${e}`);
   }

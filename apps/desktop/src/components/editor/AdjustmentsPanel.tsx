@@ -200,8 +200,8 @@ export function AdjustmentsPanel() {
     if (updated?.imageBitmap) {
       try {
         renderer.uploadImage(layer.id, updated.imageBitmap);
-      } catch (e) {
-        console.warn("[ADJ] uploadImage non-fatal:", e);
+      } catch {
+        // non-fatal: renderer may not be ready
       }
     }
     workspace.notifyVisualChange();
@@ -238,14 +238,14 @@ export function AdjustmentsPanel() {
       if (updated?.imageBitmap) {
         try {
           renderer.uploadImage(layer.id, updated.imageBitmap);
-        } catch (e) {
-          console.warn("[ADJ] uploadImage non-fatal:", e);
-        }
+      } catch {
+        // non-fatal: renderer may not be ready
       }
-      workspace.notifyVisualChange();
-      scheduler.requestRender();
     }
-    setAdjustmentBase(null);
+    workspace.notifyVisualChange();
+    scheduler.requestRender();
+  }
+  setAdjustmentBase(null);
     setBasicAdjustment({ brightness: 0, contrast: 0, saturation: 0 });
   };
 

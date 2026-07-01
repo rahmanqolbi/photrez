@@ -9,6 +9,7 @@ import { discardCropSession, applyCropPreview } from "../cropToolActions";
 import { PAINT_SIZE_STEP, PAINT_SIZE_STEP_HARDNESS, adjustPaintSize, adjustPaintHardness } from "../brushToolState";
 import { SelectionOperations } from "@/features/selection/SelectionOperations";
 import { showToast } from "../Toast";
+import { useDialog } from "../dialogs/DialogProvider";
 
 interface CanvasKeyboardOptions {
   isSpacePressed: () => boolean;
@@ -88,6 +89,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     camera,
     syncFromCamera,
   } = useEditor();
+  const dialog = useDialog();
 
   const resolvedCropFillColor = () => (
     cropFillSource() === "background"
@@ -99,7 +101,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
   );
 
   onMount(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
       const active = document.activeElement;
       if (
         active &&
@@ -543,6 +545,17 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         if (activeId && engine.getLayers().length > 1) {
           e.preventDefault();
           e.stopPropagation();
+          const layer = engine.getLayer(activeId);
+          const name = layer?.name || "Untitled";
+          const accepted = await dialog.confirm({
+            title: "Delete Layer",
+            message: `Delete layer "${name}"? This action can be undone.`,
+            confirmLabel: "Delete",
+            tone: "danger",
+          });
+          if (!accepted) return;
+          // Re-check state after modal — document may have changed
+          if (engine.getActiveLayerId() !== activeId || engine.getLayers().length <= 1) return;
           history.commit(engine.snapshot(), "Delete Layer");
           engine.deleteLayer(activeId);
           scheduler.requestRender();

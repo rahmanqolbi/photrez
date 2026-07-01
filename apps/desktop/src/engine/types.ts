@@ -108,6 +108,17 @@ export interface Rect {
   height: number;
 }
 
+// ─── Tiles ───
+export const TILE_SIZE = 256;
+
+export interface Tile {
+  gridX: number;
+  gridY: number;
+  imageBitmap: ImageBitmap | null;
+  width: number;
+  height: number;
+}
+
 // ─── Constants ───
 export const MAX_LAYERS = 200;
 export const MAX_OPEN_DOCUMENTS = 16;

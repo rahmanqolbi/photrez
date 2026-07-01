@@ -52,7 +52,6 @@ export async function encodeComposite(
     if (!layer.visible || !layer.imageBitmap) continue;
     drawLayerToContext(ctx, layer);
   }
-  const t1 = performance.now();
 
   const mimeType = getMimeType(format);
   const blob = await canvas.convertToBlob({
@@ -61,9 +60,6 @@ export async function encodeComposite(
   });
 
   const bytes = new Uint8Array(await blob.arrayBuffer());
-  const t2 = performance.now();
-
-  console.log(`[perf] export ${width}x${height} ${layers.length} layers — composite ${(t1 - t0).toFixed(1)}ms, encode ${(t2 - t1).toFixed(1)}ms`);
   return bytes;
 }
 

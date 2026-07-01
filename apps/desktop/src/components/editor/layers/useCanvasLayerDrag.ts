@@ -329,9 +329,6 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     const docPos = camera.screenToDocument(screenX, screenY);
     const layer = findLayerAt(docPos.x, docPos.y);
     if (!layer) return;
-    if (layer.locked || layer.lockPosition) {
-      console.warn(`[useCanvasLayerDrag] BLOCKED: layer "${layer.name}" is position-locked`);
-    }
 
     const src = activeDocumentId();
     if (!src) return;

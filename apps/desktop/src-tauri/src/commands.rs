@@ -24,7 +24,8 @@ pub(crate) fn get_contract_info() -> Result<Value, Value> {
         "supported_commands": [
             "ping", "get_contract_info",
             "read_file_bytes", "write_file_bytes",
-            "save_project", "load_project"
+            "save_project", "load_project",
+            "print_image"
         ]
     }))
 }
@@ -384,7 +385,8 @@ mod tests {
                 "read_file_bytes",
                 "write_file_bytes",
                 "save_project",
-                "load_project"
+                "load_project",
+                "print_image"
             ]
         );
     }

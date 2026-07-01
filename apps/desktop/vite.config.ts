@@ -15,6 +15,7 @@ const nodeTestFiles = [
   "src/engine/__tests__/postCropAlignment.test.ts",
   "src/engine/__tests__/undoEdgeCases.test.ts",
   "src/engine/__tests__/workspace.test.ts",
+  "src/engine/__tests__/tileStorage.test.ts",
   "src/components/editor/__tests__/dragTypes.test.ts",
   "src/components/editor/__tests__/toolLifecycle.test.ts",
   "src/components/editor/__tests__/brushReferenceAudit.test.ts",
