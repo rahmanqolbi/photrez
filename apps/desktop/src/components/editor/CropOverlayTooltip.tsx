@@ -27,7 +27,7 @@ export function CropOverlayTooltip(props: CropOverlayTooltipProps) {
       <text
         x={20}
         y={-9}
-        fill="#E15A17"
+        fill="var(--color-editor-accent)"
         font-size="11"
         font-weight="bold"
         font-family="monospace"

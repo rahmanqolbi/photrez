@@ -74,8 +74,8 @@ describe("snapCropRect", () => {
     expect(snapped.x).toBe(300);
     // Top edge at 198 should snap to 200 (1/3 of 600)
     expect(snapped.y).toBe(200);
-    // Lines should have cyan color for crop snap
+    // Lines should reference guide-edge variable for crop snap
     expect(lines.length).toBeGreaterThan(0);
-    expect(lines[0].color).toBe("#00ffff");
+    expect(lines[0].color).toBe("var(--guide-edge)");
   });
 });

@@ -3,11 +3,10 @@ import { render } from "solid-js/web";
 import { EditorProvider, useEditor } from "../../shell/EditorContext";
 import { ExportDialog } from "../ExportDialog";
 import { WorkspaceManager } from "@/engine/workspace";
+import { tick } from "@/lib/dom";
 
 const exportActiveDocumentMock = vi.hoisted(() => vi.fn());
 vi.mock("../../exportDocument", () => ({ exportActiveDocument: exportActiveDocumentMock }));
-
-const tick = () => new Promise<void>((resolve) => queueMicrotask(resolve));
 let setShowExport: (value: boolean) => void = () => {};
 
 function TestConsumer() {

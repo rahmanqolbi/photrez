@@ -51,7 +51,7 @@ export function ToastHost() {
   return (
     <Portal>
       <div
-        class="pointer-events-none fixed top-6 right-6 z-50 flex flex-col gap-2"
+        class="pointer-events-none fixed bottom-6 right-6 z-50 flex flex-col gap-2"
         aria-live="polite"
       >
         <For each={toasts()}>

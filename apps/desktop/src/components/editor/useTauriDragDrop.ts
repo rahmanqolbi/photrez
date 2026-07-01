@@ -1,6 +1,7 @@
 import { onMount, onCleanup } from "solid-js";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { isTauriRuntime } from "../../lib/desktop";
+import { showToast } from "./Toast";
 
 export interface TauriDragDropCallbacks {
   onOver?: (position: { x: number; y: number }) => void;
@@ -27,7 +28,7 @@ export function useTauriDragDrop(callbacks: TauriDragDropCallbacks) {
         }
       });
     } catch (err) {
-      console.error("useTauriDragDrop: failed to subscribe to Tauri drag-drop events:", err);
+      showToast(`File drag-drop failed to initialize: ${err instanceof Error ? err.message : "unknown error"}`, "error");
     }
   });
 

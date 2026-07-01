@@ -29,10 +29,10 @@ export function SmartGuides(props: SmartGuidesProps) {
               y1={screenStart().y}
               x2={screenEnd().x}
               y2={screenEnd().y}
-              stroke={line.color || "#ff00ff"}
+              stroke={line.color || "var(--guide-center, oklch(0.84 0 0))"}
               stroke-width={1}
               vector-effect="non-scaling-stroke"
-              stroke-dasharray={line.color === "#00ffff" ? "4 2" : undefined}
+              stroke-dasharray={line.color === "var(--guide-edge)" ? "4 2" : undefined}
               style={{ opacity: 0.8 }}
             />
           );

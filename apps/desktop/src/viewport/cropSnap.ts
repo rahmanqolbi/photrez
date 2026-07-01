@@ -164,14 +164,14 @@ function snapAxis(
           y1: -MIN_GUIDE_EXTENT,
           x2: bestTarget,
           y2: MIN_GUIDE_EXTENT,
-          color: "#00ffff",
+          color: "var(--guide-edge)",
         }
       : {
           x1: -MIN_GUIDE_EXTENT,
           y1: bestTarget,
           x2: MIN_GUIDE_EXTENT,
           y2: bestTarget,
-          color: "#00ffff",
+          color: "var(--guide-edge)",
         };
 
   return { rect: snapped, line };

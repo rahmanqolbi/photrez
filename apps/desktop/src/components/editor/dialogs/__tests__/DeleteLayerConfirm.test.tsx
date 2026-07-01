@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
-import { EditorProvider, useEditor } from "../../shell/EditorContext";
+import { EditorProvider } from "../../shell/EditorContext";
 import { LayersPanel } from "../../layers/LayersPanel";
 import { WorkspaceManager } from "@/engine/workspace";
 
@@ -85,13 +85,15 @@ function renderLayersPanel(session = WorkspaceManager.createBlankDocument("test"
   };
 }
 
-describe("Delete layer confirmation", () => {
+describe("Delete layer (no confirm dialog)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
-  it("delete button shows the shared dialog with layer name and deletes after confirmation", async () => {
+  // After removing the deletion confirmation dialog, delete is immediate.
+  // Ctrl+Z undo is the safety net — matches professional editor behavior.
+  it("delete button immediately removes the layer without a dialog", () => {
     const session = WorkspaceManager.createBlankDocument("test", "Test", 800, 600);
     const bitmap = { width: 800, height: 600, close: vi.fn() } as unknown as ImageBitmap;
     installCanvasMocks(bitmap);
@@ -99,76 +101,56 @@ describe("Delete layer confirmation", () => {
     const { container, session: s, dispose } = renderLayersPanel(session);
 
     const l2 = s.engine.addLayer("Layer 2");
+    expect(s.engine.getLayers()).toHaveLength(2);
 
     const deleteBtn = container.querySelector<HTMLButtonElement>("button[aria-label='Delete Layer']");
     expect(deleteBtn).toBeTruthy();
+
     deleteBtn!.click();
-    await new Promise<void>((resolve) => queueMicrotask(resolve));
-    const dialog = document.querySelector<HTMLElement>('[role="alertdialog"]');
-    expect(dialog).toHaveTextContent(l2.name);
-    expect(document.activeElement).toBe(document.querySelector("[data-dialog-cancel]"));
-    document.querySelector<HTMLButtonElement>("[data-dialog-confirm]")!.click();
-    await new Promise<void>((resolve) => queueMicrotask(resolve));
 
     expect(s.engine.getLayers()).toHaveLength(1);
-    expect(s.engine.getLayers()[0].id).not.toBe(l2.id);
+    expect(s.engine.getLayer(l2.id)).toBeUndefined();
+    // No dialog should appear
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull();
 
     dispose();
   });
 
-  it("cancelling the shared dialog does not delete layer", async () => {
+  it("cannot delete the only remaining layer", () => {
     const session = WorkspaceManager.createBlankDocument("test", "Test", 800, 600);
     const bitmap = { width: 800, height: 600, close: vi.fn() } as unknown as ImageBitmap;
     installCanvasMocks(bitmap);
 
     const { container, session: s, dispose } = renderLayersPanel(session);
-
-    s.engine.addLayer("Layer 2");
-
-    const deleteBtn = container.querySelector<HTMLButtonElement>("button[aria-label='Delete Layer']");
-    expect(deleteBtn).toBeTruthy();
-    deleteBtn!.click();
-    await new Promise<void>((resolve) => queueMicrotask(resolve));
-    document.querySelector<HTMLButtonElement>("[data-dialog-cancel]")!.click();
-    await new Promise<void>((resolve) => queueMicrotask(resolve));
-
-    expect(s.engine.getLayers().length).toBe(2);
-
-    dispose();
-  });
-
-  it("dialog is not shown for last layer", () => {
-    const session = WorkspaceManager.createBlankDocument("test", "Test", 800, 600);
-    const bitmap = { width: 800, height: 600, close: vi.fn() } as unknown as ImageBitmap;
-    installCanvasMocks(bitmap);
-
-    const { container, session: s, dispose } = renderLayersPanel(session);
+    const initialCount = s.engine.getLayers().length;
+    expect(initialCount).toBe(1);
 
     const deleteBtn = container.querySelector<HTMLButtonElement>("button[aria-label='Delete Layer']");
     expect(deleteBtn).toBeTruthy();
     deleteBtn!.click();
 
     expect(document.querySelector('[role="alertdialog"]')).toBeNull();
-    expect(s.engine.getLayers().length).toBe(1);
+    expect(s.engine.getLayers()).toHaveLength(1);
 
     dispose();
   });
 
-  it("does not delete from the original document if the active document changes while open", async () => {
+  it("deletes from the correct document immediately (no dialog race)", () => {
     const first = WorkspaceManager.createBlankDocument("first", "First", 800, 600);
     first.engine.addLayer("Layer 2");
     const { ws, container, dispose } = renderLayersPanel(first);
+
     const deleteBtn = container.querySelector<HTMLButtonElement>("button[aria-label='Delete Layer']")!;
     deleteBtn.click();
-    await new Promise<void>((resolve) => queueMicrotask(resolve));
 
+    // Layer removed immediately from doc 1 (no dialog to pause on)
+    expect(first.engine.getLayers()).toHaveLength(1);
+
+    // Add doc 2 and verify it has 1 layer (unaffected)
     const second = WorkspaceManager.createBlankDocument("second", "Second", 800, 600);
     ws.addDocument(second);
-    document.querySelector<HTMLButtonElement>("[data-dialog-confirm]")!.click();
-    await new Promise<void>((resolve) => queueMicrotask(resolve));
-
-    expect(first.engine.getLayers()).toHaveLength(2);
     expect(second.engine.getLayers()).toHaveLength(1);
+
     dispose();
   });
 });

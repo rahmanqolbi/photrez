@@ -16,32 +16,26 @@ describe('Engineering Integrity: Strict TypeScript Mandate', () => {
   });
 });
 
-describe('Photrez high-fidelity UI slice tokens', () => {
-  const indexCssPath = path.resolve(__dirname, '..', 'index.css');
-  const indexCss = fs.readFileSync(indexCssPath, 'utf8');
+describe('Photrez design tokens', () => {
+  const stylesCssPath = path.resolve(__dirname, '..', 'styles.css');
+  const stylesCss = fs.readFileSync(stylesCssPath, 'utf8');
 
-  it('should define the requested native desktop palette', () => {
-    expect(indexCss).toContain('--color-app-bg: #0f1113');
-    expect(indexCss).toContain('--color-app-chrome: #121416');
-    expect(indexCss).toContain('--color-app-panel: #16191c');
-    expect(indexCss).toContain('--color-app-panel-soft: #1a1d20');
-    expect(indexCss).toContain('--color-app-control: #151719');
-    expect(indexCss).toContain('--color-app-hover: #202328');
-    expect(indexCss).toContain('--color-border-subtle: #262a2f');
-    expect(indexCss).toContain('--color-border-strong: #343941');
-    expect(indexCss).toContain('--color-text-primary: #f2f2f2');
-    expect(indexCss).toContain('--color-text-secondary: #b7bbc0');
-    expect(indexCss).toContain('--color-text-muted: #7f858c');
-    expect(indexCss).toContain('--color-accent: #E15A17');
-  });
-
-  it('should lock the requested AppShell grid dimensions', () => {
-    expect(indexCss).toContain('grid-template-rows: 52px 48px 56px 1fr 46px;');
-    expect(indexCss).toContain('grid-template-columns: 64px 1fr 520px;');
-    expect(indexCss).toContain('grid-template-columns: 280px 240px;');
+  it('should define the editor palette in OKLCH', () => {
+    expect(stylesCss).toContain('--editor-bg: oklch(0.205 0 0)');
+    expect(stylesCss).toContain('--editor-topbar: oklch(0.19 0 0)');
+    expect(stylesCss).toContain('--editor-panel: oklch(0.235 0 0)');
+    expect(stylesCss).toContain('--editor-canvas: oklch(0.17 0 0)');
+    expect(stylesCss).toContain('--editor-field: oklch(0.265 0 0)');
+    expect(stylesCss).toContain('--editor-divider: oklch(0.3 0 0)');
+    expect(stylesCss).toContain('--editor-text: oklch(0.84 0 0)');
+    expect(stylesCss).toContain('--editor-text-dim: oklch(0.58 0 0)');
+    expect(stylesCss).toContain('--editor-accent: oklch(0.74 0.15 55)');
+    expect(stylesCss).toContain('--editor-brand: oklch(0.62 0.2 36)');
   });
 
   it('should keep orange limited to small active indicators', () => {
+    const indexCssPath = path.resolve(__dirname, '..', 'index.css');
+    const indexCss = fs.readFileSync(indexCssPath, 'utf8');
     // Active tab/panel accent indicator: documented as design lock.
     // Must use the same accent token as focus outlines to stay visually consistent.
     expect(indexCss).toContain('.document-tab.active::after');

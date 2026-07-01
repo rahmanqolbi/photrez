@@ -134,7 +134,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
               width={screenW()}
               height={screenH()}
               fill="none"
-              stroke={layerTransformSession()?.layerId === getLayer()?.id ? "#E15A17" : "rgba(255,255,255,0.72)"}
+              stroke={layerTransformSession()?.layerId === getLayer()?.id ? "var(--color-editor-accent)" : "rgba(255,255,255,0.72)"}
               stroke-width={1}
               vector-effect="non-scaling-stroke"
               style={{ "pointer-events": "none" }}
@@ -144,7 +144,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
               cx={screenCenter().x}
               cy={screenCenter().y}
               r={3}
-              fill="#E15A17"
+              fill="var(--color-editor-accent)"
               vector-effect="non-scaling-stroke"
               style={{ "pointer-events": "none" }}
             />
@@ -216,7 +216,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
                       width={hs()}
                       height={hs()}
                       fill="white"
-                      stroke="#E15A17"
+                      stroke="var(--color-editor-accent)"
                       stroke-width={1}
                       vector-effect="non-scaling-stroke"
                       style={{ "pointer-events": "none" }}

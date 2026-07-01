@@ -62,8 +62,8 @@ test.describe("editor browser smoke", () => {
     await expect(page.getByText("Selected Layer:")).toBeVisible();
 
     await page.getByRole("button", { name: "Crop Tool" }).click();
-    await expect(page.getByTitle("Delete Cropped Pixels (Destructive)")).toHaveCount(1);
-    await expect(page.getByTitle("Rotate 90° CW")).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Delete" })).toBeVisible();
+    await expect(page.getByText("Ratio: Free")).toBeVisible();
 
     await page.getByRole("button", { name: "Move Tool" }).click();
     await expect(page.getByText("Active:")).toBeVisible();
@@ -312,14 +312,14 @@ test.describe("export dialog", () => {
     await expect(page.getByText("PNG")).toHaveCount(0);
   });
 
-  test("Ctrl+E opens export dialog when document is open", async ({ page }) => {
+  test("Ctrl+Alt+E opens export dialog when document is open", async ({ page }) => {
     await page.goto("/");
     page.on("dialog", async (dialog) => {
       await dialog.accept(dialog.message().includes("width") ? "800" : "600");
     });
     await page.getByRole("button", { name: "New Canvas" }).click();
 
-    await page.keyboard.press("Control+e");
+    await page.keyboard.press("Control+Alt+e");
     await expect(page.getByRole("dialog", { name: "Export Image" })).toBeVisible();
 
     await page.getByRole("button", { name: "Cancel" }).click();

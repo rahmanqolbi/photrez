@@ -3,6 +3,7 @@ import { useEditor } from "../shell/EditorContext";
 import { centerModernCropFrame, type ModernCropFrame } from "@/viewport/modernCropGeometry";
 import { easeOutCubic } from "@/viewport/easing";
 import { WEBGL2_CONTEXT_RESTORED_EVENT } from "@/renderer/webgl2";
+import { showToast } from "../Toast";
 
 interface UseViewportRendererParams {
   getCanvasContainerRef: () => HTMLDivElement | undefined;
@@ -101,7 +102,7 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
       }
       scheduler.requestRender();
     } catch (err) {
-      console.error("Renderer context restore sync failed:", err);
+      showToast(`Renderer context restore sync failed — textures may be missing: ${err instanceof Error ? err.message : "unknown error"}`, "error");
     }
   }
 
@@ -112,7 +113,7 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
         renderer.initialize(canvas);
         canvas.addEventListener(WEBGL2_CONTEXT_RESTORED_EVENT, reuploadActiveDocumentTextures);
       } catch (err) {
-        console.error("Renderer init failed:", err);
+        showToast(`Renderer initialization failed — the app may not work: ${err instanceof Error ? err.message : "unknown error"}`, "error");
       }
     }
 
@@ -144,6 +145,7 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
     // context-restored listener, animFrameId, and camera callbacks all
     // leaked.
     let resizeObserver: ResizeObserver | null = null;
+    let resizeTimer: number | null = null;
     const container = params.getCanvasContainerRef();
     if (container) {
       resizeObserver = new ResizeObserver((entries) => {
@@ -152,7 +154,8 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
           setViewportHeight(entry.contentRect.height);
           camera.setViewportSize(entry.contentRect.width, entry.contentRect.height);
         }
-        fitToScreenAndRender();
+        if (resizeTimer !== null) clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(fitToScreenAndRender, 100);
       });
       resizeObserver.observe(container);
     }
@@ -160,6 +163,7 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
     onCleanup(() => {
       canvas?.removeEventListener(WEBGL2_CONTEXT_RESTORED_EVENT, reuploadActiveDocumentTextures);
       resizeObserver?.disconnect();
+      if (resizeTimer !== null) clearTimeout(resizeTimer);
       cancelAnimationFrame(animFrameId);
       camera.onAnimationStart = undefined;
       camera.onAnimationEnd = undefined;
@@ -207,7 +211,7 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
         scheduler.requestRender();
       }
     } catch (err) {
-      console.error("Viewport sync failed:", err);
+      showToast(`Viewport sync failed — rendering may be incomplete: ${err instanceof Error ? err.message : "unknown error"}`, "error");
     }
   });
 

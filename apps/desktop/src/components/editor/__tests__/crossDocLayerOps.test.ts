@@ -114,7 +114,7 @@ function makeEngine(opts: { id: string; layerCount?: number; width?: number; hei
       layers: [] as LayerNode[],
       activeLayerId: null,
       selection: null,
-      /* ponytail: viewport mock has minimal fields — add real defaults if snapshot is ever diffed */
+      /* viewport mock has minimal fields — add real defaults if snapshot is ever diffed */
       viewport: { panX: 0, panY: 0, zoom: 1, rotation: 0 },
       dirty: false,
     })),
@@ -195,7 +195,7 @@ describe("addLayerFromCrossDoc â€” validation", () => {
 
   it("reorders layer to end of stack on same-doc drop without insertAt (Pass 12 fallback, Pass 14 polish)", () => {
     const engine = makeEngine({ id: "doc-A" });
-    /* ponytail: layers just need .id for reorder — as LayerNode[] silences structural check */
+    /* layers just need .id for reorder — as LayerNode[] silences structural check */
     const layers = [
       { id: "layer-1" } as LayerNode,
       { id: "layer-2" } as LayerNode,

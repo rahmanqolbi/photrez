@@ -38,6 +38,7 @@ export type EditorCommand =
   | "layer.delete"
   | "layer.merge-down"
   | "layer.flatten"
+  | "layer.stamp-visible"
   | "view.zoom-in"
   | "view.zoom-out"
   | "view.actual-size"
@@ -70,6 +71,7 @@ const EDITOR_COMMANDS: ReadonlySet<string> = new Set<EditorCommand>([
   "layer.delete",
   "layer.merge-down",
   "layer.flatten",
+  "layer.stamp-visible",
   "view.zoom-in",
   "view.zoom-out",
   "view.actual-size",
@@ -207,7 +209,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
       editor.workspace.notifyVisualChange();
       editor.scheduler.requestRender();
     } catch (error) {
-      console.error(`${direction === "undo" ? "Undo" : "Redo"} failed:`, error);
+      showToast(`${direction === "undo" ? "Undo" : "Redo"} failed: ${error instanceof Error ? error.message : "unknown error"}`, "error");
     }
   };
 
@@ -238,6 +240,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
         if (session.sourcePath) {
           void (async () => {
             try {
+              showToast("Saving project...", "info");
               await serializeAndSaveProject(session.engine, session.sourcePath!);
               session.dirty = false;
               showToast("Project saved successfully", "info");
@@ -343,6 +346,9 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
       case "layer.flatten":
         layerActions.handleFlattenAllLayers();
         break;
+      case "layer.stamp-visible":
+        layerActions.handleStampVisible();
+        break;
       case "view.zoom-in":
       case "view.zoom-out":
       case "view.actual-size": {
@@ -418,7 +424,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
       else if (commandKey && key === "o") command = "file.open";
       else if (commandKey && event.shiftKey && key === "s") command = "file.save-as";
       else if (commandKey && key === "s") command = "file.save";
-      else if (commandKey && key === "e") command = "file.export";
+      else if (commandKey && event.altKey && key === "e") command = "file.export";
       else if (commandKey && key === "p") command = "file.print";
       else if (commandKey && key === "1") command = "view.actual-size";
       else if (commandKey && key === "0") command = "view.fit-canvas";

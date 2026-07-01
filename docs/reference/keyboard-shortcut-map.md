@@ -48,6 +48,7 @@ Reference: Existing implementation in `aplikasi-cetak-massal` studio.
 | `Ctrl+O` | Open File | Opens file dialog |
 | `Ctrl+S` | Save | Triggers save action |
 | `Ctrl+Shift+S` | Save As / Export | Opens export dialog |
+| `Ctrl+Alt+E` | Export… | Opens export dialog |
 | `Ctrl+W` | Close Document | Blocked if unsaved changes (confirmation) |
 
 ### Edit Operations
@@ -77,11 +78,15 @@ Reference: Existing implementation in `aplikasi-cetak-massal` studio.
 | --- | --- | --- |
 | `Ctrl+Shift+N` | Add New Layer | |
 | `Ctrl+J` | Duplicate Layer / Layer via Copy | If selection exists: Layer via Copy |
+| `F2` | Rename Active Layer | Shows inline rename editor |
 | `Ctrl+]` | Move Layer Up | In layer stack |
 | `Ctrl+[` | Move Layer Down | In layer stack |
+| `Ctrl+Shift+]` | Move Layer to Top | Brings layer to top of stack |
+| `Ctrl+Shift+[` | Move Layer to Bottom | Sends layer to bottom of stack |
 | `Ctrl+G` | Flip Horizontal | Flips selected layer horizontally |
 | `Ctrl+Shift+G` | Flip Vertical | Flips selected layer vertically |
 | `Ctrl+E` | Merge Down | Merges the active layer into the layer below |
+| `Ctrl+Shift+Alt+E` | Stamp Visible | Composites all visible layers into a new top layer |
 | `Ctrl+Shift+E` | Flatten Image | Flattens all document layers |
 | `0-9` (no modifier) | Set Layer Opacity | `0` = 100%, `1` = 10%, ..., `9` = 90% |
 
@@ -89,6 +94,8 @@ Reference: Existing implementation in `aplikasi-cetak-massal` studio.
 
 | Shortcut | Action | Notes |
 | --- | --- | --- |
+| `Tab` | Toggle UI Panels | Hides/shows LeftToolRail, OptionBar, RightDock, StatusBar |
+| `Ctrl+Shift+P` | Toggle Right Dock | Toggles only the right side panels |
 | `Ctrl+=` / `Ctrl++` | Zoom In | Also: `Ctrl+ArrowUp` |
 | `Ctrl+-` | Zoom Out | Also: `Ctrl+ArrowDown` |
 | `Ctrl+0` | Fit to Screen | |
@@ -150,6 +157,8 @@ These shortcuts are reserved for future features and must not be reassigned in M
 - Do not bind `Alt+F4` (OS-level close).
 - Shortcuts must not fire when user is typing in text input or textarea.
 - `Escape` always focuses the canvas container (blur active input first).
+- `Tab` never fires when an INPUT, TEXTAREA, or contentEditable element is focused — ensures normal Tab behavior in forms.
+- `Ctrl+Alt+E` for Export avoids conflict with `Ctrl+E` for Merge Down (canvas keyboard handler always wins for Ctrl+E).
 
 ## 7) Customization (Post-MVP)
 

@@ -167,6 +167,15 @@ export interface EditorContextValue {
   showPrintDialog: Accessor<boolean>;
   setShowPrintDialog: Setter<boolean>;
 
+  loadingMessage: Accessor<string | null>;
+  setLoadingMessage: Setter<string | null>;
+  renamingLayerId: Accessor<string | null>;
+  setRenamingLayerId: Setter<string | null>;
+  renameLayerName: Accessor<string>;
+  setRenameLayerName: Setter<string>;
+  chromeVisible: Accessor<boolean>;
+  setChromeVisible: Setter<boolean>;
+
   // Feature flag: GPU camera image transform for Modern Crop
   useGPUCameraForModernCrop: Accessor<boolean>;
   setUseGPUCameraForModernCrop: Setter<boolean>;
@@ -375,6 +384,7 @@ export function EditorProvider(props: {
     renderer: props.renderer,
     scheduler: props.scheduler,
     onError: (message) => showToastImpl(message, "error"),
+    onLoading: (message) => editorState.setLoadingMessage(message),
   });
 
   onMount(() => {

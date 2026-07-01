@@ -7,7 +7,7 @@ import { WorkspaceManager } from "@/engine/workspace";
 import type { LayerDragPayload } from "../../dragTypes";
 
 /**
- * ponytail: end-to-end smoke test for the in-panel layer reorder fix.
+ * End-to-end smoke test for the in-panel layer reorder fix.
  * The panel's drop handler must forward the tracked dropTarget (with
  * insertAt + insertPosition) to addLayerFromCrossDoc so the
  * same-doc reorder lands at the row the user aimed at.
@@ -240,7 +240,7 @@ function fireNativeDragStart(
 }
 
 /**
- * ponytail: fire the actual DOM dragstart on a LayerItem row and let
+ * Fire the actual DOM dragstart on a LayerItem row and let
  * its real onLayerDragStart handler run. This catches bugs in the
  * real production path that synthetic beginLayerDrag calls miss.
  */

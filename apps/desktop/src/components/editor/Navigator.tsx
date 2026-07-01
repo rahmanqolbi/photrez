@@ -123,7 +123,7 @@ export function Navigator() {
       offsetTop: oy,
     });
 
-    ctx.strokeStyle = "#E15A17";
+    ctx.strokeStyle = "#E15A17"; // matches --color-editor-accent, keep literal for canvas 2D compatibility
     ctx.lineWidth = 1.5;
     ctx.strokeRect(frame.left, frame.top, frame.width, frame.height);
     ctx.fillStyle = "rgba(225, 90, 23, 0.08)";

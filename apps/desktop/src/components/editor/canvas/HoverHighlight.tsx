@@ -35,7 +35,7 @@ export function HoverHighlight() {
             width={screenW()}
             height={screenH()}
             fill="none"
-            stroke="#8b5cf6"
+            stroke="var(--color-editor-accent, #E15A17)"
             stroke-width={1}
             style={{ opacity: 0.8 }}
           />

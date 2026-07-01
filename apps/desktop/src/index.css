@@ -3,16 +3,13 @@
 @theme {
   --color-accent: #E15A17;
   --color-accent-hover: #F97316;
-  --color-accent-active: #C2410C;
 
   --color-text-primary: #D4D4D8;
   --color-text-secondary: #A1A1AA;
   --color-text-muted: #71717A;
 
   --color-success: #10B981;
-  --color-warning: #F59E0B;
   --color-danger: #EF4444;
-  --color-close: #e81123;
 
   --radius-sm: 2px;
   --radius-md: 4px;
@@ -69,14 +66,6 @@
   border-color: var(--color-editor-field-border);
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  @apply bg-[#52525B] rounded-sm transition-colors;
-}
-::-webkit-scrollbar-thumb:hover { @apply bg-[#71717A]; }
-
 .tabular-nums { font-variant-numeric: tabular-nums; }
 
 /* Range Slider Reset */
@@ -106,25 +95,6 @@ html, body {
 .panel-tab.active::after { content: ""; }
 .layer-row.selected { background: inherit; }
 
-
-/*
-grid-template-rows: 52px 48px 56px 1fr 46px;
-grid-template-columns: 64px 1fr 520px;
-grid-template-columns: 280px 240px;
---color-app-bg: #0f1113
---color-app-chrome: #121416
---color-app-panel: #16191c
---color-app-panel-soft: #1a1d20
---color-app-control: #151719
---color-app-hover: #202328
---color-border-subtle: #262a2f
---color-border-strong: #343941
---color-text-primary: #f2f2f2
---color-text-secondary: #b7bbc0
---color-text-muted: #7f858c
---color-accent: #E15A17
-*/
-
 /* Cross-document drag & drop indicators */
 [data-document-tab][data-drag-over="tab"] {
   outline: 2px solid var(--color-editor-accent, #E15A17);
@@ -152,6 +122,12 @@ grid-template-columns: 280px 240px;
 @keyframes hoverTabProgress {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
+}
+
+/* ─── Smart guide colors (center vs edge distinction) ─── */
+:root {
+  --guide-center: oklch(0.84 0 0);   /* white-ish, subtle */
+  --guide-edge: oklch(0.62 0.2 36);  /* Photon Amber */
 }
 
 /* ─── Enter animations ─── */

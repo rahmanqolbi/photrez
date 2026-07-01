@@ -5,6 +5,7 @@ import { exportActiveDocument } from "../exportDocument";
 import { DesktopDialog, DesktopDialogButton } from "./DesktopDialog";
 import { Slider } from "../primitives";
 import { Icon } from "../icons";
+import { tick } from "@/lib/dom";
 
 type ExportFormat = "png" | "jpeg" | "webp";
 
@@ -83,6 +84,9 @@ export function ExportDialog() {
     setExporting(true);
     setError(null);
     setDonePath(null);
+
+    // yield so the spinner renders before the blocking encode
+    await tick();
 
     try {
       const path = await exportActiveDocument(engine, name, format(), quality());

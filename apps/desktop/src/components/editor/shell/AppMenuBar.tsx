@@ -16,7 +16,7 @@ const MENU_DEFINITIONS: Record<MenuItem, readonly MenuEntry[]> = {
     { kind: "item", label: "Save Project", command: "file.save", shortcut: "Ctrl+S" },
     { kind: "item", label: "Save As…", command: "file.save-as", shortcut: "Ctrl+Shift+S" },
     { kind: "separator" },
-    { kind: "item", label: "Export…", command: "file.export", shortcut: "Ctrl+E" },
+    { kind: "item", label: "Export…", command: "file.export", shortcut: "Ctrl+Alt+E" },
     { kind: "separator" },
     { kind: "item", label: "Print…", command: "file.print", shortcut: "Ctrl+P" },
   ],
@@ -41,6 +41,8 @@ const MENU_DEFINITIONS: Record<MenuItem, readonly MenuEntry[]> = {
     { kind: "item", label: "Delete Layer", command: "layer.delete" },
     { kind: "separator" },
     { kind: "item", label: "Merge Down", command: "layer.merge-down", shortcut: "Ctrl+E" },
+    { kind: "item", label: "Stamp Visible", command: "layer.stamp-visible", shortcut: "Ctrl+Shift+Alt+E" },
+    { kind: "separator" },
     { kind: "item", label: "Flatten Image", command: "layer.flatten", shortcut: "Ctrl+Shift+E" },
   ],
   View: [

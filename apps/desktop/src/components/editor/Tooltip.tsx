@@ -144,7 +144,7 @@ export function Tooltip(props: TooltipProps) {
             role="tooltip"
             class={clsx(
               "fixed z-[100] pointer-events-none px-2 py-1 text-[11px] font-sans text-editor-text",
-              "bg-[#181818] border border-white/10 rounded-[4px] shadow-[0_4px_12px_rgba(0,0,0,0.5)]",
+              "bg-editor-panel border border-white/10 rounded-[4px] shadow-[0_4px_12px_rgba(0,0,0,0.5)]",
               "transition-opacity duration-100 ease-out",
               measured() ? "opacity-100" : "opacity-0"
             )}

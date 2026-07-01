@@ -465,14 +465,14 @@ describe('DocumentEngine', () => {
 
       const dup = engine.duplicateLayer(l2.id);
       
-      expect(dup.name).toBe('Layer 2 copy');
+      expect(dup.name).toBe('Layer 3');
       expect(dup.opacity).toBe(0.5);
       expect(dup.blendMode).toBe('multiply');
       expect(dup.transform.x).toBe(20);
       
       // Duplicated layer should be directly above l2
       const names = engine.getLayers().map(l => l.name);
-      expect(names).toEqual(['Layer 2 copy', 'Layer 2', 'Layer 1']);
+      expect(names).toEqual(['Layer 3', 'Layer 2', 'Layer 1']);
       expect(engine.getActiveLayerId()).toBe(dup.id);
     });
 

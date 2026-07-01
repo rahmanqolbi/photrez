@@ -3,13 +3,12 @@ import { constrainCropRectToDocument } from "@/viewport/cropGeometry";
 import { getModernCropApplyRotation, modernFrameToCropRect } from "@/viewport/modernCropGeometry";
 import type { ToolType } from "@/viewport/input-handler";
 import { useEditor } from "../shell/EditorContext";
-import { flattenAllLayers, mergeActiveLayerDown } from "../layers/layerOperations";
+import { flattenAllLayers, mergeActiveLayerDown, stampVisibleLayers } from "../layers/layerOperations";
 import { cancelLayerTransformSession, commitLayerTransformSession } from "../transformSession";
 import { discardCropSession, applyCropPreview } from "../cropToolActions";
 import { PAINT_SIZE_STEP, PAINT_SIZE_STEP_HARDNESS, adjustPaintSize, adjustPaintHardness } from "../brushToolState";
 import { SelectionOperations } from "@/features/selection/SelectionOperations";
 import { showToast } from "../Toast";
-import { useDialog } from "../dialogs/DialogProvider";
 
 interface CanvasKeyboardOptions {
   isSpacePressed: () => boolean;
@@ -88,8 +87,11 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     eraserSmoothing,
     camera,
     syncFromCamera,
+    setRenamingLayerId,
+    setRenameLayerName,
+    chromeVisible,
+    setChromeVisible,
   } = useEditor();
-  const dialog = useDialog();
 
   const resolvedCropFillColor = () => (
     cropFillSource() === "background"
@@ -117,6 +119,14 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
       options.stopMomentum();
       if (e.defaultPrevented) return;
 
+      // Tab: Toggle UI chrome (panels and toolbars)
+      if (e.key === "Tab" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        setChromeVisible((v) => !v);
+        return;
+      }
+
       // Dev-only: F5 reloads the webview when HMR gets stuck
       if (import.meta.env.DEV && e.key === "F5") {
         e.preventDefault();
@@ -129,6 +139,19 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
 
       const history = workspace.getActiveHistory();
       if (!history) return;
+
+      // F2: Rename active layer
+      if (e.key === "F2") {
+        e.preventDefault();
+        e.stopPropagation();
+        const activeId = engine.getActiveLayerId();
+        if (activeId) {
+          const layer = engine.getLayer(activeId);
+          setRenamingLayerId(activeId);
+          setRenameLayerName(layer?.name ?? "");
+        }
+        return;
+      }
 
       // Layer transform session keyboard shortcuts (takes precedence over crop/tool shortcuts)
       if (layerTransformSession()) {
@@ -438,6 +461,16 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
 
       const ctrl = e.ctrlKey || e.metaKey;
 
+      // Stamp Visible: Ctrl+Shift+Alt+E — composite all visible layers into a new top layer
+      if (ctrl && e.shiftKey && e.altKey && key === "e") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (stampVisibleLayers(engine, history, renderer)) {
+          scheduler.requestRender();
+        }
+        return;
+      }
+
       if (ctrl && key === "e") {
         e.preventDefault();
         e.stopPropagation();
@@ -522,6 +555,39 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         return;
       }
 
+      // Layer: Ctrl+Shift+] - Move active layer to top of stack
+      if (ctrl && e.shiftKey && e.key === "]") {
+        e.preventDefault();
+        e.stopPropagation();
+        const activeId = engine.getActiveLayerId();
+        if (activeId) {
+          const idx = engine.getLayers().findIndex((l) => l.id === activeId);
+          if (idx > 0) {
+            history.commit(engine.snapshot(), "Reorder Layer");
+            engine.reorderLayer(idx, 0);
+            scheduler.requestRender();
+          }
+        }
+        return;
+      }
+
+      // Layer: Ctrl+Shift+[ - Move active layer to bottom of stack
+      if (ctrl && e.shiftKey && e.key === "[") {
+        e.preventDefault();
+        e.stopPropagation();
+        const activeId = engine.getActiveLayerId();
+        if (activeId) {
+          const stack = engine.getLayers();
+          const idx = stack.findIndex((l) => l.id === activeId);
+          if (idx >= 0 && idx < stack.length - 1) {
+            history.commit(engine.snapshot(), "Reorder Layer");
+            engine.reorderLayer(idx, stack.length - 1);
+            scheduler.requestRender();
+          }
+        }
+        return;
+      }
+
       // Layer: Ctrl+G - Flip horizontal, Ctrl+Shift+G - Flip vertical
       if (ctrl && key === "g") {
         e.preventDefault();
@@ -541,21 +607,10 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
       // Layer: Delete / Backspace - Delete active layer
       // (Selection tool handles this earlier when in selection mode.)
       if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        e.stopPropagation();
         const activeId = engine.getActiveLayerId();
         if (activeId && engine.getLayers().length > 1) {
-          e.preventDefault();
-          e.stopPropagation();
-          const layer = engine.getLayer(activeId);
-          const name = layer?.name || "Untitled";
-          const accepted = await dialog.confirm({
-            title: "Delete Layer",
-            message: `Delete layer "${name}"? This action can be undone.`,
-            confirmLabel: "Delete",
-            tone: "danger",
-          });
-          if (!accepted) return;
-          // Re-check state after modal — document may have changed
-          if (engine.getActiveLayerId() !== activeId || engine.getLayers().length <= 1) return;
           history.commit(engine.snapshot(), "Delete Layer");
           engine.deleteLayer(activeId);
           scheduler.requestRender();

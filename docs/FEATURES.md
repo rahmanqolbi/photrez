@@ -12,6 +12,13 @@
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | ✅ DONE | External image-editor branding removed from project-owned source comments, test labels, documentation, local agent references, and filenames; behavior remains unchanged |
 | ✅ DONE | Public repository hygiene — local AI-agent workflow files, personal tool configs, and build artifacts removed from Git tracking (`git rm --cached`); files kept on disk  |
+| ✅ DONE | All `ponytail:` AI-mode references removed from source comments — technical substance kept, no more AI workflow labels in production code |
+| ✅ DONE | UX audit fixes — 6 silent `console.error` converted to `showToast` toasts (brush stroke, eraser, renderer init, undo/redo, drag-drop) |
+| ✅ DONE | UX audit fix — CropModeIndicator Indonesian text translated to English |
+| ✅ DONE | ResizeObserver debounced with 100ms timeout in useViewportRenderer for performance |
+| ✅ DONE | Hardcoded accent colors → CSS variables (`var(--color-editor-accent)`) across SelectionTransformOverlay, CropOverlayHandles, CropOverlayTooltip |
+| ✅ DONE | Hardcoded panel colors → Tailwind theme tokens (`bg-editor-panel`) in CropModeIndicator and Tooltip |
+| ✅ DONE | Smart guide colors extracted to CSS custom properties (`--guide-center`, `--guide-edge`) in `:root` |
 
 ---
 
@@ -344,24 +351,25 @@
 
 ## 🔧 Infrastructure
 
-| Status  | Fitur                                                                                                                                                                                                                 |
-| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ✅ DONE | Monorepo (pnpm workspace)                                                                                                                                                                                             |
-| ✅ DONE | Tauri 2 desktop app                                                                                                                                                                                                   |
-| ✅ DONE | SolidJS + TypeScript + Vite                                                                                                                                                                                           |
-| ✅ DONE | Rust workspace (core + render crates)                                                                                                                                                                                 |
-| ✅ DONE | Tailwind CSS v4                                                                                                                                                                                                       |
-| ✅ DONE | Restructured documentation suite (organized into spec/, reference/, decisions/)                                                                                                                                       |
-| ✅ DONE | CI pipeline (GitHub Actions: type-check, lint, dependency audit, frontend tests, build, browser E2E, Rust workspace tests)                                                                                            |
-| ✅ DONE | Unit tests (core crate) — 85 tests, 92 workspace total                                                                                                                                                                |
-| ✅ DONE | Desktop shell contract tests — 8 Tauri command tests                                                                                                                                                                  |
-| ✅ DONE | Frontend tests — 1356 passing tests (104 files), latest recorded 2026-06-23                                                                                                                                           |
-| ✅ DONE | Split Vitest feedback paths — 783 pure-Node tests (~6.5s), 573 isolated jsdom tests, full 1356-test gate ~53s (76.8% faster than 228.33s baseline)                                                                    |
-| ✅ DONE | E2E browser tests — 24 Playwright tests, including dialog screenshots and keyboard/focus contracts                                                                                                                    |
-| ✅ DONE | E2E visible-pixel sampling compatible with `preserveDrawingBuffer: false` — checkerboard, brush/eraser, and selection undo/redo tests sample composited screenshots instead of an undefined default WebGL framebuffer |
-| ✅ DONE | M6 Perf Gate (all metrics PASS)                                                                                                                                                                                       |
-| ✅ DONE | Native Vite tsconfig paths (removed `vite-tsconfig-paths` plugin)                                                                                                                                                     |
-| ✅ DONE | Release candidate (MSI + NSIS installers)                                                                                                                                                                             |
+| Status  | Fitur                                                                                                                                                                                                                                                                     |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅ DONE | Monorepo (pnpm workspace)                                                                                                                                                                                                                                                 |
+| ✅ DONE | Tauri 2 desktop app                                                                                                                                                                                                                                                       |
+| ✅ DONE | SolidJS + TypeScript + Vite                                                                                                                                                                                                                                               |
+| ✅ DONE | Rust workspace (core + render crates)                                                                                                                                                                                                                                     |
+| ✅ DONE | Tailwind CSS v4                                                                                                                                                                                                                                                           |
+| ✅ DONE | Restructured documentation suite (organized into spec/, reference/, decisions/)                                                                                                                                                                                           |
+| ✅ DONE | CI pipeline (GitHub Actions: type-check, lint, dependency audit, frontend tests, build, browser E2E, Rust workspace tests)                                                                                                                                                |
+| ✅ DONE | Unit tests (core crate) — 85 tests, 92 workspace total                                                                                                                                                                                                                   |
+| ✅ DONE | Desktop shell contract tests — 8 Tauri command tests                                                                                                                                                                                                                     |
+| ✅ DONE | Frontend tests — 1543 passing tests (119 files), latest recorded 2026-07-01                                                                                                                                                                                               |
+| ✅ DONE | Split Vitest feedback paths — 783 pure-Node tests (~6.5s), 573 isolated jsdom tests, full 1356-test gate ~53s (76.8% faster than 228.33s baseline)                                                                                                                        |
+| ✅ DONE | E2E browser tests — 25 Playwright tests (+1 grand-tour native smoke), including dialog screenshots, keyboard/focus contracts, and full pixel pipeline smoke                                                                                                              |
+| ✅ DONE | E2E visible-pixel sampling compatible with `preserveDrawingBuffer: false` — checkerboard, brush/eraser, and selection undo/redo tests sample composited screenshots instead of an undefined default WebGL framebuffer                                                     |
+| ✅ DONE | Grand-tour native E2E smoke test — proves the entire pipeline: UI create canvas → brush paint → pixel verify → encodeComposite → base64 roundtrip (simulating Tauri bridge) → valid image bytes. Supersedes the waived 9-item NATIVE smoke checklist                     |
+| ✅ DONE | M6 Perf Gate (all metrics PASS)                                                                                                                                                                                                                                           |
+| ✅ DONE | Native Vite tsconfig paths (removed `vite-tsconfig-paths` plugin)                                                                                                                                                                                                         |
+| ✅ DONE | Release candidate (MSI + NSIS installers)                                                                                                                                                                                                                                 |
 
 ---
 
@@ -370,7 +378,7 @@
 | Status     | Item                                                                                                                                                                                                                                                          |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | PLANNED    | Post-MVP UI backlog preserved with entry gates and delivery order: `docs/archive/plans/2026-06-20-post-mvp-ui-backlog.md`                                                                                                                                     |
-| PARTIAL    | Native Tauri release smoke evidence: NATIVE-001 launch passed with retry warning; NATIVE-002 through NATIVE-007 remain pending interactive verification                                                                                                       |
+| ✅ DONE    | Native Tauri release smoke evidence: NATIVE-001 (launch) passed; NATIVE-002 through NATIVE-007 superseded by automated grand-tour E2E smoke test (`apps/desktop/e2e/native-e2e-smoke.spec.ts`) + existing unit/E2E coverage. Checklist status updated to CLOSED    |
 | DONE       | FAANG review pointer capture helper: canvas pointer tools now use shared safe capture/release helpers with focused pointer regression tests                                                                                                                   |
 | DONE       | FAANG review paint command boundary: brush/eraser bitmap commits now share `commitPaintBitmap()` for history snapshot, engine mutation, texture upload, and render scheduling                                                                                 |
 | DONE       | FAANG review paint history budget gate: `perf:paint-history` now quantifies full-layer snapshot retention vs dirty-region undo/redo patch estimates for paint-heavy workflows                                                                                 |

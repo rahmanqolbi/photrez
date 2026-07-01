@@ -4,6 +4,7 @@ import type { CommandHistory } from "@/engine/history";
 import { getPaintToolBlockReason, type PaintToolSettings } from "./brushToolState";
 import { commitPaintBitmap } from "./paintCommitCommand";
 import { mapPaintPointToLayerLocal, mapPaintStrokeToLayerLocal } from "./paintStrokeCoordinates";
+import { showToast } from "./Toast";
 import {
   getBrushDabSpacing,
   getBrushTip,
@@ -228,7 +229,7 @@ export function useBrushOverlay() {
       renderer.uploadImage(layerId, bitmap);
       scheduler.requestRender();
     } catch (err) {
-      console.error("Eraser preview upload failed:", err);
+      showToast(`Eraser preview failed: ${err instanceof Error ? err.message : "unknown error"}`, "error");
     }
   }
 
@@ -288,7 +289,7 @@ export function useBrushOverlay() {
       prevStrokePointCount = 0;
       paintSession = null;
     } catch (err) {
-      console.error("Stroke commit failed:", err);
+      showToast(`Brush stroke failed: ${err instanceof Error ? err.message : "unknown error"}`, "error");
       paintSession = null;
     }
   }
@@ -327,7 +328,7 @@ export function useBrushOverlay() {
       eraserPreviewCtx = null;
       paintSession = null;
     } catch (err) {
-      console.error("Eraser commit failed:", err);
+      showToast(`Eraser stroke failed: ${err instanceof Error ? err.message : "unknown error"}`, "error");
       paintSession = null;
     }
   }

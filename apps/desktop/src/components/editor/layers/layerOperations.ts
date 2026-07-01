@@ -1,6 +1,7 @@
 import type { DocumentEngine } from "@/engine/document";
 import type { CommandHistory } from "@/engine/history";
 import type { WebGL2Backend } from "@/renderer/webgl2";
+import { compositeAllLayers } from "@/engine/layerComposite";
 
 export function mergeActiveLayerDown(
   engine: DocumentEngine,
@@ -50,6 +51,31 @@ export function flattenAllLayers(
   if (flattenedLayer?.imageBitmap) {
     renderer.uploadImage(flattenedLayer.id, flattenedLayer.imageBitmap);
   }
+
+  return true;
+}
+
+export function stampVisibleLayers(
+  engine: DocumentEngine,
+  history: CommandHistory,
+  renderer: WebGL2Backend,
+) {
+  const layers = engine.getLayers();
+  const visibleLayers = layers.filter((l) => l.visible);
+  if (visibleLayers.length === 0) return false;
+
+  history.commit(engine.snapshot(), "Stamp Visible");
+
+  const w = engine.getWidth();
+  const h = engine.getHeight();
+  const composite = compositeAllLayers(visibleLayers, w, h);
+  if (!composite) {
+    return false;
+  }
+
+  const newLayer = engine.addLayer("Stamp Visible", w, h);
+  engine.setLayerImageBitmap(newLayer.id, composite);
+  renderer.uploadImage(newLayer.id, composite);
 
   return true;
 }

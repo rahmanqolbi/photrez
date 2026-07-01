@@ -14,3 +14,9 @@ export function isEditableTarget(target: EventTarget | null) {
 export function isModalOpen(): boolean {
   return !!document.querySelector('[aria-modal="true"]');
 }
+
+/** Yield to the event loop so the browser can paint pending UI updates
+ * (spinner, toast) before a CPU-bound operation. */
+export function tick(): Promise<void> {
+  return new Promise((r) => setTimeout(r, 0));
+}

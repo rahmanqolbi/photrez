@@ -52,31 +52,18 @@ test.describe("Precision Workbench dialogs", () => {
     await expect(page.getByRole("button", { name: "Help" })).toBeFocused();
   });
 
-  test("destructive dialog defaults to Cancel and completes by keyboard", async ({ page }, testInfo) => {
+  test("delete layer removes immediately without confirmation dialog", async ({ page }) => {
     await page.goto("/");
     await createBlankCanvas(page);
-    await page.getByTitle("New Layer").click();
+    // 1 layer from blank canvas
+    await expect(page.locator("[data-layer-idx]")).toHaveCount(1);
+
+    // Add a second layer so Delete is not disabled
+    await page.getByRole("button", { name: "New Layer" }).click();
     await expect(page.locator("[data-layer-idx]")).toHaveCount(2);
 
-    await page.getByTitle("Delete Layer").click();
-    let dialog = page.getByRole("alertdialog", { name: "Delete Layer" });
-    await expect(dialog).toBeVisible();
-    await expect(dialog).toHaveAttribute("data-dialog-tone", "danger");
-    await expect(page.getByRole("button", { name: "Cancel" })).toBeFocused();
-    await dialog.screenshot({ path: testInfo.outputPath("delete-layer-dialog.png") });
-
-    await page.keyboard.press("Enter");
-    await expect(dialog).toHaveCount(0);
-    await expect(page.locator("[data-layer-idx]")).toHaveCount(2);
-
-    await page.getByTitle("Delete Layer").click();
-    dialog = page.getByRole("alertdialog", { name: "Delete Layer" });
-    await expect(page.getByRole("button", { name: "Cancel" })).toBeFocused();
-    await page.keyboard.press("Tab");
-    await expect(dialog.getByRole("button", { name: "Delete", exact: true })).toBeFocused();
-    await page.keyboard.press("Enter");
-
-    await expect(dialog).toHaveCount(0);
+    // Delete second layer — immediate, no confirmation dialog
+    await page.getByRole("button", { name: "Delete Layer" }).click();
     await expect(page.locator("[data-layer-idx]")).toHaveCount(1);
   });
 

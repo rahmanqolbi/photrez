@@ -33,14 +33,16 @@ export function LayersPanel() {
     setLayerTransformSession,
     rightDockPanel,
     setRightDockPanel,
+    renamingLayerId: editingLayerId,
+    setRenamingLayerId: setEditingLayerId,
+    renameLayerName: editName,
+    setRenameLayerName: setEditName,
   } = useEditor();
 
   const dragController = useDragController();
 
   const [showOpacitySlider, setShowOpacitySlider] = createSignal(false);
   const [opacityHistorySnapshot, setOpacityHistorySnapshot] = createSignal<DocumentModel | null>(null);
-  const [editingLayerId, setEditingLayerId] = createSignal<string | null>(null);
-  const [editName, setEditName] = createSignal("");
   const [navigatorCollapsed, setNavigatorCollapsed] = createSignal(false);
   const [layerContextMenu, setLayerContextMenu] = createSignal<{
     x: number;

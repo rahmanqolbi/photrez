@@ -7,11 +7,6 @@ import { useEditorCommands } from "../../useEditorCommands";
 import { WorkspaceManager } from "@/engine/workspace";
 import { easeOutCubic } from "@/viewport/easing";
 
-vi.mock("../../dialogs/DialogProvider", () => ({
-  useDialog: () => ({ confirm: () => Promise.resolve(true), alert: () => Promise.resolve() }),
-  DialogProvider: (props: { children: any }) => props.children,
-}));
-
 function installOffscreenCanvasMock(bitmap: ImageBitmap) {
   vi.stubGlobal("OffscreenCanvas", class {
     width: number;

@@ -56,6 +56,10 @@ export function createEditorState() {
   const [showResizeDialog, setShowResizeDialog] = createSignal(false);
   const [showExportDialog, setShowExportDialog] = createSignal(false);
   const [showPrintDialog, setShowPrintDialog] = createSignal(false);
+  const [loadingMessage, setLoadingMessage] = createSignal<string | null>(null);
+  const [renamingLayerId, setRenamingLayerId] = createSignal<string | null>(null);
+  const [renameLayerName, setRenameLayerName] = createSignal("");
+  const [chromeVisible, setChromeVisible] = createSignal(true);
 
   return {
     activeTool, setActiveTool,
@@ -96,5 +100,9 @@ export function createEditorState() {
     showResizeDialog, setShowResizeDialog,
     showExportDialog, setShowExportDialog,
     showPrintDialog, setShowPrintDialog,
+    loadingMessage, setLoadingMessage,
+    renamingLayerId, setRenamingLayerId,
+    renameLayerName, setRenameLayerName,
+    chromeVisible, setChromeVisible,
   };
 }

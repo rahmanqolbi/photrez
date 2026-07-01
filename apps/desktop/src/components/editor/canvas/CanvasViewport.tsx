@@ -811,7 +811,7 @@ export function CanvasViewport() {
       onLostPointerCapture={onViewportLostPointerCapture}
     >
       {/* CSS Transform container →GPU-accelerated pan/zoom */}
-      {/* ponytail: the engine is a non-reactive class method, so wrapping
+      {/* the engine is a non-reactive class method, so wrapping
          it directly in `<Show when={...}>` would compile to a constant
          getter that never re-evaluates when activeDocumentId changes.
          The activeDocumentId signal is referenced first to register the

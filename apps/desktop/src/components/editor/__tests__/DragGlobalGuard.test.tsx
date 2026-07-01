@@ -8,7 +8,7 @@ import {
 import type { LayerDragPayload } from "../dragTypes";
 
 /**
- * ponytail: when an HTML5 drag is in flight, dragover on the
+ * When an HTML5 drag is in flight, dragover on the
  * document must call preventDefault so the browser doesn't show
  * the "forbidden" cursor over non-drop zones. Without this guard,
  * dragging a layer over the canvas or topbar shows 🚫.

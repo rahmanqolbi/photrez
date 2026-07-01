@@ -1,11 +1,9 @@
 import { useEditor } from "../shell/EditorContext";
-import { flattenAllLayers, mergeActiveLayerDown } from "./layerOperations";
+import { flattenAllLayers, mergeActiveLayerDown, stampVisibleLayers } from "./layerOperations";
 import { cancelLayerTransformSession } from "../transformSession";
-import { useDialog } from "../dialogs/DialogProvider";
 import { showToast } from "../Toast";
 
 export function useLayerActions() {
-  const dialog = useDialog();
   const {
     workspace,
     renderer,
@@ -62,6 +60,17 @@ export function useLayerActions() {
     const history = workspace.getActiveHistory();
     if (engine && history) {
       if (flattenAllLayers(engine, history, renderer)) {
+        scheduler.requestRender();
+      }
+    }
+  };
+
+  const handleStampVisible = () => {
+    cancelActiveTransformSession();
+    const engine = workspace.getActiveEngine();
+    const history = workspace.getActiveHistory();
+    if (engine && history) {
+      if (stampVisibleLayers(engine, history, renderer)) {
         scheduler.requestRender();
       }
     }
@@ -181,33 +190,15 @@ export function useLayerActions() {
     }
   };
 
-  const handleDeleteActiveLayer = async () => {
+  const handleDeleteActiveLayer = () => {
     cancelActiveTransformSession();
     const engine = workspace.getActiveEngine();
+    const history = workspace.getActiveHistory();
     const activeId = activeLayerId();
-    const documentId = workspace.getActiveDocumentId();
-    if (engine && activeId && documentId) {
+    if (engine && history && activeId) {
       if (engine.getLayers().length <= 1) return;
-      const layer = engine.getLayer(activeId);
-      const name = layer?.name || "Untitled";
-      const accepted = await dialog.confirm({
-        title: "Delete Layer",
-        message: `Delete layer "${name}"? This action can be undone.`,
-        confirmLabel: "Delete",
-        tone: "danger",
-      });
-      if (!accepted || workspace.getActiveDocumentId() !== documentId) return;
-      const currentEngine = workspace.getActiveEngine();
-      const currentHistory = workspace.getActiveHistory();
-      if (
-        !currentEngine
-        || !currentHistory
-        || currentEngine.getActiveLayerId() !== activeId
-        || currentEngine.getLayers().length <= 1
-        || !currentEngine.getLayer(activeId)
-      ) return;
-      currentHistory.commit(currentEngine.snapshot(), "Delete Layer");
-      currentEngine.deleteLayer(activeId);
+      history.commit(engine.snapshot(), "Delete Layer");
+      engine.deleteLayer(activeId);
       scheduler.requestRender();
     }
   };
@@ -216,6 +207,7 @@ export function useLayerActions() {
     handleDuplicateActiveLayer,
     handleMergeActiveLayerDown,
     handleFlattenAllLayers,
+    handleStampVisible,
     handleSelectLayer,
     handleToggleVisibility,
     handleToggleLock,

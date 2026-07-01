@@ -13,6 +13,7 @@ const ResizeCanvasModal = lazy(() => import("../dialogs/ResizeCanvasModal").then
 const ExportDialog = lazy(() => import("../dialogs/ExportDialog").then(m => ({ default: m.ExportDialog })));
 const PrintDialog = lazy(() => import("../dialogs/PrintDialog").then(m => ({ default: m.PrintDialog })));
 import { ToastHost } from "../Toast";
+import { LoadingOverlay } from "../LoadingOverlay";
 import { GlobalDragDropHost } from "../GlobalDragDropHost";
 import { DragGlobalGuard } from "../DragController";
 
@@ -28,7 +29,7 @@ function EditorLayout(props: {
   toggleRightDock: () => void;
   setRightDockOpen: (val: boolean) => void;
 }) {
-  const { documents, activeDocumentId } = useEditor();
+  const { documents, activeDocumentId, chromeVisible } = useEditor();
   const hasDocument = () => documents().length > 0;
   const hasActiveDocument = () => activeDocumentId() !== null;
 
@@ -40,14 +41,16 @@ function EditorLayout(props: {
       />
 
       <main class="relative flex min-h-0 flex-1 overflow-hidden">
-        <LeftToolRail disabled={!hasActiveDocument()} />
+        <Show when={chromeVisible()}>
+          <LeftToolRail disabled={!hasActiveDocument()} />
+        </Show>
 
         <div class="flex flex-1 min-w-0 overflow-hidden">
           <section class="flex min-w-0 flex-1 flex-col overflow-hidden">
             <Show when={hasDocument()}>
               <DocumentTabsBar />
             </Show>
-            <Show when={hasActiveDocument()}>
+            <Show when={chromeVisible() && hasActiveDocument()}>
               <OptionBar />
             </Show>
             <Show when={hasActiveDocument()} fallback={<EmptyWorkspace />}>
@@ -55,17 +58,22 @@ function EditorLayout(props: {
             </Show>
           </section>
 
-          <RightDock
-            open={props.rightDockOpen}
-            onClose={() => props.setRightDockOpen(false)}
-          />
+          <Show when={chromeVisible()}>
+            <RightDock
+              open={props.rightDockOpen}
+              onClose={() => props.setRightDockOpen(false)}
+            />
+          </Show>
         </div>
       </main>
 
-      <BottomStatusBar />
+      <Show when={chromeVisible()}>
+        <BottomStatusBar />
+      </Show>
       <Suspense fallback={null}><ResizeCanvasModal /></Suspense>
       <Suspense fallback={null}><ExportDialog /></Suspense>
       <Suspense fallback={null}><PrintDialog /></Suspense>
+      <LoadingOverlay />
       <ToastHost />
     </div>
   );

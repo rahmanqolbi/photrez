@@ -9,10 +9,6 @@ vi.mock("../shell/EditorContext", () => ({
   useEditor: () => editorMock.current,
 }));
 
-vi.mock("../dialogs/DialogProvider", () => ({
-  useDialog: () => ({ confirm: () => Promise.resolve(true), alert: () => Promise.resolve() }),
-}));
-
 vi.mock("../cropToolActions", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../cropToolActions")>();
   return {

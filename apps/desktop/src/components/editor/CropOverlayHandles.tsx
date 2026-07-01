@@ -40,7 +40,7 @@ export function CropOverlayHandles(props: CropOverlayHandlesProps) {
               y={h.cy - h.size / 2}
               width={h.size}
               height={h.size}
-              fill={props.activeHandle === h.type ? "#E15A17"
+              fill={props.activeHandle === h.type ? "var(--color-editor-accent)"
                 : props.hoverHandle === h.type ? "#ccc"
                 : "white"}
               stroke="#333"

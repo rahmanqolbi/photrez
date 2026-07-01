@@ -149,6 +149,10 @@ export class DocumentEngine {
 
     const duplicated = duplicateLayerNode(layer);
 
+    // Rename with numeric suffix instead of "copy"
+    // "Background" → "Background 2", "Background 2" → "Background 3", etc.
+    duplicated.name = this.nextDuplicateName(layer.name);
+
     const index = this.model.layers.findIndex(l => l.id === id);
     if (index !== -1) {
       const updated = [...this.model.layers];
@@ -252,7 +256,7 @@ export class DocumentEngine {
       // "image source is detached" errors on restore (undo/redo).
       // Memory is reclaimed by GC once no snapshot or layer
       // references remain.
-      //  ponytail: deleteLayer is called AFTER history.commit() in
+      // deleteLayer is called AFTER history.commit() in
       // every production path, so the undo-stack snapshot already
       // holds a reference to these bitmaps.
 
@@ -342,6 +346,27 @@ export class DocumentEngine {
       this.model.dirty = true;
       this.notifyChange();
     }
+  }
+
+  /** Strip trailing number from a layer name to get the base name */
+  private baseName(name: string): string {
+    const match = name.match(/^(.*?)\s*(\d+)$/);
+    return match ? match[1].trimEnd() : name.trimEnd();
+  }
+
+  /** Generate the next numeric-suffixed name for a duplicating layer.
+   *  "Background" → "Background 2", "Background 2" → "Background 3", etc. */
+  private nextDuplicateName(layerName: string): string {
+    const base = this.baseName(layerName);
+    const prefix = `${base} `;
+    let maxNum = 1;
+    for (const l of this.model.layers) {
+      if (l.name.startsWith(prefix)) {
+        const num = parseInt(l.name.slice(prefix.length), 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      }
+    }
+    return `${base} ${maxNum + 1}`;
   }
 
   setLayerName(id: LayerId, name: string): void {

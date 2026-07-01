@@ -298,7 +298,7 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
     });
   });
 
-  /* ponytail: extracted IIFEs → createMemo + <For> for identity-based DOM diffing */
+  /* extracted IIFEs → createMemo + <For> for identity-based DOM diffing */
   const expansionRects = createMemo(() => {
     const cr = props.canvasScreenRect;
     if (!cr) return [];

@@ -18,7 +18,7 @@ function startsWith(bytes: Uint8Array, magic: readonly number[]): boolean {
 }
 
 /**
- * ponytail: magic-byte sniffer. The Rust side already enforces an
+ * Magic-byte sniffer. The Rust side already enforces an
  * extension allowlist on `read_file_bytes`, but the bytes on disk could
  * still be anything (renamed .png, truncated download, network attack
  * via a malicious file picker result). Verifying the first 4-12 bytes
@@ -62,7 +62,7 @@ export class UnsupportedImageError extends Error {
 }
 
 /**
- * ponytail: decode file bytes to an ImageBitmap with defense-in-depth
+ * Decode file bytes to an ImageBitmap with defense-in-depth:
  * - reject empty bytes (createImageBitmap hangs / throws obscurely)
  * - reject non-image bytes via magic-byte sniff
  * - reject bitmaps whose decoded dimensions exceed MAX_CANVAS_DIM

@@ -230,7 +230,7 @@ describe("useLayerActions wiring", () => {
     result.handleDuplicateActiveLayer();
 
     const layers = engine.getLayers();
-    const dup = layers.find(l => l.name === "Source copy");
+    const dup = layers.find(l => l.name === "Source 2");
     expect(dup).toBeDefined();
     expect(history.getUndoCount()).toBe(1);
     // Duplicated layer bitmap was uploaded

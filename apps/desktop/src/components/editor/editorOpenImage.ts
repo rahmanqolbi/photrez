@@ -7,19 +7,21 @@ import type { WebGL2Backend } from "@/renderer/webgl2";
 import type { RenderScheduler } from "@/renderer/scheduler";
 import { isTauriRuntime } from "@/lib/desktop/tauriWindow";
 import { showToast } from "./Toast";
+import { tick } from "@/lib/dom";
 
 interface OpenImageParams {
   workspace: WorkspaceManager;
   renderer: WebGL2Backend;
   scheduler: RenderScheduler;
-  // to the user via the existing Toast host instead of console.error only.
-  // Keeping it optional preserves the existing call sites and tests.
+  // Callback for UI error reporting. EditorContext passes showToast here.
   onError?: (message: string) => void;
+  // Callback for loading state. Called with a message string when loading starts,
+  // and with null when loading finishes.
+  onLoading?: (message: string | null) => void;
 }
 
 export async function openImage(params: OpenImageParams) {
   const reportError = (message: string) => {
-    console.error(message);
     params.onError?.(message);
   };
 
@@ -59,33 +61,39 @@ export async function openImage(params: OpenImageParams) {
     const paths = await showOpenImageDialog();
     if (!paths || paths.length === 0) return;
 
-    showToast(`Opening ${paths.length} file${paths.length > 1 ? "s" : ""}...`, "info");
+    params.onLoading?.(`Opening ${paths.length} file${paths.length > 1 ? "s" : ""}...`);
 
-    for (const path of paths) {
-      if (params.workspace.isFull()) break;
+    try {
+      for (const path of paths) {
+        if (params.workspace.isFull()) break;
 
-      if (path.toLowerCase().endsWith(".ptz")) {
-        await loadProjectFile(path, params);
-        continue;
+        if (path.toLowerCase().endsWith(".ptz")) {
+          await loadProjectFile(path, params);
+          continue;
+        }
+
+        const bytes = await readFileBytes(path);
+        const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+        const blob = new Blob([buffer]);
+        const bitmap = await createImageBitmap(blob);
+
+        const id = `doc-${crypto.randomUUID()}`;
+        const name = path.split(/[/\\]/).pop() || "Image";
+        const session = WorkspaceManager.createDocumentFromImage(id, name, bitmap);
+
+        params.workspace.addDocument(session);
+
+        const bgLayerId = session.engine.getLayers()[0].id;
+        params.renderer.uploadImage(bgLayerId, bitmap);
+        params.scheduler.requestRender();
+
+        await tick(); // yield so UI stays responsive during batch import
       }
 
-      const bytes = await readFileBytes(path);
-      const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-      const blob = new Blob([buffer]);
-      const bitmap = await createImageBitmap(blob);
-
-      const id = `doc-${crypto.randomUUID()}`;
-      const name = path.split(/[/\\]/).pop() || "Image";
-      const session = WorkspaceManager.createDocumentFromImage(id, name, bitmap);
-
-      params.workspace.addDocument(session);
-
-      const bgLayerId = session.engine.getLayers()[0].id;
-      params.renderer.uploadImage(bgLayerId, bitmap);
-      params.scheduler.requestRender();
+      showToast("File(s) loaded", "info");
+    } finally {
+      params.onLoading?.(null);
     }
-
-    showToast("File(s) loaded", "info");
   } catch (e) {
     reportError(`Failed to open image: ${e}`);
   }
@@ -105,6 +113,7 @@ async function loadProjectFile(path: string, params: OpenImageParams) {
       }
       const blob = new Blob([bytes], { type: "image/png" });
       layer.imageBitmap = await createImageBitmap(blob);
+      await tick(); // yield so UI stays responsive during project load
     } else {
       layer.imageBitmap = null;
     }

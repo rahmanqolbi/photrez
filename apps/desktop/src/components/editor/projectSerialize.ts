@@ -1,5 +1,6 @@
 import { DocumentEngine } from "@/engine/document";
 import { saveProject } from "@/tauri/native";
+import { tick } from "@/lib/dom";
 
 export async function serializeAndSaveProject(engine: DocumentEngine, path: string): Promise<void> {
   const model = engine.snapshot();
@@ -13,6 +14,7 @@ export async function serializeAndSaveProject(engine: DocumentEngine, path: stri
 
       ctx.drawImage(layer.imageBitmap, 0, 0);
       const blob = await canvas.convertToBlob({ type: "image/png" });
+      await tick(); // yield so UI stays responsive between layers
 
       const base64Data = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
