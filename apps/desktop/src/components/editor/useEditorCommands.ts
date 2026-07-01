@@ -241,8 +241,11 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
           void (async () => {
             try {
               showToast("Saving project...", "info");
+              const wasDirty = session.dirty;
               await serializeAndSaveProject(session.engine, session.sourcePath!);
-              session.dirty = false;
+              // Only clear dirty if engine wasn't modified during the async save
+              // (user may have edited between tick() yields).
+              session.dirty = wasDirty && session.engine.isDirty();
               showToast("Project saved successfully", "info");
               editor.scheduler.requestRender();
             } catch (err) {
@@ -265,10 +268,12 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
             const path = await showSaveDialog(defaultName);
             if (!path) return;
 
+            const wasDirty = session.dirty;
             await serializeAndSaveProject(session.engine, path);
             session.sourcePath = path;
             session.displayName = path.split(/[/\\]/).pop() || session.displayName;
-            session.dirty = false;
+            // Only clear dirty if engine wasn't modified during the async save
+            session.dirty = wasDirty && session.engine.isDirty();
             showToast("Project saved successfully", "info");
             editor.scheduler.requestRender();
           } catch (err) {

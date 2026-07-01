@@ -1,6 +1,5 @@
 import { DocumentEngine } from "@/engine/document";
 import { saveProject } from "@/tauri/native";
-import { tick } from "@/lib/dom";
 
 export async function serializeAndSaveProject(engine: DocumentEngine, path: string): Promise<void> {
   const model = engine.snapshot();
@@ -10,11 +9,13 @@ export async function serializeAndSaveProject(engine: DocumentEngine, path: stri
     if (layer.imageBitmap) {
       const canvas = new OffscreenCanvas(layer.width, layer.height);
       const ctx = canvas.getContext("2d");
-      if (!ctx) continue;
+      if (!ctx) {
+        console.warn("projectSerialize: OffscreenCanvas.getContext('2d') returned null, skipping layer", layer.id);
+        continue;
+      }
 
       ctx.drawImage(layer.imageBitmap, 0, 0);
       const blob = await canvas.convertToBlob({ type: "image/png" });
-      await tick(); // yield so UI stays responsive between layers
 
       const base64Data = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();

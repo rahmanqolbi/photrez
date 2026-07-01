@@ -20,8 +20,8 @@ fn main() {
             });
 
             if let Some(window) = app.get_webview_window("main") {
-                let saved = window_state::load_window_state(&app.handle());
-                // ponytail: skip restore on first launch (saved state matches
+                let mut saved = window_state::load_window_state(&app.handle());
+                // Skip restore on first launch (saved state matches
                 // `tauri.conf.json` defaults). Calling set_size/set_position
                 // here races the webview's first paint and can cause a brief
                 // layout flash on cold start; doing nothing is a true no-op.
@@ -29,6 +29,9 @@ fn main() {
                 if is_first_launch {
                     return Ok(());
                 }
+                // Guard: if saved position is off-screen (e.g., external monitor
+                // disconnected), snap back to primary monitor center.
+                window_state::snap_state_to_screen(&mut saved, app.handle());
                 let _ = window.set_size(tauri::PhysicalSize::new(saved.width, saved.height));
                 if let (Some(x), Some(y)) = (saved.x, saved.y) {
                     let _ = window.set_position(tauri::PhysicalPosition::new(x, y));

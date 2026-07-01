@@ -1,5 +1,6 @@
+import { createSignal, onCleanup, onMount } from "solid-js";
 import { Icon } from "../icons";
-import { runTauriWindowAction } from "@/lib/desktop";
+import { isTauriRuntime, runTauriWindowAction } from "@/lib/desktop";
 import { useEditor } from "./EditorContext";
 import { useEditorCommands } from "../useEditorCommands";
 import { AppMenuBar } from "./AppMenuBar";
@@ -13,13 +14,34 @@ export function AppTitleBar(props: AppTitleBarProps) {
   const { activeDocumentId, documents } = useEditor();
   const commands = useEditorCommands(props.onToggleRightDock);
 
+  const [isMaximized, setIsMaximized] = createSignal(false);
+
+  onMount(() => {
+    if (!isTauriRuntime()) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    import("@tauri-apps/api/window").then(async ({ getCurrentWindow }) => {
+      if (disposed) return;
+      const appWindow = getCurrentWindow();
+      setIsMaximized(await appWindow.isMaximized());
+      unlisten = await appWindow.onResized(async () => {
+        if (disposed) return;
+        setIsMaximized(await appWindow.isMaximized());
+      });
+    }).catch(() => {});
+    onCleanup(() => {
+      disposed = true;
+      unlisten?.();
+    });
+  });
+
   const activeDocName = () => {
     const id = activeDocumentId();
     return documents().find((document) => document.id === id)?.displayName || "Untitled";
   };
 
   return (
-    <header class="relative flex h-[46px] shrink-0 items-center border-b border-editor-divider bg-editor-topbar select-none">
+    <header class="relative flex h-[46px] shrink-0 items-center border-b border-editor-divider bg-editor-topbar select-none overflow-hidden">
       <div class="flex min-w-0 items-center gap-2 self-stretch">
         <div
           class="flex h-full shrink-0 items-center pl-3 pr-2"
@@ -63,8 +85,8 @@ export function AppTitleBar(props: AppTitleBarProps) {
         </div>
       </div>
 
-      <div class="flex shrink-0 items-center">
-        <div class="mr-3 flex items-center gap-0.5 text-editor-icon">
+      <div class="flex min-w-0 items-center">
+        <div class="mr-3 flex shrink items-center gap-0.5 overflow-hidden text-editor-icon">
           <button
             onClick={commands.undo}
             class="flex size-7 items-center justify-center rounded-[4px] hover:bg-white/[0.045] hover:text-editor-text"
@@ -93,7 +115,7 @@ export function AppTitleBar(props: AppTitleBarProps) {
           </button>
         </div>
 
-        <div class="flex items-center pr-1 text-editor-icon">
+        <div class="flex shrink-0 items-center pr-0 text-editor-icon">
           <button
             class="flex h-[46px] w-11 items-center justify-center hover:bg-white/[0.055] hover:text-editor-text"
             onClick={() => runTauriWindowAction("minimize")}
@@ -104,9 +126,15 @@ export function AppTitleBar(props: AppTitleBarProps) {
           <button
             class="flex h-[46px] w-11 items-center justify-center hover:bg-white/[0.055] hover:text-editor-text"
             onClick={() => runTauriWindowAction("toggleMaximize")}
-            aria-label="Toggle maximize window"
+            aria-label={isMaximized() ? "Restore window" : "Maximize window"}
           >
-            <Icon name="square" class="size-[12px]" strokeWidth={1.75} />
+            {isMaximized() ? (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M7.51758 5H6.00932C6.13697 3.32189 7.53905 2 9.24988 2H17.25C19.8733 2 22 4.12665 22 6.75V14.75C22 16.4608 20.6781 17.8629 19 17.9905V16.4823C19.8481 16.361 20.5 15.6316 20.5 14.75V6.75C20.5 4.95507 19.0449 3.5 17.25 3.5H9.24988C8.36825 3.5 7.63889 4.15193 7.51758 5ZM5.25003 6C3.45509 6 2 7.45507 2 9.25V18.75C2 20.5449 3.45509 22 5.25003 22H14.7501C16.5451 22 18.0002 20.5449 18.0002 18.75V9.25C18.0002 7.45507 16.5451 6 14.7501 6H5.25003ZM3.50001 9.25C3.50001 8.2835 4.28352 7.5 5.25003 7.5H14.7501C15.7166 7.5 16.5001 8.2835 16.5001 9.25V18.75C16.5001 19.7165 15.7166 20.5 14.7501 20.5H5.25003C4.28352 20.5 3.50001 19.7165 3.50001 18.75V9.25Z" fill="currentColor" />
+              </svg>
+            ) : (
+              <Icon name="square" class="size-[12px]" strokeWidth={1.75} />
+            )}
           </button>
           <button
             class="flex h-[46px] w-11 items-center justify-center hover:bg-red-500/85 hover:text-white"
