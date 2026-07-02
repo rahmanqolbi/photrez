@@ -90,6 +90,7 @@ docs/superpowers/
 src-tauri/wix/
 
 # Workspace Cleanliness: Scratch Scripts, Reference Files & Archives
+scripts/fix-mojibake.ts
 Detail-Design-Spec.zip
 RapidRAW-main/
 photrez-solid-tailwind/
