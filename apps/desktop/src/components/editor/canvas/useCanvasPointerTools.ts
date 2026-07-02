@@ -20,6 +20,8 @@ import { computeSnapAdjustment, type SnapRect } from "@/viewport/smartGuides";
 import type { HudMode } from "../TransformHud";
 import { getDefaultModernCropFrame, getProjectedCanvasSize, clampFrameToProjectedBounds } from "@/viewport/modernCropGeometry";
 import { resetCropPreviewToCanvas, restoreHiddenCropPreview, createCropRectFromDocumentPoints } from "../cropToolActions";
+import { rgbToHex, interpolateLinePoints } from "./pointerUtils";
+import { startSelectionRotation as startSelectionRotationFn } from "./selectionRotation";
 
 const DRAG_CREATE_THRESHOLD = 5;
 const MIN_CROP_SIZE = 100;
@@ -54,30 +56,6 @@ type HudData = {
   scalePercent: number;
   angle: number;
   snapActive: boolean;
-};
-
-const rgbToHex = (r: number, g: number, b: number): string => {
-  const toHex = (c: number) => {
-    const hex = Math.max(0, Math.min(255, Math.round(c))).toString(16);
-    return hex.length === 1 ? "0" + hex : hex;
-  };
-  return "#" + toHex(r) + toHex(g) + toHex(b);
-};
-
-const interpolateLinePoints = (p1: { x: number; y: number }, p2: { x: number; y: number }): { x: number; y: number }[] => {
-  const points: { x: number; y: number }[] = [];
-  const dx = p2.x - p1.x;
-  const dy = p2.y - p1.y;
-  const distance = Math.hypot(dx, dy);
-  const steps = Math.max(1, Math.round(distance));
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    points.push({
-      x: p1.x + dx * t,
-      y: p1.y + dy * t,
-    });
-  }
-  return points;
 };
 
 export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
@@ -837,37 +815,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     resetModernDragState();
   };
 
-  const startSelectionRotation = () => {
-    const box = selectionBox();
-    if (!box) return;
-    const engine = workspace.getActiveEngine();
-    if (!engine) return;
-    const centerX = box.x + box.w / 2;
-    const centerY = box.y + box.h / 2;
-    const initialAngle = Math.atan2(0, -1) * (180 / Math.PI);
-
-    const handleDocPointerMove = (e: PointerEvent) => {
-      const rect = params.getCanvasContainerRef()?.getBoundingClientRect();
-      if (!rect) return;
-      const docPt = screenToDocument(e.clientX, e.clientY, rect, engine.getViewport());
-      const currentAngle = Math.atan2(docPt.y - centerY, docPt.x - centerX) * (180 / Math.PI);
-      let angle = currentAngle - initialAngle;
-      if (e.shiftKey) {
-        angle = Math.round(angle / 15) * 15;
-      }
-      angle = ((angle % 360) + 360) % 360;
-      if (angle > 180) angle -= 360;
-      setSelectionBoxSignal({ ...box, angle });
-    };
-
-    const handleDocPointerUp = () => {
-      document.removeEventListener("pointermove", handleDocPointerMove);
-      document.removeEventListener("pointerup", handleDocPointerUp);
-    };
-
-    document.addEventListener("pointermove", handleDocPointerMove);
-    document.addEventListener("pointerup", handleDocPointerUp);
-  };
+  const startSelectionRotation = () =>
+    startSelectionRotationFn(
+      () => selectionBox(),
+      (box) => setSelectionBoxSignal(box),
+      () => params.getCanvasContainerRef(),
+      () => workspace.getActiveEngine(),
+    );
 
   return {
     cropDragPreview,
