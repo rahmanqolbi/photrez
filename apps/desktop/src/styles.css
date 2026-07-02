@@ -25,6 +25,7 @@
   --color-editor-bg: var(--editor-bg);
   --color-editor-topbar: var(--editor-topbar);
   --color-editor-panel: var(--editor-panel);
+  --color-editor-panel-bg: var(--editor-panel);
   --color-editor-canvas: var(--editor-canvas);
   --color-editor-field: var(--editor-field);
   --color-editor-field-border: var(--editor-field-border);
