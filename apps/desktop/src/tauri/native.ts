@@ -51,6 +51,19 @@ export async function showSaveDialog(defaultName: string): Promise<string | null
   });
 }
 
+export async function showSaveDialogAllFormats(defaultName: string): Promise<string | null> {
+  return await save({
+    defaultPath: defaultName,
+    filters: [
+      { name: "All Supported Formats", extensions: ["ptz", "png", "jpg", "jpeg", "webp"] },
+      { name: "Photrez Project (*.ptz)", extensions: ["ptz"] },
+      { name: "PNG Image (*.png)", extensions: ["png"] },
+      { name: "JPEG Image (*.jpg)", extensions: ["jpg", "jpeg"] },
+      { name: "WebP Image (*.webp)", extensions: ["webp"] }
+    ]
+  });
+}
+
 export async function saveProject(
   path: string,
   documentJson: string,
