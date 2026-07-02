@@ -10,9 +10,11 @@ import { useLayerActions } from "./layers/useLayerActions";
 import { cancelLayerTransformSession } from "./transformSession";
 import { useDialog } from "./dialogs/DialogProvider";
 import { showToast } from "./Toast";
-import { showSaveDialog } from "@/tauri/native";
+import { showSaveDialog, writeFileBytes } from "@/tauri/native";
 import { serializeAndSaveProject } from "./projectSerialize";
+import { addRecentFile } from "@/lib/recentFiles";
 import { easeOutCubic } from "@/viewport/easing";
+import { encodeComposite, type ExportFormat } from "./exportDocument";
 
 export const NATIVE_MENU_EVENT = "photrez://native-menu";
 export const EDITOR_COMMAND_EVENT = "photrez://editor-command";
@@ -237,24 +239,45 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
       case "file.save": {
         const session = editor.workspace.getActiveSession();
         if (!session) break;
-        if (session.sourcePath) {
-          void (async () => {
-            try {
+
+        // New/unsaved → redirect to Save As
+        if (!session.sourcePath) {
+          execute("file.save-as");
+          break;
+        }
+
+        const engine = session.engine;
+        const ext = session.sourcePath.split(".").pop()?.toLowerCase();
+        const layerCount = engine.getLayers().length;
+
+        // Multi-layer on flat image format → redirect to Save As
+        if (layerCount > 1 && ext !== "ptz") {
+          execute("file.save-as");
+          break;
+        }
+
+        // Quick overwrite
+        void (async () => {
+          try {
+            if (ext === "ptz") {
               showToast("Saving project...", "info");
               const wasDirty = session.dirty;
-              await serializeAndSaveProject(session.engine, session.sourcePath!);
-              // Only clear dirty if engine wasn't modified during the async save
-              // (user may have edited between tick() yields).
-              session.dirty = wasDirty && session.engine.isDirty();
-              showToast("Project saved successfully", "info");
-              editor.scheduler.requestRender();
-            } catch (err) {
-              showToast(`Failed to save project: ${err}`, "error");
+              await serializeAndSaveProject(engine, session.sourcePath!);
+              session.dirty = wasDirty && engine.isDirty();
+            } else {
+              const format: ExportFormat = ext === "jpg" || ext === "jpeg" ? "jpeg"
+                : ext === "webp" ? "webp" : "png";
+              const bytes = await encodeComposite(engine, format, 92);
+              await writeFileBytes(session.sourcePath!, bytes);
+              session.dirty = false;
             }
-          })();
-        } else {
-          execute("file.save-as");
-        }
+            addRecentFile(session.sourcePath!, session.displayName);
+            showToast("Saved", "info");
+            editor.scheduler.requestRender();
+          } catch (err) {
+            showToast(`Failed to save: ${err}`, "error");
+          }
+        })();
         break;
       }
       case "file.save-as": {
@@ -274,6 +297,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
             session.displayName = path.split(/[/\\]/).pop() || session.displayName;
             // Only clear dirty if engine wasn't modified during the async save
             session.dirty = wasDirty && session.engine.isDirty();
+            addRecentFile(path, session.displayName);
             showToast("Project saved successfully", "info");
             editor.scheduler.requestRender();
           } catch (err) {
