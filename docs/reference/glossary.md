@@ -11,8 +11,8 @@ Use these exact terms consistently. Do not introduce synonyms without updating t
 | **Photrez** | The product name (working). | Legacy aliases: PS, PhotoEditor |
 | **MVP** | Minimum Viable Product (version 1). | v1 beta, prototype, alpha |
 | **Shell** | The Tauri desktop application layer. | Frontend, UI layer (ambiguous) |
-| **Core** | The Rust engine for document/editing logic. | Backend, server |
-| **Renderer** | The wgpu-based rendering pipeline. | Drawing engine, canvas engine |
+| **Core** | The TypeScript DocumentEngine (current MVP). The Rust engine for document/editing logic (future target). | Backend, server |
+| **Renderer** | The WebGL2-based rendering pipeline (current MVP). The wgpu-based rendering pipeline (future target). | Drawing engine, canvas engine |
 
 ## 2) Document Terms
 
@@ -62,7 +62,7 @@ Use these exact terms consistently. Do not introduce synonyms without updating t
 
 ## 6) Bahasa Indonesia Term Mapping
 
-For bilingual documents (`00-id-summary.md`, `01-id-decision-log.md`):
+For legacy bilingual documents (`00-id-summary.md`, originally `01-id-decision-log.md`, now `decision-log.md`):
 
 | English | Bahasa Indonesia | Notes |
 | --- | --- | --- |

@@ -24,39 +24,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v6
-
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: "22"
-          cache: pnpm
+          bun-version: "1.3.14"
 
-      - run: pnpm install --frozen-lockfile
+      - run: bun install --frozen-lockfile
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
           path: ~\AppData\Local\ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
 
       - name: Install Playwright browsers
-        run: pnpm --filter photrez-desktop exec playwright install chromium --with-deps
+        run: bun run --filter photrez-desktop exec playwright install chromium --with-deps
 
       - name: Type check
-        run: pnpm run type-check
+        run: bun run type-check
 
       - name: Dependency audit
         working-directory: apps/desktop
-        run: pnpm audit --prod
+        run: bun audit --prod
 
       - name: Run tests
-        run: pnpm test
+        run: bun test
 
       - name: Build
-        run: pnpm build
+        run: bun run build
 
       - name: Playwright E2E
-        run: pnpm test:e2e
+        run: bun run test:e2e
 
   rust-core:
     name: Rust (core crate)
@@ -79,3 +76,6 @@ jobs:
 
       - name: Run core tests
         run: cargo test -p photrez-core
+
+      - name: Run all workspace tests
+        run: cargo test --workspace

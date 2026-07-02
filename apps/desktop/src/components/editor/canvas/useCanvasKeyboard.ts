@@ -119,8 +119,8 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
       options.stopMomentum();
       if (e.defaultPrevented) return;
 
-      // Tab: Toggle UI chrome (panels and toolbars)
-      if (e.key === "Tab" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+      // Ctrl+Shift+T: Toggle UI chrome (panels and toolbars)
+      if (e.key === "T" && e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey) {
         e.preventDefault();
         e.stopPropagation();
         setChromeVisible((v) => !v);

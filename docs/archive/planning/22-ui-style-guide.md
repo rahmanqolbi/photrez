@@ -16,7 +16,7 @@ Mengapa UI Photrez dirancang dengan estetika "Soft & Snappy"? Jawabannya adalah 
 
 Struktur shell utama:
 
-1. **AppTitleBar**: desktop titlebar style, height `46px`. Menampilkan menu compact, title file aktif terpusat di tengah ("File Name â€” photrez"), dan window controls native (Minimize, Maximize, Close). Logo brand "pz" berupa box mini 30px di kiri.
+1. **AppTitleBar**: desktop titlebar style, height `46px`. Menampilkan menu compact, title file aktif terpusat di tengah ("File Name — photrez"), dan window controls native (Minimize, Maximize, Close). Logo brand "pz" berupa box mini 30px di kiri.
 2. **DocumentTabsBar**: Height `44px`. Tab dokumen yang aktif memiliki indikator garis aksen Photon Amber setinggi 2px di bawahnya. Teks tab menggunakan ukuran `text-[12px] font-medium` secara seragam untuk menghindari ilusi optis kebesaran elemen interaktif.
 3. **OptionBar (Tool Options)**: Height `44px`. Menampung opsi parameter tool aktif (seperti brush size, opacity, blending mode) di dalam border-field penampung yang elegan.
 4. **LeftToolRail**: Width `52px`. Menampung tombol tool vertikal setara `36px` (`size-9`) dengan icon berukuran `18px`. List tool dibatasi hanya pada **6 Alat MVP Utama** (Move, Rectangle Select, Crop, Eyedropper, Brush, Eraser) dalam satu kolom stack vertikal tanpa dividers. Di bagian paling bawah (didorong dengan `mt-auto` di atas divider mekanis setebal `1px`) terdapat modul **Premium Diagonal Color Swatch** bertumpuk berukuran penuh `36px` (mempet) dan tombol ellipsis ("More tools").

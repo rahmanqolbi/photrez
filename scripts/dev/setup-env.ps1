@@ -53,4 +53,4 @@ foreach ($tool in $tools) {
 
 Write-Host ""
 Write-Host "=== Done ===" -ForegroundColor Cyan
-Write-Host "Open a NEW terminal, then run: pnpm tauri dev" -ForegroundColor Yellow
+Write-Host "Open a NEW terminal, then run: bun run tauri dev" -ForegroundColor Yellow

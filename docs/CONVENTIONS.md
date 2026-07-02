@@ -229,7 +229,7 @@ Rules specific to the Move Tool subsystem:
 
 ```text
 1.  Tool type union
-    → editorState.ts (or central type file)
+    → components/editor/tools/toolTypes.ts
 
 2.  Keyboard shortcut
     → useCanvasKeyboard.ts
@@ -278,8 +278,8 @@ Rules specific to the Move Tool subsystem:
     → docs/AI_CURRENT_TASK.md: status COMPLETE
 
 12. Verification
-    → pnpm --filter photrez-desktop test --run
-    → pnpm run build
+    → bun run --filter photrez-desktop test --run
+    → bun run build
     → no regression
 ```
 

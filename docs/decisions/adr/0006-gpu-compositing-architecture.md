@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted (Superseded 2026-06 — the `photrez-render` crate was removed from workspace members; GPU compositing is handled via WebGL2 in the frontend renderer.)
 
 ## Date
 
@@ -25,31 +25,31 @@ The CPU compositing approach had several issues:
 
 Implement GPU compositing in the renderer crate (`photrez-render`):
 
-1. **Renderer maintains per-layer GPU textures** â€” Each layer's pixel data is uploaded to a separate GPU texture
-2. **GPU compositing in shader** â€” Layers are composited on the GPU using alpha blending
-3. **On-demand rendering** â€” Render only when layers are dirty (state has changed)
-4. **Dirty flag tracking** â€” Document tracks which layers need re-upload to GPU
+1. **Renderer maintains per-layer GPU textures** — Each layer's pixel data is uploaded to a separate GPU texture
+2. **GPU compositing in shader** — Layers are composited on the GPU using alpha blending
+3. **On-demand rendering** — Render only when layers are dirty (state has changed)
+4. **Dirty flag tracking** — Document tracks which layers need re-upload to GPU
 
 ### Architecture
 
 ```
 Core (Document + dirty_layers)
-    â†“ [layer data references]
+    ↓ [layer data references]
 Renderer (WgpuRenderer)
-    â†“ [upload_layer_texture per layer]
+    ↓ [upload_layer_texture per layer]
 GPU Textures
-    â†“ [render_layers: composit composited texture]
+    ↓ [render_layers: composit composited texture]
 Composited Texture
-    â†“ [render to screen]
+    ↓ [render to screen]
 Screen
 ```
 
 ### Data Flow
 
-1. User action â†’ Shell command â†’ Core mutates state â†’ `mark_dirty()`
-2. `MainEventsCleared` â†’ Check `has_dirty_layers()`
-3. If dirty: collect layer data â†’ `renderer.render_layers()`
-4. Renderer uploads dirty layer textures â†’ composites on GPU â†’ presents to screen
+1. User action → Shell command → Core mutates state → `mark_dirty()`
+2. `MainEventsCleared` → Check `has_dirty_layers()`
+3. If dirty: collect layer data → `renderer.render_layers()`
+4. Renderer uploads dirty layer textures → composites on GPU → presents to screen
 5. `clear_dirty()`
 
 ## Consequences
@@ -72,12 +72,12 @@ Screen
 
 ## Alternatives Considered
 
-1. **Canvas 2D approach** â€” Simpler but violates architecture docs, CPU-based
-2. **Hybrid approach** â€” CPU compositing + Canvas 2D display â€” rejected for same reasons
-3. **wgpu with CPU compositing** â€” Current implementation before this ADR â€” rejected due to architecture violation
+1. **Canvas 2D approach** — Simpler but violates architecture docs, CPU-based
+2. **Hybrid approach** — CPU compositing + Canvas 2D display — rejected for same reasons
+3. **wgpu with CPU compositing** — Current implementation before this ADR — rejected due to architecture violation
 
 ## References
 
-- `docs/ARCHITECTURE.md` â€” Module boundaries and data flow
-- `docs/ARCHITECTURE.md` â€” Runtime architecture and renderer responsibilities
-- `docs/spec/trd.md` â€” Technical requirements for rendering
+- `docs/ARCHITECTURE.md` — Module boundaries and data flow
+- `docs/ARCHITECTURE.md` — Runtime architecture and renderer responsibilities
+- `docs/spec/trd.md` — Technical requirements for rendering

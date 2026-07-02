@@ -12,30 +12,27 @@ Thanks for helping improve Photrez. This project is still pre-release, so the be
 
 ## Development Setup
 
-This project uses **pnpm** (not npm or yarn). The required version is specified in `package.json` under `"packageManager"`.
-
-If you have pnpm installed, it will auto-detect the correct version. If not:
-
-```bash
-npm install -g pnpm
-# or enable Corepack (Node.js built-in):
-corepack enable
-pnpm install
-```
+This project uses **Bun** as its package manager and runtime. Install it from [bun.com](https://bun.com).
 
 Install dependencies and start the desktop app:
+
+```bash
+bun install
+bun run dev          # Start development server
+bun run tauri dev    # Launch the desktop app
+```
 
 Run the main verification gate:
 
 ```bash
-pnpm run verify
+bun run verify
 ```
 
 Focused checks:
 
 ```bash
-pnpm --filter photrez-desktop test --run
-pnpm run build
+bun run --filter photrez-desktop test --run
+bun run build
 cargo test -p photrez-core
 cargo test --workspace
 ```

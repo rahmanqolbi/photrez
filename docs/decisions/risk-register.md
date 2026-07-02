@@ -6,7 +6,7 @@ This file tracks key risks for MVP execution and their mitigation plan.
 
 - Update this file when a risk is found, status changes, or mitigation changes.
 - Keep risk IDs stable (`R-001`, `R-002`, ...).
-- For major changes, sync `docs/decisions/id-decision-log.md`.
+- For major changes, sync `docs/decisions/decision-log.md`.
 
 ## Risk Scale
 

@@ -37,7 +37,7 @@ When i18n is implemented:
 4. **Priority languages** (tentative):
    - Bahasa Indonesia (primary market)
    - English (default)
-5. **Translation workflow**: key extraction â†’ translation â†’ review â†’ integration.
+5. **Translation workflow**: key extraction → translation → review → integration.
 
 ## 4) Error Message Strategy
 

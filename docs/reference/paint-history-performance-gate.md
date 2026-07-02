@@ -13,7 +13,7 @@ This gate mitigates FRR-BRUSH-002 without rewriting undo/redo yet.
 Run from the repo root:
 
 ```powershell
-pnpm.cmd run perf:paint-history
+bun run perf:paint-history
 ```
 
 The script runs `apps/desktop/src/engine/__tests__/paintHistoryBudget.test.ts`, which verifies deterministic memory estimates for:
@@ -65,6 +65,6 @@ Required invariants:
 
 FRR-BRUSH-002 can remain mitigated while snapshot history is still the runtime path only if:
 
-1. `pnpm.cmd run perf:paint-history` passes.
+1. `bun run perf:paint-history` passes.
 2. Any increase to `MAX_HISTORY_DEPTH`, canvas limits, or paint commit retention updates this document and the focused budget test.
 3. Large-canvas release notes explicitly state that dirty-region history is planned but not yet the active runtime implementation.

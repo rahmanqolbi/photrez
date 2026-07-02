@@ -17,8 +17,8 @@ Closes #(issue)
 
 <!-- Run the verification pipeline before marking ready. -->
 
-- [ ] `pnpm run build` passes
-- [ ] `pnpm --filter photrez-desktop test --run` passes (all 1492+ tests)
+- [ ] `bun run build` passes
+- [ ] `bun run --filter photrez-desktop test --run` passes (all 1561+ tests)
 - [ ] `cargo test -p photrez-core` passes (85+ tests)
 - [ ] New behavior has **wiring tests** (user-event simulation) where applicable
 - [ ] New behavior has **state contract tests** where applicable

@@ -17,9 +17,9 @@ The GPU smooth zoom plan moved rendering from CSS transform-driven viewport sizi
 - `ViewportCamera` drives WebGL rendering and some overlays.
 - `engine.setViewport`, `setPan`, and `setZoom` are still called directly by some UI paths.
 - Move/selection overlays use camera screen-space, while some interactions still depend on engine viewport state or CSS-transformed document containers.
-- The old plan file is still marked `Draft â€” Pending User Approval`, but the project docs now record the migration as `DONE`.
+- The old plan file is still marked `Draft — Pending User Approval`, but the project docs now record the migration as `DONE`.
 
-This makes bugs like â€œMove Tool bounding box separated from layerâ€ expected, because rendered pixels and tool overlays can read different transform states.
+This makes bugs like “Move Tool bounding box separated from layer” expected, because rendered pixels and tool overlays can read different transform states.
 
 ## Recovery Principle
 
@@ -80,7 +80,7 @@ The first milestone is not smoothness. The first milestone is:
 Append a new `BUG FIX / VIEWPORT` entry to `docs/AI_CURRENT_TASK.md` before touching implementation code:
 
 ```markdown
-### [2026-06-13] Bug Fix â€” Viewport Camera Regression Recovery [IN PROGRESS]
+### [2026-06-13] Bug Fix — Viewport Camera Regression Recovery [IN PROGRESS]
 
 **Goal:**
 Restore canvas/tool coordinate consistency after the GPU smooth zoom migration before adding or polishing zoom transitions.
@@ -510,7 +510,7 @@ Expected:
 Update the old plan header to indicate it caused regressions and is no longer executable as-is:
 
 ```markdown
-**Status**: Superseded â€” caused viewport/tool coordinate regressions when executed as a full runtime migration.
+**Status**: Superseded — caused viewport/tool coordinate regressions when executed as a full runtime migration.
 ```
 
 - [ ] **Step 2: Record the architecture decision**
@@ -535,7 +535,7 @@ Restore stable viewport behavior first. Reintroduce smooth zoom behind a feature
 Recommended default:
 
 ```markdown
-Path A â€” Presentation-only smooth zoom:
+Path A — Presentation-only smooth zoom:
 - Keep document-space tool math.
 - Animate CSS transform only for visual interpolation.
 - Commit final pan/zoom instantly to engine/camera adapter.
@@ -545,7 +545,7 @@ Path A â€” Presentation-only smooth zoom:
 Higher-risk future path:
 
 ```markdown
-Path B â€” Full WebGL camera viewport:
+Path B — Full WebGL camera viewport:
 - Feature-flagged.
 - All viewport writes through adapter.
 - All overlays screen-space.
@@ -633,7 +633,7 @@ Manual smoke:
 Append `AI_HISTORY.md` with:
 
 ```markdown
-## [2026-06-13] BUG FIX â€” Viewport Camera Regression Recovery [COMPLETE]
+## [2026-06-13] BUG FIX — Viewport Camera Regression Recovery [COMPLETE]
 
 ### Kategori: BUG FIX / VIEWPORT / TOOL ALIGNMENT
 
@@ -664,5 +664,5 @@ Update `AI_CURRENT_TASK.md` entry from `[IN PROGRESS]` to `[COMPLETE]` only afte
 ## Self-Review
 
 - Spec coverage: Covers diagnosis, rollback/stabilization, viewport ownership, Move Tool alignment, pointer conversion, other tool regression checks, documentation truth reset, and verification.
-- Placeholder scan: No task depends on undefined â€œlaterâ€ behavior. Every task has concrete commands or expected manual checks.
+- Placeholder scan: No task depends on undefined “later” behavior. Every task has concrete commands or expected manual checks.
 - Type consistency: Uses existing project concepts: `ViewportCamera`, `engine.setViewport`, `pan/zoom`, `SelectionTransformOverlay`, WebGL2 renderer, and Photrez docs protocol.

@@ -1,30 +1,29 @@
 {
   "name": "photrez-workspace",
   "private": true,
-  "packageManager": "pnpm@10.33.0",
+  "packageManager": "bun@1.3.14",
+  "workspaces": ["apps/*"],
   "scripts": {
-    "dev": "pnpm --filter photrez-desktop dev",
-    "build": "pnpm --filter photrez-desktop build",
-    "test": "pnpm --filter photrez-desktop test",
-    "type-check": "pnpm --filter photrez-desktop type-check",
-    "lint": "pnpm --filter photrez-desktop lint",
-    "test:e2e": "pnpm --filter photrez-desktop test:e2e",
-    "test:dialogs": "pnpm --filter photrez-desktop test:dialogs",
-    "audit": "pnpm audit --prod && cargo audit",
-    "perf:paint-history": "pnpm --filter photrez-desktop perf:paint-history",
-    "perf:budget": "node scripts/performance-budget.mjs",
-    "verify": "pnpm run type-check && pnpm run lint && pnpm audit --prod && pnpm --filter photrez-desktop test --run && pnpm run build && pnpm run perf:budget && cargo test -p photrez-core && cargo test --workspace",
+    "dev": "bun run --filter photrez-desktop dev",
+    "build": "bun run --filter photrez-desktop build",
+    "test": "bun run --filter photrez-desktop test",
+    "type-check": "bun run --filter photrez-desktop type-check",
+    "lint": "bun run --filter photrez-desktop lint",
+    "test:e2e": "bun run --filter photrez-desktop test:e2e",
+    "test:dialogs": "bun run --filter photrez-desktop test:dialogs",
+    "audit": "bun audit --prod && cargo audit",
+    "perf:paint-history": "bun run --filter photrez-desktop perf:paint-history",
+    "perf:budget": "bun scripts/performance-budget.mjs",
+    "verify": "bun run type-check && bun run lint && bun audit --prod && bun run --filter photrez-desktop test --run && bun run build && bun run perf:budget && cargo test -p photrez-core && cargo test --workspace",
     "tauri": "tauri",
     "prepare": "husky"
+  },
+  "overrides": {
+    "undici": "^7.28.0",
+    "esbuild": "^0.28.1"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",
     "husky": "^9.1.7"
-  },
-  "pnpm": {
-    "overrides": {
-      "undici": "^7.28.0",
-      "esbuild": "^0.28.1"
-    }
   }
 }

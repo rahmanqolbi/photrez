@@ -1,6 +1,6 @@
 # 02 - Architecture (MVP)
 
-> **Catatan 2026-06-02:** Dokumen ini mendeskripsikan arsitektur target. Untuk deskripsi runtime MVP saat ini, lihat **Section 11 â€” MVP Runtime Reality** di bawah.
+> **Catatan 2026-06-02:** Dokumen ini mendeskripsikan arsitektur target. Untuk deskripsi runtime MVP saat ini, lihat **Section 11 — MVP Runtime Reality** di bawah.
 
 ## 1. Architecture Style
 
@@ -105,19 +105,19 @@ Dokumen ini (Section 1-10) mendeskripsikan arsitektur **target** dengan Rust Cor
 | Frontend | SolidJS + TypeScript | Same |
 | Core Engine | TypeScript `DocumentEngine` (`apps/desktop/src/engine/document.ts`) | Rust `photrez-core` |
 | Renderer | WebGL2 (`apps/desktop/src/renderer/webgl2.ts`) | wgpu (`photrez-render`) |
-| IPC (editing hot-path) | Langsung TS â†’ TS (no Tauri invoke) | Tauri command â†’ Rust Core |
-| IPC (native I/O) | Tauri invoke â†’ `main.rs` (file read/write) | Same |
+| IPC (editing hot-path) | Langsung TS → TS (no Tauri invoke) | Tauri command → Rust Core |
+| IPC (native I/O) | Tauri invoke → `main.rs` (file read/write) | Same |
 
 ### 11.2 Data Flow (MVP)
 
 ```
 1. User action (click/drag/shortcut) di SolidJS
-  â†“
+  ↓
 2. Tool handler memanggil DocumentEngine method langsung
 3. Engine mutasi TS state + history
-  â†“
-4. WebGL2 renderer consume `getRenderState()` â†’ draw frame
-  â†“
+  ↓
+4. WebGL2 renderer consume `getRenderState()` → draw frame
+  ↓
 5. SolidJS reactivity update UI panels
 ```
 
@@ -126,7 +126,7 @@ Dokumen ini (Section 1-10) mendeskripsikan arsitektur **target** dengan Rust Cor
 - **No Rust editing commands**: `main.rs` hanya memiliki `ping`, `get_contract_info`, `read_file_bytes`, `write_file_bytes`. Semua editing hot-path (move, transform, brush, selection, crop) via TS `DocumentEngine`.
 - **No wgpu renderer**: WebGL2 backend aktif. `photrez-render` crate ada sebagai code reference + future target.
 - **Bitmap ownership**: `ImageBitmap` di TS layer objects, bukan di Rust buffers.
-- **History**: TS `CommandHistory` (`apps/desktop/src/engine/history.ts`) â€” snapshot-based, max 50 depth.
+- **History**: TS `CommandHistory` (`apps/desktop/src/engine/history.ts`) — snapshot-based, max 50 depth.
 
 ### 11.4 Migration Path
 

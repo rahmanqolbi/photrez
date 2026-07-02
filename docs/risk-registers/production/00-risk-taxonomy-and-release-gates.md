@@ -22,8 +22,8 @@ This document describes the shared bug classes used by the per-feature risk file
 Run all applicable gates before marking a production-facing task complete:
 
 ```powershell
-pnpm.cmd --filter photrez-desktop test
-pnpm.cmd run build
+bun run --filter photrez-desktop test
+bun run build
 cargo test -p photrez-core
 cargo test --workspace
 ```
@@ -31,13 +31,13 @@ cargo test --workspace
 For app-level or Tauri command changes:
 
 ```powershell
-pnpm.cmd tauri dev
+bun run tauri dev
 ```
 
 For editor interaction changes:
 
 ```powershell
-pnpm.cmd --filter photrez-desktop exec playwright test
+bun run --filter photrez-desktop exec playwright test
 ```
 
 ## Triage Order

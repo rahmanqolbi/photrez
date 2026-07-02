@@ -19,14 +19,14 @@ Reference: Existing implementation in `aplikasi-cetak-massal` studio.
 
 | Key | Tool | Shift+Key (Cycle) |
 | --- | --- | --- |
-| `V` | Move | â€” |
-| `M` | Rectangular Selection | Cycle: Rect â†’ Ellipse (post-MVP) |
-| `C` | Crop | â€” |
-| `B` | Brush | â€” |
-| `E` | Eraser | â€” |
-| `I` | Eyedropper | â€” |
-| `Z` | Zoom | â€” |
-| `H` | Hand (Pan) | â€” |
+| `V` | Move | — |
+| `M` | Rectangular Selection | Cycle: Rect → Ellipse (post-MVP) |
+| `C` | Crop | — |
+| `B` | Brush | — |
+| `E` | Eraser | — |
+| `I` | Eyedropper | — |
+| `Z` | Zoom | — |
+| `H` | Hand (Pan) | — |
 
 ### Temporary Mode Keys
 
@@ -34,8 +34,8 @@ Reference: Existing implementation in `aplikasi-cetak-massal` studio.
 | --- | --- | --- |
 | `Space` (hold) | Temporary hand/pan mode | Release returns to previous tool |
 | `Alt` (hold) | Eyedropper sample mode (while brush/eraser) | Context-dependent |
-| `Shift` (hold) | Constrain movement/selection to axis | 45Â° snap for lines |
-| `Shift` (hold during rotation) | Snap rotation to 15Â° increments | Quantizes rotation angle |
+| `Shift` (hold) | Constrain movement/selection to axis | 45° snap for lines |
+| `Shift` (hold during rotation) | Snap rotation to 15° increments | Quantizes rotation angle |
 | `Escape` | Deselect layer / cancel transform | Clears selection and transform drag state |
 
 ## 3) Command Shortcuts
@@ -94,7 +94,7 @@ Reference: Existing implementation in `aplikasi-cetak-massal` studio.
 
 | Shortcut | Action | Notes |
 | --- | --- | --- |
-| `Tab` | Toggle UI Panels | Hides/shows LeftToolRail, OptionBar, RightDock, StatusBar |
+| `Ctrl+Shift+T` | Toggle UI Panels | Hides/shows LeftToolRail, OptionBar, RightDock, StatusBar |
 | `Ctrl+Shift+P` | Toggle Right Dock | Toggles only the right side panels |
 | `Ctrl+=` / `Ctrl++` | Zoom In | Also: `Ctrl+ArrowUp` |
 | `Ctrl+-` | Zoom Out | Also: `Ctrl+ArrowDown` |
@@ -136,7 +136,7 @@ Reference: Existing implementation in `aplikasi-cetak-massal` studio.
 
 ## 5) Reserved Shortcuts (Post-MVP)
 
-These shortcuts are reserved for future features and must not be reassigned in MVP (UI button for Command Palette removed from toolbar â€” will be re-added when Layer B is implemented):
+These shortcuts are reserved for future features and must not be reassigned in MVP (UI button for Command Palette removed from toolbar — will be re-added when Layer B is implemented):
 
 | Shortcut | Reserved For |
 | --- | --- |
@@ -157,7 +157,7 @@ These shortcuts are reserved for future features and must not be reassigned in M
 - Do not bind `Alt+F4` (OS-level close).
 - Shortcuts must not fire when user is typing in text input or textarea.
 - `Escape` always focuses the canvas container (blur active input first).
-- `Tab` never fires when an INPUT, TEXTAREA, or contentEditable element is focused — ensures normal Tab behavior in forms.
+- `Tab` is reserved for default browser focus navigation (accessibility). UI panel toggle uses `Ctrl+Shift+T` instead.
 - `Ctrl+Alt+E` for Export avoids conflict with `Ctrl+E` for Merge Down (canvas keyboard handler always wins for Ctrl+E).
 
 ## 7) Customization (Post-MVP)

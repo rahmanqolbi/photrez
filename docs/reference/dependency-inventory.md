@@ -77,7 +77,7 @@ Status labels:
 | --- | --- | --- | --- | --- | --- | --- |
 | `solid-js` | UI framework | `^1.8.15` | MIT | Approved | Low | Core framework, non-negotiable |
 | `typescript` | Type safety | `^5.2.2` | Apache-2.0 | Approved | Dev-only | |
-| `vite` | Build tooling | `^8.0.14` | MIT | Approved | Dev-only | Active Vite 8 build runner |
+| `vite` | Build tooling | `^8.0.16` | MIT | Approved | Dev-only | Active Vite 8 build runner |
 | `@tailwindcss/vite` | Tailwind build plugin | `^4.0.0` | MIT | Approved | Dev-only | Tailwind CSS v4 compiler integration |
 | `tailwindcss` | Styling framework | `^4.0.0` | MIT | Approved | Low | CSS framework |
 | `@tauri-apps/api` | Tauri IPC bridge | `^2.0.0` | MIT/Apache-2.0 | Approved | Low | Shell-core communication |
@@ -104,15 +104,15 @@ Status labels:
 
 | Dependency License | Compatible with AGPL-3.0? | Notes |
 | --- | --- | --- |
-| MIT | âœ… Yes | Permissive, no conflict |
-| Apache-2.0 | âœ… Yes | Compatible with GPL family |
-| MIT/Apache-2.0 dual | âœ… Yes | Standard Rust ecosystem dual license |
-| BSD-2/3 | âœ… Yes | Permissive |
-| GPL-3.0 | âœ… Yes | Same family |
-| LGPL-2.1/3.0 | âš ï¸ Conditional | OK for dynamic linking; static linking requires review |
-| MPL-2.0 | âš ï¸ Conditional | File-level copyleft; generally compatible but review |
-| Proprietary | âŒ No | Not allowed |
-| SSPL | âŒ No | Not OSI-approved, incompatible |
+| MIT | ✅ Yes | Permissive, no conflict |
+| Apache-2.0 | ✅ Yes | Compatible with GPL family |
+| MIT/Apache-2.0 dual | ✅ Yes | Standard Rust ecosystem dual license |
+| BSD-2/3 | ✅ Yes | Permissive |
+| GPL-3.0 | ✅ Yes | Same family |
+| LGPL-2.1/3.0 | ⚠️ Conditional | OK for dynamic linking; static linking requires review |
+| MPL-2.0 | ⚠️ Conditional | File-level copyleft; generally compatible but review |
+| Proprietary | ❌ No | Not allowed |
+| SSPL | ❌ No | Not OSI-approved, incompatible |
 
 ## 6) Security Scanning Policy
 
@@ -141,7 +141,7 @@ Status labels:
 
 - **Pin major versions**: avoid automatic major version bumps.
 - **Review minor/patch updates**: allow for security and bug fixes.
-- **Lockfile discipline**: `Cargo.lock` and `pnpm-lock.yaml` must be committed.
+- **Lockfile discipline**: `Cargo.lock` and `bun.lock` must be committed.
 - **Update cadence**: review dependency updates at the start of each milestone.
 - **Breaking changes**: any dependency upgrade that changes APIs requires code review.
 
@@ -157,11 +157,11 @@ Track rejected dependencies with rationale to avoid re-evaluation cycles.
 
 | Crate/Package | Reason for Rejection | Date | Alternative |
 | --- | --- | --- | --- |
-| â€” | â€” | â€” | â€” |
+| — | — | — | — |
 
 ## 10) Change Control
 
 - Adding a new dependency requires updating this file first.
 - Removing an approved dependency requires noting the reason.
 - Status changes must include date and brief rationale.
-- Major dependency decisions should be recorded in `docs/decisions/id-decision-log.md`.
+- Major dependency decisions should be recorded in `docs/decisions/decision-log.md`.

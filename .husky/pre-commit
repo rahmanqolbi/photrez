@@ -24,7 +24,7 @@ RUST_WARM=$!
 # 1. TypeScript type-check & Vite build
 echo ""
 echo "[1/3] Running TypeScript Type Check & Vite Build..."
-pnpm --filter photrez-desktop build || {
+bun run --filter photrez-desktop build || {
   echo ""
   echo "ERROR: TypeScript compilation or Vite build failed!"
   exit 1
@@ -33,7 +33,7 @@ pnpm --filter photrez-desktop build || {
 # 2. Frontend unit tests
 echo ""
 echo "[2/3] Running Frontend Unit Tests..."
-pnpm --filter photrez-desktop test || {
+bun run --filter photrez-desktop test || {
   echo ""
   echo "ERROR: Frontend unit tests failed!"
   exit 1

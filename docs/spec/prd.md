@@ -19,8 +19,8 @@ Users want a desktop editor that feels familiar like mainstream tools but runs l
 
 - Desktop shell: Tauri 2
 - Frontend: SolidJS + TypeScript + Vite
-- Core/engine: Rust
-- Rendering: wgpu
+- Core/engine: TypeScript DocumentEngine (MVP), Rust (future)
+- Rendering: WebGL2 (MVP), wgpu (future)
 
 ## 4. User Jobs
 

@@ -32,14 +32,14 @@ Hotspots:
 
 Before public release:
 
-1. `pnpm.cmd run type-check`
-2. `pnpm.cmd run lint`
-3. `pnpm.cmd --filter photrez-desktop test`
-4. `pnpm.cmd run build`
+1. `bun run type-check`
+2. `bun run lint`
+3. `bun run --filter photrez-desktop test`
+4. `bun run build`
 5. `cargo test -p photrez-core`
 6. `cargo test --workspace`
-7. `pnpm.cmd --filter photrez-desktop exec playwright test`
-8. `pnpm.cmd tauri dev` smoke for app launch, open, edit, export, OS file drop, close
+7. `bun run --filter photrez-desktop exec playwright test`
+8. `bun run tauri dev` smoke for app launch, open, edit, export, OS file drop, close
 9. Performance measurement for startup, idle RAM, installer size
 10. Manual visual pass for Move, Crop, Brush/Eraser, Drag/Drop, Export
 

@@ -2,7 +2,7 @@
 //
 // E2E tests for cross-document drag and drop.
 //
-// Note: Full OS-level file drop requires Tauri runtime (`pnpm tauri dev`).
+// Note: Full OS-level file drop requires Tauri runtime (`bun run tauri dev`).
 // Pure browser tests use simulated HTML5 drag events for layer drags
 // (which work in the webview).
 //

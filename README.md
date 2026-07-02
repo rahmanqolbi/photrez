@@ -21,7 +21,7 @@
 
 ---
 
-Photrez is an open-source desktop image editor with a compact, familiar workflow: layers, selection, transform, crop, brush, eraser, export, history, and a WebGL2 canvas. It is built with Tauri, SolidJS, TypeScript, and Rust.
+Photrez is an open-source desktop image editor with a compact, familiar workflow: layers, selection, transform, crop, brush, eraser, export, history, and a WebGL2 canvas. It is built with Tauri, SolidJS, TypeScript, and Rust (for future core compute).
 
 Photrez is currently **pre-release software**. The editor is usable in development, but APIs, document internals, and UI details may change before the first stable release.
 
@@ -54,7 +54,7 @@ Photrez is currently **pre-release software**. The editor is usable in developme
 - **Styling:** Tailwind CSS v4
 - **Renderer:** WebGL2 for the current MVP runtime
 - **Core:** TypeScript `DocumentEngine` for the current editor hot path
-- **Rust:** `photrez-core` and `photrez-render` crates
+- **Rust (future):** `photrez-core` and `photrez-render` crates
 
 ## Runtime Architecture
 
@@ -78,40 +78,39 @@ flowchart TD
 
 ### Requirements
 
-- Node.js
-- pnpm
+- **Bun** (from [bun.com](https://bun.com))
 - Rust stable toolchain
 - Tauri platform prerequisites for your OS
 
 ### Install
 
 ```bash
-pnpm install
+bun install
 ```
 
 ### Run the desktop app
 
 ```bash
-pnpm dev
+bun run tauri dev
 ```
 
 ### Build
 
 ```bash
-pnpm build
+bun run build
 ```
 
 ### Verify
 
 ```bash
-pnpm run verify
+bun run verify
 ```
 
 Focused checks:
 
 ```bash
-pnpm --filter photrez-desktop test --run
-pnpm run build
+bun run --filter photrez-desktop test --run
+bun run build
 cargo test -p photrez-core
 cargo test --workspace
 ```

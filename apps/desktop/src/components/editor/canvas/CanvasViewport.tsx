@@ -1019,7 +1019,7 @@ export function CanvasViewport() {
                   },
                   ...layerTargets,
                 ];
-                const result = computeSnapAdjustment(rect, snapTargets);
+                const result = computeSnapAdjustment(rect, snapTargets, 5, zoom());
                 setSnapLines(result.lines);
                 return result;
               }}

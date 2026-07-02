@@ -24,10 +24,10 @@ flowchart LR
 
 ## Critical Path
 
-The critical path runs through: **M1 â†’ M2 â†’ M3 â†’ M4 â†’ M5 â†’ M6**.
+The critical path runs through: **M1 → M2 → M3 → M4 → M5 → M6**.
 
 All milestones on this path are sequential blockers. The total estimated duration
-on the critical path is **28â€“41 working days** (approximately 6â€“9 weeks).
+on the critical path is **28–41 working days** (approximately 6–9 weeks).
 
 ## Parallel Work Opportunities
 
@@ -35,17 +35,17 @@ on the critical path is **28â€“41 working days** (approximately 6â€“9 
 | --- | --- | --- |
 | During M2 | Brush engine research and prototype (isolated crate) | Does not depend on document model API being stable |
 | During M3 | Export pipeline scaffold and encoder wiring (isolated crate) | Does not depend on selection/transform APIs |
-| During M4â€“M5 | CI hardening and perf measurement tooling | Infrastructure work, not feature-dependent |
+| During M4–M5 | CI hardening and perf measurement tooling | Infrastructure work, not feature-dependent |
 
-Exploiting parallel tracks can reduce the effective timeline by approximately **5â€“10 days**.
+Exploiting parallel tracks can reduce the effective timeline by approximately **5–10 days**.
 
 ## Total Estimated Timeline
 
 | Scenario | Duration | Conditions |
 | --- | --- | --- |
-| Sequential only | 28â€“41 working days | No parallel work, single contributor |
-| With parallel tracks | 23â€“33 working days | Parallel prep tasks utilized |
-| Aggressive | 20â€“28 working days | Experienced contributor, minimal blockers |
+| Sequential only | 28–41 working days | No parallel work, single contributor |
+| With parallel tracks | 23–33 working days | Parallel prep tasks utilized |
+| Aggressive | 20–28 working days | Experienced contributor, minimal blockers |
 
 ---
 

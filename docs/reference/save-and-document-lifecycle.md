@@ -42,7 +42,7 @@ stateDiagram-v2
 | HD | 1920 | 1080 | General purpose |
 | Social Square | 1080 | 1080 | Instagram / social media |
 | A4 at 300 DPI | 2480 | 3508 | Print |
-| Custom | User input | User input | â€” |
+| Custom | User input | User input | — |
 
 ### Behavior
 
@@ -81,8 +81,8 @@ In MVP, there is **no native project format save**. The workflow is:
 - **Export**: user-facing output to JPG/PNG/WebP.
 
 This decision is consistent with:
-- `docs/spec/product-scope.md` â€” native project format is a non-goal.
-- `docs/spec/data-model.md` section 7 â€” future project format is post-MVP.
+- `docs/spec/product-scope.md` — native project format is a non-goal.
+- `docs/spec/data-model.md` section 7 — future project format is post-MVP.
 
 ### What "Save" (Ctrl+S) Does in MVP
 
@@ -143,6 +143,6 @@ Per `docs/spec/data-model.md` section 7:
 
 - Save strategy changes require update to:
   1. This document.
-  2. `docs/decisions/id-decision-log.md`.
+  2. `docs/decisions/decision-log.md`.
   3. `docs/archive/planning/27-key-user-flows.md` (if flow changes).
   4. `docs/reference/command-contract-spec.md` (if new commands needed).

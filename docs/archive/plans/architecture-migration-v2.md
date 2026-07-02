@@ -1,6 +1,6 @@
-# Architecture Migration v2 â€” Full Execution Blueprint
+# Architecture Migration v2 — Full Execution Blueprint
 
-> **Status**: PLAN ONLY â€” not yet executing
+> **Status**: PLAN ONLY — not yet executing
 > **Created**: 2026-05-29
 > **Decisions locked**:
 > - Preserve project structure + UI shell
@@ -34,65 +34,65 @@
 
 ```
 apps/desktop/src/
-â”œâ”€â”€ App.tsx                          # Shell layout only (~200 lines)
-â”œâ”€â”€ index.tsx                        # Entry point (unchanged)
-â”œâ”€â”€ index.css                        # Design tokens (unchanged)
-â”‚
-â”œâ”€â”€ engine/                          # Document Engine (the "brain")
-â”‚   â”œâ”€â”€ types.ts                     # All core type definitions
-â”‚   â”œâ”€â”€ document.ts                  # DocumentEngine class
-â”‚   â”œâ”€â”€ history.ts                   # CommandHistory + Command implementations
-â”‚   â”œâ”€â”€ workspace.ts                 # WorkspaceManager (multi-document)
-â”‚   â””â”€â”€ __tests__/
-â”‚       â”œâ”€â”€ document.test.ts
-â”‚       â”œâ”€â”€ history.test.ts
-â”‚       â””â”€â”€ workspace.test.ts
-â”‚
-â”œâ”€â”€ renderer/                        # GPU Render Backend
-â”‚   â”œâ”€â”€ types.ts                     # RenderBackend interface, capabilities
-â”‚   â”œâ”€â”€ webgl2.ts                    # WebGL2Backend implementation
-â”‚   â”œâ”€â”€ shaders.ts                   # GLSL shader source strings
-â”‚   â”œâ”€â”€ scheduler.ts                 # Render-on-demand scheduler
-â”‚   â””â”€â”€ __tests__/
-â”‚       â””â”€â”€ scheduler.test.ts
-â”‚
-â”œâ”€â”€ viewport/                        # Canvas Viewport
-â”‚   â”œâ”€â”€ CanvasViewport.tsx           # SolidJS component wrapping <canvas>
-â”‚   â”œâ”€â”€ input-handler.ts            # Centralized input routing per tool
-â”‚   â””â”€â”€ coords.ts                   # Coordinate conversion utilities
-â”‚
-â”œâ”€â”€ components/                      # UI Components (extracted from App.tsx)
-â”‚   â”œâ”€â”€ MenuBar.tsx                  # Top menu bar + file menu dropdown
-â”‚   â”œâ”€â”€ Toolbar.tsx                  # Secondary toolbar (brush, export, inspector toggle)
-â”‚   â”œâ”€â”€ ToolRail.tsx                 # Left tool panel (all tools)
-â”‚   â”œâ”€â”€ Inspector.tsx                # Right inspector panel (properties + layers + history)
-â”‚   â”œâ”€â”€ TabStrip.tsx                 # Document tab strip
-â”‚   â”œâ”€â”€ StatusBar.tsx                # Bottom status bar
-â”‚   â”œâ”€â”€ ExportModal.tsx              # Export dialog popup
-â”‚   â”œâ”€â”€ ConfirmDialog.tsx            # Generic confirmation dialog
-â”‚   â””â”€â”€ ColorSwatches.tsx            # Foreground/background color swatches
-â”‚
-â”œâ”€â”€ tauri/                           # Tauri IPC wrappers (cold-path only)
-â”‚   â””â”€â”€ native.ts                    # Type-safe wrappers for Tauri commands
-â”‚
-â”œâ”€â”€ __tests__/                       # Existing test dir (will be updated)
-â”‚   â”œâ”€â”€ keyboard-shortcuts.test.ts   # Keep, re-wire to Document Engine
-â”‚   â”œâ”€â”€ viewport.test.ts             # Keep, re-wire
-â”‚   â”œâ”€â”€ transform.test.ts            # Keep, re-wire
-â”‚   â””â”€â”€ renderer.test.ts             # Keep, re-wire
-â”‚
-â””â”€â”€ ui-sanity.test.ts                # Keep (basic UI sanity)
+├── App.tsx                          # Shell layout only (~200 lines)
+├── index.tsx                        # Entry point (unchanged)
+├── index.css                        # Design tokens (unchanged)
+│
+├── engine/                          # Document Engine (the "brain")
+│   ├── types.ts                     # All core type definitions
+│   ├── document.ts                  # DocumentEngine class
+│   ├── history.ts                   # CommandHistory + Command implementations
+│   ├── workspace.ts                 # WorkspaceManager (multi-document)
+│   └── __tests__/
+│       ├── document.test.ts
+│       ├── history.test.ts
+│       └── workspace.test.ts
+│
+├── renderer/                        # GPU Render Backend
+│   ├── types.ts                     # RenderBackend interface, capabilities
+│   ├── webgl2.ts                    # WebGL2Backend implementation
+│   ├── shaders.ts                   # GLSL shader source strings
+│   ├── scheduler.ts                 # Render-on-demand scheduler
+│   └── __tests__/
+│       └── scheduler.test.ts
+│
+├── viewport/                        # Canvas Viewport
+│   ├── CanvasViewport.tsx           # SolidJS component wrapping <canvas>
+│   ├── input-handler.ts            # Centralized input routing per tool
+│   └── coords.ts                   # Coordinate conversion utilities
+│
+├── components/                      # UI Components (extracted from App.tsx)
+│   ├── MenuBar.tsx                  # Top menu bar + file menu dropdown
+│   ├── Toolbar.tsx                  # Secondary toolbar (brush, export, inspector toggle)
+│   ├── ToolRail.tsx                 # Left tool panel (all tools)
+│   ├── Inspector.tsx                # Right inspector panel (properties + layers + history)
+│   ├── TabStrip.tsx                 # Document tab strip
+│   ├── StatusBar.tsx                # Bottom status bar
+│   ├── ExportModal.tsx              # Export dialog popup
+│   ├── ConfirmDialog.tsx            # Generic confirmation dialog
+│   └── ColorSwatches.tsx            # Foreground/background color swatches
+│
+├── tauri/                           # Tauri IPC wrappers (cold-path only)
+│   └── native.ts                    # Type-safe wrappers for Tauri commands
+│
+├── __tests__/                       # Existing test dir (will be updated)
+│   ├── keyboard-shortcuts.test.ts   # Keep, re-wire to Document Engine
+│   ├── viewport.test.ts             # Keep, re-wire
+│   ├── transform.test.ts            # Keep, re-wire
+│   └── renderer.test.ts             # Keep, re-wire
+│
+└── ui-sanity.test.ts                # Keep (basic UI sanity)
 ```
 
 ```
 apps/desktop/src-tauri/src/
-â””â”€â”€ main.rs                          # Simplified: ~80 lines (from ~809)
+└── main.rs                          # Simplified: ~80 lines (from ~809)
 
 crates/
-â”œâ”€â”€ core/src/                        # Drastically reduced
-â”‚   â”œâ”€â”€ lib.rs                       # Just re-exports
-â”‚   â””â”€â”€ export.rs                    # PNG/JPEG/WebP encoding (kept for advanced export)
-â””â”€â”€ render/                          # DELETE entirely
+├── core/src/                        # Drastically reduced
+│   ├── lib.rs                       # Just re-exports
+│   └── export.rs                    # PNG/JPEG/WebP encoding (kept for advanced export)
+└── render/                          # DELETE entirely
 ```
 
 ---
@@ -102,14 +102,14 @@ crates/
 ### File: `src/engine/types.ts`
 
 ```typescript
-// â”€â”€â”€ Identifiers â”€â”€â”€
+// ─── Identifiers ───
 export type DocumentId = string;
 export type LayerId = string;
 
-// â”€â”€â”€ Blend Modes â”€â”€â”€
+// ─── Blend Modes ───
 export type BlendMode = "normal" | "multiply" | "screen" | "overlay";
 
-// â”€â”€â”€ Transform â”€â”€â”€
+// ─── Transform ───
 export interface Transform2D {
   x: number;       // position x
   y: number;       // position y
@@ -120,7 +120,7 @@ export interface Transform2D {
   flipV: boolean;
 }
 
-// â”€â”€â”€ Layer â”€â”€â”€
+// ─── Layer ───
 export interface LayerNode {
   id: LayerId;
   name: string;
@@ -132,12 +132,12 @@ export interface LayerNode {
   transform: Transform2D;
   width: number;
   height: number;
-  // Pixel data reference â€” actual pixels stored as ImageBitmap or
+  // Pixel data reference — actual pixels stored as ImageBitmap or
   // texture handle, NOT as raw RGBA array in JS (too expensive)
   imageBitmap: ImageBitmap | null;
 }
 
-// â”€â”€â”€ Selection â”€â”€â”€
+// ─── Selection ───
 export interface SelectionState {
   x: number;
   y: number;
@@ -145,7 +145,7 @@ export interface SelectionState {
   height: number;
 }
 
-// â”€â”€â”€ Viewport â”€â”€â”€
+// ─── Viewport ───
 export interface ViewportState {
   panX: number;
   panY: number;
@@ -153,7 +153,7 @@ export interface ViewportState {
   rotation: number;  // degrees, default 0
 }
 
-// â”€â”€â”€ Document Model â”€â”€â”€
+// ─── Document Model ───
 export interface DocumentModel {
   id: DocumentId;
   name: string;
@@ -166,7 +166,7 @@ export interface DocumentModel {
   dirty: boolean;
 }
 
-// â”€â”€â”€ Render State (sent to renderer) â”€â”€â”€
+// ─── Render State (sent to renderer) ───
 export interface TextureHandle {
   id: string;
   glTexture?: WebGLTexture;
@@ -193,7 +193,7 @@ export interface RenderState {
   backgroundColor: [number, number, number, number]; // RGBA
 }
 
-// â”€â”€â”€ Dirty Region â”€â”€â”€
+// ─── Dirty Region ───
 export interface Rect {
   x: number;
   y: number;
@@ -201,7 +201,7 @@ export interface Rect {
   height: number;
 }
 
-// â”€â”€â”€ Constants â”€â”€â”€
+// ─── Constants ───
 export const MAX_LAYERS = 100;
 export const MAX_OPEN_DOCUMENTS = 16;
 export const MAX_HISTORY_DEPTH = 50;
@@ -232,7 +232,7 @@ export class DocumentEngine {
     this.dirtyLayerIds = new Set();
   }
 
-  // â”€â”€â”€ Accessors â”€â”€â”€
+  // ─── Accessors ───
   getModel(): Readonly<DocumentModel> { /* ... */ }
   getId(): DocumentId { /* ... */ }
   getName(): string { /* ... */ }
@@ -245,67 +245,67 @@ export class DocumentEngine {
   getViewport(): ViewportState { /* ... */ }
   isDirty(): boolean { /* ... */ }
 
-  // â”€â”€â”€ Layer Operations â”€â”€â”€
+  // ─── Layer Operations ───
   addLayer(name: string, width?: number, height?: number): LayerNode { /* ... */ }
   deleteLayer(id: LayerId): void { /* ... */ }
   reorderLayer(fromIndex: number, toIndex: number): void { /* ... */ }
   setActiveLayer(id: LayerId | null): void { /* ... */ }
 
-  // â”€â”€â”€ Layer Properties â”€â”€â”€
+  // ─── Layer Properties ───
   setLayerOpacity(id: LayerId, opacity: number): void { /* ... */ }
   setLayerVisibility(id: LayerId, visible: boolean): void { /* ... */ }
   setLayerLocked(id: LayerId, locked: boolean): void { /* ... */ }
   setLayerName(id: LayerId, name: string): void { /* ... */ }
   setLayerBlendMode(id: LayerId, mode: BlendMode): void { /* ... */ }
 
-  // â”€â”€â”€ Layer Transform â”€â”€â”€
+  // ─── Layer Transform ───
   moveLayer(id: LayerId, x: number, y: number): void { /* ... */ }
   transformLayer(id: LayerId, transform: Partial<Transform2D>): void { /* ... */ }
   flipLayer(id: LayerId, axis: "h" | "v"): void { /* ... */ }
 
-  // â”€â”€â”€ Selection â”€â”€â”€
+  // ─── Selection ───
   createSelection(x: number, y: number, w: number, h: number): void { /* ... */ }
   clearSelection(): void { /* ... */ }
   selectAll(): void { /* ... */ }
 
-  // â”€â”€â”€ Viewport â”€â”€â”€
+  // ─── Viewport ───
   setViewport(viewport: Partial<ViewportState>): void { /* ... */ }
   pan(dx: number, dy: number): void { /* ... */ }
   zoom(factor: number, anchorX?: number, anchorY?: number): void { /* ... */ }
   fitToScreen(containerWidth: number, containerHeight: number): void { /* ... */ }
 
-  // â”€â”€â”€ Canvas Operations â”€â”€â”€
+  // ─── Canvas Operations ───
   cropCanvas(x: number, y: number, width: number, height: number): void { /* ... */ }
   resizeCanvas(width: number, height: number): void { /* ... */ }
 
-  // â”€â”€â”€ Image Data â”€â”€â”€
+  // ─── Image Data ───
   setLayerImageBitmap(id: LayerId, bitmap: ImageBitmap): void { /* ... */ }
 
-  // â”€â”€â”€ Texture Handles (renderer integration) â”€â”€â”€
+  // ─── Texture Handles (renderer integration) ───
   setTextureHandle(layerId: LayerId, handle: TextureHandle): void { /* ... */ }
   getTextureHandle(layerId: LayerId): TextureHandle | undefined { /* ... */ }
 
-  // â”€â”€â”€ Render State Generation â”€â”€â”€
+  // ─── Render State Generation ───
   getRenderState(canvasWidth: number, canvasHeight: number): RenderState { /* ... */ }
 
-  // â”€â”€â”€ Dirty Tracking â”€â”€â”€
+  // ─── Dirty Tracking ───
   markLayerDirty(id: LayerId): void { /* ... */ }
   getDirtyLayerIds(): LayerId[] { /* ... */ }
   clearDirty(): void { /* ... */ }
 
-  // â”€â”€â”€ Change Notification â”€â”€â”€
+  // ─── Change Notification ───
   onChange(callback: () => void): void { /* ... */ }
   private notifyChange(): void { /* ... */ }
 
-  // â”€â”€â”€ Serialization (for save/autosave) â”€â”€â”€
+  // ─── Serialization (for save/autosave) ───
   snapshot(): DocumentModel { /* deep clone */ }
   restore(model: DocumentModel): void { /* ... */ }
 
-  // â”€â”€â”€ Memory Budget â”€â”€â”€
+  // ─── Memory Budget ───
   calculateMemoryUsage(): number { /* ... */ }
   canAddLayer(width: number, height: number): boolean { /* ... */ }
 
-  // â”€â”€â”€ Pixel Sampling â”€â”€â”€
+  // ─── Pixel Sampling ───
   samplePixel(x: number, y: number): [number, number, number, number] { /* ... */ }
 }
 ```
@@ -316,7 +316,7 @@ export class DocumentEngine {
 - `getRenderState()` produces a read-only snapshot for the renderer
 - `notifyChange()` calls the registered callback so UI can react
 - `snapshot()` / `restore()` used by history system for undo/redo
-- All methods are synchronous (no IPC) â€” this is the key architectural change
+- All methods are synchronous (no IPC) — this is the key architectural change
 
 ---
 
@@ -329,7 +329,7 @@ import type { DocumentModel, LayerId, Rect } from "./types";
 import type { DocumentEngine } from "./document";
 import { MAX_HISTORY_DEPTH } from "./types";
 
-// â”€â”€â”€ Command Interface â”€â”€â”€
+// ─── Command Interface ───
 export interface Command {
   readonly id: string;
   readonly label: string;
@@ -340,7 +340,7 @@ export interface Command {
   undo(engine: DocumentEngine): void;
 }
 
-// â”€â”€â”€ Command History â”€â”€â”€
+// ─── Command History ───
 export class CommandHistory {
   private undoStack: SnapshotEntry[] = [];
   private redoStack: SnapshotEntry[] = [];
@@ -414,12 +414,12 @@ export class WorkspaceManager {
   private activeDocumentId: DocumentId | null = null;
   private onChangeCallback: (() => void) | null = null;
 
-  // â”€â”€â”€ Document Lifecycle â”€â”€â”€
+  // ─── Document Lifecycle ───
   addDocument(session: DocumentSession): void { /* ... */ }
   removeDocument(id: DocumentId): void { /* ... */ }
   switchDocument(id: DocumentId): void { /* ... */ }
 
-  // â”€â”€â”€ Accessors â”€â”€â”€
+  // ─── Accessors ───
   getActiveSession(): DocumentSession | null { /* ... */ }
   getActiveEngine(): DocumentEngine | null { /* ... */ }
   getActiveHistory(): CommandHistory | null { /* ... */ }
@@ -428,14 +428,14 @@ export class WorkspaceManager {
   isFull(): boolean { /* ... */ }
   getActiveDocumentId(): DocumentId | null { /* ... */ }
 
-  // â”€â”€â”€ Tab Info â”€â”€â”€
+  // ─── Tab Info ───
   getTabSummaries(): DocumentTabSummary[] { /* ... */ }
 
-  // â”€â”€â”€ Change Notification â”€â”€â”€
+  // ─── Change Notification ───
   onChange(callback: () => void): void { /* ... */ }
   private notifyChange(): void { /* ... */ }
 
-  // â”€â”€â”€ Factory Method â”€â”€â”€
+  // ─── Factory Method ───
   static createDocumentFromImage(
     id: DocumentId,
     name: string,
@@ -594,7 +594,7 @@ export class WebGL2Backend implements RenderBackend {
   // Textures
   private textures: Map<string, TextureRef> = new Map();
 
-  // VAO (empty â€” we use gl_VertexID)
+  // VAO (empty — we use gl_VertexID)
   private vao: WebGLVertexArrayObject | null = null;
 
   constructor() {
@@ -657,7 +657,7 @@ export class WebGL2Backend implements RenderBackend {
     // Clean up all GL resources
   }
 
-  // â”€â”€â”€ Private Helpers â”€â”€â”€
+  // ─── Private Helpers ───
   private compileShader(type: number, source: string): WebGLShader { /* ... */ }
   private createProgram(vs: WebGLShader, fs: WebGLShader): WebGLProgram { /* ... */ }
   private computeViewMatrix(viewport: ViewportState, canvasW: number, canvasH: number, docW: number, docH: number): Float32Array { /* ... */ }
@@ -777,10 +777,10 @@ export function computeFitZoom(
 // SolidJS component that owns the <canvas> element and renders via WebGL2.
 //
 // Props:
-//   engine: DocumentEngine â€” the active document (or null)
-//   renderer: WebGL2Backend â€” shared renderer instance
+//   engine: DocumentEngine — the active document (or null)
+//   renderer: WebGL2Backend — shared renderer instance
 //   scheduler: RenderScheduler
-//   onDocumentCoords: (x: number, y: number) => void â€” mouse position in doc coords
+//   onDocumentCoords: (x: number, y: number) => void — mouse position in doc coords
 //   activeTool: string
 //   fgColor: string
 //   selectedLayerId: string | null
@@ -877,7 +877,7 @@ use serde::Serialize;
 use serde_json::Value;
 use tauri::Manager;
 
-// â”€â”€â”€ Response Envelope (kept from existing) â”€â”€â”€
+// ─── Response Envelope (kept from existing) ───
 #[derive(Serialize)]
 struct ApiSuccessResponse { ok: bool, contract_version: String, data: Value }
 #[derive(Serialize)]
@@ -888,7 +888,7 @@ struct ApiErrorResponse { ok: bool, contract_version: String, error: ApiErrorPay
 fn ok_response<T: Serialize>(data: T) -> Result<Value, Value> { /* same as current */ }
 fn err_response(code: &str, message: &str) -> Result<Value, Value> { /* same as current */ }
 
-// â”€â”€â”€ Commands: Only cold-path native operations â”€â”€â”€
+// ─── Commands: Only cold-path native operations ───
 
 #[tauri::command]
 fn ping() -> Result<Value, Value> {
@@ -1002,7 +1002,7 @@ interface ApiErrorResponse {
   error: { code: string; message: string; details: unknown };
 }
 
-// â”€â”€â”€ File Dialog â”€â”€â”€
+// ─── File Dialog ───
 export async function showOpenImageDialog(): Promise<string[] | null> {
   const selected = await open({
     multiple: true,
@@ -1024,7 +1024,7 @@ export async function showSaveDialog(defaultName: string): Promise<string | null
   });
 }
 
-// â”€â”€â”€ File I/O â”€â”€â”€
+// ─── File I/O ───
 export async function readFileBytes(path: string): Promise<Uint8Array> {
   const result = await invoke("read_file_bytes", { path }) as ApiResponse<{ data: string }>;
   if (!result.ok) throw new Error("Failed to read file");
@@ -1050,7 +1050,7 @@ export async function writeFileBytes(path: string, data: Uint8Array): Promise<vo
   if (!result.ok) throw new Error("Failed to write file");
 }
 
-// â”€â”€â”€ Ping â”€â”€â”€
+// ─── Ping ───
 export async function ping(): Promise<boolean> {
   try {
     const result = await invoke("ping") as ApiResponse;
@@ -1069,9 +1069,9 @@ export async function ping(): Promise<boolean> {
 
 The existing App.tsx (2171 lines) will be split into:
 
-1. **`App.tsx`** (~200 lines) â€” grid layout shell, wires components together
-2. **UI Components** â€” extracted from existing JSX, visual code preserved exactly
-3. **Logic** â€” all `invoke()` calls replaced with direct engine/workspace calls
+1. **`App.tsx`** (~200 lines) — grid layout shell, wires components together
+2. **UI Components** — extracted from existing JSX, visual code preserved exactly
+3. **Logic** — all `invoke()` calls replaced with direct engine/workspace calls
 
 ### `App.tsx` (new version, conceptual structure)
 
@@ -1089,7 +1089,7 @@ import { StatusBar } from "./components/StatusBar";
 import { CanvasViewport } from "./viewport/CanvasViewport";
 
 export default function App() {
-  // â”€â”€â”€ Core Instances (singleton, not signals) â”€â”€â”€
+  // ─── Core Instances (singleton, not signals) ───
   const workspace = new WorkspaceManager();
   const renderer = new WebGL2Backend();
   const scheduler = new RenderScheduler(() => {
@@ -1100,7 +1100,7 @@ export default function App() {
     renderer.render(engine.getRenderState(canvas.width, canvas.height));
   });
 
-  // â”€â”€â”€ UI State (signals) â”€â”€â”€
+  // ─── UI State (signals) ───
   const [activeTool, setActiveTool] = createSignal("move");
   const [inspectorOpen, setInspectorOpen] = createSignal(true);
   const [fgColor, setFgColor] = createSignal("#E15A17");
@@ -1108,7 +1108,7 @@ export default function App() {
   const [zoom, setZoom] = createSignal(100);
   const [mousePos, setMousePos] = createSignal({ x: 0, y: 0 });
 
-  // â”€â”€â”€ Reactive Workspace State (derived from workspace) â”€â”€â”€
+  // ─── Reactive Workspace State (derived from workspace) ───
   const [documents, setDocuments] = createSignal<DocumentTabSummary[]>([]);
   const [activeDocumentId, setActiveDocumentId] = createSignal<string | null>(null);
   const [layers, setLayers] = createSignal<LayerNode[]>([]);
@@ -1132,7 +1132,7 @@ export default function App() {
 
   workspace.onChange(syncUI);
 
-  // â”€â”€â”€ Layout (preserved from current) â”€â”€â”€
+  // ─── Layout (preserved from current) ───
   return (
     <div class="app grid grid-rows-[44px_40px_30px_1fr_28px] h-screen overflow-hidden text-[13px] font-medium bg-studio-bg text-text-primary">
       <MenuBar />
@@ -1155,15 +1155,15 @@ export default function App() {
 
 | Component | Source lines in current App.tsx | Preserves visual? |
 |-----------|-------------------------------|-------------------|
-| `MenuBar.tsx` | L967-1068 (header + file menu) | âœ… Yes |
-| `Toolbar.tsx` | L1068-1407 (secondary toolbar) | âœ… Yes |
-| `TabStrip.tsx` | L1409-1468 (tabs + close confirm) | âœ… Yes |
-| `ToolRail.tsx` | L1473-1633 (tool buttons + color swatches + zoom) | âœ… Yes |
-| `CanvasViewport.tsx` | L1635-1852 (canvas area â€” rewritten to use WebGL2) | âœ… Visual frame, âŒ internals rewritten |
-| `Inspector.tsx` | L1854-2143 (properties + layers + history) | âœ… Yes |
-| `StatusBar.tsx` | L2146-2167 | âœ… Yes |
-| `ExportModal.tsx` | L1351-1404 | âœ… Yes |
-| `ColorSwatches.tsx` | L1549-1607 | âœ… Yes |
+| `MenuBar.tsx` | L967-1068 (header + file menu) | ✅ Yes |
+| `Toolbar.tsx` | L1068-1407 (secondary toolbar) | ✅ Yes |
+| `TabStrip.tsx` | L1409-1468 (tabs + close confirm) | ✅ Yes |
+| `ToolRail.tsx` | L1473-1633 (tool buttons + color swatches + zoom) | ✅ Yes |
+| `CanvasViewport.tsx` | L1635-1852 (canvas area — rewritten to use WebGL2) | ✅ Visual frame, ❌ internals rewritten |
+| `Inspector.tsx` | L1854-2143 (properties + layers + history) | ✅ Yes |
+| `StatusBar.tsx` | L2146-2167 | ✅ Yes |
+| `ExportModal.tsx` | L1351-1404 | ✅ Yes |
+| `ColorSwatches.tsx` | L1549-1607 | ✅ Yes |
 
 ---
 
@@ -1173,14 +1173,14 @@ export default function App() {
 
 ```text
 1. User clicks Open (or Ctrl+O, or drag-drop)
-2. showOpenImageDialog() â†’ Tauri shows native file picker â†’ returns paths[]
+2. showOpenImageDialog() → Tauri shows native file picker → returns paths[]
 3. For each path:
-   a. readFileBytes(path) â†’ Tauri reads from disk â†’ returns Uint8Array
+   a. readFileBytes(path) → Tauri reads from disk → returns Uint8Array
    b. Create Blob from Uint8Array
-   c. createImageBitmap(blob) â†’ browser decodes image â†’ returns ImageBitmap
-   d. WorkspaceManager.createDocumentFromImage(id, name, bitmap) â†’ creates DocumentSession
+   c. createImageBitmap(blob) → browser decodes image → returns ImageBitmap
+   d. WorkspaceManager.createDocumentFromImage(id, name, bitmap) → creates DocumentSession
    e. workspace.addDocument(session)
-   f. renderer.uploadImage(layerId, bitmap) â†’ creates GL texture
+   f. renderer.uploadImage(layerId, bitmap) → creates GL texture
    g. scheduler.requestRender()
 4. UI signals update via workspace.onChange callback
 ```
@@ -1223,7 +1223,7 @@ async function handleOpenFile() {
 
 ## 10. Phase 9: Editing Features
 
-### Layer CRUD â€” direct engine calls
+### Layer CRUD — direct engine calls
 
 ```typescript
 // Add layer
@@ -1249,7 +1249,7 @@ const handleDeleteLayer = (id: string) => {
   scheduler.requestRender();
 };
 
-// Opacity (hot path â€” no IPC, no history commit for live slider)
+// Opacity (hot path — no IPC, no history commit for live slider)
 const handleOpacityChange = (id: string, opacity: number) => {
   const engine = workspace.getActiveEngine();
   if (!engine) return;
@@ -1260,7 +1260,7 @@ const handleOpacityChange = (id: string, opacity: number) => {
 };
 ```
 
-### Undo/Redo â€” instant, no IPC
+### Undo/Redo — instant, no IPC
 
 ```typescript
 const handleUndo = () => {
@@ -1278,7 +1278,7 @@ const handleUndo = () => {
 };
 ```
 
-### Brush/Eraser â€” offscreen canvas â†’ commit to layer
+### Brush/Eraser — offscreen canvas → commit to layer
 
 ```typescript
 // During stroke: render to overlay <canvas> (existing pattern preserved)
@@ -1371,13 +1371,13 @@ async function handleExport(format: string, quality: number) {
 
 ```
 crates/render/                       # Entire crate
-crates/core/src/document.rs          # Document model â†’ frontend
-crates/core/src/layers.rs            # Layer model â†’ frontend
-crates/core/src/history.rs           # History â†’ frontend
-crates/core/src/workspace.rs         # Workspace â†’ frontend
-crates/core/src/brush.rs             # Brush â†’ frontend
-crates/core/src/selection.rs         # Selection â†’ frontend
-crates/core/src/transform.rs         # Transform â†’ frontend
+crates/core/src/document.rs          # Document model → frontend
+crates/core/src/layers.rs            # Layer model → frontend
+crates/core/src/history.rs           # History → frontend
+crates/core/src/workspace.rs         # Workspace → frontend
+crates/core/src/brush.rs             # Brush → frontend
+crates/core/src/selection.rs         # Selection → frontend
+crates/core/src/transform.rs         # Transform → frontend
 ```
 
 ### Files to MODIFY
@@ -1407,9 +1407,9 @@ Current `photrez-desktop` Cargo deps to KEEP:
 
 ### Tauri config changes
 
-`tauri.conf.json` â€” **may need to change**:
-- `transparent: true` â†’ probably change to `false` (no longer rendering wgpu behind webview)
-- `decorations: false` â†’ keep (custom title bar)
+`tauri.conf.json` — **may need to change**:
+- `transparent: true` → probably change to `false` (no longer rendering wgpu behind webview)
+- `decorations: false` → keep (custom title bar)
 
 ---
 
@@ -1534,10 +1534,10 @@ describe("RenderScheduler", () => {
 ### Existing Tests (re-wire)
 
 The 4 existing test files will be updated to test against the new engine:
-- `keyboard-shortcuts.test.ts` â€” verify shortcuts dispatch to engine methods
-- `viewport.test.ts` â€” test coordinate conversion utilities
-- `transform.test.ts` â€” test transform operations on engine
-- `renderer.test.ts` â€” test WebGL2 initialization
+- `keyboard-shortcuts.test.ts` — verify shortcuts dispatch to engine methods
+- `viewport.test.ts` — test coordinate conversion utilities
+- `transform.test.ts` — test transform operations on engine
+- `renderer.test.ts` — test WebGL2 initialization
 
 ---
 
@@ -1620,9 +1620,9 @@ After migration is complete, these docs need updating:
 - [ ] Verify: `pnpm.cmd --filter photrez-desktop test` passes
 
 ### Phase 8: File Pipeline
-- [ ] Implement open image flow (dialog â†’ read â†’ decode â†’ engine â†’ GPU)
+- [ ] Implement open image flow (dialog → read → decode → engine → GPU)
 - [ ] Implement drag & drop
-- [ ] Verify: `pnpm.cmd tauri dev` â†’ open image â†’ see pixels
+- [ ] Verify: `pnpm.cmd tauri dev` → open image → see pixels
 
 ### Phase 9: Editing Features
 - [ ] Wire layer CRUD to engine
@@ -1633,7 +1633,7 @@ After migration is complete, these docs need updating:
 - [ ] Verify: full editing flow works
 
 ### Phase 10: Export
-- [ ] Implement frontend export (Canvas API â†’ Tauri write)
+- [ ] Implement frontend export (Canvas API → Tauri write)
 - [ ] Verify: export produces valid PNG/JPEG/WebP
 
 ### Cleanup
@@ -1652,9 +1652,9 @@ After migration is complete, these docs need updating:
 - [ ] Update `GEMINI.md`
 
 ### Final Verification
-- [ ] `pnpm.cmd run build` â€” passes
-- [ ] `pnpm.cmd --filter photrez-desktop test` â€” all tests pass
-- [ ] `cargo check -p photrez-desktop` â€” passes
-- [ ] `pnpm.cmd tauri dev` â€” app launches
-- [ ] Smoke test: open â†’ pan/zoom â†’ add layer â†’ brush â†’ undo â†’ export
+- [ ] `pnpm.cmd run build` — passes
+- [ ] `pnpm.cmd --filter photrez-desktop test` — all tests pass
+- [ ] `cargo check -p photrez-desktop` — passes
+- [ ] `pnpm.cmd tauri dev` — app launches
+- [ ] Smoke test: open → pan/zoom → add layer → brush → undo → export
 - [ ] Performance: pan/zoom at 60 FPS (no IPC per frame)

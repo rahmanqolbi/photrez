@@ -131,7 +131,7 @@ enum LayerType {
 
 | Field | Type | Constraints | Default | Notes |
 | --- | --- | --- | --- | --- |
-| `layer_id` | `String` | FK to Layer | â€” | 1:1 relationship |
+| `layer_id` | `String` | FK to Layer | — | 1:1 relationship |
 | `width` | `u32` | `1..=16384` | matches canvas | Bitmap dimensions |
 | `height` | `u32` | `1..=16384` | matches canvas | Bitmap dimensions |
 | `format` | `PixelFormat` | enum | `RGBA8` | See below |
@@ -158,11 +158,11 @@ enum PixelFormat {
 | Field | Type | Constraints | Default | Notes |
 | --- | --- | --- | --- | --- |
 | `entry_id` | `String (UUID v4)` | PK | auto-generated | |
-| `document_id` | `String` | FK to Document | â€” | |
+| `document_id` | `String` | FK to Document | — | |
 | `sequence` | `u32` | monotonic increasing | auto | Position in history stack |
-| `operation` | `OperationType` | enum, see below | â€” | What was done |
+| `operation` | `OperationType` | enum, see below | — | What was done |
 | `timestamp` | `u64 (Unix ms)` | | current time | When it happened |
-| `snapshot_or_delta` | `bytes` | | â€” | Undo data payload |
+| `snapshot_or_delta` | `bytes` | | — | Undo data payload |
 
 ### OperationType Enum
 

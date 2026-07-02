@@ -27,7 +27,7 @@ This audit executed the urgent P0 production-risk-register pass with Ponytail co
 | Move/viewport/export browser behavior | Full Playwright suite covers transform alignment through fit/zoom/pan, brush paint, export dialog, export headers, export parity, and write roundtrip. |
 | Rust document/workspace contracts | `cargo test -p photrez-core` and `cargo test --workspace` cover layer, history, crop/resize, export, workspace, and desktop command contracts. |
 
-## Verification Run
+## Verification Run (Historical — project now uses `bun`, not `pnpm`)
 
 - `pnpm.cmd --filter photrez-desktop test --run` - PASS, 77 files / 1078 tests.
 - `pnpm.cmd run build` - PASS.

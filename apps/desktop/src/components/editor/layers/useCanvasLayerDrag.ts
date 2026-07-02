@@ -48,7 +48,7 @@ export interface CanvasLayerDragOptions {
  * for simplicity (matches the existing layer-helpers).
  */
 export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLayerDragApi {
-  const { workspace, renderer, camera, activeDocumentId, activeTool, scheduler, moveSnapEnabled } = useEditor();
+  const { workspace, renderer, camera, activeDocumentId, activeTool, scheduler, moveSnapEnabled, zoom } = useEditor();
   const dragController = useDragController();
 
   const [drag, setDrag] = createSignal<CanvasLayerDrag | null>(null);
@@ -142,7 +142,7 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
         { x: -Infinity, y: docH / 2, w: Infinity, h: 0, snapThreshold: 6, snapPriority: 2 },
         ...otherLayers,
       ];
-      const result = computeSnapAdjustment(rect, snapTargets);
+      const result = computeSnapAdjustment(rect, snapTargets, 5, zoom());
       newX += result.dx;
       newY += result.dy;
       opts.onSnapLinesChange?.(result.lines);

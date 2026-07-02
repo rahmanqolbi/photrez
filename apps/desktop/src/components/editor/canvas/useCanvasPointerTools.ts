@@ -306,7 +306,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
           setSnapLines([]);
           return { dx: 0, dy: 0, lines: [] };
         }
-        return computeSnapAdjustment(rect, snapTargets);
+        return computeSnapAdjustment(rect, snapTargets, 5, zoom());
       };
     } else {
       interactiveState.onComputeSnap = undefined;

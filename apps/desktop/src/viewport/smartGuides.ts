@@ -39,8 +39,11 @@ export function computeSnapAdjustment(
   moving: SnapRect,
   targets: SnapRect[],
   threshold = 5,
+  zoom = 1,
 ): SnapResult {
   const me = buildAxis(moving);
+  // scale thresholds by 1/zoom so screen-space catch zone is constant
+  const factor = zoom !== 0 ? 1 / zoom : 1;
   let bestDx = 0;
   let bestDxDist = Infinity;
   let bestDxLineY1 = moving.y;
@@ -59,7 +62,7 @@ export function computeSnapAdjustment(
     const te = buildAxis(t);
       for (const mk of X_KEYS) {
         for (const tk of X_KEYS) {
-          const tThreshold = t.snapThreshold ?? threshold;
+          const tThreshold = (t.snapThreshold ?? threshold) * factor;
           const tPriority = t.snapPriority ?? 1;
           const d = te[tk] - me[mk];
           const dist = Math.abs(d);
@@ -77,7 +80,7 @@ export function computeSnapAdjustment(
       }
       for (const mk of Y_KEYS) {
         for (const tk of Y_KEYS) {
-          const tThreshold = t.snapThreshold ?? threshold;
+          const tThreshold = (t.snapThreshold ?? threshold) * factor;
           const tPriority = t.snapPriority ?? 1;
           const d = te[tk] - me[mk];
           const dist = Math.abs(d);
@@ -120,6 +123,7 @@ export function computeSnapLines(
   moving: SnapRect,
   targets: SnapRect[],
   threshold = 5,
+  zoom = 1,
 ): SnapLine[] {
-  return computeSnapAdjustment(moving, targets, threshold).lines;
+  return computeSnapAdjustment(moving, targets, threshold, zoom).lines;
 }

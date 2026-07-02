@@ -2,7 +2,7 @@
 
 Token ini menjadi sumber tunggal styling UI Photrez di MVP yang menggunakan Tailwind v4 dan sistem warna OKLCH.
 
-> **Last synced**: 2026-05-30 — Synced with current desktop SolidJS & Tailwind v4 UI implementation. Colors mapped to OKLCH values in `src/styles.css`, layout dimensions matched to current docked side-by-side double-dock layout.
+> **Last synced**: 2026-07-02 — Synced with current desktop SolidJS & Tailwind v4 UI implementation. Colors mapped to OKLCH values in `src/styles.css`, layout dimensions matched to current docked side-by-side double-dock layout.
 
 ## 1) Usage Rules
 
@@ -75,7 +75,7 @@ Dimensi aktual yang berlabuh pada tepi window (docked layout):
 | **AppTitleBar** height | `46px` | Desktop titlebar style, centered doc title, `h-[46px]` |
 | **DocumentTabsBar** height | `44px` | `h-[44px] bg-editor-topbar` |
 | **OptionBar** height | `44px` | `h-[44px] bg-editor-toolbar` |
-| **BottomStatusBar** height | `32px` | `h-[32px] bg-editor-topbar` |
+| **BottomStatusBar** height | `30px` | `h-[30px] bg-editor-topbar` |
 | **LeftToolRail** width | `52px` | `w-[52px] bg-editor-toolbar` |
 | Tool rail items size | `36×36 px` | `size-9` (36px), rounded `[5px]` |
 | Tool rail icon size | `18px` | `size-[18px]` |

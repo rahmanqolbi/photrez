@@ -49,7 +49,7 @@ UI message format follows `docs/archive/planning/28-ui-copy-guidelines.md`.
 | Selection bounds exceed canvas | `E_VALIDATION` | `Selection extends beyond canvas bounds.` | `selection_bounds: {rect}` |
 | Transform with zero dimension | `E_VALIDATION` | `Transform dimensions must be greater than zero.` | `transform_zero: {dimension}` |
 | Crop bounds invalid | `E_VALIDATION` | `Crop area is invalid. Adjust the crop bounds.` | `crop_invalid: {rect}` |
-| Crop bounds exceed canvas | â€” | Allowed for canvas expansion | crop_overflow: {rect} (Deprecated) |
+| Crop bounds exceed canvas | — | Allowed for canvas expansion | crop_overflow: {rect} (Deprecated) |
 | Resize dimensions invalid | `E_VALIDATION` | `Resize dimensions must be between 1 and 16384.` | `resize_invalid: {w}x{h}` |
 
 ## 6) Brush/Eraser Operations
@@ -76,8 +76,8 @@ UI message format follows `docs/archive/planning/28-ui-copy-guidelines.md`.
 | Malformed command payload | `E_VALIDATION` | `Invalid request. Please try again.` | `payload_malformed: {cmd}, {details}` |
 | Internal panic/unexpected error | `E_INTERNAL` | `Something went wrong. Please restart the app.` | `internal_panic: {stack}` |
 | Operation timeout | `E_TIMEOUT` | `Operation took too long. Try with a smaller image.` | `timeout: {cmd}, {duration_ms}` |
-| Undo on empty stack | â€” | No error (silent no-op) | `undo_empty_stack` |
-| Redo on empty stack | â€” | No error (silent no-op) | `redo_empty_stack` |
+| Undo on empty stack | — | No error (silent no-op) | `undo_empty_stack` |
+| Redo on empty stack | — | No error (silent no-op) | `redo_empty_stack` |
 
 ## 9) Severity Classification
 

@@ -37,7 +37,7 @@ Load these only when working on the related subsystem:
 
 | File | Read when... |
 |---|---|
-| `decisions/id-decision-log.md` | Making or reviewing architectural decisions |
+| `decisions/decision-log.md` | Making or reviewing architectural decisions |
 | `decisions/risk-register.md` | Milestone gate review or assessing active project risks |
 | `decisions/adr/` | Architectural Decision Records (deep-dive design decisions) |
 
@@ -53,8 +53,8 @@ Load these only when working on the related subsystem:
 | `reference/save-and-document-lifecycle.md` | Working on save/open/new/close flows |
 | `reference/error-code-registry.md` | Adding error handling or new error codes |
 | `reference/glossary.md` | Need consistent terminology |
-| `reference/ui-style-guide-preview.html` | Visual preview of design tokens |
-| `reference/ui-full-editor-mockup.html` | Full editor shell mockup (visual reference) |
+| ~~`reference/ui-style-guide-preview.html`~~ | ~~Stale — deleted 2026-07-02~~ |
+| ~~`reference/ui-full-editor-mockup.html`~~ | ~~Stale — deleted 2026-07-02~~ |
 
 ---
 
