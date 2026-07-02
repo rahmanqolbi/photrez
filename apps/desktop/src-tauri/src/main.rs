@@ -5,10 +5,18 @@ mod menu;
 mod response;
 mod window_state;
 
+use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 
+struct CliState(Mutex<Option<String>>);
+
 fn main() {
+    // Accept file path as first CLI argument
+    let cli_path: Option<String> = std::env::args().nth(1)
+        .filter(|p| !p.starts_with("--"));   // skip tauri dev flags
+
     tauri::Builder::default()
+        .manage(CliState(Mutex::new(cli_path)))
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             app.set_menu(menu::build_native_menu(app)?)?;
@@ -52,6 +60,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::ping,
             commands::get_contract_info,
+            commands::get_pending_open_path,
             commands::read_file_bytes,
             commands::write_file_bytes,
             commands::save_project,

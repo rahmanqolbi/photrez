@@ -24,6 +24,8 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",
-    "husky": "^9.1.7"
+    "@types/pngjs": "^6.0.5",
+    "husky": "^9.1.7",
+    "pngjs": "^7.0.0"
   }
 }

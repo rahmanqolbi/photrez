@@ -14,7 +14,7 @@ import {
   type ModernCropSnapshot,
 } from "../modernCropState";
 import { setupWorkspaceSync } from "../canvas/workspaceSync";
-import { openImage } from "../editorOpenImage";
+import { openImage, openSingleFile } from "../editorOpenImage";
 import { ViewportCamera } from "../../../viewport/viewportCamera";
 import { DragControllerProvider } from "../DragController";
 import { showToast as showToastImpl } from "../Toast";
@@ -22,6 +22,8 @@ import { runToolSwitchCleanup } from "../tools/toolLifecycle";
 import { DialogProvider } from "../dialogs/DialogProvider";
 import type { HistoryItem } from "@/engine/history";
 import { cancelLayerTransformSession } from "../transformSession";
+import { invoke } from "@tauri-apps/api/core";
+import { isTauriRuntime } from "@/lib/desktop/tauriWindow";
 
 
 export interface EditorContextValue {
@@ -392,6 +394,23 @@ export function EditorProvider(props: {
       syncState();
     } catch (e) {
       console.error("Workspace sync failed during bootstrap:", e);
+    }
+
+    // Open file passed via CLI argument
+    if (isTauriRuntime()) {
+      invoke<{ path: string | null }>("get_pending_open_path").then((res) => {
+        if (res.path) {
+          openSingleFile(res.path, {
+            workspace: props.workspace,
+            renderer: props.renderer,
+            scheduler: props.scheduler,
+            onError: (msg) => showToastImpl(msg, "error"),
+            onLoading: (msg) => editorState.setLoadingMessage(msg),
+          });
+        }
+      }).catch(() => {
+        // command not available (e.g. older build) — silently skip
+      });
     }
   });
 

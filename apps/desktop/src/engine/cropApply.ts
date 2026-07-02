@@ -1,12 +1,6 @@
 import type { LayerNode } from "./types";
 import { createMergedLayerNode } from "./layerFactory";
-
-function normalizeRotation(angleDeg: number): number {
-  let angle = angleDeg % 360;
-  if (angle > 180) angle -= 360;
-  if (angle < -180) angle += 360;
-  return angle;
-}
+import { normalizeRotation } from "@/viewport/transformGeometry";
 
 export function performCropCanvas(layers: LayerNode[], x: number, y: number): void {
   for (const layer of layers) {

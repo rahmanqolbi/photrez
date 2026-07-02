@@ -146,6 +146,42 @@ Notes:
 - Known measurement caveats:
 ```
 
+## 8a) Filled Evidence Example (2026-07-02 Alpha Baseline)
+
+```md
+## Performance Evidence
+
+Environment:
+- OS: Windows 11
+- CPU: (user's machine)
+- RAM: 13.8 GB total
+- Storage: SSD
+- GPU: (user's machine)
+- Build mode: release
+
+Startup:
+- Runs: 1001, 124, 114, 108, 112
+- Min/Max/Median/Avg: 108ms / 1001ms / 114ms / 292ms
+- Target: <2000ms
+- PASS/FAIL: PASS
+
+Idle RAM:
+- Runs: 34, 34, 34, 34, 34
+- Min/Max/Median/Avg: 34MB / 34MB / 34MB / 34MB
+- Target: <250MB
+- PASS/FAIL: PASS
+
+Installer:
+- Size: 4.1 MB (NSIS), 6.26 MB (MSI)
+- Target: <80 MB
+- PASS/FAIL: PASS
+
+Notes:
+- Startup measures window handle creation (not JS init). True interactive time ~+500ms.
+- RAM does not include WebGL GPU textures (not counted in WorkingSet64).
+- Large image (4000×4000 noise PNG, 52MB file → 61MB decoded) loaded without crash or RAM spike.
+```
+
 ## 9) Gate Decision Rules
 
 - `PASS`: all 3 metrics meet target.

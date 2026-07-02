@@ -5,13 +5,6 @@ import type {
 } from "./types";
 import { MAX_LAYERS, MAX_PIXEL_BUDGET, getEffectiveMaxDim } from "./types";
 
-function normalizeRotation(angleDeg: number): number {
-  let angle = angleDeg % 360;
-  if (angle > 180) angle -= 360;
-  if (angle < -180) angle += 360;
-  return angle;
-}
-
 import { createLayerNode, duplicateLayerNode, createMergedLayerNode } from "./layerFactory";
 import { drawLayerToContext, compositeTwoLayers, compositeAllLayers } from "./layerComposite";
 import { performCropCanvas, performApplyCrop } from "./cropApply";

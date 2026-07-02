@@ -4,6 +4,7 @@ import { isTauriRuntime, runTauriWindowAction } from "@/lib/desktop";
 import { useEditor } from "./EditorContext";
 import { useEditorCommands } from "../useEditorCommands";
 import { AppMenuBar } from "./AppMenuBar";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 type AppTitleBarProps = {
   isRightDockOpen: boolean;
@@ -20,7 +21,7 @@ export function AppTitleBar(props: AppTitleBarProps) {
     if (!isTauriRuntime()) return;
     let disposed = false;
     let unlisten: (() => void) | undefined;
-    import("@tauri-apps/api/window").then(async ({ getCurrentWindow }) => {
+    (async () => {
       if (disposed) return;
       const appWindow = getCurrentWindow();
       setIsMaximized(await appWindow.isMaximized());
@@ -28,7 +29,7 @@ export function AppTitleBar(props: AppTitleBarProps) {
         if (disposed) return;
         setIsMaximized(await appWindow.isMaximized());
       });
-    }).catch(() => {});
+    })();
     onCleanup(() => {
       disposed = true;
       unlisten?.();

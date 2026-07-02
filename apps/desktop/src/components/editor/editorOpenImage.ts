@@ -65,29 +65,7 @@ export async function openImage(params: OpenImageParams) {
 
     try {
       for (const path of paths) {
-        if (params.workspace.isFull()) break;
-
-        if (path.toLowerCase().endsWith(".ptz")) {
-          await loadProjectFile(path, params);
-          continue;
-        }
-
-        const bytes = await readFileBytes(path);
-        const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-        const blob = new Blob([buffer]);
-        const bitmap = await createImageBitmap(blob);
-
-        const id = `doc-${crypto.randomUUID()}`;
-        const name = path.split(/[/\\]/).pop() || "Image";
-        const session = WorkspaceManager.createDocumentFromImage(id, name, bitmap);
-
-        params.workspace.addDocument(session);
-
-        const bgLayerId = session.engine.getLayers()[0].id;
-        params.renderer.uploadImage(bgLayerId, bitmap);
-        params.scheduler.requestRender();
-
-        await tick(); // yield so UI stays responsive during batch import
+        await openSingleFile(path, params);
       }
 
       showToast("File(s) loaded", "info");
@@ -97,6 +75,33 @@ export async function openImage(params: OpenImageParams) {
   } catch (e) {
     reportError(`Failed to open image: ${e}`);
   }
+}
+
+/** Open a single image or .ptz project file by path. */
+export async function openSingleFile(path: string, params: OpenImageParams): Promise<void> {
+  if (params.workspace.isFull()) return;
+
+  if (path.toLowerCase().endsWith(".ptz")) {
+    await loadProjectFile(path, params);
+    return;
+  }
+
+  const bytes = await readFileBytes(path);
+  const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  const blob = new Blob([buffer]);
+  const bitmap = await createImageBitmap(blob);
+
+  const id = `doc-${crypto.randomUUID()}`;
+  const name = path.split(/[/\\]/).pop() || "Image";
+  const session = WorkspaceManager.createDocumentFromImage(id, name, bitmap);
+
+  params.workspace.addDocument(session);
+
+  const bgLayerId = session.engine.getLayers()[0].id;
+  params.renderer.uploadImage(bgLayerId, bitmap);
+  params.scheduler.requestRender();
+
+  await tick();
 }
 
 async function loadProjectFile(path: string, params: OpenImageParams) {

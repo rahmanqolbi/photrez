@@ -6,6 +6,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 use crate::response::{err_response, error_value, ok_response, validate_path_extension, CONTRACT_VERSION};
+use crate::CliState;
 
 const MAX_FILE_IO_BYTES: u64 = 256 * 1024 * 1024;
 const READ_FILE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp", "gif", "bmp", "tif", "tiff"];
@@ -28,6 +29,16 @@ pub(crate) fn get_contract_info() -> Result<Value, Value> {
             "print_image"
         ]
     }))
+}
+
+/// Returns a file path passed via CLI argument, if any. Used once, then cleared.
+#[tauri::command]
+pub(crate) fn get_pending_open_path(state: tauri::State<'_, CliState>) -> Result<Value, Value> {
+    let mut path = state.0.lock().unwrap();
+    match path.take() {
+        Some(p) => ok_response(serde_json::json!({ "path": p })),
+        None => ok_response(serde_json::json!({ "path": null })),
+    }
 }
 
 /// Read file bytes from disk. Returns base64-encoded bytes.

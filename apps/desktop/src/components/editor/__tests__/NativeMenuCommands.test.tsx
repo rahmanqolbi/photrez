@@ -5,6 +5,13 @@ import type { WebGL2Backend } from "@/renderer/webgl2";
 import type { RenderScheduler } from "@/renderer/scheduler";
 import { WorkspaceManager } from "@/engine/workspace";
 import { EditorProvider, useEditor } from "../shell/EditorContext";
+
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: () => ({
+    isMaximized: async () => false,
+    onResized: async () => () => {},
+  }),
+}));
 import { AppTitleBar } from "../shell/AppTitleBar";
 
 const eventMock = vi.hoisted(() => ({
