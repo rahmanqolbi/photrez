@@ -261,9 +261,8 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
           try {
             if (ext === "ptz") {
               showToast("Saving project...", "info");
-              const wasDirty = session.dirty;
               await serializeAndSaveProject(engine, session.sourcePath!);
-              session.dirty = wasDirty && engine.isDirty();
+              session.dirty = false;
             } else {
               const format: ExportFormat = ext === "jpg" || ext === "jpeg" ? "jpeg"
                 : ext === "webp" ? "webp" : "png";
@@ -295,7 +294,6 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
             if (!path) return;
 
             const ext = path.split(".").pop()?.toLowerCase();
-            const wasDirty = session.dirty;
             const addRecent = (p: string) => {
               addRecentFile(p, p.split(/[/\\]/).pop() || session.displayName);
             };
@@ -305,7 +303,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
               await serializeAndSaveProject(engine, path);
               session.sourcePath = path;
               session.displayName = path.split(/[/\\]/).pop() || session.displayName;
-              session.dirty = wasDirty && engine.isDirty();
+              session.dirty = false;
               addRecent(path);
               showToast("Project saved", "info");
             } else {
@@ -351,7 +349,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
               // Working doc switches to flat format
               session.sourcePath = path;
               session.displayName = path.split(/[/\\]/).pop() || session.displayName;
-              session.dirty = wasDirty && engine.isDirty();
+              session.dirty = false;
               addRecent(path);
               showToast(`Saved as ${format.toUpperCase()}`, "info");
             }
