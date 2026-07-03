@@ -325,7 +325,11 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     // might re-render pointer-events after the signal update — if the
     // overlay still has pointer-events:auto when pointerdown fires, the
     // event reaches this handler before the container can early-return.
-    if (opts.isSpacePressed?.() || opts.isPanning?.()) return;
+    if (opts.isSpacePressed?.() || opts.isPanning?.()) {
+      console.log("[DBG] canvasLayerDrag: nav mode active, returning early");
+      return;
+    }
+    console.log("[DBG] canvasLayerDrag: starting drag");
 
     // Ignore if the click was on a transform handle or rotate path
     const target = e.target as HTMLElement;
