@@ -8,7 +8,7 @@ interface PanNavigationOptions {
 }
 
 export function usePanNavigation(options: PanNavigationOptions) {
-  const { workspace, scheduler, camera, syncFromCamera, modernCropFrame, setModernCropFrame, cropInteractionMode } = useEditor();
+  const { workspace, scheduler, camera, syncFromCamera, modernCropFrame, setModernCropFrame, cropInteractionMode, setZoom, setPan } = useEditor();
 
   /** When panning in Modern crop mode, shift the frame along with the viewport. */
   function shiftModernCropFrame(dx: number, dy: number) {
@@ -148,7 +148,12 @@ export function usePanNavigation(options: PanNavigationOptions) {
     const actualDx = camera.getState().x - prevPanX;
     const actualDy = camera.getState().y - prevPanY;
     shiftModernCropFrame(actualDx, actualDy);
-    syncFromCamera();
+    // Update zoom/pan signals without calling syncFromCamera() (which also
+    // calls engine.setViewport → notifyChange → sync → setSelectedLayerId).
+    // During panning that would re-select a deselected layer on every tick.
+    const camState = camera.getState();
+    setZoom(camState.zoom);
+    setPan({ x: camState.x, y: camState.y });
     scheduler.requestRender();
 
     const now = Date.now();

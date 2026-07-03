@@ -704,13 +704,8 @@ export class DocumentEngine {
     this.onVisualChangeCallback = callback;
   }
 
-  private notifyChangeCounter = 0;
   private notifyChange(): void {
     if (this.onChangeCallback) {
-      this.notifyChangeCounter++;
-      if (this.notifyChangeCounter > 5 && this.notifyChangeCounter <= 10) {
-        console.log("[DBG] engine.notifyChange #" + this.notifyChangeCounter, new Error().stack?.split("\n").slice(2,4).join(" | "));
-      }
       this.onChangeCallback();
     }
   }

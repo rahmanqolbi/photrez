@@ -745,16 +745,13 @@ export function CanvasViewport() {
       onPointerDown={(e) => {
         stopMomentum();
         if (isSpacePressed() || isPanning()) {
-          console.log("[DBG] panning: space=" + isSpacePressed() + " panning=" + isPanning() + " canvasLayerDrag SKIPPED");
           onViewportPointerDown(e);
           return;
         }
-        console.log("[DBG] normal pointerdown: calling canvasLayerDrag.handlePointerDown");
         canvasLayerDrag.handlePointerDown(e);
         if (!e.defaultPrevented) {
           handlePasteboardPointerDown(e);
           if (!e.defaultPrevented) {
-            console.log("[DBG] calling handleMoveAutoSelect");
             handleMoveAutoSelect(e);
             onViewportPointerDown(e);
           }
