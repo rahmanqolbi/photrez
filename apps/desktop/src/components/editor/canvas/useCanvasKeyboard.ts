@@ -730,6 +730,11 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
       // Spacebar panning toggle
       if (e.code === "Space") {
         e.preventDefault();
+        // Blur any focused element (e.g. OptionCheckbox native input) so Space
+        // doesn't toggle the control while we're trying to pan. The native checkbox
+        // default behavior fires before the window keydown handler even with
+        // preventDefault, so we proactively remove focus from the active element.
+        (document.activeElement as HTMLElement)?.blur();
         options.stopMomentum();
         if (!options.isSpacePressed()) {
           options.setIsSpacePressed(true);
