@@ -276,6 +276,12 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
       const history = workspace.getHistory(src);
       if (sourceEngine && history) {
         history.commit(d.preDragSnapshot, "Move Layer");
+        // Trigger sync so the History Panel updates immediately.
+        // history.commit only pushes to the history stack — without a
+        // notify call, the UI won't know the history changed until the
+        // next engine mutation (regression 2026-07-03: user reports
+        // "sebenarnya tercatat tapi kayak harus diklik layer dulu baru muncul").
+        workspace.notifyVisualChange();
       }
     }
 
