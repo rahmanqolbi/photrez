@@ -433,4 +433,10 @@
 
 | Status  | Fitur |
 | ------- | ----- |
-| ✅ DONE | Tooltip migration: replaced ~50 native `title` attributes with `<Tooltip>` component across 12 files (shell, option bars, layers panel, dialogs). Uses warm delay, Escape dismiss, viewport boundary clamping, and `shortcut` prop for keyboard shortcuts (Ctrl+C/X/V/I, Del, Esc, Enter). Removed unused `title` prop from `ToggleBtn`.                                                                                                                           |
+| ✅ DONE | Tooltip migration: replaced ~50 native `title` attributes with `<Tooltip>` component across 12 files (shell, option bars, layers panel, dialogs). Uses warm delay, Escape dismiss, viewport boundary clamping, and `shortcut` prop for keyboard shortcuts (Ctrl+C/X/V/I, Del, Esc, Enter). Removed unused `title` prop from `ToggleBtn`. |
+
+## 🪟 Desktop / Window
+
+| Status  | Fitur |
+| ------- | ----- |
+| ✅ DONE | Sequential save-on-close dialog: when closing app with dirty documents, shows a dialog per doc (Save / Discard / Cancel). Cancel aborts close; Discard/Save advances to next dirty doc. All resolved → window closes. 13 wiring tests guard Cancel, Discard, Save, save-failure retry, no-source-path save, and fallback paths. |

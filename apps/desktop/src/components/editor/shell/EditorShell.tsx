@@ -16,6 +16,9 @@ import { ToastHost } from "../Toast";
 import { LoadingOverlay } from "../LoadingOverlay";
 import { GlobalDragDropHost } from "../GlobalDragDropHost";
 import { DragGlobalGuard } from "../DragController";
+import { isTauriRuntime } from "@/lib/desktop/tauriWindow";
+import { useTauriCloseHandler } from "@/lib/desktop/useTauriCloseHandler";
+import { useDialog } from "../dialogs/DialogProvider";
 
 // Core singletons import
 import { WorkspaceManager } from "@/engine/workspace";
@@ -109,20 +112,19 @@ export function EditorShell() {
     }
   });
 
-  onMount(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      const hasDirty = workspace.getTabSummaries().some((t) => t.isDirty);
-      if (hasDirty) {
-        e.preventDefault();
-        // Standard beforeunload pattern — both preventDefault and returnValue
-        // are needed across browsers and WebView2. Without returnValue, some
-        // WebView2 versions ignore preventDefault alone.
-        e.returnValue = "";
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    onCleanup(() => window.removeEventListener("beforeunload", handleBeforeUnload));
-  });
+  // Fallback: browser beforeunload for non-Tauri environments (web preview, etc.)
+  if (!isTauriRuntime()) {
+    onMount(() => {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        if (workspace.getTabSummaries().some((t) => t.isDirty)) {
+          e.preventDefault();
+          e.returnValue = "";
+        }
+      };
+      window.addEventListener("beforeunload", handleBeforeUnload);
+      onCleanup(() => window.removeEventListener("beforeunload", handleBeforeUnload));
+    });
+  }
 
   onCleanup(() => {
     scheduler.dispose();
@@ -139,6 +141,7 @@ export function EditorShell() {
     >
       <GlobalDragDropHost />
       <DragGlobalGuard />
+      <TauriCloseGuard workspace={workspace} scheduler={scheduler} />
       <EditorLayout
         rightDockOpen={rightDockOpen()}
         toggleRightDock={toggleRightDock}
@@ -146,4 +149,14 @@ export function EditorShell() {
       />
     </EditorProvider>
   );
+}
+
+/** Inner component that has access to useDialog() (DialogProvider is inside EditorProvider). */
+function TauriCloseGuard(props: {
+  workspace: import("@/engine/workspace").WorkspaceManager;
+  scheduler: import("@/renderer/scheduler").RenderScheduler;
+}) {
+  const dialog = useDialog();
+  useTauriCloseHandler(props.workspace, dialog as any, props.scheduler);
+  return null;
 }

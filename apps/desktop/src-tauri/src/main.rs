@@ -52,8 +52,13 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if window.label() == "main" {
-                if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     window_state::save_window_state(window);
+                    // Prevent the window from closing immediately. The frontend
+                    // will show sequential save-confirm dialogs for each dirty
+                    // document, then call getCurrentWindow().close() when done.
+                    api.prevent_close();
+                    let _ = window.emit("close-requested", ());
                 }
             }
         })

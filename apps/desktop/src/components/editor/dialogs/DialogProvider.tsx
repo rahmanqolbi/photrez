@@ -47,18 +47,30 @@ export interface ConfirmWithCheckboxResult {
   checked: boolean;
 }
 
+export interface ConfirmSaveOptions {
+  title: string;
+  message: string;
+  saveLabel?: string;
+  discardLabel?: string;
+  cancelLabel?: string;
+}
+
+export type ConfirmSaveResult = "save" | "discard" | "cancel";
+
 interface DialogContextValue {
   confirm: (options: ConfirmDialogOptions) => Promise<boolean>;
   alert: (options: AlertDialogOptions) => Promise<void>;
   quality: (options: QualityDialogOptions) => Promise<number | null>;
   confirmWithCheckbox: (options: ConfirmWithCheckboxOptions) => Promise<ConfirmWithCheckboxResult>;
+  confirmSave: (options: ConfirmSaveOptions) => Promise<ConfirmSaveResult>;
 }
 
 type DialogRequest =
   | { kind: "confirm"; options: ConfirmDialogOptions; resolve: (result: boolean) => void }
   | { kind: "alert"; options: AlertDialogOptions; resolve: () => void }
   | { kind: "quality"; options: QualityDialogOptions; resolve: (result: number | null) => void }
-  | { kind: "confirm-checkbox"; options: ConfirmWithCheckboxOptions; resolve: (result: ConfirmWithCheckboxResult) => void };
+  | { kind: "confirm-checkbox"; options: ConfirmWithCheckboxOptions; resolve: (result: ConfirmWithCheckboxResult) => void }
+  | { kind: "confirm-save"; options: ConfirmSaveOptions; resolve: (result: ConfirmSaveResult) => void };
 
 const isDangerRequest = (request: DialogRequest) => (
   request.kind === "confirm" && request.options.tone === "danger"
@@ -110,11 +122,17 @@ export function DialogProvider(props: ParentProps) {
     showNext();
   });
 
+  const confirmSave = (options: ConfirmSaveOptions) => new Promise<ConfirmSaveResult>((resolve) => {
+    queue.push({ kind: "confirm-save", options, resolve });
+    showNext();
+  });
+
   const complete = (accepted: boolean) => {
     const request = current();
     if (!request) return;
     if (request.kind === "confirm") request.resolve(accepted);
     else if (request.kind === "confirm-checkbox") request.resolve({ confirmed: false, checked: false });
+    else if (request.kind === "confirm-save") request.resolve("cancel");
     else if (request.kind === "quality") request.resolve(null);
     else request.resolve();
     setCurrent(null);
@@ -163,11 +181,13 @@ export function DialogProvider(props: ParentProps) {
     const request = current();
     if (request?.kind === "confirm") request.resolve(false);
     else if (request?.kind === "confirm-checkbox") request.resolve({ confirmed: false, checked: false });
+    else if (request?.kind === "confirm-save") request.resolve("cancel");
     else if (request?.kind === "quality") request.resolve(null);
     else request?.resolve();
     for (const queued of queue.splice(0)) {
       if (queued.kind === "confirm") queued.resolve(false);
       else if (queued.kind === "confirm-checkbox") queued.resolve({ confirmed: false, checked: false });
+      else if (queued.kind === "confirm-save") queued.resolve("cancel");
       else if (queued.kind === "quality") queued.resolve(null);
       else queued.resolve();
     }
@@ -301,7 +321,75 @@ export function DialogProvider(props: ParentProps) {
     );
   }
 
-  const value: DialogContextValue = { confirm, alert, quality, confirmWithCheckbox };
+  function ConfirmSaveDialogContent(props: { request: Extract<DialogRequest, { kind: "confirm-save" }> }) {
+    const handleCancel = () => {
+      props.request.resolve("cancel");
+      setCurrent(null);
+      queueMicrotask(() => {
+        restoreFocusTo?.focus();
+        restoreFocusTo = null;
+        showNext();
+      });
+    };
+    const handleDiscard = () => {
+      props.request.resolve("discard");
+      setCurrent(null);
+      queueMicrotask(() => {
+        restoreFocusTo?.focus();
+        restoreFocusTo = null;
+        showNext();
+      });
+    };
+    const handleSave = () => {
+      props.request.resolve("save");
+      setCurrent(null);
+      queueMicrotask(() => {
+        restoreFocusTo?.focus();
+        restoreFocusTo = null;
+        showNext();
+      });
+    };
+    return (
+      <DesktopDialog
+        dialogRef={(element) => { dialogRef = element; }}
+        role="alertdialog"
+        title={props.request.options.title}
+        kind="confirm-save"
+        tone="default"
+        bodyClass="min-h-[68px] whitespace-pre-line"
+        onBackdropPointerDown={handleCancel}
+        onKeyDown={handleKeyDown}
+        actions={<>
+          <DesktopDialogButton
+            ref={(element) => { cancelRef = element; }}
+            data-dialog-cancel
+            onClick={handleCancel}
+          >
+            {props.request.options.cancelLabel ?? "Cancel"}
+          </DesktopDialogButton>
+          <DesktopDialogButton
+            data-dialog-skip
+            variant="secondary"
+            onClick={handleDiscard}
+          >
+            {props.request.options.discardLabel ?? "Don't Save"}
+          </DesktopDialogButton>
+          <DesktopDialogButton
+            ref={(element) => { confirmRef = element; }}
+            data-dialog-confirm
+            variant="primary"
+            onClick={handleSave}
+          >
+            {props.request.options.saveLabel ?? "Save"}
+          </DesktopDialogButton>
+        </>}
+      >
+        <p>{props.request.options.message}</p>
+      </DesktopDialog>
+    );
+  }
+
+  const value: DialogContextValue = { confirm, alert, quality, confirmWithCheckbox, confirmSave };
 
   return (
     <DialogContext.Provider value={value}>
@@ -354,6 +442,11 @@ export function DialogProvider(props: ParentProps) {
               {r.kind === "confirm-checkbox" && (
                 <ConfirmCheckboxDialogContent
                   request={r as Extract<DialogRequest, { kind: "confirm-checkbox" }>}
+                />
+              )}
+              {r.kind === "confirm-save" && (
+                <ConfirmSaveDialogContent
+                  request={r as Extract<DialogRequest, { kind: "confirm-save" }>}
                 />
               )}
             </Portal>
