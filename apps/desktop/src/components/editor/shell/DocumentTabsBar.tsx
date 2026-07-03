@@ -9,6 +9,7 @@ import { cancelLayerTransformSession } from "../transformSession";
 import { useDragController } from "../DragController";
 import { addFilesAsLayers, addLayerFromCrossDoc, createNewDocsFromFiles, type WorkspaceFacade } from "../crossDocLayerOps";
 import { showToast } from "../Toast";
+import { useDialog } from "../dialogs/DialogProvider";
 
 function ExportButton() {
   const { setShowExportDialog } = useEditor();
@@ -64,6 +65,7 @@ function CloseDockButton() {
 export function DocumentTabsBar() {
   const { workspace, documents, activeDocumentId, renderer, scheduler, layerTransformSession, setLayerTransformSession } = useEditor();
   const drag = useDragController();
+  const dialog = useDialog();
   const [isHovered, setIsHovered] = createSignal(false);
 
   const cancelActiveTransformSession = () => {
@@ -82,11 +84,24 @@ export function DocumentTabsBar() {
     scheduler.requestRender();
   };
 
-  const handleCloseTab = (e: MouseEvent, id: string) => {
+  const handleCloseTab = async (e: MouseEvent, id: string) => {
     e.stopPropagation();
     if (layerTransformSession()) {
       cancelActiveTransformSession();
     }
+
+    const session = workspace.getSession(id);
+    if (session?.dirty) {
+      const confirmed = await dialog.confirm({
+        title: "Unsaved Changes",
+        message: `"${session.displayName}" has unsaved changes. Discard them?`,
+        confirmLabel: "Discard",
+        cancelLabel: "Cancel",
+        tone: "danger",
+      });
+      if (!confirmed) return;
+    }
+
     workspace.removeDocument(id);
     scheduler.requestRender();
   };
