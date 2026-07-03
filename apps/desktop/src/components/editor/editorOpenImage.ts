@@ -6,6 +6,7 @@ import { DocumentModel } from "@/engine/types";
 import type { WebGL2Backend } from "@/renderer/webgl2";
 import type { RenderScheduler } from "@/renderer/scheduler";
 import { isTauriRuntime } from "@/lib/desktop/tauriWindow";
+import { addRecentFile } from "@/lib/recentFiles";
 import { showToast } from "./Toast";
 import { tick } from "@/lib/dom";
 
@@ -61,11 +62,14 @@ export async function openImage(params: OpenImageParams) {
     const paths = await showOpenImageDialog();
     if (!paths || paths.length === 0) return;
 
-    params.onLoading?.(`Opening ${paths.length} file${paths.length > 1 ? "s" : ""}...`);
+    const total = paths.length;
+    params.onLoading?.(`Opening ${total} file${total > 1 ? "s" : ""}...`);
 
     try {
-      for (const path of paths) {
-        await openSingleFile(path, params);
+      for (let i = 0; i < total; i++) {
+        const fileName = paths[i].split(/[/\\]/).pop() || `file ${i + 1}`;
+        params.onLoading?.(`Opening ${fileName} (${i + 1}/${total})...`);
+        await openSingleFile(paths[i], params);
       }
 
       showToast("File(s) loaded", "info");
@@ -77,23 +81,35 @@ export async function openImage(params: OpenImageParams) {
   }
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 /** Open a single image or .ptz project file by path. */
 export async function openSingleFile(path: string, params: OpenImageParams): Promise<void> {
   if (params.workspace.isFull()) return;
 
+  const fileName = path.split(/[/\\]/).pop() || "Image";
+
   if (path.toLowerCase().endsWith(".ptz")) {
-    await loadProjectFile(path, params);
+    params.onLoading?.(`Loading project ${fileName}...`);
+    await loadProjectFile(path, params, fileName);
     return;
   }
 
+  params.onLoading?.(`Reading ${fileName}...`);
   const bytes = await readFileBytes(path);
+
+  params.onLoading?.(`Decoding ${fileName} (${formatFileSize(bytes.length)})...`);
   const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
   const blob = new Blob([buffer]);
   const bitmap = await createImageBitmap(blob);
 
   const id = `doc-${crypto.randomUUID()}`;
-  const name = path.split(/[/\\]/).pop() || "Image";
-  const session = WorkspaceManager.createDocumentFromImage(id, name, bitmap);
+  const session = WorkspaceManager.createDocumentFromImage(id, fileName, bitmap);
+  session.sourcePath = path;
 
   params.workspace.addDocument(session);
 
@@ -101,13 +117,15 @@ export async function openSingleFile(path: string, params: OpenImageParams): Pro
   params.renderer.uploadImage(bgLayerId, bitmap);
   params.scheduler.requestRender();
 
+  addRecentFile(path, fileName);
   await tick();
 }
 
-async function loadProjectFile(path: string, params: OpenImageParams) {
+async function loadProjectFile(path: string, params: OpenImageParams, fileName: string) {
   const result = await loadProject(path);
   const model = JSON.parse(result.document_json) as DocumentModel;
 
+  params.onLoading?.(`Loading project layers...`);
   for (const layer of model.layers) {
     const base64Data = result.layers[layer.id];
     if (base64Data) {
@@ -144,5 +162,6 @@ async function loadProjectFile(path: string, params: OpenImageParams) {
     }
   }
 
+  addRecentFile(path, fileName);
   params.scheduler.requestRender();
 }
