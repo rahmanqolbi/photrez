@@ -278,7 +278,11 @@ export function DocumentTabsBar() {
                 <span
                   class={clsx(
                     "whitespace-nowrap text-[13px]",
-                    activeDocumentId() === tab.id ? "text-editor-accent font-medium" : "text-editor-text-dim",
+                    tab.isDirty
+                      ? "text-editor-accent font-medium"
+                      : activeDocumentId() === tab.id
+                        ? "text-editor-text font-medium"
+                        : "text-editor-text-dim",
                   )}
                 >
                   {tab.displayName}
