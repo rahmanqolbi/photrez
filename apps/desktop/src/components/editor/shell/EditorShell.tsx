@@ -1,4 +1,4 @@
-import { createSignal, lazy, onCleanup, Show, Suspense } from "solid-js";
+import { createSignal, lazy, onCleanup, onMount, Show, Suspense } from "solid-js";
 import { AppTitleBar } from "./AppTitleBar";
 import { BottomStatusBar } from "./BottomStatusBar";
 import { CanvasViewport } from "../canvas/CanvasViewport";
@@ -107,6 +107,17 @@ export function EditorShell() {
       const matrix = camera.getViewProjectionMatrix();
       renderer.render(engine.getRenderState(), matrix);
     }
+  });
+
+  onMount(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const hasDirty = workspace.getTabSummaries().some((t) => t.isDirty);
+      if (hasDirty) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    onCleanup(() => window.removeEventListener("beforeunload", handleBeforeUnload));
   });
 
   onCleanup(() => {
