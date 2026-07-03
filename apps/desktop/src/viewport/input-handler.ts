@@ -311,16 +311,12 @@ export function handlePointerUp(
       context.onCropCreated?.(x, y, w, h);
     }
   } else if (tool === "move") {
-    // Commit deferred history snapshot ONLY if the layer actually moved.
-    // Click-without-drag must not produce an undo entry.
-    const pending = context.pendingHistorySnapshot;
-    const orig = context.pendingOriginalLayerPos;
-    if (pending && orig && context.selectedLayerId) {
-      const layer = engine.getLayer(context.selectedLayerId);
-      if (layer && (layer.transform.x !== orig.x || layer.transform.y !== orig.y)) {
-        history.commit(pending);
-      }
-    }
+    // History is NOT committed here because the SVG overlay
+    // (SelectionTransformOverlay, z-index 40) intercepts most canvas clicks
+    // before they reach input-handler — so pendingHistorySnapshot is often
+    // null. useCanvasLayerDrag.onPointerUp owns all move-tool history.
+    // We still clean up the pending snapshot and snap lines so stale state
+    // doesn't leak into the next gesture.
     context.pendingHistorySnapshot = null;
     context.pendingOriginalLayerPos = null;
     context.onSnapLines?.([]);

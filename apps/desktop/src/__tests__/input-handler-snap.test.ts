@@ -69,8 +69,9 @@ describe("input-handler snap wiring", () => {
     handlePointerMove("move", 55, 50, engine, () => {}, ctx);
     handlePointerUp("move", 55, 50, engine, history, () => {}, ctx);
 
-    // commit deferred to pointerUp — fires exactly once when layer actually moved.
-    expect(commit).toHaveBeenCalledTimes(1);
+    // Move tool history is owned by useCanvasLayerDrag.onPointerUp,
+    // not by input-handler.handlePointerUp. Verify snap + move still work.
+    expect(commit).not.toHaveBeenCalled();
     expect(onComputeSnap).toHaveBeenCalledWith({ x: 55, y: 50, w: 100, h: 100 });
     expect(moveLayer).toHaveBeenCalledWith("L1", 58, 50);
     expect(onSnapLines).toHaveBeenCalledWith(snap.lines);

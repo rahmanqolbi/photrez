@@ -263,12 +263,15 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
       }
     }
 
-    // Commit history ONLY for cross-doc drags. Same-doc move history is
-    // handled by input-handler.handlePointerUp (the normal move tool path).
-    // Committing twice per drag produces ghost undo entries — the user would
-    // need to press Undo twice to revert a single move (regression 2026-07-03:
-    // user reports undo appearing stuck after every canvas drag).
-    if (crossDocAdded && src) {
+    // Commit history for the SOURCE doc so the user can undo the drag.
+    // useCanvasLayerDrag is the sole history owner for move tool:
+    // input-handler.handlePointerUp does NOT commit for "move" because
+    // the SVG overlay (SelectionTransformOverlay, z-index 40) intercepts
+    // clicks before they reach the canvas — so input-handler.handlePointerDown
+    // never fires for SVG overlay clicks, and pendingHistorySnapshot stays
+    // null. Only useCanvasLayerDrag.handlePointerDown can reliably track
+    // and commit move tool history for both SVG and canvas click paths.
+    if (src) {
       const sourceEngine = workspace.getEngine(src);
       const history = workspace.getHistory(src);
       if (sourceEngine && history) {

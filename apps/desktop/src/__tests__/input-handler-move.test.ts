@@ -188,22 +188,27 @@ describe("input-handler: move tool — deferred history commit (regression 2026-
     expect(history.commit).not.toHaveBeenCalled();
   });
 
-  it("drag with actual movement: exactly ONE history entry", () => {
+  it("drag with actual movement: input-handler does NOT commit history (owned by useCanvasLayerDrag)", () => {
     const { engine, history, context } = setupMoveDragSequence();
     handlePointerDown("move", 150, 80, engine, history, vi.fn(), context);
     handlePointerMove("move", 200, 130, engine, vi.fn(), context);
     handlePointerUp("move", 200, 130, engine, history, vi.fn(), context);
-    expect(history.commit).toHaveBeenCalledTimes(1);
+    // Move tool history is owned by useCanvasLayerDrag.onPointerUp.
+    // The SVG overlay (SelectionTransformOverlay) intercepts most canvas
+    // clicks before they reach input-handler, so input-handler can't
+    // reliably track move tool history.
+    expect(history.commit).not.toHaveBeenCalled();
   });
 
-  it("drag with actual movement: commits the PRE-drag snapshot (captured at pointerdown)", () => {
+  it("drag clears pending state (no stale leak into next gesture)", () => {
     const { engine, history, context } = setupMoveDragSequence();
     handlePointerDown("move", 150, 80, engine, history, vi.fn(), context);
-    // engine.snapshot was called once during pointerdown to stash.
     const stashedSnapshot = vi.mocked(engine.snapshot).mock.results[0].value;
     handlePointerMove("move", 200, 130, engine, vi.fn(), context);
     handlePointerUp("move", 200, 130, engine, history, vi.fn(), context);
-    expect(history.commit).toHaveBeenCalledWith(stashedSnapshot);
+    // Pending snapshot cleared even though history.commit is not called here
+    expect(context.pendingHistorySnapshot).toBeNull();
+    expect(context.pendingOriginalLayerPos).toBeNull();
   });
 
   it("drag back to original position: no history entry (layer.transform unchanged)", () => {
@@ -243,14 +248,14 @@ describe("input-handler: move tool — deferred history commit (regression 2026-
     expect(history.commit).not.toHaveBeenCalled();
   });
 
-  it("three consecutive drags: exactly THREE history entries", () => {
+  it("three consecutive drags: input-handler commits ZERO history entries (handled by useCanvasLayerDrag)", () => {
     const { engine, history, context } = setupMoveDragSequence();
     for (let i = 0; i < 3; i++) {
       handlePointerDown("move", 150, 80, engine, history, vi.fn(), context);
       handlePointerMove("move", 150 + (i + 1) * 10, 80, engine, vi.fn(), context);
       handlePointerUp("move", 150 + (i + 1) * 10, 80, engine, history, vi.fn(), context);
     }
-    expect(history.commit).toHaveBeenCalledTimes(3);
+    expect(history.commit).not.toHaveBeenCalled();
   });
 
   it("pending state is cleared after pointerUp (no leak into next gesture)", () => {
