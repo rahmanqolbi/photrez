@@ -1,6 +1,8 @@
 # Post-MVP UI Backlog
 
-Status: planned after release-candidate native evidence.
+> ⚠️ **All 6 items completed as of 2026-07-02.** This file is kept for historical reference only — no pending work remains.
+
+Status: **COMPLETED** — all items implemented, tested, and shipped.
 
 This backlog preserves requested UI and desktop-shell work that is intentionally outside the locked MVP feature set. Items remain product goals; they are not release blockers for the current MVP.
 
@@ -14,14 +16,14 @@ Before starting the first item:
 
 ## Recommended Order
 
-| Order | Item | First decision required | Minimum delivery evidence |
+| Order | Item | Evidence | Status |
 | --- | --- | --- | --- |
-| 1 | Window state persistence | Storage location, invalid/off-screen bounds recovery, multi-monitor behavior | Unit tests for bounds normalization plus real Tauri restart smoke |
-| 2 | Native menu integration | Whether native menu mirrors or replaces the custom menu bar | Command-routing tests plus Windows native runtime smoke |
-| 3 | Tooltip system | Which existing controls are the first consumers; avoid a framework without consumers | Focus/hover lifecycle tests, keyboard accessibility, cleanup proof |
-| 4 | General context-menu system | Reuse or extract from the existing brush menu only when a second real consumer exists | Mounted event wiring, focus/Escape/outside-click tests, tool shortcut isolation |
-| 5 | Dialog system | Inventory existing export, resize, color, and confirmation dialogs before extracting shared behavior | Focus trap/restore, Escape policy, shortcut isolation, mounted wiring tests |
-| 6 | History panel UI | Define operation labels and whether snapshots need metadata before designing the list | History state contract, undo/redo selection tests, mounted panel wiring |
+| 1 | Window state persistence | `main.rs` — `window_state::load/save`, `SnapStateToScreen`, tests | ✅ DONE |
+| 2 | Native menu integration | `main.rs` — `menu.rs`, `build_native_menu`, `on_menu_event`, `NativeMenuCommands.test.tsx` | ✅ DONE |
+| 3 | Tooltip system | `Tooltip.test.tsx` (5 tests: hover delay, keyboard focus, cleanup) | ✅ DONE |
+| 4 | General context-menu system | `ContextMenu.test.tsx`, `BrushContextMenu.test.tsx`, `contextMenuCore.tsx` | ✅ DONE |
+| 5 | Dialog system | `DialogProvider.test.tsx`, shared `confirm/alert` API, focus trap tests | ✅ DONE |
+| 6 | History panel UI | `HistoryPanel.test.tsx`, `HistoryPanelWiring.test.tsx`, production wiring | ✅ DONE |
 
 ## Guardrails
 

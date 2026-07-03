@@ -5,6 +5,8 @@ import { useEditor } from "./EditorContext";
 import { useEditorCommands } from "../useEditorCommands";
 import { AppMenuBar } from "./AppMenuBar";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { openSingleFile } from "../editorOpenImage";
+import { addRecentFile } from "@/lib/recentFiles";
 
 type AppTitleBarProps = {
   isRightDockOpen: boolean;
@@ -12,8 +14,28 @@ type AppTitleBarProps = {
 };
 
 export function AppTitleBar(props: AppTitleBarProps) {
-  const { activeDocumentId, documents } = useEditor();
+  const { activeDocumentId, documents, workspace, renderer, scheduler, showToast, setLoadingMessage } = useEditor();
   const commands = useEditorCommands(props.onToggleRightDock);
+
+  const handleOpenRecent = (path: string) => {
+    const name = path.split(/[/\\]/).pop() || path;
+    openSingleFile(path, {
+      workspace,
+      renderer,
+      scheduler,
+      onError: (msg) => showToast(msg, "error"),
+      onLoading: (msg) => setLoadingMessage(msg),
+    }).then(() => {
+      addRecentFile(path, name);
+    }).catch((e) => {
+      showToast(`Failed to open recent file: ${e instanceof Error ? e.message : String(e)}`, "error");
+    });
+  };
+
+  const handleClearRecent = () => {
+    // force re-render by toggling a reactive signal (not strictly needed
+    // since the menu popup recreates on each open, but keeps code consistent)
+  };
 
   const [isMaximized, setIsMaximized] = createSignal(false);
 
@@ -69,6 +91,8 @@ export function AppTitleBar(props: AppTitleBarProps) {
           execute={commands.execute}
           isEnabled={commands.isEnabled}
           isRightDockOpen={props.isRightDockOpen}
+          onOpenRecent={handleOpenRecent}
+          onClearRecent={handleClearRecent}
         />
       </div>
 

@@ -406,6 +406,8 @@ export function EditorProvider(props: {
             scheduler: props.scheduler,
             onError: (msg) => showToastImpl(msg, "error"),
             onLoading: (msg) => editorState.setLoadingMessage(msg),
+          }).catch((e) => {
+            showToastImpl(`Failed to open file from command line: ${e instanceof Error ? e.message : String(e)}`, "error");
           });
         }
       }).catch(() => {

@@ -47,8 +47,9 @@ function renderMenu(options?: {
   return { container, execute, dispose };
 }
 
-function button(container: HTMLElement, label: string): HTMLButtonElement {
-  const match = Array.from(container.querySelectorAll("button"))
+/** Find a button anywhere in the document (popup may be portal-rendered to body) */
+function button(_container: HTMLElement, label: string): HTMLButtonElement {
+  const match = Array.from(document.querySelectorAll("button"))
     .find((element) => element.getAttribute("aria-label") === label || element.textContent?.trim() === label);
   if (!(match instanceof HTMLButtonElement)) throw new Error(`Button not found: ${label}`);
   return match;
@@ -64,11 +65,11 @@ describe("AppMenuBar", () => {
 
     button(host.container, "File").click();
     expect(host.execute).not.toHaveBeenCalled();
-    expect(host.container.querySelector('[role="menu"][aria-label="File menu"]')).not.toBeNull();
+    expect(document.querySelector('[role="menu"][aria-label="File menu"]')).not.toBeNull();
 
     button(host.container, "Open Image…").click();
     expect(host.execute).toHaveBeenCalledWith("file.open");
-    expect(host.container.querySelector('[role="menu"][aria-label="File menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"][aria-label="File menu"]')).toBeNull();
     host.dispose();
   });
 
@@ -132,7 +133,7 @@ describe("AppMenuBar", () => {
       new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
     );
     await tick();
-    expect(host.container.querySelector('[role="menu"][aria-label="Edit menu"]')).not.toBeNull();
+    expect(document.querySelector('[role="menu"][aria-label="Edit menu"]')).not.toBeNull();
     expect(document.activeElement).toHaveAttribute("aria-label", "Undo");
     host.dispose();
   });
@@ -147,12 +148,12 @@ describe("AppMenuBar", () => {
       new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
     );
     await tick();
-    expect(host.container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
     expect(document.activeElement).toBe(fileTrigger);
 
     fileTrigger.click();
     document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
-    expect(host.container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
     host.dispose();
   });
 

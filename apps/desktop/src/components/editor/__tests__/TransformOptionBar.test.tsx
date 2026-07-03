@@ -55,7 +55,6 @@ describe("TransformOptionBar", () => {
     const dispose = render(() => <TransformOptionBar />, container);
 
     expect(container.textContent).toContain("Transform");
-    expect(container.textContent).toContain("resize");
 
     const buttons = container.querySelectorAll("button");
     const applyBtn = Array.from(buttons).find(b => b.textContent === "Apply");

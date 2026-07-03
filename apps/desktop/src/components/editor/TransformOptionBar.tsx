@@ -4,7 +4,7 @@ import { NumField, EditableNumField } from "./primitives";
 import { clsx } from "clsx";
 import { Tooltip } from "./Tooltip";
 import { useEditor } from "./shell/EditorContext";
-import { ToggleBtn, Divider, MoreDropdown } from "./shell/OptionBarShared";
+import { ToggleBtn, Divider, ToolPill, MoreDropdown } from "./shell/OptionBarShared";
 import { cancelLayerTransformSession, commitLayerTransformSession, resetLayerTransformPreview } from "./transformSession";
 import type { Transform2D } from "@/engine/types";
 
@@ -117,17 +117,7 @@ export function TransformOptionBar() {
 
   return (
     <>
-      <div class="flex h-[24px] shrink-0 items-center rounded-[3px] border border-editor-accent/20 bg-editor-accent/10 px-2 text-[11px] text-editor-accent font-semibold">
-        Transform
-      </div>
-
-      <Show when={session()}>
-        {(s) => (
-          <div class="flex h-[24px] shrink-0 items-center rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[10px] text-editor-text-dim uppercase font-mono">
-            {s().mode}
-          </div>
-        )}
-      </Show>
+      <ToolPill icon="move" label="Transform" />
 
       <Divider />
 

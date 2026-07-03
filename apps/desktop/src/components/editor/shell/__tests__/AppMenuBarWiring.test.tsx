@@ -19,8 +19,9 @@ function Probe() {
   );
 }
 
-function button(container: HTMLElement, label: string): HTMLButtonElement {
-  const match = Array.from(container.querySelectorAll("button"))
+/** Find a button anywhere in the document (popup may be portal-rendered to body) */
+function button(_container: HTMLElement, label: string): HTMLButtonElement {
+  const match = Array.from(document.querySelectorAll("button"))
     .find((element) => element.getAttribute("aria-label") === label || element.textContent?.trim() === label);
   if (!(match instanceof HTMLButtonElement)) throw new Error(`Button not found: ${label}`);
   return match;
@@ -185,14 +186,14 @@ describe("custom application menu wiring", () => {
 
     // Open the File menu
     button(host.container, "File").click();
-    expect(host.container.querySelector<HTMLElement>('[role="menu"]')).not.toBeNull();
+    expect(document.querySelector<HTMLElement>('[role="menu"]')).not.toBeNull();
 
     // Click outside the nav — dispatch on the container (parent of nav)
     // This exercises the document.addEventListener("pointerdown") from onMount
     host.container.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
 
     // Menu should now be closed — no popup
-    expect(host.container.querySelector<HTMLElement>('[role="menu"]')).toBeNull();
+    expect(document.querySelector<HTMLElement>('[role="menu"]')).toBeNull();
     host.dispose();
   });
 });
