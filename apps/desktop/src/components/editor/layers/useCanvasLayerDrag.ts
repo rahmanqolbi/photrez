@@ -343,6 +343,12 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     // use the selected layer's position for the drag offset. This keeps the
     // gesture aligned with what the normal move handler expects.
     if (!moveAutoSelect()) {
+      // If UI says no layer is selected (pasteboard deselect), don't start
+      // a drag at all. Otherwise a tiny mouse jitter would trigger
+      // engine.transformLayer() -> notifyChange() -> sync -> re-select the
+      // last active layer, overriding the user's deselection.
+      if (selectedLayerId() === null) return;
+
       const engine = workspace.getActiveEngine();
       const activeId = selectedLayerId();
       const activeLayer = activeId ? engine?.getLayer(activeId) : null;
