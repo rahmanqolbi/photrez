@@ -38,7 +38,7 @@ export function setupWorkspaceSync(params: SyncStateParams) {
         params.setSelectedLayerId(engine.getActiveLayerId());
         const activeId = engine.getActiveLayerId();
         if (activeId) {
-          console.log("[DBG] syncState: setSelectedLayerId(" + activeId + ") from engine.getActiveLayerId()");
+          console.log("[DBG] syncState: setSelectedLayerId(" + activeId + ")", new Error().stack?.split("\n").slice(2,6).join(" | "));
         }
         const newSel = engine.getSelection() ? { ...engine.getSelection()! } : null;
         params.setSelection(newSel);
