@@ -366,6 +366,8 @@ export function CanvasViewport() {
 
   const canvasLayerDrag = useCanvasLayerDrag({
     onSnapLinesChange: setSnapLines,
+    isSpacePressed,
+    isPanning,
   });
 
   const { cropSnapTargets } = useCanvasDerivedState({

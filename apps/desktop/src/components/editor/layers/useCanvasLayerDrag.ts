@@ -24,6 +24,8 @@ export interface CanvasLayerDragApi {
 
 export interface CanvasLayerDragOptions {
   onSnapLinesChange?: (lines: SnapLine[]) => void;
+  isSpacePressed?: () => boolean;
+  isPanning?: () => boolean;
 }
 
 /**
@@ -317,6 +319,13 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
   function handlePointerDown(e: PointerEvent) {
     if (activeTool() !== "move") return;
     if (e.button !== 0) return;
+
+    // Navigation mode (Space held or active pan): skip drag entirely.
+    // The container's onPointerDown also guards this, but the SVG overlay
+    // might re-render pointer-events after the signal update — if the
+    // overlay still has pointer-events:auto when pointerdown fires, the
+    // event reaches this handler before the container can early-return.
+    if (opts.isSpacePressed?.() || opts.isPanning?.()) return;
 
     // Ignore if the click was on a transform handle or rotate path
     const target = e.target as HTMLElement;
