@@ -271,6 +271,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
               await writeFileBytes(session.sourcePath!, bytes);
               session.dirty = false;
             }
+            engine.clearDirty();
             addRecentFile(session.sourcePath!, session.displayName);
             showToast("Saved", "info");
             editor.workspace.notifyVisualChange();
@@ -355,6 +356,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
               addRecent(path);
               showToast(`Saved as ${format.toUpperCase()}`, "info");
             }
+            engine.clearDirty();
             editor.workspace.notifyVisualChange();
             editor.scheduler.requestRender();
           } catch (err) {
