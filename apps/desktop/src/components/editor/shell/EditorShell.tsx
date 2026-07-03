@@ -114,6 +114,10 @@ export function EditorShell() {
       const hasDirty = workspace.getTabSummaries().some((t) => t.isDirty);
       if (hasDirty) {
         e.preventDefault();
+        // Standard beforeunload pattern — both preventDefault and returnValue
+        // are needed across browsers and WebView2. Without returnValue, some
+        // WebView2 versions ignore preventDefault alone.
+        e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
