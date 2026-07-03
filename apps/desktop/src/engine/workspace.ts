@@ -29,7 +29,7 @@ export class WorkspaceManager {
 
     // Connect document engine change triggers back to workspace context updates
     session.engine.onChange(() => {
-      session.dirty = session.engine.isDirty();
+      session.dirty = true;
       this.notifyChange();
     });
     session.engine.onVisualChange(() => {
