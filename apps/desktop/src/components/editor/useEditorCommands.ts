@@ -315,19 +315,22 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
 
               // Warning for multi-layer documents
               if (layerCount > 1) {
-                const confirmed = await dialog.confirm({
+                const result = await dialog.confirmWithCheckbox({
                   title: `Save as ${format.toUpperCase()}?`,
-                  message: `This will flatten ${layerCount} layers into a single image.\n\nIndividual layers cannot be recovered after closing this document.\n\nA backup .ptz project file will also be saved in the same location.`,
+                  message: `This will flatten ${layerCount} layers into a single image.\n\nIndividual layers cannot be recovered after closing this document.`,
+                  checkboxLabel: "Also save a project backup (.ptz) to preserve layers",
+                  checkboxChecked: true,
                   confirmLabel: `Save as ${format.toUpperCase()}`,
                   cancelLabel: "Cancel",
-                  tone: "default",
                 });
-                if (!confirmed) return;
+                if (!result.confirmed) return;
 
-                // Save .ptz backup alongside
-                const backupPath = path.replace(/\.[^.]+$/, ".ptz");
-                await serializeAndSaveProject(engine, backupPath);
-                addRecent(backupPath);
+                // Save .ptz backup if checkbox was checked
+                if (result.checked) {
+                  const backupPath = path.replace(/\.[^.]+$/, ".ptz");
+                  await serializeAndSaveProject(engine, backupPath);
+                  addRecent(backupPath);
+                }
               }
 
               // Quality dialog for JPEG/WebP (PNG uses lossless default)

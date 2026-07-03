@@ -32,16 +32,33 @@ export interface QualityDialogOptions {
   defaultQuality: number;
 }
 
+export interface ConfirmWithCheckboxOptions {
+  title: string;
+  message: string;
+  checkboxLabel: string;
+  checkboxChecked?: boolean;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  tone?: "default" | "danger";
+}
+
+export interface ConfirmWithCheckboxResult {
+  confirmed: boolean;
+  checked: boolean;
+}
+
 interface DialogContextValue {
   confirm: (options: ConfirmDialogOptions) => Promise<boolean>;
   alert: (options: AlertDialogOptions) => Promise<void>;
   quality: (options: QualityDialogOptions) => Promise<number | null>;
+  confirmWithCheckbox: (options: ConfirmWithCheckboxOptions) => Promise<ConfirmWithCheckboxResult>;
 }
 
 type DialogRequest =
   | { kind: "confirm"; options: ConfirmDialogOptions; resolve: (result: boolean) => void }
   | { kind: "alert"; options: AlertDialogOptions; resolve: () => void }
-  | { kind: "quality"; options: QualityDialogOptions; resolve: (result: number | null) => void };
+  | { kind: "quality"; options: QualityDialogOptions; resolve: (result: number | null) => void }
+  | { kind: "confirm-checkbox"; options: ConfirmWithCheckboxOptions; resolve: (result: ConfirmWithCheckboxResult) => void };
 
 const isDangerRequest = (request: DialogRequest) => (
   request.kind === "confirm" && request.options.tone === "danger"
@@ -88,10 +105,16 @@ export function DialogProvider(props: ParentProps) {
     showNext();
   });
 
+  const confirmWithCheckbox = (options: ConfirmWithCheckboxOptions) => new Promise<ConfirmWithCheckboxResult>((resolve) => {
+    queue.push({ kind: "confirm-checkbox", options, resolve });
+    showNext();
+  });
+
   const complete = (accepted: boolean) => {
     const request = current();
     if (!request) return;
     if (request.kind === "confirm") request.resolve(accepted);
+    else if (request.kind === "confirm-checkbox") request.resolve({ confirmed: false, checked: false });
     else if (request.kind === "quality") request.resolve(null);
     else request.resolve();
     setCurrent(null);
@@ -106,7 +129,7 @@ export function DialogProvider(props: ParentProps) {
     const request = current();
     if (!request) return;
     queueMicrotask(() => {
-      if (request.kind === "confirm") cancelRef?.focus();
+      if (request.kind === "confirm" || request.kind === "confirm-checkbox") cancelRef?.focus();
       else confirmRef?.focus();
     });
   });
@@ -139,10 +162,12 @@ export function DialogProvider(props: ParentProps) {
   onCleanup(() => {
     const request = current();
     if (request?.kind === "confirm") request.resolve(false);
+    else if (request?.kind === "confirm-checkbox") request.resolve({ confirmed: false, checked: false });
     else if (request?.kind === "quality") request.resolve(null);
     else request?.resolve();
     for (const queued of queue.splice(0)) {
       if (queued.kind === "confirm") queued.resolve(false);
+      else if (queued.kind === "confirm-checkbox") queued.resolve({ confirmed: false, checked: false });
       else if (queued.kind === "quality") queued.resolve(null);
       else queued.resolve();
     }
@@ -218,7 +243,65 @@ export function DialogProvider(props: ParentProps) {
     );
   }
 
-  const value: DialogContextValue = { confirm, alert, quality };
+  function ConfirmCheckboxDialogContent(props: { request: Extract<DialogRequest, { kind: "confirm-checkbox" }> }) {
+    const [checked, setChecked] = createSignal(props.request.options.checkboxChecked ?? true);
+    const handleCancel = () => {
+      complete(false);
+    };
+    const handleConfirm = () => {
+      props.request.resolve({ confirmed: true, checked: checked() });
+      setCurrent(null);
+      queueMicrotask(() => {
+        restoreFocusTo?.focus();
+        restoreFocusTo = null;
+        showNext();
+      });
+    };
+    return (
+      <DesktopDialog
+        dialogRef={(element) => { dialogRef = element; }}
+        role={props.request.options.tone === "danger" ? "alertdialog" : "dialog"}
+        title={props.request.options.title}
+        kind="confirm-checkbox"
+        tone={props.request.options.tone ?? "default"}
+        bodyClass="min-h-[68px] whitespace-pre-line"
+        onBackdropPointerDown={handleCancel}
+        onKeyDown={handleKeyDown}
+        actions={<>
+          <DesktopDialogButton
+            ref={(element) => { cancelRef = element; }}
+            data-dialog-cancel
+            onClick={handleCancel}
+          >
+            {props.request.options.cancelLabel ?? "Cancel"}
+          </DesktopDialogButton>
+          <DesktopDialogButton
+            ref={(element) => { confirmRef = element; }}
+            data-dialog-confirm
+            variant={props.request.options.tone === "danger" ? "primary" : "secondary"}
+            onClick={handleConfirm}
+          >
+            {props.request.options.confirmLabel ?? "OK"}
+          </DesktopDialogButton>
+        </>}
+      >
+        <p class="mb-4">{props.request.options.message}</p>
+        <label class="flex items-start gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={checked()}
+            onChange={(e) => setChecked(e.currentTarget.checked)}
+            class="mt-0.5 accent-editor-accent"
+          />
+          <span class="text-[12px] text-editor-text leading-relaxed">
+            {props.request.options.checkboxLabel}
+          </span>
+        </label>
+      </DesktopDialog>
+    );
+  }
+
+  const value: DialogContextValue = { confirm, alert, quality, confirmWithCheckbox };
 
   return (
     <DialogContext.Provider value={value}>
@@ -228,7 +311,7 @@ export function DialogProvider(props: ParentProps) {
           const r = request();
           return (
             <Portal mount={document.body}>
-              {r.kind !== "quality" && (
+              {(r.kind === "confirm" || r.kind === "alert") && (
                 <DesktopDialog
                   dialogRef={(element) => { dialogRef = element; }}
                   role={isDangerRequest(r) ? "alertdialog" : "dialog"}
@@ -266,6 +349,11 @@ export function DialogProvider(props: ParentProps) {
               {r.kind === "quality" && (
                 <QualityDialogContent
                   request={r as Extract<DialogRequest, { kind: "quality" }>}
+                />
+              )}
+              {r.kind === "confirm-checkbox" && (
+                <ConfirmCheckboxDialogContent
+                  request={r as Extract<DialogRequest, { kind: "confirm-checkbox" }>}
                 />
               )}
             </Portal>
