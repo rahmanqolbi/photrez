@@ -37,7 +37,8 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
 
       - name: Install Playwright browsers
-        run: bun run --filter photrez-desktop exec playwright install chromium --with-deps
+        working-directory: apps/desktop
+        run: bunx playwright install chromium --with-deps
 
       - name: Type check
         run: bun run type-check
