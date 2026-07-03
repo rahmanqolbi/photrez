@@ -273,6 +273,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
             }
             addRecentFile(session.sourcePath!, session.displayName);
             showToast("Saved", "info");
+            editor.workspace.notifyVisualChange();
             editor.scheduler.requestRender();
           } catch (err) {
             showToast(`Failed to save: ${err}`, "error");
@@ -354,6 +355,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
               addRecent(path);
               showToast(`Saved as ${format.toUpperCase()}`, "info");
             }
+            editor.workspace.notifyVisualChange();
             editor.scheduler.requestRender();
           } catch (err) {
             showToast(`Failed to save: ${err}`, "error");
