@@ -266,13 +266,12 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
     }
   });
 
-  it("regression 2026-06-19: same-doc drag commits exactly ONE history entry to the source doc (first drag after open)", () => {
+  it("same-doc drag moves the layer (history is handled by input-handler, not useCanvasLayerDrag)", () => {
     const ctx = setupWithLayer();
     try {
       const engine = ctx.ws.getEngine("wiring-canvas")!;
       const layer = engine.getLayers().find((l) => l.name === "Draggable")!;
       const history = ctx.ws.getActiveHistory()!;
-      expect(history.getUndoCount()).toBe(0);
 
       ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
         bubbles: true,
@@ -296,14 +295,15 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
 
       expect(layer.transform.x).toBe(200);
       expect(layer.transform.y).toBe(150);
-      expect(history.getUndoCount()).toBe(1);
-      expect(history.canUndo()).toBe(true);
+      // Same-doc history is committed by input-handler.handlePointerUp,
+      // not by useCanvasLayerDrag. This test only wires the drag hook.
+      expect(history.getUndoCount()).toBe(0);
     } finally {
       teardown(ctx);
     }
   });
 
-  it("regression 2026-06-19: same-doc drag undo restores the PRE-DRAG transform", () => {
+  it("same-doc drag does NOT commit history via useCanvasLayerDrag (avoids double-undo)", () => {
     const ctx = setupWithLayer();
     try {
       const engine = ctx.ws.getEngine("wiring-canvas")!;
@@ -332,23 +332,19 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
         clientY: 200,
       }));
 
-      expect(history.getUndoCount()).toBe(1);
-      const prev = history.undo(engine.snapshot());
-      expect(prev).not.toBeNull();
-      engine.restore(prev!);
-      const restored = engine.getLayer(layer.id)!;
-      expect(restored.transform.x).toBe(startX);
-      expect(restored.transform.y).toBe(startY);
+      // Layer moved but history is handled by input-handler, not here
+      expect(layer.transform.x).toBe(200);
+      expect(layer.transform.y).toBe(150);
+      expect(history.getUndoCount()).toBe(0);
     } finally {
       teardown(ctx);
     }
   });
 
-  it("regression 2026-06-19: history.commit uses the SOURCE doc's history (not active doc's) when active doc changes mid-drag", () => {
+  it("mid-drag active-doc switch does not pollute cross-doc history from same-doc drag", () => {
     const ctx = setupWithTwoDocs();
     try {
       const sourceEngine = ctx.ws.getEngine("doc-a")!;
-      const targetEngine = ctx.ws.getEngine("doc-b")!;
       const sourceLayer = sourceEngine.getLayers().find((l) => l.name === "Draggable")!;
       const sourceHistory = ctx.ws.getHistory("doc-a")!;
       const targetHistory = ctx.ws.getHistory("doc-b")!;
@@ -369,7 +365,7 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
         clientY: 200,
       }));
 
-      // Simulate mid-drag active-doc switch (matches what tab-hover-to-switch does).
+      // Simulate mid-drag active-doc switch
       ctx.ws.switchDocument("doc-b");
 
       document.dispatchEvent(new PointerEvent("pointerup", {
@@ -379,10 +375,9 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
         clientY: 200,
       }));
 
-      // Source layer moved; source history should have exactly ONE entry.
-      // Target doc's history must NOT receive the source doc's snapshot.
+      // Layer moved; history is handled by input-handler (same-doc), not useCanvasLayerDrag
       expect(sourceLayer.transform.x).toBe(200);
-      expect(sourceHistory.getUndoCount()).toBe(1);
+      expect(sourceHistory.getUndoCount()).toBe(0);
       expect(targetHistory.getUndoCount()).toBe(0);
     } finally {
       teardown(ctx);

@@ -79,6 +79,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     setCropRotation,
     hiddenCropPreview,
     setHiddenCropPreview,
+    selectedLayerId,
     setSelectedLayerId,
     setHoverHandle,
     cropInteractionMode,
@@ -195,7 +196,16 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const engine = workspace.getActiveEngine();
     interactiveState.fgColor = fgColor();
     interactiveState.bgColor = bgColor();
-    interactiveState.selectedLayerId = engine ? engine.getActiveLayerId() : null;
+    // For the move tool only: if the UI signal says no layer is selected
+    // (pasteboard/canvas deselect), don't operate on a stale engine layer.
+    // Other tools (brush, eraser, selection, crop) should use the engine's
+    // active layer as-is since they don't depend on the UI selection state.
+    const engineLayerId = engine ? engine.getActiveLayerId() : null;
+    if (activeTool() === "move" && selectedLayerId() === null) {
+      interactiveState.selectedLayerId = null;
+    } else {
+      interactiveState.selectedLayerId = engineLayerId;
+    }
     interactiveState.isAltPressed = params.isAltPressed();
     interactiveState.setFgColor = setFgColor;
     interactiveState.setBgColor = setBgColor;

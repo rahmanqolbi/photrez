@@ -82,6 +82,7 @@ function createMockEditorParams(toolId: string) {
     viewportWidth: 1024,
     viewportHeight: 768,
     setHoverPos: vi.fn(),
+    selectedLayerId: null,
     setSelectedLayerId: vi.fn(),
     setHoverHandle: vi.fn(),
     setViewportState: vi.fn(),

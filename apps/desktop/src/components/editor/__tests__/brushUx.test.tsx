@@ -45,6 +45,7 @@ function createMockEditor(overrides: Record<string, any> = {}) {
     eraserSmoothing: 0,
     moveAutoSelect: false,
     moveSnapEnabled: false,
+    selectedLayerId: null,
     setHoverPos: vi.fn(),
     setSelectedLayerId: vi.fn(),
   };

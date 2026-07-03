@@ -48,7 +48,7 @@ export interface CanvasLayerDragOptions {
  * for simplicity (matches the existing layer-helpers).
  */
 export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLayerDragApi {
-  const { workspace, renderer, camera, activeDocumentId, activeTool, scheduler, moveSnapEnabled, zoom } = useEditor();
+  const { workspace, renderer, camera, activeDocumentId, activeTool, scheduler, moveSnapEnabled, moveAutoSelect, selectedLayerId, zoom } = useEditor();
   const dragController = useDragController();
 
   const [drag, setDrag] = createSignal<CanvasLayerDrag | null>(null);
@@ -263,23 +263,16 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
       }
     }
 
-    // Commit history for the SOURCE doc so the user can undo the drag.
-    // Use the PRE-DRAG snapshot captured at pointerdown so undo restores the
-    // original position. Capturing at pointerup would snapshot the post-drag
-    // state and undo would appear to do nothing (regression 2026-06-19:
-    // "first drag after open not recorded in history").
-    if (src) {
+    // Commit history ONLY for cross-doc drags. Same-doc move history is
+    // handled by input-handler.handlePointerUp (the normal move tool path).
+    // Committing twice per drag produces ghost undo entries — the user would
+    // need to press Undo twice to revert a single move (regression 2026-07-03:
+    // user reports undo appearing stuck after every canvas drag).
+    if (crossDocAdded && src) {
       const sourceEngine = workspace.getEngine(src);
       const history = workspace.getHistory(src);
       if (sourceEngine && history) {
-        const currentLayer = sourceEngine.getLayer(d.layerId);
-        const positionChanged =
-          currentLayer &&
-          (currentLayer.transform.x !== d.startTransformX ||
-            currentLayer.transform.y !== d.startTransformY);
-        if (positionChanged || crossDocAdded) {
-          history.commit(d.preDragSnapshot, "Move Layer");
-        }
+        history.commit(d.preDragSnapshot, "Move Layer");
       }
     }
 
@@ -327,8 +320,37 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     const screenX = e.clientX - rect.left;
     const screenY = e.clientY - rect.top;
     const docPos = camera.screenToDocument(screenX, screenY);
-    const layer = findLayerAt(docPos.x, docPos.y);
+    let layer = findLayerAt(docPos.x, docPos.y);
     if (!layer) return;
+
+    // When auto-select is OFF, the layer under cursor may differ from the
+    // selected layer. The normal move handler (input-handler.ts) always moves
+    // the selected layer via engine.getActiveLayerId(). If we move a different
+    // layer here, both handlers fight — causing two layers to drift apart
+    // (regression 2026-07-03: user reports "saya drag layer b, layer b gerak"
+    // even though layer A was selected with auto-select off).
+    //
+    // Fix: when auto-select is OFF and the layer under cursor is not selected,
+    // use the selected layer's position for the drag offset. This keeps the
+    // gesture aligned with what the normal move handler expects.
+    if (!moveAutoSelect()) {
+      const engine = workspace.getActiveEngine();
+      const activeId = selectedLayerId();
+      const activeLayer = activeId ? engine?.getLayer(activeId) : null;
+      if (activeLayer && !activeLayer.locked && activeLayer.id !== layer.id) {
+        // Use the active layer instead of the layer under cursor
+        const activeLayerNode = {
+          id: activeLayer.id,
+          name: activeLayer.name,
+          transform: activeLayer.transform,
+          width: activeLayer.width,
+          height: activeLayer.height,
+          visible: activeLayer.visible,
+          locked: activeLayer.locked,
+        } as LayerNode;
+        layer = activeLayerNode;
+      }
+    }
 
     const src = activeDocumentId();
     if (!src) return;
