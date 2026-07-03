@@ -262,12 +262,14 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
             if (ext === "ptz") {
               showToast("Saving project...", "info");
               await serializeAndSaveProject(engine, session.sourcePath!);
+              engine.clearDirty();
               session.dirty = false;
             } else {
               const format: ExportFormat = ext === "jpg" || ext === "jpeg" ? "jpeg"
                 : ext === "webp" ? "webp" : "png";
               const bytes = await encodeComposite(engine, format, 92);
               await writeFileBytes(session.sourcePath!, bytes);
+              engine.clearDirty();
               session.dirty = false;
             }
             addRecentFile(session.sourcePath!, session.displayName);
@@ -303,6 +305,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
               await serializeAndSaveProject(engine, path);
               session.sourcePath = path;
               session.displayName = path.split(/[/\\]/).pop() || session.displayName;
+              engine.clearDirty();
               session.dirty = false;
               addRecent(path);
               showToast("Project saved", "info");
@@ -349,6 +352,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
               // Working doc switches to flat format
               session.sourcePath = path;
               session.displayName = path.split(/[/\\]/).pop() || session.displayName;
+              engine.clearDirty();
               session.dirty = false;
               addRecent(path);
               showToast(`Saved as ${format.toUpperCase()}`, "info");

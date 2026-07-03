@@ -27,9 +27,16 @@ export class WorkspaceManager {
     this.sessions.set(id, session);
     this.activeDocumentId = id;
 
-    // Connect document engine change triggers back to workspace context updates
+    // Connect document engine change triggers back to workspace context updates.
+    // Only mark session as dirty if the engine itself reports dirty — this way
+    // undo/redo to a clean snapshot (model.dirty === false) correctly clears the
+    // dirty indicator. Save handlers must call engine.clearDirty() to keep the
+    // engine dirty flag in sync (regression 2026-07-03: session.dirty was always
+    // set to true unconditionally, making every document appear dirty on open).
     session.engine.onChange(() => {
-      session.dirty = true;
+      if (session.engine.isDirty()) {
+        session.dirty = true;
+      }
       this.notifyChange();
     });
     session.engine.onVisualChange(() => {
