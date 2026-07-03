@@ -192,6 +192,19 @@
 
 ---
 
+## 💾 Save / Save As
+
+| Status          | Fitur                                                                                                                                                                                                                                                                                    |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅ DONE         | Save (Ctrl+S): single-layer overwrites source directly; multi-layer on flat format redirects to Save As; new/unsaved redirects to Save As                                                                                                                                                |
+| ✅ DONE         | Save As (Ctrl+Shift+S): all-format native OS dialog (ptz, png, jpg, webp) with multi-filter support                                                                                                                                                                                      |
+| ✅ DONE         | Save As → PTZ: project save, working doc switches to new .ptz                                                                                                                                                                                                                            |
+| ✅ DONE         | Save As → flat format: composite → encode → write via Tauri; working doc switches to chosen format                                                                                                                                                                                        |
+| ✅ DONE         | Multi-layer warning: confirm dialog when saving 2+ layers to flat format; auto-saves .ptz backup in same directory                                                                                                                                                                       |
+| ✅ DONE         | JPEG/WebP quality dialog: custom slider (1-100, default 92) via DialogProvider.quality(); PNG uses lossless default                                                                                                                                                                      |
+| ✅ DONE         | DialogProvider extended with promise-based quality() method (slider UI, resolve number on Save, null on Cancel)                                                                                                                                                                          |
+| ✅ DONE         | `showSaveDialogAllFormats` added to native.ts for multi-filter save dialog                                                                                                                                                                                                               |
+
 ## 📤 Export
 
 | Status          | Fitur                                                                                                                                                                                                                                                                                    |
@@ -202,7 +215,7 @@
 | ✅ DONE         | Export dialog UI (format picker + quality slider)                                                                                                                                                                                                                                        |
 | ✅ DONE         | Export pipeline — composite → encode → write via Tauri                                                                                                                                                                                                                                   |
 | ✅ DONE         | Export button in RightDock                                                                                                                                                                                                                                                               |
-| ✅ DONE         | Ctrl+S / Save shortcut opens export dialog                                                                                                                                                                                                                                               |
+| ✅ DONE         | Export via Ctrl+Alt+E (separate from Save; working doc unchanged)                                                                                                                                                                                                                         |
 | ✅ DONE         | Export compositing parity with renderer (layer order, opacity, transforms, blend modes via drawLayerToContext)                                                                                                                                                                           |
 | ✅ DONE         | E2E test: export dialog opens, format switch, quality slider                                                                                                                                                                                                                             |
 | ✅ DONE         | E2E test: encodeComposite produces valid PNG/JPEG/WebP with correct headers/magic bytes                                                                                                                                                                                                  |
@@ -306,6 +319,8 @@
 | ✅ DONE | Native menu integration (mirrors custom menu; shared command routing)                             |
 | ✅ DONE | Window state persistence (size/position/maximized, manual core-API impl in `main.rs`)             |
 | ✅ DONE | Project saving and loading (.ptz) locally — zipping layers/metadata and restored session rebuilds |
+| ✅ DONE | Recent files list — File > Open Recent submenu with max 10 entries, persisted in localStorage, saved on open/save/save-as |
+| ✅ DONE | Loading overlay shows file name and size during open ("Decoding photo.jpg (4.2 MB)...") and per-file progress for multi-file open |
 
 ---
 
@@ -377,7 +392,7 @@
 
 | Status     | Item                                                                                                                                                                                                                                                          |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PLANNED    | Post-MVP UI backlog preserved with entry gates and delivery order: `docs/archive/plans/2026-06-20-post-mvp-ui-backlog.md`                                                                                                                                     |
+| ✅ DONE    | Post-MVP UI backlog: all 6 items (window persistence, native menu, tooltip, context menu, dialog system, history panel) implemented, tested, shipped. `docs/archive/plans/2026-06-20-post-mvp-ui-backlog.md` updated to COMPLETED status                                                                                                                                     |
 | ✅ DONE    | Native Tauri release smoke evidence: NATIVE-001 (launch) passed; NATIVE-002 through NATIVE-007 superseded by automated grand-tour E2E smoke test (`apps/desktop/e2e/native-e2e-smoke.spec.ts`) + existing unit/E2E coverage. Checklist status updated to CLOSED    |
 | DONE       | FAANG review pointer capture helper: canvas pointer tools now use shared safe capture/release helpers with focused pointer regression tests                                                                                                                   |
 | DONE       | FAANG review paint command boundary: brush/eraser bitmap commits now share `commitPaintBitmap()` for history snapshot, engine mutation, texture upload, and render scheduling                                                                                 |
