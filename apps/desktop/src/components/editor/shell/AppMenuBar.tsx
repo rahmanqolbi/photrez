@@ -1,8 +1,10 @@
-import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, createSignal, createMemo, onCleanup, onMount } from "solid-js";
+import { Portal } from "solid-js/web";
 import { MENU_ITEMS } from "../editorData";
 import type { MenuItem } from "../types";
 import type { EditorCommand } from "../useEditorCommands";
 import { useEditor } from "./EditorContext";
+import { getRecentFiles, clearRecentFiles, type RecentFile } from "@/lib/recentFiles";
 
 type MenuEntry =
   | { kind: "item"; label: string; command: EditorCommand; shortcut?: string }
@@ -13,7 +15,7 @@ const MENU_DEFINITIONS: Record<MenuItem, readonly MenuEntry[]> = {
     { kind: "item", label: "New Document", command: "file.new", shortcut: "Ctrl+N" },
     { kind: "item", label: "Open Image…", command: "file.open", shortcut: "Ctrl+O" },
     { kind: "separator" },
-    { kind: "item", label: "Save Project", command: "file.save", shortcut: "Ctrl+S" },
+    { kind: "item", label: "Save", command: "file.save", shortcut: "Ctrl+S" },
     { kind: "item", label: "Save As…", command: "file.save-as", shortcut: "Ctrl+Shift+S" },
     { kind: "separator" },
     { kind: "item", label: "Export…", command: "file.export", shortcut: "Ctrl+Alt+E" },
@@ -69,7 +71,51 @@ type AppMenuBarProps = {
   execute: (command: EditorCommand) => void;
   isEnabled: (command: EditorCommand) => boolean;
   isRightDockOpen: boolean;
+  onOpenRecent?: (path: string) => void;
+  onClearRecent?: () => void;
 };
+
+function RecentFilesMenu(props: {
+  onOpenRecent: (path: string) => void;
+  onClearRecent: () => void;
+}) {
+  const recent = getRecentFiles();
+  return (
+    <>
+      <Show when={recent.length > 0}>
+        <div role="separator" class="my-1 h-px bg-editor-divider" />
+        <For each={recent}>
+          {(file: RecentFile) => (
+            <button
+              type="button"
+              role="menuitem"
+              aria-label={`Open ${file.name}`}
+              class="flex h-7 w-full items-center gap-3 px-3 text-left outline-none hover:bg-editor-field/70 focus-visible:bg-editor-field/70"
+              onClick={() => props.onOpenRecent(file.path)}
+            >
+              <span class="flex-1 truncate text-[12px]">{file.name}</span>
+            </button>
+          )}
+        </For>
+        <button
+          type="button"
+          role="menuitem"
+          aria-label="Clear Recent Files"
+          class="flex h-7 w-full items-center px-3 text-left text-[11px] text-editor-text-dim outline-none hover:bg-editor-field/70 focus-visible:bg-editor-field/70"
+          onClick={() => props.onClearRecent()}
+        >
+          Clear Recent Files
+        </button>
+      </Show>
+      <Show when={recent.length === 0}>
+        <div role="separator" class="my-1 h-px bg-editor-divider" />
+        <div role="menuitem" class="flex h-7 items-center px-3 text-[11px] text-editor-text-dim/60" aria-disabled="true">
+          No Recent Files
+        </div>
+      </Show>
+    </>
+  );
+}
 
 export function AppMenuBar(props: AppMenuBarProps) {
   const [openMenu, setOpenMenu] = createSignal<MenuItem | null>(null);
@@ -172,9 +218,27 @@ export function AppMenuBar(props: AppMenuBarProps) {
     props.execute(command);
   };
 
+  // Popup position derived from the trigger button's bounding rect
+  const popupStyle = createMemo(() => {
+    const menu = openMenu();
+    if (!menu) return { left: "0px", top: "0px" };
+    const btn = triggerRefs.get(menu);
+    if (!btn) return { left: "0px", top: "0px" };
+    const rect = btn.getBoundingClientRect();
+    return { left: `${rect.left}px`, top: `${rect.bottom}px` };
+  });
+
+  let popupRef!: HTMLDivElement;
+
   onMount(() => {
     const handlePointerDown = (event: PointerEvent) => {
-      if (openMenu() && !navRef.contains(event.target as Node)) close();
+      if (!openMenu()) return;
+      const target = event.target as Node;
+      // Click inside nav (trigger buttons) → let the button handle it, don't close
+      if (navRef.contains(target)) return;
+      // Click inside the popup (via Portal at body) → let it handle, don't close
+      if (popupRef?.contains(target)) return;
+      close();
     };
     document.addEventListener("pointerdown", handlePointerDown);
     onCleanup(() => document.removeEventListener("pointerdown", handlePointerDown));
@@ -204,44 +268,66 @@ export function AppMenuBar(props: AppMenuBarProps) {
             >
               {menu}
             </button>
-
-            <Show when={openMenu() === menu}>
-              <div
-                id={`app-menu-${menu.toLowerCase()}`}
-                role="menu"
-                aria-label={`${menu} menu`}
-                class="absolute left-0 top-[38px] z-[80] min-w-56 rounded-[6px] border border-editor-divider bg-editor-panel py-1 text-[12px] text-editor-text shadow-xl"
-                onKeyDown={(event) => handlePopupKeyDown(event, menu)}
-              >
-                <For each={MENU_DEFINITIONS[menu]}>
-                  {(entry) => (
-                    <Show
-                      when={entry.kind === "item" ? entry : null}
-                      fallback={<div role="separator" class="my-1 h-px bg-editor-divider" />}
-                    >
-                      {(item) => (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          aria-label={labelFor(item())}
-                          disabled={!props.isEnabled(item().command)}
-                          class="flex h-7 w-full items-center justify-between gap-6 px-3 text-left outline-none hover:bg-editor-field/70 focus-visible:bg-editor-field/70 disabled:text-editor-text-dim/45 disabled:hover:bg-transparent"
-                          onClick={() => activate(item().command)}
-                        >
-                          <span>{labelFor(item())}</span>
-                          <Show when={item().shortcut}>
-                            <span class="text-[11px] text-editor-text-dim">{item().shortcut}</span>
-                          </Show>
-                        </button>
-                      )}
-                    </Show>
-                  )}
-                </For>
-              </div>
-            </Show>
           </div>
         )}
       </For>
+
+      {/* Portal popup — fixed positioning to escape WebGL compositing layer */}
+      <Show when={openMenu()}>
+        {(m) => (
+          <Portal mount={document.body}>
+            <div
+              ref={popupRef}
+              id={`app-menu-${m().toLowerCase()}`}
+              role="menu"
+              aria-label={`${m()} menu`}
+              class="fixed z-[100] min-w-56 rounded-[6px] border border-editor-divider bg-editor-panel py-1 text-[12px] text-editor-text shadow-xl"
+              style={popupStyle()}
+              onKeyDown={(event) => handlePopupKeyDown(event, m())}
+            >
+              <For each={MENU_DEFINITIONS[m()]}>
+                {(entry) => (
+                  <Show
+                    when={entry.kind === "item" ? entry : null}
+                    fallback={<div role="separator" class="my-1 h-px bg-editor-divider" />}
+                  >
+                    {(item) => (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        aria-label={labelFor(item())}
+                        disabled={!props.isEnabled(item().command)}
+                        class="flex h-7 w-full items-center justify-between gap-6 px-3 text-left outline-none hover:bg-editor-field/70 focus-visible:bg-editor-field/70 disabled:text-editor-text-dim/45 disabled:hover:bg-transparent"
+                        onClick={() => activate(item().command)}
+                      >
+                        <span>{labelFor(item())}</span>
+                        <Show when={item().shortcut}>
+                          <span class="text-[11px] text-editor-text-dim">{item().shortcut}</span>
+                        </Show>
+                      </button>
+                    )}
+                  </Show>
+                )}
+              </For>
+
+              {/* Open Recent — only in File menu */}
+              <Show when={m() === "File"}>
+                <RecentFilesMenu
+                  onOpenRecent={(path) => {
+                    close();
+                    props.onOpenRecent?.(path);
+                  }}
+                  onClearRecent={() => {
+                    close();
+                    clearRecentFiles();
+                    props.onClearRecent?.();
+                  }}
+                />
+              </Show>
+            </div>
+          </Portal>
+        )}
+      </Show>
     </nav>
   );
 }

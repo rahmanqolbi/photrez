@@ -10,7 +10,7 @@ import { useLayerActions } from "./layers/useLayerActions";
 import { cancelLayerTransformSession } from "./transformSession";
 import { useDialog } from "./dialogs/DialogProvider";
 import { showToast } from "./Toast";
-import { showSaveDialog, writeFileBytes } from "@/tauri/native";
+import { showSaveDialog, writeFileBytes, showSaveDialogAllFormats } from "@/tauri/native";
 import { serializeAndSaveProject } from "./projectSerialize";
 import { addRecentFile } from "@/lib/recentFiles";
 import { easeOutCubic } from "@/viewport/easing";
@@ -285,23 +285,75 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
         if (!session) break;
         void (async () => {
           try {
-            const defaultName = session.displayName.endsWith(".ptz")
-              ? session.displayName
-              : `${session.displayName.split(".")[0]}.ptz`;
-            const path = await showSaveDialog(defaultName);
+            const engine = session.engine;
+            const baseName = session.displayName.replace(/\.[^.]+$/, "");
+            const defaultName = `${baseName}.ptz`;
+
+            // Use all-format dialog
+            const path = await showSaveDialogAllFormats(defaultName);
             if (!path) return;
 
+            const ext = path.split(".").pop()?.toLowerCase();
             const wasDirty = session.dirty;
-            await serializeAndSaveProject(session.engine, path);
-            session.sourcePath = path;
-            session.displayName = path.split(/[/\\]/).pop() || session.displayName;
-            // Only clear dirty if engine wasn't modified during the async save
-            session.dirty = wasDirty && session.engine.isDirty();
-            addRecentFile(path, session.displayName);
-            showToast("Project saved successfully", "info");
+            const addRecent = (p: string) => {
+              addRecentFile(p, p.split(/[/\\]/).pop() || session.displayName);
+            };
+
+            if (ext === "ptz") {
+              // Project save — working doc switches to .ptz
+              await serializeAndSaveProject(engine, path);
+              session.sourcePath = path;
+              session.displayName = path.split(/[/\\]/).pop() || session.displayName;
+              session.dirty = wasDirty && engine.isDirty();
+              addRecent(path);
+              showToast("Project saved", "info");
+            } else {
+              // Flat format save
+              const format: ExportFormat = ext === "jpg" || ext === "jpeg" ? "jpeg"
+                : ext === "webp" ? "webp" : "png";
+              const layerCount = engine.getLayers().length;
+
+              // Warning for multi-layer documents
+              if (layerCount > 1) {
+                const confirmed = await dialog.confirm({
+                  title: `Save as ${format.toUpperCase()}?`,
+                  message: `This will flatten ${layerCount} layers into a single image.\n\nIndividual layers cannot be recovered after closing this document.\n\nA backup .ptz project file will also be saved in the same location.`,
+                  confirmLabel: `Save as ${format.toUpperCase()}`,
+                  cancelLabel: "Cancel",
+                  tone: "default",
+                });
+                if (!confirmed) return;
+
+                // Save .ptz backup alongside
+                const backupPath = path.replace(/\.[^.]+$/, ".ptz");
+                await serializeAndSaveProject(engine, backupPath);
+                addRecent(backupPath);
+              }
+
+              // Quality dialog for JPEG/WebP (PNG uses lossless default)
+              let quality = 100;
+              if (format === "jpeg" || format === "webp") {
+                const chosen = await dialog.quality({
+                  title: `Save as ${format.toUpperCase()} Quality`,
+                  format,
+                  defaultQuality: 92,
+                });
+                if (chosen === null) return; // user cancelled quality dialog
+                quality = chosen;
+              }
+              const bytes = await encodeComposite(engine, format, quality);
+              await writeFileBytes(path, bytes);
+
+              // Working doc switches to flat format
+              session.sourcePath = path;
+              session.displayName = path.split(/[/\\]/).pop() || session.displayName;
+              session.dirty = wasDirty && engine.isDirty();
+              addRecent(path);
+              showToast(`Saved as ${format.toUpperCase()}`, "info");
+            }
             editor.scheduler.requestRender();
           } catch (err) {
-            showToast(`Failed to save project: ${err}`, "error");
+            showToast(`Failed to save: ${err}`, "error");
           }
         })();
         break;
