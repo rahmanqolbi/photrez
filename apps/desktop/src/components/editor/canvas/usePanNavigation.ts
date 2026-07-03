@@ -65,7 +65,11 @@ export function usePanNavigation(options: PanNavigationOptions) {
 
       camera.pan(momentumVelocity.x, momentumVelocity.y);
       shiftModernCropFrame(momentumVelocity.x, momentumVelocity.y);
-      syncFromCamera();
+      // Direct signal update instead of syncFromCamera() to avoid
+      // engine.setViewport → notifyChange → sync → setSelectedLayerId.
+      const ms = camera.getState();
+      setZoom(ms.zoom);
+      setPan({ x: ms.x, y: ms.y });
       scheduler.requestRender();
 
       momentumRafId = requestAnimationFrame(step);
@@ -103,7 +107,11 @@ export function usePanNavigation(options: PanNavigationOptions) {
       }
       camera.pan(dx, dy);
       shiftModernCropFrame(dx, dy);
-      syncFromCamera();
+      // Direct signal update instead of syncFromCamera() to avoid
+      // engine.setViewport → notifyChange → sync → setSelectedLayerId.
+      const ws = camera.getState();
+      setZoom(ws.zoom);
+      setPan({ x: ws.x, y: ws.y });
       scheduler.requestRender();
     }
   };

@@ -16,6 +16,28 @@ describe('DocumentEngine', () => {
     expect(engine.isDirty()).toBe(false);
   });
 
+  it('clearDirty resets dirty flag and mutation re-sets it', () => {
+    const engine = new DocumentEngine('doc-dirty', 'Dirty Flag', 800, 600);
+    expect(engine.isDirty()).toBe(false);
+
+    // After any mutation, dirty should be true
+    engine.addLayer('Test Layer');
+    expect(engine.isDirty()).toBe(true);
+
+    // clearDirty resets it
+    engine.clearDirty();
+    expect(engine.isDirty()).toBe(false);
+
+    // Another mutation re-sets it
+    const layer = engine.addLayer('Layer 2');
+    engine.moveLayer(layer.id, 50, 50);
+    expect(engine.isDirty()).toBe(true);
+
+    // clearDirty again
+    engine.clearDirty();
+    expect(engine.isDirty()).toBe(false);
+  });
+
   it('adds layers and updates layer list', () => {
     const engine = new DocumentEngine('doc-1', 'My Document', 800, 600);
     
