@@ -103,6 +103,15 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
   const screenW = createMemo(() => effW() * zoom());
   const screenH = createMemo(() => effH() * zoom());
 
+  // Proportional donut ring width: ~15% of layer screen size, clamped [20, 120]
+  const ringWidth = () => {
+    const sw = screenW();
+    const sh = screenH();
+    if (sw <= 0 || sh <= 0) return 20;
+    const prop = Math.min(sw, sh) * 0.15;
+    return Math.max(20, Math.min(120, Math.round(prop)));
+  };
+
   return (
     <Show when={getLayer()}>
       {(layer) => (
@@ -161,6 +170,37 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
               data-move
             />
 
+            {/* Full-perimeter donut rotate ring — replaces 4 corner arc paths */}
+            <path
+              d={`
+                M ${screenTL().x - ringWidth()} ${screenTL().y - ringWidth()}
+                L ${screenTL().x + screenW() + ringWidth()} ${screenTL().y - ringWidth()}
+                L ${screenTL().x + screenW() + ringWidth()} ${screenTL().y + screenH() + ringWidth()}
+                L ${screenTL().x - ringWidth()} ${screenTL().y + screenH() + ringWidth()}
+                Z
+                M ${screenTL().x + 12} ${screenTL().y + 12}
+                L ${screenTL().x + 12} ${screenTL().y + screenH() - 12}
+                L ${screenTL().x + screenW() - 12} ${screenTL().y + screenH() - 12}
+                L ${screenTL().x + screenW() - 12} ${screenTL().y + 12}
+                Z
+              `}
+              fill="transparent"
+              fill-rule="evenodd"
+              style={{ "pointer-events": props.isNavigationMode ? "none" : "all", cursor: activeDragCursor() ?? rotateCursor() }}
+              onPointerDown={(e) => handlePointerDown(e, "rotate")}
+              onPointerEnter={(e) => {
+                setHoverHandle("rotate");
+                setHoverPos({ x: e.clientX, y: e.clientY });
+              }}
+              onPointerMove={(e) => {
+                setHoverPos({ x: e.clientX, y: e.clientY });
+              }}
+              onPointerLeave={() => {
+                setHoverHandle(null);
+                setHoverPos(null);
+              }}
+            />
+
             {/* 8 handles at unrotated edges, in screen coords */}
             <For each={HANDLE_TYPES}>
               {(type) => {
@@ -173,28 +213,6 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
                 const cursor = () => getCursorForHandle(type, rotation(), scaleX(), scaleY());
                 return (
                   <g>
-                    {/* Corner rotate zone ring (only for corners) */}
-                    <Show when={["nw", "ne", "se", "sw"].includes(type)}>
-                      <path
-                        d={getRotatePath(type, hx(), hy(), ro(), ht())}
-                        fill="transparent"
-                        fill-rule="evenodd"
-                        style={{ "pointer-events": props.isNavigationMode ? "none" : "all", cursor: activeDragCursor() ?? rotateCursor() }}
-                        onPointerDown={(e) => handlePointerDown(e, "rotate")}
-                        onPointerEnter={(e) => {
-                          setHoverHandle(`rotate-${type}`);
-                          setHoverPos({ x: e.clientX, y: e.clientY });
-                        }}
-                        onPointerMove={(e) => {
-                          setHoverPos({ x: e.clientX, y: e.clientY });
-                        }}
-                        onPointerLeave={() => {
-                          setHoverHandle(null);
-                          setHoverPos(null);
-                        }}
-                      />
-                    </Show>
-
                     {/* Transparent hit zone for resize */}
                     <rect
                       x={hx() - ht() / 2}
