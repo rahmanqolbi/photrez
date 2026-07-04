@@ -2,8 +2,9 @@ import { Show, For, createMemo } from "solid-js";
 import { useEditor } from "./shell/EditorContext";
 import type { HudMode } from "./TransformHud";
 import type { SnapRect, SnapResult } from "@/viewport/smartGuides";
-import { getCursorForHandle } from "@/viewport/transformGeometry";
+import { getCursorForHandle, documentToLayerLocal } from "@/viewport/transformGeometry";
 import { useSelectionTransformDrag } from "./useSelectionTransformDrag";
+import { commitLayerTransformSession } from "./transformSession";
 
 interface SelectionTransformOverlayProps {
   isNavigationMode?: boolean;
@@ -49,7 +50,7 @@ export function getRotatePath(type: string, cx: number, cy: number, ro: number, 
 }
 
 export function SelectionTransformOverlay(props: SelectionTransformOverlayProps = {}) {
-  const { zoom, pan, activeTool, setHoverHandle, setHoverPos, layerTransformSession } = useEditor();
+  const { zoom, pan, activeTool, setHoverHandle, setHoverPos, layerTransformSession, setLayerTransformSession, workspace, scheduler } = useEditor();
 
   let overlaySvgRef: SVGSVGElement | undefined;
 
@@ -82,6 +83,27 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
     getSvgRef: () => overlaySvgRef,
     onStopMomentum: props.onStopMomentum,
   });
+
+  const handleDblClick = (e: MouseEvent) => {
+    const session = layerTransformSession();
+    if (!session) return;
+    const layer = getLayer();
+    if (!layer) return;
+
+    const toDoc = props.onScreenToDoc ?? ((cx: number, cy: number) => ({ x: (cx - pan().x) / zoom(), y: (cy - pan().y) / zoom() }));
+    const docPos = toDoc(e.clientX, e.clientY);
+    const local = documentToLayerLocal(docPos.x, docPos.y, layer.transform, layer.width, layer.height);
+
+    const isInside = local.x >= 0 && local.x <= layer.width && local.y >= 0 && local.y <= layer.height;
+    if (isInside) {
+      const engine = workspace.getActiveEngine();
+      const history = workspace.getActiveHistory();
+      if (commitLayerTransformSession(session, engine, history)) {
+        setLayerTransformSession(null);
+        scheduler.requestRender();
+      }
+    }
+  };
 
   const hs = () => HANDLE_SIZE;
   const ht = () => HANDLE_HIT;
@@ -132,6 +154,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerCancel}
           onLostPointerCapture={handleLostPointerCapture}
+          onDblClick={handleDblClick}
           style={{
             position: "absolute",
             inset: "0",

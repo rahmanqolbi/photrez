@@ -969,4 +969,69 @@ describe("Donut rotate ring path", () => {
     dispose();
     container.parentNode?.removeChild(container);
   });
+
+  it("commits transform session when double-clicking inside the active layer's bounds", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("dblclick-test", "DblClick Test", 800, 600);
+    const layer = session.engine.addLayer("dblclick-layer", 100, 100);
+    session.engine.setActiveLayer("dblclick-layer");
+
+    const mockRenderer = {} as unknown as WebGL2Backend;
+    const mockScheduler = { requestRender: vi.fn() } as unknown as RenderScheduler;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    let editorRef: any = null;
+    const CaptureEditor = () => {
+      editorRef = useEditor();
+      return h(SelectionTransformOverlay, null)();
+    };
+
+    const dispose = render(
+      h(
+        EditorProvider,
+        { workspace: ws, renderer: mockRenderer, scheduler: mockScheduler },
+        h(CaptureEditor, null),
+      ),
+      container,
+    );
+
+    ws.addDocument(session);
+    await Promise.resolve();
+
+    const currentSession = {
+      documentId: session.engine.getId(),
+      layerId: layer.id,
+      initialTransform: { ...layer.transform },
+      currentTransform: { ...layer.transform },
+      originalTransform: { ...layer.transform },
+      originalSnapshot: session.engine.snapshot(),
+      mode: "move" as const,
+      startScreenPos: { x: 0, y: 0 },
+      startLayerPos: { x: 0, y: 0 },
+      aspectRatio: 1,
+      lockRatio: false,
+    };
+    editorRef.setLayerTransformSession(currentSession);
+    await Promise.resolve();
+
+    expect(editorRef.layerTransformSession()).not.toBeNull();
+
+    const svgElement = container.querySelector("[data-overlay-svg]") as SVGElement;
+    expect(svgElement).not.toBeNull();
+
+    svgElement.dispatchEvent(new MouseEvent("dblclick", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 50,
+      clientY: 50,
+    }));
+    await Promise.resolve();
+
+    expect(editorRef.layerTransformSession()).toBeNull();
+
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
 });

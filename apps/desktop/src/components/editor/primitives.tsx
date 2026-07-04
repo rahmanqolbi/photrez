@@ -261,6 +261,17 @@ export function EditableNumField(props: {
         onKeyDown={(e) => {
           if (e.key === "Enter") { e.preventDefault(); commit(); }
           if (e.key === "Escape") { e.preventDefault(); revert(); }
+          if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+            e.preventDefault();
+            const parsed = parseFloat(text());
+            if (!isNaN(parsed)) {
+              const step = e.shiftKey ? 10 : 1;
+              const nextVal = e.key === "ArrowUp" ? parsed + step : parsed - step;
+              const formatted = `${Math.round(nextVal * 100) / 100}`;
+              setText(formatted);
+              props.onSubmit(nextVal);
+            }
+          }
         }}
         onBlur={commit}
         class="w-full min-w-0 bg-transparent text-[11px] text-editor-text outline-none"
