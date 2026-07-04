@@ -1,4 +1,4 @@
-import { Show, createMemo } from "solid-js";
+import { Show, createSignal } from "solid-js";
 import { Icon } from "./icons";
 import { NumField, EditableNumField } from "./primitives";
 import { clsx } from "clsx";
@@ -16,6 +16,8 @@ export function TransformOptionBar() {
     layerTransformSession,
     setLayerTransformSession,
   } = useEditor();
+
+  const [transformTick, setTransformTick] = createSignal(0);
 
   const session = () => layerTransformSession();
   const engine = () => workspace.getActiveEngine();
@@ -51,6 +53,7 @@ export function TransformOptionBar() {
   const resetPreview = () => {
     const current = engine();
     if (resetLayerTransformPreview(session(), current)) {
+      setTransformTick(t => t + 1);
       scheduler.requestRender();
     }
   };
@@ -62,6 +65,7 @@ export function TransformOptionBar() {
     const layer = current.getLayer(currentSession.layerId);
     if (!layer || layer.locked) return;
     current.transformLayer(currentSession.layerId, { ...layer.transform, ...patch });
+    setTransformTick(t => t + 1);
     scheduler.requestRender();
   };
 
@@ -88,6 +92,7 @@ export function TransformOptionBar() {
       next.scaleY = ratioScale;
     }
     current.transformLayer(currentSession.layerId, next);
+    setTransformTick(t => t + 1);
     scheduler.requestRender();
   };
 
@@ -106,6 +111,7 @@ export function TransformOptionBar() {
       next.scaleX = ratioScale;
     }
     current.transformLayer(currentSession.layerId, next);
+    setTransformTick(t => t + 1);
     scheduler.requestRender();
   };
 
@@ -124,8 +130,14 @@ export function TransformOptionBar() {
       <Show when={activeLayer()}>
         {(layer) => {
           const d = isLocked();
-          const curW = () => Math.round(layer().width * Math.abs(layer().transform.scaleX));
-          const curH = () => Math.round(layer().height * Math.abs(layer().transform.scaleY));
+
+          // Reactive getters — depend on transformTick() so SolidJS
+          // re-evaluates them when the layer transform is updated.
+          const valueX = () => { transformTick(); return layer().transform.x; };
+          const valueY = () => { transformTick(); return layer().transform.y; };
+          const curW = () => { transformTick(); return Math.round(layer().width * Math.abs(layer().transform.scaleX)); };
+          const curH = () => { transformTick(); return Math.round(layer().height * Math.abs(layer().transform.scaleY)); };
+          const valueRot = () => { transformTick(); return layer().transform.rotation; };
 
           return (
             <>
@@ -133,7 +145,7 @@ export function TransformOptionBar() {
                 <EditableNumField
                   label="X"
                   labelClass="@max-[900px]:hidden"
-                  value={layer().transform.x}
+                  value={valueX()}
                   disabled={d}
                   onSubmit={handlePositionField("x")}
                   class="w-[62px]"
@@ -141,7 +153,7 @@ export function TransformOptionBar() {
                 <EditableNumField
                   label="Y"
                   labelClass="@max-[900px]:hidden"
-                  value={layer().transform.y}
+                  value={valueY()}
                   disabled={d}
                   onSubmit={handlePositionField("y")}
                   class="w-[62px]"
@@ -170,7 +182,7 @@ export function TransformOptionBar() {
               <EditableNumField
                 label="R"
                 labelClass="@max-[900px]:hidden"
-                value={layer().transform.rotation}
+                value={valueRot()}
                 suffix="°"
                 disabled={d}
                 onSubmit={handleRotateField}

@@ -86,7 +86,15 @@ export function PropertiesPanel() {
     const layer = activeLayer();
     if (!layer || val <= 0) return;
     const nextScale = axis === "w" ? val / layer.width : val / layer.height;
-    commitTransform(axis === "w" ? { scaleX: nextScale } : { scaleY: nextScale }, "Resize Layer");
+    const patch: Partial<Transform2D> = axis === "w" ? { scaleX: nextScale } : { scaleY: nextScale };
+    if (lockScale()) {
+      const ratioScale = Math.sign(
+        axis === "w" ? (layer.transform.scaleY || 1) : (layer.transform.scaleX || 1)
+      ) * Math.abs(nextScale);
+      if (axis === "w") patch.scaleY = ratioScale;
+      else patch.scaleX = ratioScale;
+    }
+    commitTransform(patch, "Resize Layer");
   };
 
   const handleRotationField = (val: number) => {
@@ -97,7 +105,19 @@ export function PropertiesPanel() {
 
   const handleScaleField = (axis: "x" | "y") => (val: number) => {
     if (val <= 0) return;
-    commitTransform(axis === "x" ? { scaleX: val / 100 } : { scaleY: val / 100 }, "Resize Layer");
+    const nextScale = val / 100;
+    const patch: Partial<Transform2D> = axis === "x" ? { scaleX: nextScale } : { scaleY: nextScale };
+    if (lockScale()) {
+      const layer = activeLayer();
+      if (layer) {
+        const ratioScale = Math.sign(
+          axis === "x" ? (layer.transform.scaleY || 1) : (layer.transform.scaleX || 1)
+        ) * Math.abs(nextScale);
+        if (axis === "x") patch.scaleY = ratioScale;
+        else patch.scaleX = ratioScale;
+      }
+    }
+    commitTransform(patch, "Resize Layer");
   };
 
   const transformStatusText = () => {
