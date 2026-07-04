@@ -93,6 +93,7 @@ export function CanvasViewport() {
     moveAutoSelect,
     selectedLayerId,
     layerTransformSession,
+    showTransformControls,
     selection,
     selectionEditMode,
     setSelectionEditMode,
@@ -238,14 +239,13 @@ export function CanvasViewport() {
     if (!rect) return {};
     return {
       position: "absolute" as const,
-      left: `${pan().x + rect.x * zoom()}px`,
-      top: `${pan().y + rect.y * zoom()}px`,
       width: `${rect.w * zoom()}px`,
       height: `${rect.h * zoom()}px`,
       "background-color": resolvedCropFillColor(),
-      transform: `rotate(${cropRotation()}deg)`,
+      transform: `translate(${pan().x + rect.x * zoom()}px, ${pan().y + rect.y * zoom()}px) rotate(${cropRotation()}deg)`,
       "transform-origin": "center",
       "pointer-events": "none" as const,
+      "will-change": "transform",
     };
   });
 
@@ -292,14 +292,13 @@ export function CanvasViewport() {
 
     return {
       position: "absolute" as const,
-      left: `${pan().x + (transform.x ?? 0) * zoom()}px`,
-      top: `${pan().y + (transform.y ?? 0) * zoom()}px`,
       width: `${layer.width * zoom()}px`,
       height: `${layer.height * zoom()}px`,
-      transform: `rotate(${rot}deg) scale(${scaleX * flipX}, ${scaleY * flipY})`,
+      transform: `translate(${pan().x + (transform.x ?? 0) * zoom()}px, ${pan().y + (transform.y ?? 0) * zoom()}px) rotate(${rot}deg) scale(${scaleX * flipX}, ${scaleY * flipY})`,
       "transform-origin": "0 0",
       opacity: layer.opacity ?? 1,
       "pointer-events": "none" as const,
+      "will-change": "transform",
     };
   });
 
@@ -825,7 +824,16 @@ export function CanvasViewport() {
         <canvas
           ref={canvasRef}
           onPointerDown={onCanvasPointerDown}
-          onPointerMove={onCanvasPointerMove}
+          onPointerMove={(e) => {
+            // During a useCanvasLayerDrag-managed drag (move tool), the
+            // document-level listener already handles the transform. Skip
+            // the canvas-level handler to prevent a double mutation —
+            // both engine.moveLayer() AND engine.transformLayer() would
+            // fire per pointermove, doubling all work (syncState, layer
+            // array clone, Solid reactivity, notifyChange chain).
+            if (canvasLayerDrag.isDragging()) return;
+            onCanvasPointerMove(e);
+          }}
           onPointerUp={onCanvasPointerUp}
           onPointerCancel={onCanvasPointerCancel}
           onLostPointerCapture={onCanvasLostPointerCapture}
@@ -867,17 +875,17 @@ export function CanvasViewport() {
             style={overlayCanvasStyleScreenSpace()}
           />
 
-          {/* Artboard border & shadow →screen-space coords */}
+          {/* Artboard border & shadow →screen-space coords, GPU-accelerated via transform */}
           <div
             data-artboard-border
             class="absolute pointer-events-none border border-white/10"
             style={{
-              left: `${pan().x}px`,
-              top: `${pan().y}px`,
+              transform: `translate(${pan().x}px, ${pan().y}px)`,
               width: `${docWidth() * zoom()}px`,
               height: `${docHeight() * zoom()}px`,
               "box-shadow":
                 "0 0 0 1px rgba(0, 0, 0, 0.6), 0 8px 32px rgba(0, 0, 0, 0.7)",
+              "will-change": "transform",
             }}
           />
 
@@ -939,7 +947,7 @@ export function CanvasViewport() {
           </svg>
 
           {/* SelectionTransformOverlay →screen-space coordinates */}
-          <Show when={activeTool() === "move"}>
+          <Show when={activeTool() === "move" && showTransformControls()}>
             <SelectionTransformOverlay
               isNavigationMode={isSpacePressed() || isPanning()}
               onHudUpdate={setHudInfo}

@@ -53,6 +53,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -81,6 +83,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect,
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -109,6 +113,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled,
       setMoveSnapEnabled,
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -138,6 +144,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -168,6 +176,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -201,6 +211,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -235,6 +247,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -273,6 +287,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -311,6 +327,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -350,6 +368,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -385,6 +405,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -428,6 +450,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -465,6 +489,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -500,6 +526,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -535,6 +563,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -570,6 +600,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -605,6 +637,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -640,6 +674,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -674,6 +710,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -710,6 +748,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -740,6 +780,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -785,6 +827,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -828,6 +872,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -871,6 +917,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -919,6 +967,8 @@ describe("MoveOptionBar", () => {
       setMoveAutoSelect: vi.fn(),
       moveSnapEnabled: () => true,
       setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: vi.fn(),
       hoveredLayerId: () => null,
       docWidth: () => 800,
       docHeight: () => 600,
@@ -937,6 +987,54 @@ describe("MoveOptionBar", () => {
 
     expect(history.commit).toHaveBeenCalledTimes(1);
     expect(engine.transformLayer).toHaveBeenCalledTimes(1);
+
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  // ─── Transform Controls wiring test ──────────────────────────────────────
+
+  it("Transform Controls checkbox renders and calls setShowTransformControls on click", () => {
+    const setter = vi.fn();
+    const mockValue = {
+      workspace: { getActiveEngine: () => null, getActiveHistory: () => null },
+      activeTool: () => "move",
+      layers: () => [] as LayerNode[],
+      activeLayerId: () => null,
+      selectedLayerId: () => null,
+      scheduler: { requestRender: vi.fn() },
+      moveAutoSelect: () => true,
+      setMoveAutoSelect: vi.fn(),
+      moveSnapEnabled: () => true,
+      setMoveSnapEnabled: vi.fn(),
+      showTransformControls: () => true,
+      setShowTransformControls: setter,
+      hoveredLayerId: () => null,
+      docWidth: () => 800,
+      docHeight: () => 600,
+    };
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditorContext(mockValue));
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const dispose = render(() => <MoveOptionBar />, container);
+
+    // The label text should be visible
+    expect(container.textContent).toContain("Transform Controls");
+
+    // Find the checkbox input and click it
+    const checkbox = container.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    expect(checkbox).not.toBeNull();
+
+    // Now find the correct checkbox — the third checkbox (Auto-Select, Snap, Transform Controls)
+    const allCheckboxes = container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+    // The last checkbox should be Transform Controls
+    const tcCheckbox = allCheckboxes[allCheckboxes.length - 1];
+    expect(tcCheckbox).not.toBeNull();
+
+    // Click it — onChange should call the setter
+    tcCheckbox.click();
+    expect(setter).toHaveBeenCalledTimes(1);
 
     dispose();
     container.parentNode?.removeChild(container);

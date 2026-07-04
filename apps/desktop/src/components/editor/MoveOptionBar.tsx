@@ -17,6 +17,8 @@ export function MoveOptionBar() {
     setMoveAutoSelect,
     moveSnapEnabled,
     setMoveSnapEnabled,
+    showTransformControls,
+    setShowTransformControls,
     hoveredLayerId,
     docWidth,
     docHeight,
@@ -188,6 +190,16 @@ export function MoveOptionBar() {
           checked={moveSnapEnabled()}
           onChange={setMoveSnapEnabled}
           label="Snap"
+        />
+      </Tooltip>
+
+      <Divider />
+
+      <Tooltip content="Show transform bounding box and handles around selected layer">
+        <OptionCheckbox
+          checked={showTransformControls()}
+          onChange={setShowTransformControls}
+          label="Transform Controls"
         />
       </Tooltip>
 

@@ -1339,6 +1339,73 @@ describe("Phase 4 Deep Tool State Cleanup (per-signal assertions)", () => {
     // Transform session should be cleared
     expect(ed.layerTransformSession()).toBeNull();
   });
+
+  it("Transform Controls: toggling off clears hoverHandle and hoverPos (cursor ghosting)", async () => {
+    const ed = editorRef.current;
+    setTool("move");
+    await tick();
+
+    // Simulate cursor hovering over a resize handle
+    ed.setHoverHandle("se");
+    ed.setHoverPos({ x: 200, y: 150 });
+    await tick();
+
+    expect(ed.hoverHandle()).toBe("se");
+    expect(ed.hoverPos()).not.toBeNull();
+
+    // Toggle transform controls off
+    ed.setShowTransformControls(false);
+    await tick();
+
+    // Both signals should be cleared
+    expect(ed.hoverHandle()).toBeNull();
+    expect(ed.hoverPos()).toBeNull();
+  });
+
+  it("Transform Controls: toggling back on preserves cleared state (no orphan from previous hover)", async () => {
+    const ed = editorRef.current;
+    setTool("move");
+    await tick();
+
+    // Set hover state, toggle off, verify cleared
+    ed.setHoverHandle("nw");
+    ed.setHoverPos({ x: 100, y: 100 });
+    await tick();
+    ed.setShowTransformControls(false);
+    await tick();
+
+    expect(ed.hoverHandle()).toBeNull();
+    expect(ed.hoverPos()).toBeNull();
+
+    // Toggle back on — hover state should remain null (not re-applied)
+    ed.setShowTransformControls(true);
+    await tick();
+
+    expect(ed.hoverHandle()).toBeNull();
+    expect(ed.hoverPos()).toBeNull();
+  });
+
+  it("Transform Controls: overlay SVG is mounted/unmounted based on toggle", async () => {
+    const ed = editorRef.current;
+    setTool("move");
+    ed.setShowTransformControls(true);
+    await tick(100);
+
+    // With showTransformControls=true and tool=move, the overlay should be in the DOM
+    expect(container.querySelector("[data-overlay-svg]")).not.toBeNull();
+
+    // Toggle off — overlay should be removed from the DOM
+    ed.setShowTransformControls(false);
+    await tick(100);
+
+    expect(container.querySelector("[data-overlay-svg]")).toBeNull();
+
+    // Toggle back on — overlay should re-appear
+    ed.setShowTransformControls(true);
+    await tick(100);
+
+    expect(container.querySelector("[data-overlay-svg]")).not.toBeNull();
+  });
 });
 
 describe("Phase 5 Cross-Tool State Interaction (UX contracts)", () => {
@@ -1585,12 +1652,12 @@ describe("CanvasViewport Overlay Container (Screen-Space Migration)", () => {
     ) as HTMLDivElement;
     expect(artboard).not.toBeNull();
 
-    // Artboard border must use explicit screen-space coords, NOT CSS transform
-    expect(artboard.style.left).toBe("50px");
-    expect(artboard.style.top).toBe("50px");
+    // Artboard border uses GPU-accelerated CSS transform instead of left/top
+    expect(artboard.style.transform).toBe("translate(50px, 50px)");
+    expect(artboard.style.left).toBe("");
+    expect(artboard.style.top).toBe("");
     expect(artboard.style.width).toBe("1600px");
     expect(artboard.style.height).toBe("1200px");
-    expect(artboard.style.transform).toBe("");
 
     // No wrapper div with transform: translate3d(...) scale(...) should exist
     // (In this test crop mode is not active, so the only transform that

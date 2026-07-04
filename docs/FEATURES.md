@@ -94,6 +94,7 @@
 | ✅ DONE | Pasteboard click deselect — clicking outside artboard deselects active layer (handles SVG overlay z-index 40 and full-viewport WebGL canvas targets, works at all zoom levels)               |
 | ✅ DONE | Auto-Select hovered target indicator readout badge                                                                                                                                           |
 | ✅ DONE | Quick Canvas Alignment actions in Option Bar (Align left/center/right/top/middle/bottom)                                                                                                     |
+| ✅ DONE | Transform Controls toggle in Move option bar — shows/hides bounding box with 8 resize handles + rotation handle around selected layer (default: on)                                          |
 
 ---
 

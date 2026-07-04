@@ -81,6 +81,8 @@ export interface EditorContextValue {
   setMoveAutoSelect: Setter<boolean>;
   moveSnapEnabled: Accessor<boolean>;
   setMoveSnapEnabled: Setter<boolean>;
+  showTransformControls: Accessor<boolean>;
+  setShowTransformControls: Setter<boolean>;
 
   // Crop interaction mode
   cropInteractionMode: Accessor<"modern" | "classic">;
@@ -440,6 +442,16 @@ export function EditorProvider(props: {
       });
     }
     prevActiveTool = tool;
+  });
+
+  // Clear transient hover state when transform controls are hidden.
+  // Prevents stale handle cursor from persisting in the browser after
+  // the overlay SVG is unmounted (cursor ghosting bug).
+  createEffect(() => {
+    if (!editorState.showTransformControls()) {
+      editorState.setHoverHandle(null);
+      editorState.setHoverPos(null);
+    }
   });
 
   const value: EditorContextValue = {
