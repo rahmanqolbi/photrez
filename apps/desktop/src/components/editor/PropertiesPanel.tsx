@@ -1,4 +1,4 @@
-import { For, Show, createSignal } from "solid-js";
+import { For, Show, createSignal, createMemo } from "solid-js";
 import { Icon } from "./icons";
 import { EditableNumField, PropRow, SelectField, Slider } from "./primitives";
 import { useEditor } from "./shell/EditorContext";
@@ -20,6 +20,12 @@ export function PropertiesPanel() {
     if (!id) return null;
     return layers().find(l => l.id === id) || null;
   };
+
+  // Stable memo — use inside <Show> render prop to avoid Solid's stale-getter error
+  // that occurs when a render-prop getter is accessed after the Show has begun unmounting.
+  // This happens when a canvas interaction (e.g. pasteboard click → setSelectedLayerId(null))
+  // triggers reactive cleanup while a child EditableNumField is still reading props.value.
+  const safeLayer = createMemo(() => activeLayer());
 
   const handleOpacityChange = (val: number) => {
     const engine = workspace.getActiveEngine();
@@ -120,10 +126,15 @@ export function PropertiesPanel() {
           }
         >
           <Show
-            when={activeLayer()}
+            when={safeLayer()}
             fallback={<CanvasProperties />}
           >
-            {(layer) => (
+            {(_unused) => {
+              // Use safeLayer()! instead of _unused() because the render-prop getter
+              // throws "stale value" when accessed after <Show> begins unmounting
+              // (triggered by canvas events that call setSelectedLayerId(null)).
+              const l = safeLayer()!;
+              return (
               <>
                 <div class="border-b border-editor-divider px-4 py-3.5">
                   <SectionHeader
@@ -132,13 +143,13 @@ export function PropertiesPanel() {
                     label="Selected Layer"
                   />
                   <div class="mt-3 flex items-center gap-3 rounded-[4px] border border-editor-divider bg-editor-field p-2.5">
-                    <LayerThumb layer={layer()} isActive={true} />
+                    <LayerThumb layer={l} isActive={true} />
                     <div class="min-w-0 flex-1">
-                      <p class="truncate text-[12.5px] font-medium text-editor-text leading-tight" title={layer().name}>
-                        {layer().name}
+                      <p class="truncate text-[12.5px] font-medium text-editor-text leading-tight" title={l.name}>
+                        {l.name}
                       </p>
                       <p class="truncate text-[11px] text-editor-text-dim leading-snug mt-0.5">
-                        {layer().type === "raster" ? "Image layer" : `${layer().type.charAt(0).toUpperCase()}${layer().type.slice(1)} layer`} · {layer().width} × {layer().height} px
+                        {l.type === "raster" ? "Image layer" : `${l.type.charAt(0).toUpperCase()}${l.type.slice(1)} layer`} · {l.width} × {l.height} px
                       </p>
                     </div>
                   </div>
@@ -163,19 +174,19 @@ export function PropertiesPanel() {
                       {(message) => <StatusHint>{message()}</StatusHint>}
                     </Show>
                     <PropRow label="Position">
-                      <EditableNumField label="X" value={layer().transform.x} suffix="px" onSubmit={handlePositionField("x")} disabled={layer().lockPosition || layer().locked} class="flex-1" />
-                      <EditableNumField label="Y" value={layer().transform.y} suffix="px" onSubmit={handlePositionField("y")} disabled={layer().lockPosition || layer().locked} class="flex-1" />
+                      <EditableNumField label="X" value={l.transform.x} suffix="px" onSubmit={handlePositionField("x")} disabled={l.lockPosition || l.locked} class="flex-1" />
+                      <EditableNumField label="Y" value={l.transform.y} suffix="px" onSubmit={handlePositionField("y")} disabled={l.lockPosition || l.locked} class="flex-1" />
                     </PropRow>
                     <PropRow label="Size">
-                      <EditableNumField label="W" value={layer().width * layer().transform.scaleX} suffix="px" onSubmit={handleSizeField("w")} disabled={layer().locked} class="flex-1" />
-                      <EditableNumField label="H" value={layer().height * layer().transform.scaleY} suffix="px" onSubmit={handleSizeField("h")} disabled={layer().locked} class="flex-1" />
+                      <EditableNumField label="W" value={l.width * l.transform.scaleX} suffix="px" onSubmit={handleSizeField("w")} disabled={l.locked} class="flex-1" />
+                      <EditableNumField label="H" value={l.height * l.transform.scaleY} suffix="px" onSubmit={handleSizeField("h")} disabled={l.locked} class="flex-1" />
                     </PropRow>
                     <PropRow label="Rotation">
-                      <EditableNumField label="R" value={layer().transform.rotation} suffix="deg" onSubmit={handleRotationField} disabled={layer().lockRotation || layer().locked} class="flex-1" />
+                      <EditableNumField label="R" value={l.transform.rotation} suffix="deg" onSubmit={handleRotationField} disabled={l.lockRotation || l.locked} class="flex-1" />
                     </PropRow>
                     <PropRow label="Scale">
-                      <EditableNumField label="X" value={layer().transform.scaleX * 100} suffix="%" onSubmit={handleScaleField("x")} disabled={layer().locked} class="flex-1" />
-                      <EditableNumField label="Y" value={layer().transform.scaleY * 100} suffix="%" onSubmit={handleScaleField("y")} disabled={layer().locked} class="flex-1" />
+                      <EditableNumField label="X" value={l.transform.scaleX * 100} suffix="%" onSubmit={handleScaleField("x")} disabled={l.locked} class="flex-1" />
+                      <EditableNumField label="Y" value={l.transform.scaleY * 100} suffix="%" onSubmit={handleScaleField("y")} disabled={l.locked} class="flex-1" />
                       <button
                         class={`flex size-[26px] shrink-0 items-center justify-center ${lockScale() ? "text-editor-accent" : "text-editor-text-dim"}`}
                         aria-label="Lock scale"
@@ -188,7 +199,7 @@ export function PropertiesPanel() {
                       <div class="flex-grow flex items-center gap-2.5">
                         <div class="relative flex-grow flex items-center h-[14px]">
                           <Slider
-                            percent={Math.round(layer().opacity * 100)}
+                            percent={Math.round(l.opacity * 100)}
                             type="opacity"
                           />
                           <input
@@ -196,8 +207,8 @@ export function PropertiesPanel() {
                             type="range"
                             min="0"
                             max="100"
-                            value={Math.round(layer().opacity * 100)}
-                            disabled={layer().locked}
+                            value={Math.round(l.opacity * 100)}
+                            disabled={l.locked}
                             onInput={(e) => handleOpacityChange(parseInt(e.currentTarget.value))}
                             onPointerUp={finishOpacityEdit}
                             onBlur={finishOpacityEdit}
@@ -206,7 +217,7 @@ export function PropertiesPanel() {
                           />
                         </div>
                         <span class="w-[44px] shrink-0 text-right text-[12px] text-editor-text">
-                          {Math.round(layer().opacity * 100)} %
+                          {Math.round(l.opacity * 100)} %
                         </span>
                       </div>
                     </PropRow>
@@ -224,7 +235,8 @@ export function PropertiesPanel() {
                   </div>
                 </div>
               </>
-            )}
+              );
+            }}
           </Show>
         </Show>
       </div>

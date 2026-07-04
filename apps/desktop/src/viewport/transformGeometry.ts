@@ -204,35 +204,15 @@ export function applyResizeHandle(
   let localDx = altKey ? dx * 2 : dx;
   let localDy = altKey ? dy * 2 : dy;
 
+  const oldVw = vw;
+  const oldVh = vh;
+
   const corner = ["nw", "ne", "se", "sw"].includes(handle);
   const shouldKeepAspect = corner && !shiftKey;
 
-  if (shouldKeepAspect) {
-    // Proportional corner resize along the active diagonal:
-    // project mouse delta onto the handle-axis diagonal (cursor direction at 45°).
-    // Movement along the handle axis drives proportional scale;
-    // movement perpendicular to the handle axis is ignored.
-    const oldW = layerW * absSX;
-    const oldH = layerH * absSY;
-
-    // Handle-axis: SE=(1,1), NE=(1,-1), SW=(-1,1), NW=(-1,-1)
-    const hx = handle === "se" || handle === "ne" ? 1 : -1;
-    const hy = handle === "se" || handle === "sw" ? 1 : -1;
-    const sumWH = oldW + oldH;
-
-    if (sumWH > 0) {
-      const projected = localDx * hx + localDy * hy;
-      const minFactor = Math.max(1 / oldW, 1 / oldH);
-      const factor = Math.max(minFactor, 1 + projected / sumWH);
-
-      vw = oldW * factor;
-      vh = oldH * factor;
-
-      if (handle.includes("w")) vx = transform.x + oldW - vw;
-      if (handle.includes("n")) vy = transform.y + oldH - vh;
-    }
-  } else {
-    // Non-corner or Shift-free: independent axis delta
+  // Step 1: Apply independent-axis delta (non-proportional handles only).
+  // For proportional corners, visual-diagonal projection handles everything.
+  if (!shouldKeepAspect) {
     if (handle.includes("e")) vw = Math.max(1, vw + localDx);
     if (handle.includes("w")) {
       const dw = Math.min(vw - 1, -localDx);
@@ -247,18 +227,89 @@ export function applyResizeHandle(
     }
   }
 
-  if (altKey) {
-    const cx = vx + vw / 2;
-    const cy = vy + vh / 2;
-    vx = transform.x - (vw - layerW * absSX) / 2;
-    vy = transform.y - (vh - layerH * absSY) / 2;
+  // Step 2: Proportional resize — VISUAL-DIAGONAL PROJECTION.
+  //
+  // Project the screen-space drag delta onto the visual diagonal (from the
+  // anchor corner to the dragged corner). This single approach works for
+  // ANY rotation:
+  //
+  // - The dragged visual corner tracks the cursor along the correct axis
+  // - The anchor (opposite) corner stays fixed — the vx/vy adjustment
+  //   keeps the anchor side in place
+  // - Aspect ratio is always maintained because both dimensions scale by
+  //   the same factor
+  // - No dominant-axis flip-flop, no center-rotation correction needed
+  // - Perpendicular movement is ignored (correct proportional behavior)
+  //
+  if (shouldKeepAspect) {
+    const corners = getLayerCorners(transform, layerW, layerH);
+    const handleIdx: Record<string, number> = { nw: 0, ne: 1, se: 2, sw: 3 };
+    const anchorIdx: Record<string, number> = { nw: 2, ne: 3, se: 0, sw: 1 };
+    const idx = handleIdx[handle];
+    const aidx = anchorIdx[handle];
+    const vCorner = corners[idx];
+    const vAnchor = corners[aidx];
+
+    const diagX = vCorner.x - vAnchor.x;
+    const diagY = vCorner.y - vAnchor.y;
+    const diagLen = Math.sqrt(diagX * diagX + diagY * diagY);
+
+    if (diagLen > 0) {
+      // Project screen delta onto the visual diagonal
+      let projected = (screenDx * diagX + screenDy * diagY) / diagLen;
+      if (altKey) projected *= 2;
+      // Scale factor: how much the diagonal length changes
+      const factor = Math.max(
+        1 / oldVw, 1 / oldVh,
+        (diagLen + projected) / diagLen
+      );
+      vw = oldVw * factor;
+      vh = oldVh * factor;
+      // Adjust vx/vy so the anchor-side stays fixed
+      if (handle.includes("w")) vx = transform.x + oldVw - vw;
+      if (handle.includes("n")) vy = transform.y + oldVh - vh;
+    }
   }
 
-  const newCenterX = vx + vw / 2;
-  const newCenterY = vy + vh / 2;
+  // Step 3: Alt-key resize from center (after proportional constraint)
+  if (altKey) {
+    const dw = vw - oldVw;
+    const dh = vh - oldVh;
+    vx -= dw / 2;
+    vy -= dh / 2;
+  }
 
-  const newSX = Math.abs(transform.scaleX) * (vw / (layerW * absSX));
-  const newSY = Math.abs(transform.scaleY) * (vh / (layerH * absSY));
+  // Step 4: Center rotation correction (for rotated layers only).
+  //
+  // When vw/vh change, the unrotated center shifts. Without correction, the
+  // visual anchor (the corner opposite the dragged handle) drifts because
+  // the renderer rotates around the center — a different center produces a
+  // different visual position for the fixed local-space anchor corner.
+  //
+  // Rotate the LOCAL center delta forward by +rotation to get the VISUAL
+  // center delta, then recompute vx/vy from the corrected visual center.
+  if (transform.rotation !== 0) {
+    const oldCX = transform.x + oldVw / 2;
+    const oldCY = transform.y + oldVh / 2;
+    const newCXLocal = vx + vw / 2;
+    const newCYLocal = vy + vh / 2;
+    const dCXLocal = newCXLocal - oldCX;
+    const dCYLocal = newCYLocal - oldCY;
+    const fwdRad = transform.rotation * DEG;
+    const fwdCos = Math.cos(fwdRad);
+    const fwdSin = Math.sin(fwdRad);
+    const dCXVisual = dCXLocal * fwdCos - dCYLocal * fwdSin;
+    const dCYVisual = dCXLocal * fwdSin + dCYLocal * fwdCos;
+    const newCXVisual = oldCX + dCXVisual;
+    const newCYVisual = oldCY + dCYVisual;
+    vx = newCXVisual - vw / 2;
+    vy = newCYVisual - vh / 2;
+  }
+
+  const signX = Math.sign(transform.scaleX) || 1;
+  const signY = Math.sign(transform.scaleY) || 1;
+  const newSX = signX * (vw / layerW);
+  const newSY = signY * (vh / layerH);
 
   return {
     ...transform,

@@ -123,10 +123,12 @@ export function useTauriCloseHandler(
       }
     }
 
-    // All dirty docs handled — close the window
+    // All dirty docs handled — close the window.
+    // Use destroy() NOT close() because in Tauri 2, close() also triggers
+    // CloseRequested → prevent_close() → infinite loop. destroy() bypasses it.
     try {
       const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      await getCurrentWindow().close();
+      await getCurrentWindow().destroy();
     } catch {
       // Fallback for non-Tauri or test env
     }

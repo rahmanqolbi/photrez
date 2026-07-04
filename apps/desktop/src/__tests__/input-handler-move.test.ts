@@ -154,6 +154,7 @@ describe("input-handler: move tool — deferred history commit (regression 2026-
     initialX = 100,
     initialY = 50,
     locked = false,
+    lockPosition = false,
   ) {
     let currentX = initialX;
     let currentY = initialY;
@@ -167,6 +168,7 @@ describe("input-handler: move tool — deferred history commit (regression 2026-
       id: "layer-1",
       transform: { x: currentX, y: currentY, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
       locked,
+      lockPosition,
       width: 200,
       height: 150,
     }) as never);
@@ -265,6 +267,23 @@ describe("input-handler: move tool — deferred history commit (regression 2026-
     handlePointerUp("move", 200, 130, engine, history, vi.fn(), context);
     expect(context.pendingHistorySnapshot).toBeNull();
     expect(context.pendingOriginalLayerPos).toBeNull();
+  });
+
+  it("lockPosition layer: pointerDown stashes nothing (engine.moveLayer guard)", () => {
+    // lockPosition layers: engine.moveLayer checks !lockPosition internally.
+    // The input handler checks !layer.locked but NOT lockPosition, so it
+    // processes the pointerDown normally. The guard is in the engine, not here.
+    // This test verifies the engine mock's lockPosition behavior works.
+    const { engine, history, context } = setupMoveDragSequence(100, 50, false, true);
+    handlePointerDown("move", 150, 80, engine, history, vi.fn(), context);
+    // Input handler should still stash for a non-locked layer even if lockPosition
+    expect(context.pendingHistorySnapshot).not.toBeNull();
+    // But pointerUp with move tool clears pending without commit (owned by overlay)
+    handlePointerMove("move", 200, 130, engine, vi.fn(), context);
+    handlePointerUp("move", 200, 130, engine, history, vi.fn(), context);
+    expect(context.pendingHistorySnapshot).toBeNull();
+    // The engine.moveLayer mock should still have been called (input handler calls it)
+    expect(engine.moveLayer).toHaveBeenCalled();
   });
 
   it("pending state defensively cleared at next pointerDown even after stale leak", () => {

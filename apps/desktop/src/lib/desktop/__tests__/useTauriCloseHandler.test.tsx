@@ -14,7 +14,7 @@
 //   4. Cancel stops close entirely
 //   5. Discard skips to next dirty doc
 //   6. Save persists and continues
-//   7. All docs handled → window.close() is called
+// 7. All docs handled → window.destroy() is called
 
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render } from "solid-js/web";
@@ -34,9 +34,9 @@ vi.mock("@tauri-apps/api/event", () => ({
   },
 }));
 
-const closeWindowMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const destroyWindowMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 vi.mock("@tauri-apps/api/window", () => ({
-  getCurrentWindow: () => ({ close: closeWindowMock }),
+  getCurrentWindow: () => ({ destroy: destroyWindowMock }),
 }));
 
 vi.mock("@/tauri/native", () => ({
@@ -128,7 +128,7 @@ describe("useTauriCloseHandler", () => {
     tauriState.listenEvent = null;
     tauriState.listenCallback = null;
     tauriState.unlisten.mockClear();
-    closeWindowMock.mockClear();
+    destroyWindowMock.mockClear();
   });
 
   afterEach(() => {
@@ -193,7 +193,7 @@ describe("useTauriCloseHandler", () => {
     await fireCloseRequested();
 
     expect(dialog.confirmSave).not.toHaveBeenCalled();
-    expect(closeWindowMock).toHaveBeenCalledTimes(1);
+    expect(destroyWindowMock).toHaveBeenCalledTimes(1);
   });
 
   // ─── Dialog Flow: Cancel ───
@@ -213,7 +213,7 @@ describe("useTauriCloseHandler", () => {
     await fireCloseRequested();
 
     expect(dialog.confirmSave).toHaveBeenCalledTimes(1);
-    expect(closeWindowMock).not.toHaveBeenCalled();
+    expect(destroyWindowMock).not.toHaveBeenCalled();
     expect(sessions[0].dirty).toBe(true);
     expect(sessions[1].dirty).toBe(true);
   });
@@ -242,7 +242,7 @@ describe("useTauriCloseHandler", () => {
     expect(sessions[0].dirty).toBe(false);
     expect(sessions[0].engine.clearDirty).not.toHaveBeenCalled();
     expect(sessions[1].dirty).toBe(true);
-    expect(closeWindowMock).not.toHaveBeenCalled();
+    expect(destroyWindowMock).not.toHaveBeenCalled();
   });
 
   // ─── Dialog Flow: Save ───
@@ -271,7 +271,7 @@ describe("useTauriCloseHandler", () => {
     const { encodeComposite } = await import("@/components/editor/exportDocument");
     expect(encodeComposite).toHaveBeenCalledWith(expect.anything(), "png", 92);
     expect(sessions[1].dirty).toBe(true);
-    expect(closeWindowMock).not.toHaveBeenCalled();
+    expect(destroyWindowMock).not.toHaveBeenCalled();
   });
 
   // ─── Dialog Flow: Save All → Close ───
@@ -299,7 +299,7 @@ describe("useTauriCloseHandler", () => {
     expect(sessions[1].engine.clearDirty).toHaveBeenCalled();
     expect(sessions[0].dirty).toBe(false);
     expect(sessions[1].dirty).toBe(false);
-    expect(closeWindowMock).toHaveBeenCalledTimes(1);
+    expect(destroyWindowMock).toHaveBeenCalledTimes(1);
   });
 
   // ─── Dialog Flow: No sourcePath Save ───
@@ -323,7 +323,7 @@ describe("useTauriCloseHandler", () => {
     expect(sessions[0].engine.clearDirty).toHaveBeenCalled();
     expect(sessions[0].dirty).toBe(false);
     expect(sessions[0].sourcePath).toBe("/fake/path/doc.png");
-    expect(closeWindowMock).toHaveBeenCalledTimes(1);
+    expect(destroyWindowMock).toHaveBeenCalledTimes(1);
   });
 
   // ─── Dialog Flow: Save Failure ───
@@ -352,7 +352,7 @@ describe("useTauriCloseHandler", () => {
       expect.objectContaining({ title: "Save Failed" }),
     );
     expect(sessions[0].dirty).toBe(false);
-    expect(closeWindowMock).toHaveBeenCalledTimes(1);
+    expect(destroyWindowMock).toHaveBeenCalledTimes(1);
   });
 
   it("stops close on retry Cancel", async () => {
@@ -378,7 +378,7 @@ describe("useTauriCloseHandler", () => {
 
     expect(dialog.confirm).toHaveBeenCalled();
     expect(sessions[0].dirty).toBe(true);
-    expect(closeWindowMock).not.toHaveBeenCalled();
+    expect(destroyWindowMock).not.toHaveBeenCalled();
   });
 
   // ─── Dialog Flow: Discard all → Close ───
@@ -404,7 +404,7 @@ describe("useTauriCloseHandler", () => {
     expect(dialog.confirmSave).toHaveBeenCalledTimes(2);
     expect(sessions[0].dirty).toBe(false);
     expect(sessions[1].dirty).toBe(false);
-    expect(closeWindowMock).toHaveBeenCalledTimes(1);
+    expect(destroyWindowMock).toHaveBeenCalledTimes(1);
   });
 
   // ─── Dialog Flow: no confirmSave (fallback) ───
@@ -424,6 +424,6 @@ describe("useTauriCloseHandler", () => {
 
     expect(dialog.confirm).toHaveBeenCalledTimes(1);
     expect(sessions[0].dirty).toBe(false);
-    expect(closeWindowMock).toHaveBeenCalledTimes(1);
+    expect(destroyWindowMock).toHaveBeenCalledTimes(1);
   });
 });

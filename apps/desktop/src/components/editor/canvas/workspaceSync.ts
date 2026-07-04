@@ -63,14 +63,24 @@ export function setupWorkspaceSync(params: SyncStateParams) {
     });
   };
 
+  // Track the last-known engine viewport state so syncViewport only
+  // overwrites the camera when the engine viewport was *intentionally*
+  // changed (new doc, fit-to-screen, zoom shortcut, etc.) — NOT when
+  // a stale onChange fires mid-drag after panning skipped syncFromCamera.
+  // See commit 4680973 + b53417e (direct signal updates during panning).
+  let lastVp = { panX: 0, panY: 0, zoom: 1 };
+
   const syncViewport = () => {
     const engine = params.workspace.getActiveEngine();
-    if (engine) {
-      const vp = engine.getViewport();
-      params.camera.setState({ x: vp.panX, y: vp.panY, zoom: vp.zoom });
-      params.setZoom(vp.zoom);
-      params.setPan({ x: vp.panX, y: vp.panY });
-    }
+    if (!engine) return;
+    const vp = engine.getViewport();
+    // Bail if the engine viewport hasn't changed — avoids overwriting
+    // the camera with stale values during rotation/resize/move drags.
+    if (vp.panX === lastVp.panX && vp.panY === lastVp.panY && vp.zoom === lastVp.zoom) return;
+    lastVp = { panX: vp.panX, panY: vp.panY, zoom: vp.zoom };
+    params.camera.setState({ x: vp.panX, y: vp.panY, zoom: vp.zoom });
+    params.setZoom(vp.zoom);
+    params.setPan({ x: vp.panX, y: vp.panY });
   };
 
   params.workspace.onChange(() => {
