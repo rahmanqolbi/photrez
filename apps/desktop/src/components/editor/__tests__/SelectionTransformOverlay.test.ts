@@ -883,4 +883,90 @@ describe("Donut rotate ring path", () => {
     dispose();
     container.parentNode?.removeChild(container);
   });
+
+  it("maintains aspect ratio lock when resizing after a snapped rotation (holding Shift)", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("ratio-snap-test", "Ratio Snap Test", 800, 600);
+    const layer = session.engine.addLayer("ratio-test-layer", 100, 100);
+    session.engine.setActiveLayer("ratio-test-layer");
+
+    const mockRenderer = {} as unknown as WebGL2Backend;
+    const mockScheduler = { requestRender: vi.fn() } as unknown as RenderScheduler;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    let editorRef: any = null;
+    const CaptureEditor = () => {
+      editorRef = useEditor();
+      return h(SelectionTransformOverlay, null)();
+    };
+
+    const dispose = render(
+      h(
+        EditorProvider,
+        { workspace: ws, renderer: mockRenderer, scheduler: mockScheduler },
+        h(CaptureEditor, null),
+      ),
+      container,
+    );
+
+    ws.addDocument(session);
+    await Promise.resolve();
+
+    const donutPath = container.querySelector('path[fill-rule="evenodd"]') as SVGPathElement;
+    expect(donutPath).not.toBeNull();
+
+    donutPath.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 44,
+      bubbles: true,
+      cancelable: true,
+      clientX: 200,
+      clientY: 200,
+      shiftKey: true,
+    }));
+
+    window.dispatchEvent(new PointerEvent("pointermove", {
+      pointerId: 44,
+      clientX: 210,
+      clientY: 210,
+      shiftKey: true,
+    }));
+
+    window.dispatchEvent(new PointerEvent("pointerup", {
+      pointerId: 44,
+    }));
+
+    const transformSession = editorRef.layerTransformSession();
+    expect(transformSession).not.toBeNull();
+
+    const seHandle = container.querySelector("[data-handle='se']") as SVGElement;
+    expect(seHandle).not.toBeNull();
+
+    seHandle.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 55,
+      bubbles: true,
+      cancelable: true,
+      clientX: 150,
+      clientY: 150,
+      shiftKey: false,
+    }));
+
+    window.dispatchEvent(new PointerEvent("pointermove", {
+      pointerId: 55,
+      clientX: 200,
+      clientY: 160,
+      shiftKey: false,
+    }));
+
+    window.dispatchEvent(new PointerEvent("pointerup", {
+      pointerId: 55,
+    }));
+
+    const updatedLayer = session.engine.getLayer(layer.id)!;
+    expect(updatedLayer.transform.scaleX).toBeCloseTo(updatedLayer.transform.scaleY, 4);
+
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
 });

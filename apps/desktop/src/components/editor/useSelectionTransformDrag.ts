@@ -196,7 +196,7 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
           originalSnapshot,
           originalTransform: { ...layer.transform },
           mode: type === "rotate" ? "rotate" : "resize",
-          lockRatio: e.shiftKey,
+          lockRatio: false,
           startedAt: Date.now(),
         });
       }
@@ -293,11 +293,6 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
         deltaX: 0, deltaY: 0, width: 0, height: 0, scalePercent: 0, snapActive: props.snapActive ?? false,
       });
     } else {
-      const session = layerTransformSession();
-      const lockRatio = session?.layerId === layer.id && session.documentId === workspace.getActiveEngine()?.getId()
-        ? session.lockRatio || e.shiftKey
-        : e.shiftKey;
-
       const newTransform = applyResizeHandle(
         drag.startTransform,
         layer.width,
@@ -305,7 +300,7 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
         drag.type,
         dx,
         dy,
-        lockRatio,
+        e.shiftKey,
         e.altKey
       );
       engine.transformLayer(layer.id, newTransform);
