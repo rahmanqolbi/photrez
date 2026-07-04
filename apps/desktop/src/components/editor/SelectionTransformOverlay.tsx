@@ -103,13 +103,23 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
   const screenW = createMemo(() => effW() * zoom());
   const screenH = createMemo(() => effH() * zoom());
 
-  // Proportional donut ring width: ~15% of layer screen size, clamped [20, 120]
+  // Proportional donut ring width: adjusts to the image size.
+  // - Idle: Proportional to image size (10% of smallest dimension, clamped [20px, 60px])
+  // - Active: Infinite (10000px) to allow viewport-wide rotation clicks, matching Photoshop/Photopea.
   const ringWidth = () => {
     const sw = screenW();
     const sh = screenH();
     if (sw <= 0 || sh <= 0) return 20;
-    const prop = Math.min(sw, sh) * 0.15;
-    return Math.max(20, Math.min(120, Math.round(prop)));
+
+    const dMin = Math.min(sw, sh);
+    const isSessionActive = layerTransformSession() !== null;
+
+    if (!isSessionActive) {
+      const prop = dMin * 0.10;
+      return Math.max(20, Math.min(60, Math.round(prop))); // Smaller proportional width when idle
+    } else {
+      return 10000; // Virtually infinite hit zone during transform session
+    }
   };
 
   return (
@@ -171,35 +181,42 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
             />
 
             {/* Full-perimeter donut rotate ring — replaces 4 corner arc paths */}
-            <path
-              d={`
-                M ${screenTL().x - ringWidth()} ${screenTL().y - ringWidth()}
-                L ${screenTL().x + screenW() + ringWidth()} ${screenTL().y - ringWidth()}
-                L ${screenTL().x + screenW() + ringWidth()} ${screenTL().y + screenH() + ringWidth()}
-                L ${screenTL().x - ringWidth()} ${screenTL().y + screenH() + ringWidth()}
-                Z
-                M ${screenTL().x + 12} ${screenTL().y + 12}
-                L ${screenTL().x + 12} ${screenTL().y + screenH() - 12}
-                L ${screenTL().x + screenW() - 12} ${screenTL().y + screenH() - 12}
-                L ${screenTL().x + screenW() - 12} ${screenTL().y + 12}
-                Z
-              `}
-              fill="transparent"
-              fill-rule="evenodd"
-              style={{ "pointer-events": props.isNavigationMode ? "none" : "all", cursor: activeDragCursor() ?? rotateCursor() }}
-              onPointerDown={(e) => handlePointerDown(e, "rotate")}
-              onPointerEnter={(e) => {
-                setHoverHandle("rotate");
-                setHoverPos({ x: e.clientX, y: e.clientY });
-              }}
-              onPointerMove={(e) => {
-                setHoverPos({ x: e.clientX, y: e.clientY });
-              }}
-              onPointerLeave={() => {
-                setHoverHandle(null);
-                setHoverPos(null);
-              }}
-            />
+            {(() => {
+              const sw = screenW();
+              const sh = screenH();
+              const g = Math.max(0, Math.min(3, Math.min(sw, sh) / 2 - 1));
+              return (
+                <path
+                  d={`
+                    M ${screenTL().x - ringWidth()} ${screenTL().y - ringWidth()}
+                    L ${screenTL().x + screenW() + ringWidth()} ${screenTL().y - ringWidth()}
+                    L ${screenTL().x + screenW() + ringWidth()} ${screenTL().y + screenH() + ringWidth()}
+                    L ${screenTL().x - ringWidth()} ${screenTL().y + screenH() + ringWidth()}
+                    Z
+                    M ${screenTL().x + g} ${screenTL().y + g}
+                    L ${screenTL().x + g} ${screenTL().y + screenH() - g}
+                    L ${screenTL().x + screenW() - g} ${screenTL().y + screenH() - g}
+                    L ${screenTL().x + screenW() - g} ${screenTL().y + g}
+                    Z
+                  `}
+                  fill="transparent"
+                  fill-rule="evenodd"
+                  style={{ "pointer-events": props.isNavigationMode ? "none" : "all", cursor: activeDragCursor() ?? rotateCursor() }}
+                  onPointerDown={(e) => handlePointerDown(e, "rotate")}
+                  onPointerEnter={(e) => {
+                    setHoverHandle("rotate");
+                    setHoverPos({ x: e.clientX, y: e.clientY });
+                  }}
+                  onPointerMove={(e) => {
+                    setHoverPos({ x: e.clientX, y: e.clientY });
+                  }}
+                  onPointerLeave={() => {
+                    setHoverHandle(null);
+                    setHoverPos(null);
+                  }}
+                />
+              );
+            })()}
 
             {/* 8 handles at unrotated edges, in screen coords */}
             <For each={HANDLE_TYPES}>

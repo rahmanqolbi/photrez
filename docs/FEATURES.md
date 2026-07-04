@@ -95,6 +95,7 @@
 | ✅ DONE | Auto-Select hovered target indicator readout badge                                                                                                                                           |
 | ✅ DONE | Quick Canvas Alignment actions in Option Bar (Align left/center/right/top/middle/bottom)                                                                                                     |
 | ✅ DONE | Transform Controls toggle in Move option bar — shows/hides bounding box with 8 resize handles + rotation handle around selected layer (default: on)                                          |
+| ✅ DONE | Full-perimeter rotate donut ring — replaces 4 corner arc paths (quarter-circle arcs at corners) with a single SVG `fill-rule="evenodd"` donut path spanning full layer perimeter; ring width proportional to layer screen size (10% idle clamped [20,60]px, active: infinite 10000px for viewport-wide rotation, matching Photoshop/Photopea)   |
 
 ---
 
