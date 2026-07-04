@@ -805,3 +805,82 @@ describe("Space+pan navigation mode", () => {
     restore();
   });
 });
+
+describe("Donut rotate ring path", () => {
+  it("renders donut rotate ring path with fill-rule='evenodd' and pointer-events style", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("donut-render", "Donut Render", 800, 600);
+    const mockRenderer = {} as unknown as WebGL2Backend;
+    const mockScheduler = { requestRender: vi.fn() } as unknown as RenderScheduler;
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      h(
+        EditorProvider,
+        { workspace: ws, renderer: mockRenderer, scheduler: mockScheduler },
+        h(SelectionTransformOverlay, null),
+      ),
+      container,
+    );
+    ws.addDocument(session);
+    await Promise.resolve();
+
+    const donutPath = container.querySelector('path[fill-rule="evenodd"]') as SVGPathElement;
+    expect(donutPath).not.toBeNull();
+    expect(donutPath.getAttribute("fill-rule")).toBe("evenodd");
+    expect(donutPath.getAttribute("fill")).toBe("transparent");
+    expect(donutPath.style.pointerEvents).toBe("all");
+
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("calls setPointerCapture on pointerdown on donut ring path", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("donut-rotate", "Donut Rotate", 800, 600);
+    const mockRenderer = {} as unknown as WebGL2Backend;
+    const mockScheduler = { requestRender: vi.fn() } as unknown as RenderScheduler;
+
+    const origSet = SVGElement.prototype.setPointerCapture;
+    const setSpy = vi.fn();
+    SVGElement.prototype.setPointerCapture = setSpy;
+    const origRelease = SVGElement.prototype.releasePointerCapture;
+    const releaseSpy = vi.fn();
+    SVGElement.prototype.releasePointerCapture = releaseSpy;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const dispose = render(
+      h(
+        EditorProvider,
+        { workspace: ws, renderer: mockRenderer, scheduler: mockScheduler },
+        h(SelectionTransformOverlay, null),
+      ),
+      container,
+    );
+    ws.addDocument(session);
+    await Promise.resolve();
+
+    const donutPath = container.querySelector('path[fill-rule="evenodd"]') as SVGPathElement;
+    expect(donutPath).not.toBeNull();
+
+    setSpy.mockClear();
+
+    donutPath.dispatchEvent(new PointerEvent("pointerdown", {
+      pointerId: 55,
+      bubbles: true,
+      cancelable: true,
+      clientX: 100,
+      clientY: 100,
+    }));
+
+    expect(setSpy).toHaveBeenCalledWith(55);
+
+    SVGElement.prototype.setPointerCapture = origSet;
+    SVGElement.prototype.releasePointerCapture = origRelease;
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+});
