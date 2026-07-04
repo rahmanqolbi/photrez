@@ -24,6 +24,8 @@ export interface ToolContext {
   dragCurrent: { x: number; y: number };
   strokePoints: { x: number; y: number }[];
   dragTool: ToolType | null;
+  // Screen-space cursor position (for HUD positioning inside the screen-space SVG overlay)
+  screenPos?: { x: number; y: number };
   
   // Custom updates
   setFgColor?: (c: string) => void;
@@ -42,7 +44,7 @@ export interface ToolContext {
   onSnapLines?: (lines: SnapLine[]) => void;
 
   // Selection move support
-  selectionBounds?: { x: number; y: number; width: number; height: number } | null;
+  selectionBounds?: { x: number; y: number; width: number; height: number; angle?: number } | null;
   onSelectionMoved?: (x: number, y: number) => void;
   onSelectionRotated?: (angle: number) => void;
   onRotateStart?: (centerX: number, centerY: number) => void;
@@ -336,12 +338,33 @@ function rgbToHex(r: number, g: number, b: number): string {
 export function isPointInSelection(
   px: number,
   py: number,
-  bounds: { x: number; y: number; width: number; height: number },
+  bounds: { x: number; y: number; width: number; height: number; angle?: number },
 ): boolean {
+  const angle = bounds.angle ?? 0;
+  if (angle === 0) {
+    // Fast path for axis-aligned selections
+    return (
+      px >= bounds.x &&
+      px <= bounds.x + bounds.width &&
+      py >= bounds.y &&
+      py <= bounds.y + bounds.height
+    );
+  }
+  // Rotated selection: inverse-rotate the test point around the selection
+  // center by -angle, then check against the axis-aligned bounds.
+  const cx = bounds.x + bounds.width / 2;
+  const cy = bounds.y + bounds.height / 2;
+  const rad = -angle * Math.PI / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const dx = px - cx;
+  const dy = py - cy;
+  const rx = dx * cos - dy * sin + cx;
+  const ry = dx * sin + dy * cos + cy;
   return (
-    px >= bounds.x &&
-    px <= bounds.x + bounds.width &&
-    py >= bounds.y &&
-    py <= bounds.y + bounds.height
+    rx >= bounds.x &&
+    rx <= bounds.x + bounds.width &&
+    ry >= bounds.y &&
+    ry <= bounds.y + bounds.height
   );
 }

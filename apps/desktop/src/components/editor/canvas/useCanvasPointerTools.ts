@@ -179,17 +179,11 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   };
 
   const setHudInfo = (hud: HudData | null) => {
-    if (!hud) return setHudInfoInner(null);
-    const container = params.getCanvasContainerRef();
-    const rect = container?.getBoundingClientRect();
-    const engine = workspace.getActiveEngine();
-    if (!rect || !engine) return setHudInfoInner(hud);
-    const doc = screenToDocument(hud.clientX, hud.clientY, rect, engine.getViewport());
-    setHudInfoInner({
-      ...hud,
-      clientX: doc.x,
-      clientY: doc.y,
-    });
+    // HUD is rendered in a screen-space SVG overlay (inset: 0, width: 100%, height: 100%).
+    // Coordinates must remain in screen/client space — do NOT convert to document space.
+    // The previous conversion (screenToDocument) caused the HUD to appear far from the
+    // cursor when the document is zoomed or panned.
+    setHudInfoInner(hud);
   };
 
   function prepareToolContext() {
