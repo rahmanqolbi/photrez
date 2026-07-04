@@ -30,11 +30,11 @@ export function resolveCursor(ctx: CursorContext): string {
   if (ctx.isAltPressed && (ctx.activeTool === "brush" || ctx.activeTool === "eraser")) return "copy";
   if (ctx.activeTool === "move" && ctx.isLayerLocked) return "default";
 
-  if (ctx.activeTool === "move" && ctx.hoverHandle && ctx.hoverHandle !== "move" && ctx.hoverHandle !== "rotate") {
+  if (ctx.activeTool === "move" && ctx.hoverHandle && ctx.hoverHandle !== "move" && !ctx.hoverHandle.startsWith("rotate")) {
     return getCursorForHandle(ctx.hoverHandle, ctx.layerRotation ?? 0, ctx.layerScaleX ?? 1, ctx.layerScaleY ?? 1);
   }
 
-  if (ctx.activeTool === "move" && ctx.hoverHandle === "rotate") {
+  if (ctx.activeTool === "move" && ctx.hoverHandle && ctx.hoverHandle.startsWith("rotate")) {
     if (ctx.hoverPos && ctx.layerBoundingBox) {
       return getRotateCursorByPos(ctx.hoverPos, ctx.layerBoundingBox);
     }

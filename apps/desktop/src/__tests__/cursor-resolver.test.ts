@@ -232,6 +232,56 @@ describe('resolveCursor', () => {
     });
   });
 
+  describe('rotate handle cursor with corner prefix', () => {
+    it('returns rotate cursor for rotate-nw with hoverPos', () => {
+      const ctx: CursorContext = {
+        ...base,
+        activeTool: 'move',
+        hoverHandle: 'rotate-nw',
+        hoverPos: { x: 300, y: 150 },
+        layerBoundingBox: { x: 100, y: 100, w: 200, h: 100 },
+        layerRotation: 0,
+        layerScaleX: 1,
+        layerScaleY: 1,
+      };
+      const cursor = resolveCursor(ctx);
+      expect(cursor).toContain('data:image/svg+xml');
+    });
+
+    it('does NOT return resize cursor for rotate-nw', () => {
+      const ctx: CursorContext = {
+        ...base,
+        activeTool: 'move',
+        hoverHandle: 'rotate-nw',
+        hoverPos: null,
+        layerBoundingBox: { x: 100, y: 100, w: 200, h: 100 },
+        layerRotation: 0,
+        layerScaleX: 1,
+        layerScaleY: 1,
+      };
+      const cursor = resolveCursor(ctx);
+      // Should NOT be a resize cursor
+      expect(cursor).not.toMatch(/^(nw|n|ne|e|se|s|sw|w)-resize$/);
+      // Should be the rotate SVG cursor
+      expect(cursor).toContain('data:image/svg+xml');
+    });
+
+    it('returns rotate cursor for rotate-se with hoverPos', () => {
+      const ctx: CursorContext = {
+        ...base,
+        activeTool: 'move',
+        hoverHandle: 'rotate-se',
+        hoverPos: { x: 400, y: 300 },
+        layerBoundingBox: { x: 100, y: 100, w: 200, h: 100 },
+        layerRotation: 0,
+        layerScaleX: 1,
+        layerScaleY: 1,
+      };
+      const cursor = resolveCursor(ctx);
+      expect(cursor).toContain('data:image/svg+xml');
+    });
+  });
+
   describe('resize handle cursors', () => {
     it('returns ew-resize for e handle with no rotation', () => {
       const ctx: CursorContext = {
