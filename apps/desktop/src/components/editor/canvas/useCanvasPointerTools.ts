@@ -204,13 +204,30 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     interactiveState.setFgColor = setFgColor;
     interactiveState.setBgColor = setBgColor;
     interactiveState.onSelectionCreated = (x, y, w, h) => {
-      setSelectionBoxSignal({ x, y, w, h, angle: selectionBox()?.angle ?? 0 });
+      setSelectionBoxSignal({ x, y, w, h, angle: 0 });
+      // Show W×H HUD during selection draw drag
+      const sp = interactiveState.screenPos;
+      if (sp) {
+        setHudInfo({
+          mode: "resize",
+          clientX: sp.x,
+          clientY: sp.y,
+          width: w,
+          height: h,
+          deltaX: 0,
+          deltaY: 0,
+          scalePercent: 0,
+          angle: 0,
+          snapActive: false,
+        });
+      }
     };
     interactiveState.selectionBounds = selectionBox() ? {
       x: selectionBox()!.x,
       y: selectionBox()!.y,
       width: selectionBox()!.w,
       height: selectionBox()!.h,
+      angle: selectionBox()!.angle ?? 0,
     } : null;
     interactiveState.onSelectionMoved = (x, y) => {
       const box = selectionBox();
@@ -218,6 +235,23 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       if (box && eng) {
         setSelectionBoxSignal({ ...box, x, y });
         eng.createSelection(x, y, box.w, box.h);
+      }
+      // Show ΔX ΔY HUD during selection move
+      const sp = interactiveState.screenPos;
+      const orig = interactiveState.pendingOriginalSelectionPos;
+      if (sp && orig) {
+        setHudInfo({
+          mode: "move",
+          clientX: sp.x,
+          clientY: sp.y,
+          deltaX: x - orig.x,
+          deltaY: y - orig.y,
+          width: 0,
+          height: 0,
+          scalePercent: 0,
+          angle: 0,
+          snapActive: false,
+        });
       }
     };
     interactiveState.onSelectionRotated = (angle: number) => {
@@ -393,8 +427,22 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       return;
     }
 
+    // Sync selectionBox from engine state before starting a drag.
+    // SelectionOptionBar calls engine.createSelection(…) which updates the
+    // engine but NOT the local signal — without this sync the drag would
+    // use a stale angle (or stale position/size) from the signal.
+    if (activeTool() === "selection") {
+      const sel = engine.getSelection();
+      if (sel) {
+        setSelectionBoxSignal({ x: sel.x, y: sel.y, w: sel.width, h: sel.height, angle: sel.angle });
+      } else {
+        setSelectionBoxSignal(null);
+      }
+    }
+
     prepareToolContext();
     interactiveState.isShiftPressed = e.shiftKey;
+    interactiveState.screenPos = { x: e.clientX, y: e.clientY };
     setSnapLines([]);
     trySetPointerCapture(params.getCanvasRef(), e.pointerId);
 
@@ -519,6 +567,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
 
     interactiveState.isAltPressed = params.isAltPressed();
     interactiveState.isShiftPressed = e.shiftKey;
+    interactiveState.screenPos = { x: e.clientX, y: e.clientY };
 
     let coords = getDocCoords(e);
 
@@ -680,6 +729,8 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       } else {
         setSelectionBoxSignal(null);
       }
+      // Clear HUD after selection interaction completes
+      setHudInfo(null);
     } else {
       setSelectionBoxSignal(null);
     }
