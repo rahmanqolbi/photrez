@@ -9,13 +9,13 @@ vi.mock("@/viewport/coords", () => ({
 describe("startSelectionRotation", () => {
   let setBox: ReturnType<typeof vi.fn>;
   let getContainer: () => HTMLDivElement;
-  let getEngine: () => { getViewport(): ViewportState } | null;
+  let getEngine: () => { getViewport(): ViewportState; createSelection(x: number, y: number, w: number, h: number, angle?: number): void } | null;
 
   beforeEach(() => {
     setBox = vi.fn();
     getContainer = () =>
       ({ getBoundingClientRect: () => new DOMRect(0, 0, 800, 600) }) as HTMLDivElement;
-    getEngine = () => ({ getViewport: () => ({}) as ViewportState });
+    getEngine = () => ({ getViewport: () => ({}) as ViewportState, createSelection: vi.fn() });
   });
 
   afterEach(() => {

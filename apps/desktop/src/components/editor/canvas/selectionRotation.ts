@@ -14,7 +14,7 @@ export function startSelectionRotation(
   getSelectionBox: () => SelectionBox | null,
   setSelectionBox: (box: SelectionBox | null) => void,
   getContainerRef: () => HTMLDivElement | undefined,
-  getActiveEngine: () => { getViewport(): ViewportState } | null,
+  getActiveEngine: () => { getViewport(): ViewportState; createSelection(x: number, y: number, w: number, h: number, angle?: number): void } | null,
 ): void {
   const box = getSelectionBox();
   if (!box) return;
@@ -42,6 +42,12 @@ export function startSelectionRotation(
   const handleDocPointerUp = () => {
     document.removeEventListener("pointermove", handleDocPointerMove);
     document.removeEventListener("pointerup", handleDocPointerUp);
+    // Persist the final rotation to the engine so it survives tool switches,
+    // undo/redo, and pointerUp syncs (otherwise the rotation was only visual).
+    const finalBox = getSelectionBox();
+    if (finalBox) {
+      engine.createSelection(finalBox.x, finalBox.y, finalBox.w, finalBox.h, finalBox.angle);
+    }
   };
 
   document.addEventListener("pointermove", handleDocPointerMove);

@@ -433,8 +433,8 @@ export class DocumentEngine {
   }
 
   // ─── Selection ───
-  createSelection(x: number, y: number, w: number, h: number): void {
-    this.model.selection = { x, y, width: w, height: h, angle: 0 };
+  createSelection(x: number, y: number, w: number, h: number, angle?: number): void {
+    this.model.selection = { x, y, width: w, height: h, angle: angle ?? 0 };
     this.notifyChange();
   }
 

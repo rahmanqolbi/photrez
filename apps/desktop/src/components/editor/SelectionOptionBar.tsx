@@ -68,7 +68,7 @@ export function SelectionOptionBar() {
   const submitAngle = (n: number) => {
     const s = selection();
     if (s && !isNaN(n)) {
-      engine()?.createSelection(s.x, s.y, s.width, s.height);
+      engine()?.createSelection(s.x, s.y, s.width, s.height, n);
       scheduler.requestRender();
     }
   };
