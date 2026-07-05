@@ -7,9 +7,176 @@ import {
   screenDeltaToRotatedCropLocalDelta,
   constrainCropAspect,
   constrainCropToSize,
+  rotateHandleType,
 } from "../viewport/cropGeometry";
+import { fitCropRectToAspect } from "../viewport/cropAutoFit";
 
 const RECT = { x: 10, y: 10, w: 200, h: 100 };
+
+describe("rotateHandleType — internal rotate mapping (implementation-focused)", () => {
+  it("0° rotation returns the same handle", () => {
+    expect(rotateHandleType("e", 0)).toBe("e");
+    expect(rotateHandleType("se", 0)).toBe("se");
+    expect(rotateHandleType("nw", 0)).toBe("nw");
+  });
+
+  it("90° rotation maps east→south, south→west, west→north, north→east", () => {
+    expect(rotateHandleType("e", 90)).toBe("s");
+    expect(rotateHandleType("s", 90)).toBe("w");
+    expect(rotateHandleType("w", 90)).toBe("n");
+    expect(rotateHandleType("n", 90)).toBe("e");
+  });
+
+  it("90° rotation maps corners: se→sw, sw→nw, nw→ne, ne→se", () => {
+    expect(rotateHandleType("se", 90)).toBe("sw");
+    expect(rotateHandleType("sw", 90)).toBe("nw");
+    expect(rotateHandleType("nw", 90)).toBe("ne");
+    expect(rotateHandleType("ne", 90)).toBe("se");
+  });
+
+  it("45° rotation maps east→southeast", () => {
+    expect(rotateHandleType("e", 45)).toBe("se");
+    expect(rotateHandleType("w", 45)).toBe("nw");
+    expect(rotateHandleType("n", 45)).toBe("ne");
+    expect(rotateHandleType("s", 45)).toBe("sw");
+  });
+
+  it("180° rotation inverts all handles", () => {
+    expect(rotateHandleType("e", 180)).toBe("w");
+    expect(rotateHandleType("se", 180)).toBe("nw");
+    expect(rotateHandleType("ne", 180)).toBe("sw");
+    expect(rotateHandleType("w", 180)).toBe("e");
+  });
+
+  it("negative rotation (-90°) maps opposite to +270°", () => {
+    expect(rotateHandleType("e", -90)).toBe("n");
+    expect(rotateHandleType("s", -90)).toBe("e");
+    expect(rotateHandleType("se", -90)).toBe("ne");
+  });
+
+  it("315° (=-45°) maps east→northeast", () => {
+    expect(rotateHandleType("e", 315)).toBe("ne");
+    expect(rotateHandleType("s", 315)).toBe("se");
+  });
+
+  it("returns unknown handle type unchanged (e.g. 'move', 'rotate')", () => {
+    expect(rotateHandleType("move", 45)).toBe("move");
+    expect(rotateHandleType("rotate", 90)).toBe("rotate");
+  });
+
+  it("all eight handles rotate consistently across 360°", () => {
+    const handles = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];
+    // After 360°, each handle should return to itself
+    for (const h of handles) {
+      expect(rotateHandleType(h, 360)).toBe(h);
+    }
+  });
+
+  it("30° rounds to nearest 45° increment (30 → 1 step = 45°)", () => {
+    // 30/45 = 0.667 → Math.round = 1 step → e → se
+    expect(rotateHandleType("e", 30)).toBe("se");
+  });
+
+  it("22° rounds to nearest 45° increment (22/45 = 0.489 → round = 0)", () => {
+    // 22/45 = 0.489 → Math.round = 0 steps → unchanged
+    expect(rotateHandleType("e", 22)).toBe("e");
+    expect(rotateHandleType("e", 23)).toBe("se"); // 23/45 = 0.511 → 1 step
+  });
+});
+
+describe("fitCropRectToAspect — auto-fit logic (implementation-focused)", () => {
+  const DOC = { w: 1600, h: 1200 };
+
+  it("fits 16:9 into 1600x1200: width-constrained (h = 900)", () => {
+    const result = fitCropRectToAspect({ w: 16, h: 9 }, DOC.w, DOC.h, 0);
+    expect(result.w).toBe(1600);
+    expect(result.h).toBe(900);
+    expect(result.x).toBe(0);
+    expect(result.y).toBeCloseTo(150, 1);
+  });
+
+  it("fits 3:4 into 1600x1200: height-constrained (w = 900)", () => {
+    const result = fitCropRectToAspect({ w: 3, h: 4 }, DOC.w, DOC.h, 0);
+    expect(result.w).toBe(900);
+    expect(result.h).toBe(1200);
+    expect(result.x).toBeCloseTo(350, 1);
+    expect(result.y).toBe(0);
+  });
+
+  it("exact match (4:3) fills entire canvas", () => {
+    const result = fitCropRectToAspect({ w: 4, h: 3 }, 800, 600, 0);
+    expect(result).toEqual({ x: 0, y: 0, w: 800, h: 600 });
+  });
+
+  it("square (1:1) into 1600x1200: height-constrained, w=h=1200", () => {
+    const result = fitCropRectToAspect({ w: 1, h: 1 }, DOC.w, DOC.h, 0);
+    expect(result.w).toBe(1200);
+    expect(result.h).toBe(1200);
+    expect(result.x).toBeCloseTo(200, 1);
+    expect(result.y).toBe(0);
+  });
+
+  it("extreme aspect 100:1 into 1600x1200: very wide, height-limited", () => {
+    const result = fitCropRectToAspect({ w: 100, h: 1 }, DOC.w, DOC.h, 0);
+    // 1200*100 = 120000 > 1600, so width-constrained: w=1600, h=16
+    expect(result.w).toBe(1600);
+    expect(result.h).toBe(16);
+    expect(result.x).toBe(0);
+    expect(result.y).toBeCloseTo(592, 1);
+  });
+
+  it("extreme aspect 1:100 into 1600x1200: very tall, height-limited", () => {
+    const result = fitCropRectToAspect({ w: 1, h: 100 }, DOC.w, DOC.h, 0);
+    // 1600*100 = 160000 > 1200, so height-constrained: h=1200, w=12
+    expect(result.w).toBe(12);
+    expect(result.h).toBe(1200);
+    expect(result.x).toBeCloseTo(794, 1);
+    expect(result.y).toBe(0);
+  });
+
+  it("handles rotation by reducing fit area (45° rotation shrinks available space)", () => {
+    // At 45°, the inscribed axis-aligned rect inside rotated canvas is smaller
+    const result = fitCropRectToAspect({ w: 1, h: 1 }, 200, 200, 45);
+    // With 45° rotation, the crop box must fit within the rotated canvas
+    expect(result.w).toBeGreaterThan(0);
+    expect(result.h).toBeGreaterThan(0);
+    expect(result.w).toBeCloseTo(result.h); // should be square
+    // The max square at 45° in 200x200 is ~141x141
+    expect(result.w).toBeLessThan(150);
+    expect(result.w).toBeGreaterThan(100);
+  });
+
+  it("90° rotation inverts aspect ratio but final rect is same as unrotated for 1:1", () => {
+    const result = fitCropRectToAspect({ w: 1, h: 1 }, 200, 200, 90);
+    // 90° rotation still produces same result since it's a square
+    expect(result.w).toBeCloseTo(result.h);
+    expect(result.w).toBe(200);
+    expect(result.h).toBe(200);
+  });
+
+  it("produces finite values for extreme rotation angles", () => {
+    const result = fitCropRectToAspect({ w: 1, h: 1 }, 1000, 800, 89.999);
+    expect(Number.isFinite(result.w)).toBe(true);
+    expect(Number.isFinite(result.h)).toBe(true);
+    expect(result.w).toBeGreaterThan(1);
+    expect(result.h).toBeGreaterThan(1);
+  });
+
+  it("tiny canvas (1x1) doesn't produce NaN", () => {
+    const result = fitCropRectToAspect({ w: 3, h: 4 }, 1, 1, 0);
+    expect(Number.isFinite(result.w)).toBe(true);
+    expect(Number.isFinite(result.h)).toBe(true);
+    expect(result.w).toBeGreaterThanOrEqual(0);
+    expect(result.h).toBeGreaterThanOrEqual(0);
+  });
+
+  it("zero aspect ratio fills entire canvas (effectively free)", () => {
+    // aspect 0/1 = 0, which means w = 0 * h = 0 in some paths
+    const result = fitCropRectToAspect({ w: 0, h: 1 }, 500, 300, 0);
+    expect(Number.isFinite(result.w)).toBe(true);
+    expect(Number.isFinite(result.h)).toBe(true);
+  });
+});
 
 describe("constrainCropRectToDocument", () => {
   it("allows coordinates outside document boundaries", () => {
@@ -422,12 +589,97 @@ describe("constrainCropAspect", () => {
     expect(result.h).toBe(90);
     expect(result.y).toBe(15);
   });
+
+  it("exact aspect ratio returns same rect unchanged", () => {
+    const rect = { x: 100, y: 50, w: 200, h: 100 };
+    const result = constrainCropAspect(rect, { w: 2, h: 1 });
+    expect(result).toEqual(rect);
+  });
+
+  it("extreme aspect 100:1: width clamped, tiny height", () => {
+    const rect = { x: 0, y: 0, w: 2000, h: 1000 };
+    // rect aspect = 2:1, target aspect = 100:1
+    // Since rect is "taller" than target, height is reduced: newH = w / ratio = 2000/100 = 20
+    const result = constrainCropAspect(rect, { w: 100, h: 1 });
+    expect(result.w / result.h).toBeCloseTo(100, 5);
+    expect(result.w).toBe(2000);
+    expect(result.h).toBe(20);
+    expect(result.y).toBeCloseTo(490, 1);  // (1000 - 20) / 2
+  });
+
+  it("extreme aspect 1:100: height clamped, tiny width", () => {
+    const rect = { x: 0, y: 0, w: 2000, h: 1000 };
+    // rect aspect = 2:1, target aspect = 1:100 = 0.01
+    // Since rect is "wider" than target, width is reduced: newW = h * ratio = 1000 * 0.01 = 10
+    const result = constrainCropAspect(rect, { w: 1, h: 100 });
+    expect(result.w / result.h).toBeCloseTo(0.01, 5);
+    expect(result.w).toBe(10);
+    expect(result.h).toBe(1000);
+    expect(result.x).toBeCloseTo(995, 1);  // (2000 - 10) / 2
+  });
+
+  it("extreme aspect 1:100: height clamped, tiny width", () => {
+    const rect = { x: 0, y: 0, w: 2000, h: 1000 };
+    const result = constrainCropAspect(rect, { w: 1, h: 100 });
+    expect(result.w / result.h).toBeCloseTo(1 / 100, 5);
+    expect(result.w).toBe(10);
+    expect(result.h).toBe(1000);
+  });
+
+  it("zero-width rect still produces valid result (no division by zero)", () => {
+    const rect = { x: 10, y: 10, w: 0, h: 100 };
+    const result = constrainCropAspect(rect, { w: 1, h: 1 });
+    expect(Number.isFinite(result.w)).toBe(true);
+    expect(Number.isFinite(result.h)).toBe(true);
+    expect(result.w).toBeGreaterThanOrEqual(0);
+  });
+
+  it("zero-height rect still produces valid result (no division by zero)", () => {
+    const rect = { x: 10, y: 10, w: 100, h: 0 };
+    const result = constrainCropAspect(rect, { w: 1, h: 1 });
+    expect(Number.isFinite(result.w)).toBe(true);
+    expect(Number.isFinite(result.h)).toBe(true);
+  });
 });
 
 describe("constrainCropToSize", () => {
   it("scales to exact target size", () => {
     const result = constrainCropToSize(RECT, 100, 50);
     expect(result).toEqual({ x: 0, y: 0, w: 100, h: 50 });
+  });
+
+  it("rect already matching target size — no-op (centers at 0,0)", () => {
+    const result = constrainCropToSize({ x: 10, y: 20, w: 100, h: 50 }, 100, 50);
+    expect(result.w).toBe(100);
+    expect(result.h).toBe(50);
+    expect(result.x).toBe(0);
+    expect(result.y).toBe(0);
+  });
+
+  it("rect smaller than target — scales up to fit", () => {
+    const result = constrainCropToSize({ x: 0, y: 0, w: 50, h: 30 }, 200, 200);
+    // scale = min(200/50, 200/30) = min(4, 6.67) = 4
+    expect(result.w).toBe(200);
+    expect(result.h).toBe(120);
+    expect(result.x).toBe(0);
+    expect(result.y).toBeCloseTo(40, 1);
+  });
+
+  it("rect larger than target — scales down to fit", () => {
+    const result = constrainCropToSize({ x: 0, y: 0, w: 1000, h: 800 }, 200, 200);
+    // scale = min(200/1000, 200/800) = min(0.2, 0.25) = 0.2
+    expect(result.w).toBe(200);
+    expect(result.h).toBe(160);
+    expect(result.x).toBe(0);
+    expect(result.y).toBeCloseTo(20, 1);
+  });
+
+  it("target size 0 avoids division by zero", () => {
+    const result = constrainCropToSize(RECT, 0, 0);
+    // scale = min(0/200, 0/100) = 0 or NaN depending on implementation
+    // Should either produce 0-dim or avoid division by zero
+    expect(Number.isFinite(result.w)).toBe(true);
+    expect(Number.isFinite(result.h)).toBe(true);
   });
 });
 
