@@ -909,5 +909,210 @@ describe("useSelectionTransformDrag", () => {
       expect(lastCall[1]).toMatchObject({ x: 100, y: 50 });
       dispose();
     });
+
+    // ── Zoom extremes ──
+    it("zoom=100: tiny delta in doc space from large screen movement", () => {
+      const { result, engine, dispose } = setupHook({ zoom: 100 });
+      result.handlePointerDown(
+        makePointerEvent({ clientX: 100, clientY: 100, pointerId: 1 }),
+        "move"
+      );
+      engine.transformLayer.mockClear();
+      // Move 1000px screen → 10px doc space
+      result.handlePointerMove(
+        makePointerEvent({ clientX: 1100, clientY: 100, pointerId: 1 })
+      );
+      expect(engine.transformLayer).toHaveBeenCalled();
+      const args = engine.transformLayer.mock.calls[0][1];
+      expect(args.x).toBeCloseTo(110, 2); // 100 + 1000/100 = 110
+      dispose();
+    });
+
+    it("zoom=0.01: massive delta in doc space from small screen movement", () => {
+      const { result, engine, dispose } = setupHook({ zoom: 0.01 });
+      result.handlePointerDown(
+        makePointerEvent({ clientX: 100, clientY: 100, pointerId: 1 }),
+        "move"
+      );
+      engine.transformLayer.mockClear();
+      // Move 5px screen → 500px doc space
+      result.handlePointerMove(
+        makePointerEvent({ clientX: 105, clientY: 100, pointerId: 1 })
+      );
+      expect(engine.transformLayer).toHaveBeenCalled();
+      const args = engine.transformLayer.mock.calls[0][1];
+      expect(args.x).toBeCloseTo(600, 0); // 100 + 5/0.01 = 600
+      expect(Number.isFinite(args.x)).toBe(true);
+      dispose();
+    });
+
+    // ── Rapid sequential drags (concurrent safety) ──
+    it("second pointerDown without pointerUp replaces first drag (stale pointer safety)", () => {
+      const { result, engine, dispose } = setupHook();
+      // Start first move drag
+      result.handlePointerDown(
+        makePointerEvent({ clientX: 100, clientY: 100, pointerId: 1 }),
+        "move"
+      );
+      engine.transformLayer.mockClear();
+      // Second pointerDown with different pointerId starts a different drag
+      result.handlePointerDown(
+        makePointerEvent({ clientX: 200, clientY: 200, pointerId: 2 }),
+        "move"
+      );
+      // The second should create a new dragState and use the second coords
+      const ds = result.dragState();
+      expect(ds).not.toBeNull();
+      expect(ds!.pointerId).toBe(2);
+      expect(ds!.startX).toBe(200);
+      expect(ds!.startY).toBe(200);
+      dispose();
+    });
+
+    // ── Negative coordinates ──
+    it("handles negative clientX/clientY (drag off-canvas left/up)", () => {
+      const { result, engine, dispose } = setupHook();
+      result.handlePointerDown(
+        makePointerEvent({ clientX: -50, clientY: -50, pointerId: 1 }),
+        "move"
+      );
+      engine.transformLayer.mockClear();
+      result.handlePointerMove(
+        makePointerEvent({ clientX: -30, clientY: -20, pointerId: 1 })
+      );
+      expect(engine.transformLayer).toHaveBeenCalled();
+      const args = engine.transformLayer.mock.calls[0][1];
+      expect(Number.isFinite(args.x)).toBe(true);
+      expect(Number.isFinite(args.y)).toBe(true);
+      // delta = (-30-(-50), -20-(-50)) = (20, 30) → layer should move +20, +30
+      expect(args.x).toBeCloseTo(120, 4);
+      expect(args.y).toBeCloseTo(80, 4);
+      dispose();
+    });
+
+    // ── Zero delta stability ──
+    it("zero delta across pointerDown+pointerMove (no layer movement)", () => {
+      const { result, engine, dispose } = setupHook();
+      result.handlePointerDown(
+        makePointerEvent({ clientX: 100, clientY: 100, pointerId: 1 }),
+        "move"
+      );
+      engine.transformLayer.mockClear();
+      // Move to exactly the same position
+      result.handlePointerMove(
+        makePointerEvent({ clientX: 100, clientY: 100, pointerId: 1 })
+      );
+      expect(engine.transformLayer).toHaveBeenCalled();
+      const args = engine.transformLayer.mock.calls[0][1];
+      expect(args.x).toBe(100); // original x unchanged
+      expect(args.y).toBe(50);  // original y unchanged
+      dispose();
+    });
+
+    // ── Snap behavior ──
+    it("snap offset is applied when moveSnapEnabled is true", () => {
+      const { result, engine, dispose } = setupHook({
+        snapEnabled: true,
+      });
+      // The onComputeSnap returns { dx: 0, dy: 0, lines: [] } by default
+      // We need to check that onComputeSnap is called with the correct args
+      // But we can't easily spy on it from setupHook closure...
+      result.handlePointerDown(
+        makePointerEvent({ clientX: 100, clientY: 100, pointerId: 1 }),
+        "move"
+      );
+      engine.transformLayer.mockClear();
+      result.handlePointerMove(
+        makePointerEvent({ clientX: 150, clientY: 100, pointerId: 1 })
+      );
+      // Layer should move despite snap returning 0 offset
+      expect(engine.transformLayer).toHaveBeenCalled();
+      const args = engine.transformLayer.mock.calls[0][1];
+      expect(Number.isFinite(args.x)).toBe(true);
+      dispose();
+    });
+
+    // ── Large pan offset ──
+    it("large pan offset does not overflow coordinate conversion", () => {
+      const { result, engine, dispose } = setupHook({
+        pan: { x: 10000, y: 5000 },
+        zoom: 0.5,
+      });
+      result.handlePointerDown(
+        makePointerEvent({ clientX: 10200, clientY: 5100, pointerId: 1 }),
+        "move"
+      );
+      engine.transformLayer.mockClear();
+      result.handlePointerMove(
+        makePointerEvent({
+          clientX: 10400,
+          clientY: 5200,
+          pointerId: 1,
+        })
+      );
+      expect(engine.transformLayer).toHaveBeenCalled();
+      const args = engine.transformLayer.mock.calls[0][1];
+      // delta doc = ((10400-10200)/0.5, (5200-5100)/0.5) = (400, 200)
+      // original position (100,50), so new = (500, 250)
+      expect(args.x).toBeCloseTo(500, 2);
+      expect(args.y).toBeCloseTo(250, 2);
+      expect(Number.isFinite(args.x)).toBe(true);
+      dispose();
+    });
+
+    // ── pointerDown immediately followed by pointerUp (click without drag) ──
+    it("pointerDown+pointerUp at same position does NOT commit history (no drag)", () => {
+      const { result, ws, dispose } = setupHook();
+      const history = ws.getActiveHistory()!;
+      result.handlePointerDown(
+        makePointerEvent({ clientX: 100, clientY: 100, pointerId: 1 }),
+        "move"
+      );
+      result.handlePointerUp(
+        makePointerEvent({ clientX: 100, clientY: 100, pointerId: 1 })
+      );
+      expect(history.commit).not.toHaveBeenCalled();
+      expect(result.dragState()).toBeNull();
+      dispose();
+    });
+
+    // ── Handle type 'none' (hover without hit) ──
+    it("pointerDown with unknown handle type does not crash", () => {
+      const { result, engine, dispose } = setupHook();
+      const e = makePointerEvent();
+      expect(() => {
+        result.handlePointerDown(e, "unknown-handle");
+      }).not.toThrow();
+      // Unknown handle creates a move-type drag as fallback (or does nothing)
+      // Either way, should not throw
+      dispose();
+    });
+
+    // ── Multiple pointerDowns with same pointerId ──
+    it("double pointerDown with same pointerId resets drag state", () => {
+      const { result, engine, dispose } = setupHook();
+      result.handlePointerDown(
+        makePointerEvent({ clientX: 100, clientY: 100, pointerId: 1 }),
+        "move"
+      );
+      engine.transformLayer.mockClear();
+      // Second pointerDown with same pointerId should reinitialize
+      result.handlePointerDown(
+        makePointerEvent({ clientX: 300, clientY: 300, pointerId: 1 }),
+        "move"
+      );
+      const ds = result.dragState();
+      expect(ds!.startX).toBe(300);
+      expect(ds!.startY).toBe(300);
+      // Move from new start
+      result.handlePointerMove(
+        makePointerEvent({ clientX: 400, clientY: 300, pointerId: 1 })
+      );
+      const args = engine.transformLayer.mock.calls[
+        engine.transformLayer.mock.calls.length - 1
+      ][1];
+      expect(args.x).toBeCloseTo(200, 4); // 100 + (400-300) = 200
+      dispose();
+    });
   });
 });

@@ -47,7 +47,7 @@ export function commitLayerTransformSession(
   // entry to the undo stack — undoing it produces no visual change and makes
   // the user feel they can't undo all the way back to the original state.
   // (Regression 2026-06-18 follow-up.)
-  if (transformsEqual(layer.transform, session.originalTransform)) {
+  if (!layer.transform || transformsEqual(layer.transform, session.originalTransform)) {
     return true;
   }
 
