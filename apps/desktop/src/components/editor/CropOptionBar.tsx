@@ -49,6 +49,7 @@ export function CropOptionBar() {
     zoom, pan,
     activeDocumentId,
     commitCropState,
+    commitModernCropState,
   } = useEditor();
 
   const [showCustomRatio, setShowCustomRatio] = createSignal(false);
@@ -577,6 +578,8 @@ export function CropOptionBar() {
           suffix="°"
           onSubmit={(v) => {
             if (cropInteractionMode() === "modern") {
+              const frame = modernCropFrame();
+              if (frame) commitModernCropState();
               setModernCropImageTransform((prev) => ({ ...prev, rotation: v }));
             } else {
               const r = cropRect();
@@ -593,6 +596,8 @@ export function CropOptionBar() {
             <button
               onClick={() => {
                 if (cropInteractionMode() === "modern") {
+                  const frame = modernCropFrame();
+                  if (frame) commitModernCropState();
                   setModernCropImageTransform((prev) => ({ ...prev, rotation: prev.rotation - 90 }));
                 } else {
                   const rect = cropRect();
@@ -615,6 +620,8 @@ export function CropOptionBar() {
             <button
               onClick={() => {
                 if (cropInteractionMode() === "modern") {
+                  const frame = modernCropFrame();
+                  if (frame) commitModernCropState();
                   setModernCropImageTransform((prev) => ({ ...prev, rotation: prev.rotation + 90 }));
                 } else {
                   const rect = cropRect();
@@ -727,6 +734,8 @@ export function CropOptionBar() {
             suffix="°"
             onSubmit={(v) => {
               if (cropInteractionMode() === "modern") {
+                const frame = modernCropFrame();
+                if (frame) commitModernCropState();
                 setModernCropImageTransform((prev) => ({ ...prev, rotation: v }));
               } else {
                 const r = cropRect();
@@ -746,6 +755,8 @@ export function CropOptionBar() {
               <button
                 onClick={() => {
                   if (cropInteractionMode() === "modern") {
+                    const frame = modernCropFrame();
+                    if (frame) commitModernCropState();
                     setModernCropImageTransform((prev) => ({ ...prev, rotation: prev.rotation - 90 }));
                   } else {
                     const rect = cropRect();
@@ -768,6 +779,8 @@ export function CropOptionBar() {
               <button
                 onClick={() => {
                   if (cropInteractionMode() === "modern") {
+                    const frame = modernCropFrame();
+                    if (frame) commitModernCropState();
                     setModernCropImageTransform((prev) => ({ ...prev, rotation: prev.rotation + 90 }));
                   } else {
                     const rect = cropRect();

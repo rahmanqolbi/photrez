@@ -1685,7 +1685,7 @@ describe("CropOverlay viewport panning", () => {
     container.parentNode?.removeChild(container);
   });
 
-  it("modern crop: Escape during resize drag clears dragState", () => {
+  it("modern crop: Escape during resize drag restores startFrame and startTransform", () => {
     const origSet = SVGElement.prototype.setPointerCapture;
     SVGElement.prototype.setPointerCapture = vi.fn();
     const origRelease = SVGElement.prototype.releasePointerCapture;
@@ -1734,8 +1734,17 @@ describe("CropOverlay viewport panning", () => {
 
     expect(onFrameChange).toHaveBeenCalled();
     onFrameChange.mockClear();
+    onImageTransformChange.mockClear();
 
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+
+    // Escape should restore startFrame ({ x: 350, y: 300, w: 300, h: 200 })
+    expect(onFrameChange).toHaveBeenCalledWith({ x: 350, y: 300, w: 300, h: 200 });
+    // Escape should restore startTransform ({ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 })
+    expect(onImageTransformChange).toHaveBeenCalledWith({ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 });
+
+    onFrameChange.mockClear();
+    onImageTransformChange.mockClear();
 
     svgEl.dispatchEvent(
       new PointerEvent("pointermove", {
@@ -1744,7 +1753,9 @@ describe("CropOverlay viewport panning", () => {
       }),
     );
 
+    // After Escape clears dragState, further moves should NOT call handlers
     expect(onFrameChange).not.toHaveBeenCalled();
+    expect(onImageTransformChange).not.toHaveBeenCalled();
 
     SVGElement.prototype.setPointerCapture = origSet;
     SVGElement.prototype.releasePointerCapture = origRelease;
@@ -1752,7 +1763,7 @@ describe("CropOverlay viewport panning", () => {
     container.parentNode?.removeChild(container);
   });
 
-  it("modern crop: Escape during move drag clears dragState", () => {
+  it("modern crop: Escape during move drag restores startTransform", () => {
     const origSet = SVGElement.prototype.setPointerCapture;
     SVGElement.prototype.setPointerCapture = vi.fn();
     const origRelease = SVGElement.prototype.releasePointerCapture;
@@ -1804,6 +1815,11 @@ describe("CropOverlay viewport panning", () => {
 
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
 
+    // Escape should restore startTransform ({ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 })
+    expect(onImageTransformChange).toHaveBeenCalledWith({ offsetX: 0, offsetY: 0, rotation: 0, scale: 1 });
+
+    onImageTransformChange.mockClear();
+
     svgEl.dispatchEvent(
       new PointerEvent("pointermove", {
         pointerId: 13, bubbles: true, cancelable: true,
@@ -1811,6 +1827,7 @@ describe("CropOverlay viewport panning", () => {
       }),
     );
 
+    // After Escape clears dragState, further moves should NOT call handlers
     expect(onImageTransformChange).not.toHaveBeenCalled();
 
     SVGElement.prototype.setPointerCapture = origSet;

@@ -1698,7 +1698,7 @@ describe("CanvasViewport Modern Crop dashed canvas boundary line", () => {
     vi.restoreAllMocks();
   });
 
-  it("dashed canvas boundary line is at doc position, NOT affected by image transform offset/scale", async () => {
+  it("dashed canvas boundary line follows image transform offset and scale", async () => {
     const session = WorkspaceManager.createBlankDocument(
       "doc-dashed",
       "Doc",
@@ -1762,11 +1762,11 @@ describe("CanvasViewport Modern Crop dashed canvas boundary line", () => {
     ) as SVGRectElement | null;
     expect(dashedAfterOffset).not.toBeNull();
 
-    // The dashed line should be at the SAME doc position (NOT affected by offset)
-    expect(dashedAfterOffset!.getAttribute("x")).toBe(dashXBefore);
-    expect(dashedAfterOffset!.getAttribute("y")).toBe(dashYBefore);
-    expect(dashedAfterOffset!.getAttribute("width")).toBe(dashWBefore);
-    expect(dashedAfterOffset!.getAttribute("height")).toBe(dashHBefore);
+    // The dashed line should follow the image transform offset and scale
+    expect(parseFloat(dashedAfterOffset!.getAttribute("x")!)).toBeCloseTo(parseFloat(dashXBefore!) + 50, 1);
+    expect(parseFloat(dashedAfterOffset!.getAttribute("y")!)).toBeCloseTo(parseFloat(dashYBefore!) + 30, 1);
+    expect(parseFloat(dashedAfterOffset!.getAttribute("width")!)).toBeCloseTo(parseFloat(dashWBefore!) * 1.5, 1);
+    expect(parseFloat(dashedAfterOffset!.getAttribute("height")!)).toBeCloseTo(parseFloat(dashHBefore!) * 1.5, 1);
   });
 });
 

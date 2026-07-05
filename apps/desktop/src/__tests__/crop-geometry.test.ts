@@ -78,6 +78,80 @@ describe("applyCropResizeHandle — Free mode", () => {
   });
 });
 
+describe("applyCropResizeHandle — edge cases", () => {
+  it("extreme aspect ratio (100:1) maintains ratio", () => {
+    const rect = { x: 100, y: 100, w: 800, h: 8 };
+    const result = applyCropResizeHandle(rect, "se", 40, 0, {
+      constraint: "ratio", aspect: { w: 100, h: 1 },
+    });
+    expect(result.w / result.h).toBeCloseTo(100, 5);
+  });
+
+  it("extreme aspect ratio (1:100) maintains ratio", () => {
+    const rect = { x: 100, y: 100, w: 8, h: 800 };
+    const result = applyCropResizeHandle(rect, "se", 0, 40, {
+      constraint: "ratio", aspect: { w: 1, h: 100 },
+    });
+    expect(result.w / result.h).toBeCloseTo(1 / 100, 5);
+  });
+
+  it("zero delta returns same rect", () => {
+    const result = applyCropResizeHandle(RECT, "se", 0, 0);
+    expect(result).toEqual(RECT);
+  });
+
+  it("all eight handles with zero delta return same rect", () => {
+    for (const handle of ["e", "w", "n", "s", "ne", "nw", "se", "sw"]) {
+      const result = applyCropResizeHandle(RECT, handle, 0, 0);
+      expect(result).toEqual(RECT);
+    }
+  });
+
+  it("size mode with zero-size target uses aspect", () => {
+    const result = applyCropResizeHandle(RECT, "se", 30, 0, {
+      constraint: "size", aspect: { w: 4, h: 3 },
+    });
+    expect(result.w / result.h).toBeCloseTo(4 / 3, 6);
+  });
+
+  it("shift in free mode = proportional (square aspect)", () => {
+    const result = applyCropResizeHandle(RECT, "se", 30, 10, {
+      shift: true,
+    });
+    // In free mode: shift+corner should preserve the current aspect ratio
+    expect(result.w / result.h).toBeCloseTo(200 / 100, 4);
+  });
+
+  it("shift in ratio mode = free resize (temporarily break ratio)", () => {
+    const result = applyCropResizeHandle(RECT, "se", 30, 10, {
+      constraint: "ratio", aspect: { w: 16, h: 9 }, shift: true,
+    });
+    // shift=true in ratio mode should do FREEE resize (not proportional)
+    // Free: w += 30, h += 10
+    expect(result.w).toBeCloseTo(230, 6);
+    expect(result.h).toBeCloseTo(110, 6);
+    expect(result.w / result.h).not.toBeCloseTo(200 / 100, 4);
+  });
+
+  it("alt + shift in ratio mode: center-out free resize", () => {
+    const result = applyCropResizeHandle(RECT, "nw", 10, 10, {
+      constraint: "ratio", aspect: { w: 16, h: 9 }, alt: true, shift: true,
+    });
+    expect(result.w).toBeCloseTo(180, 2);
+    expect(result.h).toBeCloseTo(80, 2);
+  });
+
+  it("prevents degenerate rect sizes below 1", () => {
+    // Drag SE corner far up-left to try to create negative size
+    const result = applyCropResizeHandle(
+      { x: 100, y: 100, w: 200, h: 150 },
+      "se", -500, -400,
+    );
+    expect(result.w).toBeGreaterThanOrEqual(1);
+    expect(result.h).toBeGreaterThanOrEqual(1);
+  });
+});
+
 describe("screenDeltaToRotatedCropLocalDelta", () => {
   it("keeps resize deltas unchanged when crop rotation is zero", () => {
     expect(screenDeltaToRotatedCropLocalDelta(12, -8, 0)).toEqual({ dx: 12, dy: -8 });
@@ -271,6 +345,64 @@ describe("applyCropMove", () => {
   it("does not clamp right edge", () => {
     const result = applyCropMove(RECT, 400, 0, 500, 500);
     expect(result.x).toBe(410);
+  });
+
+  it("zero delta returns same rect", () => {
+    const result = applyCropMove(RECT, 0, 0, 500, 500);
+    expect(result).toEqual(RECT);
+  });
+
+  it("extreme delta still returns valid rect", () => {
+    const result = applyCropMove(RECT, 10000, -5000, 500, 500);
+    expect(Number.isFinite(result.x)).toBe(true);
+    expect(Number.isFinite(result.y)).toBe(true);
+    expect(result.w).toBe(200);
+    expect(result.h).toBe(100);
+  });
+
+  it("does not clamp above canvas bounds", () => {
+    const result = applyCropMove(RECT, 10000, 0, 500, 500);
+    expect(result.x).toBeGreaterThan(500);
+  });
+
+  it("does not clamp below canvas bounds", () => {
+    const result = applyCropMove(RECT, -10000, 0, 500, 500);
+    expect(result.x).toBeLessThan(0);
+  });
+});
+
+describe("constrainCropRectToDocument — edge cases", () => {
+  it("negative width/height gets clamped to 1", () => {
+    const result = constrainCropRectToDocument({ x: 10, y: 10, w: -50, h: -30 }, 500, 500);
+    expect(result.w).toBe(1);
+    expect(result.h).toBe(1);
+  });
+
+  it("zero width/height gets clamped to 1", () => {
+    const result = constrainCropRectToDocument({ x: 10, y: 10, w: 0, h: 0 }, 500, 500);
+    expect(result.w).toBe(1);
+    expect(result.h).toBe(1);
+  });
+
+  it("NaN coordinates produce NaN in result (caller must sanitize before engine)", () => {
+    // constrainCropRectToDocument only enforces minimum width/height >= 1.
+    // NaN x/y propagate through Math.min/Math.max unchanged.
+    const result = constrainCropRectToDocument({ x: NaN, y: NaN, w: 100, h: 100 }, 500, 500);
+    expect(Number.isNaN(result.x)).toBe(true);
+    expect(Number.isNaN(result.y)).toBe(true);
+    expect(result.w).toBe(100);
+    expect(result.h).toBe(100);
+  });
+  
+  it("Infinity values produce Infinity in result (caller must sanitize before engine)", () => {
+    // NaN/Infinity aren't sanitized by constrainCropRectToDocument.
+    // The caller (cropToolActions.applyCropPreview) rounds to integers via
+    // Math.round before passing to engine.applyCrop, which handles them.
+    const result = constrainCropRectToDocument({ x: Infinity, y: -Infinity, w: 100, h: 100 }, 500, 500);
+    expect(result.x).toBe(Infinity);
+    expect(result.y).toBe(-Infinity);
+    expect(result.w).toBe(100);
+    expect(result.h).toBe(100);
   });
 });
 

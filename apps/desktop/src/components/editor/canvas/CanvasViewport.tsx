@@ -419,7 +419,10 @@ export function CanvasViewport() {
           : null;
 
     const aspectKey = aspect ? `${aspect.w}x${aspect.h}` : "";
-    const sessionKey = `${activeDocumentId() ?? "none"}:${viewportWidth()}x${viewportHeight()}:${zoom()}:${mode}:${aspectKey}`;
+    // Intentionally NOT including zoom() in session key — zoom changes
+    // should NOT recreate the frame or recenter the viewport. The frame
+    // is in viewport coordinates and must stay where the user placed it.
+    const sessionKey = `${activeDocumentId() ?? "none"}:${viewportWidth()}x${viewportHeight()}:${mode}:${aspectKey}`;
     if (lastModernCropSessionKey !== sessionKey) {
       lastModernCropSessionKey = sessionKey;
       // Center document in viewport so frame + document align on entry
@@ -497,16 +500,51 @@ export function CanvasViewport() {
   });
 
   // Derived canvas screen rect for expansion fill indicator →memo outside Show to guarantee reactivity
-  // The dashed canvas boundary line represents the DOC boundary, not the
-  // image's transformed position. So it should be at pan + 0, size = doc * zoom,
-  // independent of modernCropImageTransform (offset/scale/rotation).
+  // The dashed canvas boundary line represents the TRANSFORMED image boundary,
+  // including offset/scale/rotation from modernCropImageTransform. This ensures
+  // the expansion fill and dashed outline track the image, not just the
+  // viewport-space doc position.
   const canvasScreenRect = createMemo(() => {
-    if (modernCropImageTransform().rotation !== 0) return null;
+    const p = pan();
+    const z = zoom();
+    const docW = docWidth();
+    const docH = docHeight();
+    const transform = modernCropImageTransform();
+    // Apply image offset and scale so the dashed line tracks the image
+    const sx = p.x + transform.offsetX;
+    const sy = p.y + transform.offsetY;
+    const sz = z * (transform.scale ?? 1);
+    const rot = transform.rotation;
+    if (rot !== 0) {
+      // Under rotation the document is skewed; compute an axis-aligned
+      // bounding box that covers the rotated canvas so the expansion
+      // fill and dashed boundary outline remain visible as reference.
+      const cx = sx + (docW * sz) / 2;
+      const cy = sy + (docH * sz) / 2;
+      const rad = (Math.abs(rot) * Math.PI) / 180;
+      const hw = (docW * sz) / 2;
+      const hh = (docH * sz) / 2;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      // Rotate the four corners and find the bounding box
+      const corners = [
+        { x: -hw, y: -hh }, { x: hw, y: -hh },
+        { x: hw, y: hh }, { x: -hw, y: hh },
+      ].map(c => ({
+        x: c.x * cos - c.y * sin + cx,
+        y: c.x * sin + c.y * cos + cy,
+      }));
+      const minX = Math.min(...corners.map(c => c.x));
+      const minY = Math.min(...corners.map(c => c.y));
+      const maxX = Math.max(...corners.map(c => c.x));
+      const maxY = Math.max(...corners.map(c => c.y));
+      return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+    }
     return {
-      x: pan().x,
-      y: pan().y,
-      w: docWidth() * zoom(),
-      h: docHeight() * zoom(),
+      x: sx,
+      y: sy,
+      w: docW * sz,
+      h: docH * sz,
     };
   });
 

@@ -120,11 +120,11 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
     if (requiresDocument(command) && !editor.activeDocumentId()) return false;
     if (command === "edit.undo") {
       return editor.layerTransformSession() !== null
-        || (editor.activeTool() === "crop" && editor.canCropUndo())
+        || (editor.activeTool() === "crop" && (editor.canCropUndo() || editor.canModernCropUndo()))
         || editor.workspace.getActiveHistory()?.canUndo() === true;
     }
     if (command === "edit.redo") {
-      return (editor.activeTool() === "crop" && editor.canCropRedo())
+      return (editor.activeTool() === "crop" && (editor.canCropRedo() || editor.canModernCropRedo()))
         || editor.workspace.getActiveHistory()?.canRedo() === true;
     }
     const engine = editor.workspace.getActiveEngine();
@@ -171,13 +171,26 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
     }
 
     if (editor.activeTool() === "crop") {
-      const state = direction === "undo"
-        ? (editor.canCropUndo() ? editor.undoLastCrop() : null)
-        : (editor.canCropRedo() ? editor.redoCrop() : null);
-      if (state) {
-        editor.setCropRect(state.rect);
-        editor.setCropRotation(state.rotation);
-        return;
+      // Try modern crop undo/redo first (current interaction mode)
+      if (editor.cropInteractionMode() === "modern") {
+        const state = direction === "undo"
+          ? (editor.canModernCropUndo() ? editor.undoModernCrop() : null)
+          : (editor.canModernCropRedo() ? editor.redoModernCrop() : null);
+        if (state) {
+          editor.setModernCropFrame({ ...state.frame });
+          editor.setModernCropImageTransform({ ...state.transform });
+          return;
+        }
+      } else {
+        // Classic crop undo/redo
+        const state = direction === "undo"
+          ? (editor.canCropUndo() ? editor.undoLastCrop() : null)
+          : (editor.canCropRedo() ? editor.redoCrop() : null);
+        if (state) {
+          editor.setCropRect(state.rect);
+          editor.setCropRotation(state.rotation);
+          return;
+        }
       }
     }
 

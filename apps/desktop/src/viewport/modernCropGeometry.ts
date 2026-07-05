@@ -227,9 +227,9 @@ export function resizeModernFrameOneSided(params: {
       params.deltaX,
       params.deltaY,
       {
-        constraint: "free",
-        aspect: null,
-        shift: params.cropMode === "free",
+        constraint: params.cropMode,
+        aspect: params.aspect,
+        shift: true,
         alt: params.alt,
       },
     );

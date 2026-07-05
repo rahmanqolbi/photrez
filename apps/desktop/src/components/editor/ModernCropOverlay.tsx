@@ -71,6 +71,7 @@ type DragState =
       pointerId: number;
       startAngle: number;
       startRotation: number;
+      startTransform: ModernCropImageTransform;
     };
 
 export function ModernCropOverlay(props: ModernCropOverlayProps) {
@@ -207,6 +208,7 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
       pointerId: e.pointerId,
       startAngle: pointerAngle(e),
       startRotation: props.imageTransform.rotation,
+      startTransform: { ...props.imageTransform },
     });
   };
 
@@ -289,6 +291,15 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
   onMount(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && dragState()) {
+        const drag = dragState()!;
+        if (drag.kind === "resize") {
+          props.onFrameChange({ ...drag.startFrame });
+          props.onImageTransformChange({ ...drag.startTransform });
+        } else if (drag.kind === "move") {
+          props.onImageTransformChange({ ...drag.startTransform });
+        } else if (drag.kind === "rotate") {
+          props.onImageTransformChange({ ...drag.startTransform });
+        }
         clearDrag();
       }
     };
@@ -323,17 +334,26 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
     const vw = props.viewportWidth;
     const vh = props.viewportHeight;
     const rects: Array<{ x: number; y: number; w: number; h: number }> = [];
-    const lW = sr.x;
+    // Clamp frame bounds to viewport so dark overlay always covers visible area
+    const left = Math.max(0, sr.x);
+    const right = Math.min(vw, sr.x + sr.w);
+    const top = Math.max(0, sr.y);
+    const bottom = Math.min(vh, sr.y + sr.h);
+    const visibleW = right - left;
+    const visibleH = bottom - top;
+    // Left strip — full height
+    const lW = left;
     if (lW > 0) rects.push({ x: 0, y: 0, w: lW, h: vh });
-    const rW = vw - (sr.x + sr.w);
-    if (rW > 0) rects.push({ x: sr.x + sr.w, y: 0, w: rW, h: vh });
-    const tW = Math.min(vw, sr.w);
-    const tH = sr.y;
-    if (tW > 0 && tH > 0)
-      rects.push({ x: Math.max(0, sr.x), y: 0, w: tW, h: tH });
-    const bH = vh - (sr.y + sr.h);
-    if (tW > 0 && bH > 0)
-      rects.push({ x: Math.max(0, sr.x), y: sr.y + sr.h, w: tW, h: bH });
+    // Right strip — full height
+    const rW = vw - right;
+    if (rW > 0) rects.push({ x: right, y: 0, w: rW, h: vh });
+    // Top strip — only the visible portion of the frame width
+    if (visibleW > 0 && top > 0)
+      rects.push({ x: left, y: 0, w: visibleW, h: top });
+    // Bottom strip
+    const bH = vh - bottom;
+    if (visibleW > 0 && bH > 0)
+      rects.push({ x: left, y: bottom, w: visibleW, h: bH });
     return rects;
   });
 

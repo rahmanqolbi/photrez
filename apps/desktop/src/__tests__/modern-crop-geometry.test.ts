@@ -23,10 +23,41 @@ describe("modern crop geometry", () => {
     expect(getProjectedCanvasSize({ docWidth: 1600, docHeight: 900, zoom: 2, scale: 2 })).toEqual({ w: 6400, h: 3600 });
   });
 
+  it("extreme zoom: 0.01 zoom produces tiny projected canvas", () => {
+    const result = getProjectedCanvasSize({ docWidth: 1600, docHeight: 900, zoom: 0.01 });
+    expect(result.w).toBe(16);
+    expect(result.h).toBe(9);
+  });
+
+  it("extreme zoom: 100x zoom produces huge projected canvas (no overflow)", () => {
+    const result = getProjectedCanvasSize({ docWidth: 1600, docHeight: 900, zoom: 100 });
+    expect(result.w).toBe(160000);
+    expect(result.h).toBe(90000);
+    expect(Number.isFinite(result.w)).toBe(true);
+    expect(Number.isFinite(result.h)).toBe(true);
+  });
+
   it("enforces minimum frame size but does not cap at projected bounds", () => {
     expect(clampFrameToProjectedBounds(f(500, 300), { w: 400, h: 300 })).toEqual({ x: 0, y: 0, w: 500, h: 300 });
     expect(clampFrameToProjectedBounds(f(200, 100), { w: 400, h: 300 })).toEqual({ x: 0, y: 0, w: 200, h: 100 });
     expect(clampFrameToProjectedBounds(f(10, 10), { w: 400, h: 300 })).toEqual({ x: 0, y: 0, w: 24, h: 24 });
+  });
+
+  it("clampFrameToProjectedBounds with zero projected bounds (frame stays as-is since it exceeds min)", () => {
+    // clampFrameToProjectedBounds only enforces minimum size when the frame
+    // is below that minimum. Zero projected bounds don't trigger a cap.
+    const result = clampFrameToProjectedBounds(f(100, 100), { w: 0, h: 0 });
+    expect(result.w).toBe(100);
+    expect(result.h).toBe(100);
+    expect(Number.isFinite(result.w)).toBe(true);
+  });
+
+  it("clampFrameToProjectedBounds with negative projected bounds (frame stays as-is)", () => {
+    // Negative projected bounds don't trigger min-size clamp since the frame
+    // (100x100) is already above minimum (24x24).
+    const result = clampFrameToProjectedBounds(f(100, 100), { w: -1, h: -1 });
+    expect(result.w).toBe(100);
+    expect(result.h).toBe(100);
   });
 
   it("centers the frame in viewport coordinates", () => {
@@ -68,6 +99,12 @@ describe("modern crop geometry", () => {
     expect(getModernCropApplyRotation(90)).toBe(-90);
     expect(getModernCropApplyRotation(-45)).toBe(45);
     expect(getModernCropApplyRotation(0)).toBe(0);
+  });
+
+  it("converts rotation at edge cases: 180, 360, -180", () => {
+    expect(getModernCropApplyRotation(180)).toBe(-180);
+    expect(getModernCropApplyRotation(360)).toBe(-360);
+    expect(getModernCropApplyRotation(-180)).toBe(180);
   });
 
   it("keeps the cropbox center pinned when inverting a rotated modern transform", () => {
@@ -334,6 +371,176 @@ it("maps a rotated modern frame to the visual crop size, not its document-space 
 
     expect(delta.x).toBeCloseTo(0);
     expect(delta.y).toBeCloseTo(-10);
+  });
+});
+
+describe("modernScreenDeltaToImageOffsetDelta — all angles", () => {
+  it("0 degrees: no change", () => {
+    const delta = modernScreenDeltaToImageOffsetDelta({ x: 10, y: 5 }, 0);
+    expect(delta.x).toBeCloseTo(10);
+    expect(delta.y).toBeCloseTo(5);
+  });
+
+  it("45 degrees: both axes are mixed", () => {
+    const delta = modernScreenDeltaToImageOffsetDelta({ x: 10, y: 0 }, 45);
+    expect(delta.x).toBeCloseTo(7.071, 3);
+    expect(delta.y).toBeCloseTo(-7.071, 3);
+  });
+
+  it("90 degrees: x maps to -y, y maps to x", () => {
+    const delta = modernScreenDeltaToImageOffsetDelta({ x: 10, y: 5 }, 90);
+    expect(delta.x).toBeCloseTo(5);
+    expect(delta.y).toBeCloseTo(-10);
+  });
+
+  it("180 degrees: both axes inverted", () => {
+    const delta = modernScreenDeltaToImageOffsetDelta({ x: 10, y: 5 }, 180);
+    expect(delta.x).toBeCloseTo(-10);
+    expect(delta.y).toBeCloseTo(-5);
+  });
+
+  it("270 degrees: x maps to y, y maps to -x", () => {
+    const delta = modernScreenDeltaToImageOffsetDelta({ x: 10, y: 5 }, 270);
+    expect(delta.x).toBeCloseTo(-5);
+    expect(delta.y).toBeCloseTo(10);
+  });
+
+  it("-45 degrees: both axes mixed in opposite direction", () => {
+    const delta = modernScreenDeltaToImageOffsetDelta({ x: 10, y: 0 }, -45);
+    expect(delta.x).toBeCloseTo(7.071, 3);
+    expect(delta.y).toBeCloseTo(7.071, 3);
+  });
+
+  it("zero delta at any angle returns zero", () => {
+    const delta = modernScreenDeltaToImageOffsetDelta({ x: 0, y: 0 }, 45);
+    expect(delta.x).toBeCloseTo(0);
+    expect(delta.y).toBeCloseTo(0);
+  });
+});
+
+describe("modernFrameToCropRect — edge cases", () => {
+  it("handles extreme zoom (100x) without overflow", () => {
+    const rect = modernFrameToCropRect({
+      frame: f(400, 300, 400, 250),
+      viewport: { width: 1000, height: 800, panX: 0, panY: 0, zoom: 100 },
+      transform: { offsetX: 0, offsetY: 0, rotation: 0, scale: 1 },
+    });
+    expect(Number.isFinite(rect.x)).toBe(true);
+    expect(Number.isFinite(rect.y)).toBe(true);
+    expect(Number.isFinite(rect.w)).toBe(true);
+    expect(Number.isFinite(rect.h)).toBe(true);
+  });
+
+  it("handles extreme offset + rotation combination", () => {
+    const rect = modernFrameToCropRect({
+      frame: f(400, 300, 400, 250),
+      viewport: { width: 1000, height: 800, panX: 100, panY: 50, zoom: 1 },
+      transform: { offsetX: 500, offsetY: -300, rotation: 45, scale: 2 },
+    });
+    expect(Number.isFinite(rect.x)).toBe(true);
+    expect(Number.isFinite(rect.y)).toBe(true);
+    expect(Number.isFinite(rect.w)).toBe(true);
+    expect(Number.isFinite(rect.h)).toBe(true);
+  });
+});
+
+describe("getModernCropImagePivot — edge cases", () => {
+  it("zero rotation with extreme scale produces valid pivot", () => {
+    const pivot = getModernCropImagePivot({
+      frame: f(400, 240, 400, 260),
+      viewport: { width: 1200, height: 760, panX: 0, panY: 0, zoom: 1 },
+      transform: { offsetX: 0, offsetY: 0, rotation: 0, scale: 10 },
+    });
+    expect(Number.isFinite(pivot.screen.x)).toBe(true);
+    expect(Number.isFinite(pivot.document.x)).toBe(true);
+    expect(pivot.document.x).toBeCloseTo(pivot.screen.x / 10);
+    expect(pivot.document.y).toBeCloseTo(pivot.screen.y / 10);
+  });
+
+  it("zero-size frame returns NaN-free pivot", () => {
+    const pivot = getModernCropImagePivot({
+      frame: f(0, 0, 0, 0),
+      viewport: { width: 1000, height: 800, panX: 0, panY: 0, zoom: 1 },
+      transform: { offsetX: 0, offsetY: 0, rotation: 0, scale: 1 },
+    });
+    expect(Number.isFinite(pivot.screen.x)).toBe(true);
+    expect(Number.isFinite(pivot.screen.y)).toBe(true);
+    expect(pivot.screen.x).toBe(0);
+    expect(pivot.screen.y).toBe(0);
+  });
+});
+
+describe("resizeModernFrameOneSided — additional edge cases", () => {
+  it("all edge handles (n, s, e, w) clamp to min size on extreme inward drag", () => {
+    const frame = f(400, 300);
+    const handles = ["n", "s", "e", "w"] as const;
+    for (const handle of handles) {
+      const result = resizeModernFrameOneSided({
+        frame, handle, deltaX: handle === "e" || handle === "w" ? 500 : 0,
+        deltaY: handle === "n" || handle === "s" ? 500 : 0,
+        viewportWidth: 1200, viewportHeight: 800,
+      });
+      expect(result.frame.w).toBeGreaterThanOrEqual(24);
+      expect(result.frame.h).toBeGreaterThanOrEqual(24);
+      expect(Number.isFinite(result.frame.w)).toBe(true);
+      expect(Number.isFinite(result.frame.h)).toBe(true);
+      expect(Number.isFinite(result.compensation.x)).toBe(true);
+      expect(Number.isFinite(result.compensation.y)).toBe(true);
+    }
+  });
+
+  it("all edge handles (n, s, e, w) work with ratio constraint (min size)", () => {
+    // Start with a frame above minimum size. Apply extreme inward delta.
+    // Ratio-constrained resize clamps at the aspect-ratio-aware minimum
+    // (which may be > 24 for one axis depending on the aspect ratio).
+    const frame = f(100, 75);
+    const handles = ["n", "s", "e", "w"] as const;
+    for (const handle of handles) {
+      const result = resizeModernFrameOneSided({
+        frame, handle, deltaX: handle === "e" || handle === "w" ? 500 : 0,
+        deltaY: handle === "n" || handle === "s" ? 500 : 0,
+        viewportWidth: 1200, viewportHeight: 800,
+        aspect: { w: 4, h: 3 }, cropMode: "ratio",
+      });
+      expect(result.frame.w).toBeGreaterThanOrEqual(18);
+      expect(result.frame.h).toBeGreaterThanOrEqual(18);
+      expect(Number.isFinite(result.frame.w)).toBe(true);
+      expect(Number.isFinite(result.frame.h)).toBe(true);
+      // Ratio should be maintained when above minimum
+      if (result.frame.w > 18 && result.frame.h > 18) {
+        expect(result.frame.w / result.frame.h).toBeCloseTo(4 / 3, 6);
+      }
+    }
+  });
+
+  it("shift+corner in ratio mode passes constraint=ratio + shift=true (free resize)", () => {
+    // This tests the fix: old code had constraint="free" hardcoded,
+    // which ignored the ratio lock. Now it passes constraint=ratio + shift=true
+    // which means applyCropResizeHandle handles the shift override correctly.
+    const result = resizeModernFrameOneSided({
+      frame: f(400, 300), handle: "se", deltaX: 80, deltaY: 30,
+      viewportWidth: 1200, viewportHeight: 800,
+      aspect: { w: 16, h: 9 }, cropMode: "ratio", shift: true,
+    });
+    // shift=true in ratio mode = free resize (no ratio constraint)
+    // So the result should NOT have 16:9 aspect ratio
+    expect(result.frame.w / result.frame.h).not.toBeCloseTo(16 / 9, 1);
+    // But should still be reasonable dimensions
+    expect(result.frame.w).toBeGreaterThan(400);
+    expect(result.frame.h).toBeGreaterThan(300);
+  });
+
+  it("shift+corner in free mode passes constraint=free + shift=true (proportional)", () => {
+    const result = resizeModernFrameOneSided({
+      frame: f(400, 300), handle: "se", deltaX: 80, deltaY: 30,
+      viewportWidth: 1200, viewportHeight: 800,
+      cropMode: "free", shift: true,
+    });
+    // shift=true in free mode = proportional resize (square aspect)
+    // w and h should grow proportionally
+    expect(result.frame.w).toBeGreaterThan(400);
+    expect(result.frame.h).toBeGreaterThan(300);
+    expect(result.frame.w / result.frame.h).toBeCloseTo(4 / 3, 6);
   });
 });
 
@@ -674,8 +881,8 @@ describe("modern crop one-sided resize", () => {
     it("SE corner outward: per-move delta stable (no aspect-ratio amplification)", () => {
       let frame = f(400, 300);
       // Alternating axis dominance: |dw| > |dh| then |dh| > |dw|
-      // Old axis-threshold code produces deltas oscillating by ~1.777× (the aspect ratio).
-      // With diagonal projection, per-move deltas remain within 1.3× of each other.
+      // Old axis-threshold code produces deltas oscillating by ~1.777x (the aspect ratio).
+      // With diagonal projection, per-move deltas remain within 1.3x of each other.
       const moves = [{ dx: 15, dy: 12 }, { dx: 12, dy: 15 }, { dx: 15, dy: 12 }, { dx: 12, dy: 15 }];
       const widths: number[] = [400];
       for (const m of moves) {
@@ -1014,7 +1221,7 @@ describe("modern crop one-sided resize", () => {
   });
 
   describe("edge cases — minimum size and extreme aspect ratios", () => {
-    it("resize from minimum 24×24 does not produce NaN or sub-1 dimensions", () => {
+    it("resize from minimum 24x24 does not produce NaN or sub-1 dimensions", () => {
       const frame = f(24, 24);
       const result = resizeModernFrameOneSided({
         frame, handle: "se", deltaX: 100, deltaY: 80,
@@ -1026,7 +1233,7 @@ describe("modern crop one-sided resize", () => {
       expect(Number.isFinite(result.frame.h)).toBe(true);
     });
 
-    it("resize from minimum 24×24 inward does not crash", () => {
+    it("resize from minimum 24x24 inward does not crash", () => {
       const frame = f(24, 24);
       const result = resizeModernFrameOneSided({
         frame, handle: "se", deltaX: -100, deltaY: -100,
