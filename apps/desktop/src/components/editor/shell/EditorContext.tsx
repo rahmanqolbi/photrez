@@ -2,7 +2,7 @@ import { createContext, useContext, onMount, createEffect, createSignal, batch, 
 import { WorkspaceManager } from "@/engine/workspace";
 import { WebGL2Backend } from "@/renderer/webgl2";
 import { RenderScheduler } from "@/renderer/scheduler";
-import { LayerNode, DocumentTabSummary, SelectionState } from "@/engine/types";
+import { LayerNode, DocumentTabSummary, SelectionState, type Transform2D } from "@/engine/types";
 import { Accessor, Setter } from "solid-js";
 import { createEditorState, LayerTransformSession } from "../tools/editorState";
 import type { ToolId } from "../tools/toolTypes";

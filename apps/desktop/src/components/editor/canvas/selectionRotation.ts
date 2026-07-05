@@ -10,11 +10,24 @@ export interface SelectionBox {
   inverted?: boolean;
 }
 
+/**
+ * Fresh viewport coords to use INSTEAD of engine.getViewport().
+ * engine.getViewport() goes stale during panning because usePanNavigation
+ * skips engine.setViewport to avoid triggering layer re-selection (which
+ * calls setSelectedLayerId as a side effect).
+ * 
+ * When getViewportCoords is provided, the function uses these always-fresh
+ * pan/zoom values for coordinate conversion, preventing the rotation angle
+ * from being computed against a stale viewport.
+ */
+export type ViewportCoordsProvider = () => { panX: number; panY: number; zoom: number };
+
 export function startSelectionRotation(
   getSelectionBox: () => SelectionBox | null,
   setSelectionBox: (box: SelectionBox | null) => void,
   getContainerRef: () => HTMLDivElement | undefined,
   getActiveEngine: () => { getViewport(): ViewportState; createSelection(x: number, y: number, w: number, h: number, angle?: number): void } | null,
+  getViewportCoords?: ViewportCoordsProvider,
 ): void {
   const box = getSelectionBox();
   if (!box) return;
@@ -32,7 +45,13 @@ export function startSelectionRotation(
   const handleDocPointerMove = (e: PointerEvent) => {
     const rect = getContainerRef()?.getBoundingClientRect();
     if (!rect) return;
-    const docPt = screenToDocument(e.clientX, e.clientY, rect, engine.getViewport());
+    // Use fresh viewport coords if provided, otherwise fall back to engine (backward compat).
+    // engine.getViewport() can be stale after panning (usePanNavigation skips
+    // engine.setViewport to avoid triggering layer re-selection).
+    const vp = getViewportCoords
+      ? getViewportCoords()
+      : engine.getViewport();
+    const docPt = screenToDocument(e.clientX, e.clientY, rect, { ...vp, rotation: 0 });
     const currentAngle = Math.atan2(docPt.y - centerY, docPt.x - centerX) * (180 / Math.PI);
 
     if (referenceAngle === null) {

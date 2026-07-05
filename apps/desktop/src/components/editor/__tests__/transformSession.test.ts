@@ -262,11 +262,11 @@ describe("cancelLayerTransformSession", () => {
     expect(engine.restore).not.toHaveBeenCalled();
   });
 
-  it("can cancel a move session (no layerTransformSession)", () => {
+  it("can cancel a move session", () => {
     const engine = makeEngine();
     const session = makeSession({
       originalTransform: makeTransform({ x: 0, y: 0 }),
-      mode: "move" as const,
+      mode: "resize" as const,
     });
 
     const result = cancelLayerTransformSession(session, engine);

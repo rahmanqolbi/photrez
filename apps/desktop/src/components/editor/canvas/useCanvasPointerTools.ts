@@ -927,6 +927,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       (box) => setSelectionBoxSignal(box),
       () => params.getCanvasContainerRef(),
       () => workspace.getActiveEngine(),
+      () => ({ panX: pan().x, panY: pan().y, zoom: zoom() }),
     );
 
   return {
