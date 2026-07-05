@@ -90,6 +90,15 @@ let setCropFillEnabledState: (enabled: boolean) => void = () => {};
 let setCropFillSourceState: (source: "background" | "custom") => void = () => {};
 let setCropFillCustomColorState: (color: string) => void = () => {};
 
+let getSelectionState: () => any = () => null;
+let setSelectionState: (sel: any) => void = () => {};
+let getSelectionConstraintMode: () => any = () => "normal";
+let setSelectionConstraintMode: (mode: any) => void = () => {};
+let setSelectionRatioW: (w: number) => void = () => {};
+let setSelectionRatioH: (h: number) => void = () => {};
+let setSelectionSizeW: (w: number) => void = () => {};
+let setSelectionSizeH: (h: number) => void = () => {};
+
 const TestConsumer = () => {
   const editor = useEditor();
   setTool = editor.setActiveTool;
@@ -119,6 +128,15 @@ const TestConsumer = () => {
   setCropFillEnabledState = editor.setCropFillEnabled;
   setCropFillSourceState = editor.setCropFillSource;
   setCropFillCustomColorState = editor.setCropFillCustomColor;
+
+  getSelectionState = editor.selection;
+  setSelectionState = editor.setSelection;
+  getSelectionConstraintMode = editor.selectionConstraintMode;
+  setSelectionConstraintMode = editor.setSelectionConstraintMode;
+  setSelectionRatioW = editor.setSelectionRatioW;
+  setSelectionRatioH = editor.setSelectionRatioH;
+  setSelectionSizeW = editor.setSelectionSizeW;
+  setSelectionSizeH = editor.setSelectionSizeH;
   return null;
 };
 
@@ -1942,5 +1960,121 @@ describe("CanvasViewport Modern Crop →Camera Image Transform Sync", () => {
     expect(it.scale).toBe(1);
     expect(it.pivotScreen).toBeNull();
     expect(it.pivotDocument).toBeNull();
+  });
+});
+
+describe("CanvasViewport Selection Constraints Integration", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    ws = new WorkspaceManager();
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+  });
+
+  afterEach(() => {
+    if (dispose) dispose();
+    container.parentNode?.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  function renderViewport() {
+    const session = WorkspaceManager.createBlankDocument("sel-const", "Sel Const", 800, 600);
+    ws.addDocument(session);
+    dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer} scheduler={scheduler}>
+          <TestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+    return { session };
+  }
+
+  function getCanvas(): HTMLCanvasElement {
+    const c = container.querySelector("canvas") as HTMLCanvasElement;
+    if (!c) throw new Error("Canvas not found");
+    return c;
+  }
+
+  function firePointerDown(el: Element, pointerId = 10, clientX = 100, clientY = 100) {
+    el.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, button: 0, pointerId, clientX, clientY,
+    }));
+  }
+
+  function firePointerMove(el: Element, pointerId = 10, clientX = 200, clientY = 200) {
+    el.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, button: 0, pointerId, clientX, clientY,
+    }));
+  }
+
+  function firePointerUp(el: Element, pointerId = 10, clientX = 200, clientY = 200) {
+    el.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, button: 0, pointerId, clientX, clientY,
+    }));
+  }
+
+  it("Selection draw: Fixed Ratio mode locks aspect ratio", async () => {
+    const { session } = renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("selection");
+    
+    // Set ratio constraint to 2:1
+    setSelectionConstraintMode("ratio");
+    setSelectionRatioW(2);
+    setSelectionRatioH(1);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Start drawing a marquee at (100, 100) and drag to (200, 150)
+    const canvas = getCanvas();
+    firePointerDown(canvas, 12, 100, 100);
+    firePointerMove(canvas, 12, 200, 150);
+    firePointerUp(canvas, 12, 200, 150);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Selection should be (100, 100, 100, 50)
+    const sel = getSelectionState();
+    expect(sel).not.toBeNull();
+    expect(sel!.width).toBe(100);
+    expect(sel!.height).toBe(50);
+  });
+
+  it("Selection draw: Fixed Size mode creates selection of fixed dimensions", async () => {
+    const { session } = renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("selection");
+
+    // Set size constraint to 120 x 80
+    setSelectionConstraintMode("size");
+    setSelectionSizeW(120);
+    setSelectionSizeH(80);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Click at (150, 150)
+    const canvas = getCanvas();
+    firePointerDown(canvas, 13, 150, 150);
+    firePointerUp(canvas, 13, 150, 150);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Selection should be created centered around (150, 150)
+    const sel = getSelectionState();
+    expect(sel).not.toBeNull();
+    expect(sel!.width).toBe(120);
+    expect(sel!.height).toBe(80);
+    // Centered around (150, 150) => x = 150 - 120 / 2 = 90, y = 150 - 80 / 2 = 110
+    expect(sel!.x).toBe(90);
+    expect(sel!.y).toBe(110);
   });
 });

@@ -82,6 +82,11 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     selectedLayerId,
     setSelectedLayerId,
     setHoverHandle,
+    selectionConstraintMode,
+    selectionRatioW,
+    selectionRatioH,
+    selectionSizeW,
+    selectionSizeH,
     cropInteractionMode,
     modernCropFrame,
     setModernCropFrame,
@@ -203,6 +208,11 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     interactiveState.isAltPressed = params.isAltPressed();
     interactiveState.setFgColor = setFgColor;
     interactiveState.setBgColor = setBgColor;
+    interactiveState.selectionConstraintMode = typeof selectionConstraintMode === "function" ? selectionConstraintMode() : "normal";
+    interactiveState.selectionRatioW = typeof selectionRatioW === "function" ? selectionRatioW() : 1;
+    interactiveState.selectionRatioH = typeof selectionRatioH === "function" ? selectionRatioH() : 1;
+    interactiveState.selectionSizeW = typeof selectionSizeW === "function" ? selectionSizeW() : 100;
+    interactiveState.selectionSizeH = typeof selectionSizeH === "function" ? selectionSizeH() : 100;
     interactiveState.onSelectionCreated = (x, y, w, h) => {
       setSelectionBoxSignal({ x, y, w, h, angle: 0 });
       // Show W×H HUD during selection draw drag
@@ -233,8 +243,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       const box = selectionBox();
       const eng = workspace.getActiveEngine();
       if (box && eng) {
-        setSelectionBoxSignal({ ...box, x, y });
-        eng.createSelection(x, y, box.w, box.h);
+        // Clamp to document bounds so selection can't be moved completely off-canvas
+        const docW = eng.getWidth();
+        const docH = eng.getHeight();
+        const clampedX = Math.max(-box.w + 1, Math.min(docW - 1, x));
+        const clampedY = Math.max(-box.h + 1, Math.min(docH - 1, y));
+        setSelectionBoxSignal({ ...box, x: clampedX, y: clampedY });
+        eng.createSelection(clampedX, clampedY, box.w, box.h, box.angle);
       }
       // Show ΔX ΔY HUD during selection move
       const sp = interactiveState.screenPos;
@@ -459,9 +474,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       }
     }
 
-    paintSmoother.setWindowSize(smoothingToWindowSize(interactiveState.paintSettings.smoothing));
-    paintSmoother.reset();
-    const smoothed = paintSmoother.addPoint(coords.x, coords.y);
+    if (activeTool() === "brush" || activeTool() === "eraser") {
+      paintSmoother.setWindowSize(smoothingToWindowSize(interactiveState.paintSettings.smoothing));
+      paintSmoother.reset();
+    }
+    const smoothed = activeTool() === "brush" || activeTool() === "eraser"
+      ? paintSmoother.addPoint(coords.x, coords.y)
+      : coords;
     handlePointerDown(
       activeTool() as ToolType,
       smoothed.x,
@@ -593,7 +612,9 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       }
     }
 
-    const smoothed = paintSmoother.addPoint(coords.x, coords.y);
+    const smoothed = (activeTool() === "brush" || activeTool() === "eraser")
+      ? paintSmoother.addPoint(coords.x, coords.y)
+      : coords;
     handlePointerMove(
       activeTool() as ToolType,
       smoothed.x,
@@ -628,9 +649,12 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       if (axisLock === "horizontal") coords = { x: coords.x, y: start.y };
       if (axisLock === "vertical") coords = { x: start.x, y: coords.y };
     }
-    const smoothed = paintSmoother.addPoint(coords.x, coords.y);
     const tool = (interactiveState.dragTool ?? activeTool()) as ToolType;
-    const hasPoints = (tool === "brush" || tool === "eraser") && interactiveState.strokePoints.length > 0;
+    const isPaintTool = tool === "brush" || tool === "eraser";
+    const hasPoints = isPaintTool && interactiveState.strokePoints.length > 0;
+    const smoothed = isPaintTool
+      ? paintSmoother.addPoint(coords.x, coords.y)
+      : coords;
 
     handlePointerUp(
       activeTool() as ToolType,
@@ -834,6 +858,20 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       }
     }
 
+    if (tool === "selection") {
+      // Sync from engine instead of blindly setting null — a pointerCancel
+      // (e.g. context menu, touch gesture) should not destroy the visual
+      // selection marquee when the engine still has an active selection.
+      // If the engine has a selection, preserve the signal; only clear
+      // when the engine truly cleared it (Bug #5).
+      const sel = engine.getSelection();
+      if (sel) {
+        setSelectionBoxSignal({ x: sel.x, y: sel.y, w: sel.width, h: sel.height, angle: sel.angle });
+      } else {
+        setSelectionBoxSignal(null);
+      }
+      setHudInfo(null);
+    }
     interactiveState.strokePoints = [];
     interactiveState.isDragging = false;
     interactiveState.dragTool = null;

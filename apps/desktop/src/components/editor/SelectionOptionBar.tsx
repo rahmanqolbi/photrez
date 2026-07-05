@@ -5,6 +5,7 @@ import { ToolPill, MoreDropdown, Divider, ToggleBtn } from "./shell/OptionBarSha
 import { Tooltip } from "./Tooltip";
 import { Icon } from "./icons";
 import { SelectionOperations } from "@/features/selection/SelectionOperations";
+import { clsx } from "clsx";
 
 export function SelectionOptionBar() {
   const {
@@ -15,6 +16,16 @@ export function SelectionOptionBar() {
     activeTool,
     selectionEditMode,
     setSelectionEditMode,
+    selectionConstraintMode,
+    setSelectionConstraintMode,
+    selectionRatioW,
+    setSelectionRatioW,
+    selectionRatioH,
+    setSelectionRatioH,
+    selectionSizeW,
+    setSelectionSizeW,
+    selectionSizeH,
+    setSelectionSizeH,
   } = useEditor();
 
   const engine = () => workspace.getActiveEngine();
@@ -134,236 +145,356 @@ export function SelectionOptionBar() {
 
       <Divider />
 
-      <Show when={hasSelection()}>
-        <div class="flex shrink-0 items-center gap-1">
-          <EditableNumField
-            label="X"
-            labelClass="@max-[900px]:hidden"
-            value={selection()?.x ?? 0}
-            onSubmit={submitX}
-            class="w-[62px]"
-          />
-          <EditableNumField
-            label="Y"
-            labelClass="@max-[900px]:hidden"
-            value={selection()?.y ?? 0}
-            onSubmit={submitY}
-            class="w-[62px]"
-          />
+      {/* Style/Constraint Selector */}
+      <div class="relative flex h-[24px] shrink-0 items-center rounded-[3px] border border-editor-field-border bg-editor-field px-2 hover:border-editor-field-border/80 transition-all cursor-pointer focus-ring-within text-[11px] text-editor-text">
+        <span class="mr-4 select-none whitespace-nowrap">
+          Style: {selectionConstraintMode() === "normal" ? "Normal" : selectionConstraintMode() === "ratio" ? "Fixed Ratio" : "Fixed Size"}
+        </span>
+        <div class="ml-auto pointer-events-none text-editor-text-dim">
+          <Icon name="chevron-down" class="size-3" strokeWidth={1.5} />
         </div>
+        <select
+          value={selectionConstraintMode()}
+          onChange={(e) => {
+            setSelectionConstraintMode(e.currentTarget.value as any);
+          }}
+          class="absolute inset-0 h-full w-full opacity-0 cursor-pointer text-[11px]"
+        >
+          <option value="normal" class="bg-editor-panel text-editor-text">Normal</option>
+          <option value="ratio" class="bg-editor-panel text-editor-text">Fixed Ratio</option>
+          <option value="size" class="bg-editor-panel text-editor-text">Fixed Size</option>
+        </select>
+      </div>
 
-        <Divider />
-
+      {/* Show constraint W/H inputs when style is Fixed Ratio or Fixed Size */}
+      <Show when={selectionConstraintMode() !== "normal"}>
         <div class="flex shrink-0 items-center gap-1">
           <EditableNumField
             label="W"
-            labelClass="@max-[900px]:hidden"
-            value={selection()?.width ?? 0}
-            onSubmit={submitW}
+            value={selectionConstraintMode() === "ratio" ? selectionRatioW() : selectionSizeW()}
+            onSubmit={(v) => {
+              if (v > 0) {
+                if (selectionConstraintMode() === "ratio") {
+                  setSelectionRatioW(v);
+                } else {
+                  setSelectionSizeW(v);
+                }
+              }
+            }}
             class="w-[62px]"
           />
           <EditableNumField
             label="H"
-            labelClass="@max-[900px]:hidden"
-            value={selection()?.height ?? 0}
-            onSubmit={submitH}
+            value={selectionConstraintMode() === "ratio" ? selectionRatioH() : selectionSizeH()}
+            onSubmit={(v) => {
+              if (v > 0) {
+                if (selectionConstraintMode() === "ratio") {
+                  setSelectionRatioH(v);
+                } else {
+                  setSelectionSizeH(v);
+                }
+              }
+            }}
             class="w-[62px]"
           />
         </div>
+      </Show>
+
+      <Divider />
+
+      <div class="flex shrink-0 items-center gap-1">
+        <EditableNumField
+          label="X"
+          labelClass="@max-[900px]:hidden"
+          value={selection()?.x ?? 0}
+          onSubmit={submitX}
+          disabled={!hasSelection()}
+          class="w-[62px]"
+        />
+        <EditableNumField
+          label="Y"
+          labelClass="@max-[900px]:hidden"
+          value={selection()?.y ?? 0}
+          onSubmit={submitY}
+          disabled={!hasSelection()}
+          class="w-[62px]"
+        />
+      </div>
+
+      <Divider />
+
+      <div class="flex shrink-0 items-center gap-1">
+        <EditableNumField
+          label="W"
+          labelClass="@max-[900px]:hidden"
+          value={selection()?.width ?? 0}
+          onSubmit={submitW}
+          disabled={!hasSelection()}
+          class="w-[62px]"
+        />
+        <EditableNumField
+          label="H"
+          labelClass="@max-[900px]:hidden"
+          value={selection()?.height ?? 0}
+          onSubmit={submitH}
+          disabled={!hasSelection()}
+          class="w-[62px]"
+        />
+      </div>
+
+      <Divider />
+
+      <EditableNumField
+        label="R"
+        labelClass="@max-[900px]:hidden"
+        value={selection()?.angle ?? 0}
+        suffix="°"
+        onSubmit={submitAngle}
+        disabled={!hasSelection()}
+        class="w-[58px]"
+      />
+
+      {/* Main Bar Controls */}
+      <div class="hidden @min-[880px]:flex items-center gap-1.5 shrink-0">
+        <Divider />
+        <Tooltip content="Show resize/rotate handles" shortcut="Ctrl+T">
+          <ToggleBtn
+            active={selectionEditMode() && hasSelection()}
+            onChange={(val) => {
+              if (hasSelection()) setSelectionEditMode(val);
+            }}
+            icon="maximize"
+            label="Transform"
+            labelClass="@max-[900px]:hidden"
+            class={clsx(!hasSelection() && "opacity-30 pointer-events-none")}
+          />
+        </Tooltip>
 
         <Divider />
 
-        <EditableNumField
-          label="R"
-          labelClass="@max-[900px]:hidden"
-          value={selection()?.angle ?? 0}
-          suffix="°"
-          onSubmit={submitAngle}
-          class="w-[58px]"
-        />
-      </Show>
+        <Tooltip content="Cut Selection" shortcut="Ctrl+X">
+          <button
+            onClick={handleCut}
+            disabled={!hasSelection()}
+            class={clsx(
+              "flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px]",
+              hasSelection()
+                ? "text-editor-text-dim hover:border-editor-field-border hover:text-editor-text cursor-pointer"
+                : "text-editor-text-dim opacity-30 pointer-events-none"
+            )}
+          >
+            <Icon name="slice" class="size-3" strokeWidth={1.5} />
+            Cut
+          </button>
+        </Tooltip>
 
-      <Show when={!hasSelection()}>
-        <span class="text-[11px] text-editor-text-dim @max-[900px]:hidden">
-          Drag on canvas to create a selection
-        </span>
-      </Show>
+        <Tooltip content="Copy Selection" shortcut="Ctrl+C">
+          <button
+            onClick={handleCopy}
+            disabled={!hasSelection()}
+            class={clsx(
+              "flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px]",
+              hasSelection()
+                ? "text-editor-text-dim hover:border-editor-field-border hover:text-editor-text cursor-pointer"
+                : "text-editor-text-dim opacity-30 pointer-events-none"
+            )}
+          >
+            <Icon name="copy" class="size-3" strokeWidth={1.5} />
+            Copy
+          </button>
+        </Tooltip>
 
-      {/* Main Bar Controls (hidden on narrow container) */}
-      <div class="hidden @min-[880px]:flex items-center gap-1.5 shrink-0">
-        <Show when={hasSelection()}>
-          <Divider />
-          <Tooltip content="Show resize/rotate handles" shortcut="Ctrl+T">
-            <ToggleBtn
-              active={selectionEditMode()}
-              onChange={setSelectionEditMode}
-              icon="maximize"
-              label="Transform"
-              labelClass="@max-[900px]:hidden"
-            />
-          </Tooltip>
+        <Tooltip content="Paste" shortcut="Ctrl+V">
+          <button
+            onClick={handlePaste}
+            disabled={!hasSelection()}
+            class={clsx(
+              "flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px]",
+              hasSelection()
+                ? "text-editor-text-dim hover:border-editor-field-border hover:text-editor-text cursor-pointer"
+                : "text-editor-text-dim opacity-30 pointer-events-none"
+            )}
+          >
+            <Icon name="square-dashed" class="size-3" strokeWidth={1.5} />
+            Paste
+          </button>
+        </Tooltip>
 
-          <Divider />
+        <Divider />
 
+        <Tooltip content="Invert Selection" shortcut="Ctrl+I">
+          <button
+            onClick={handleInvert}
+            disabled={!hasSelection()}
+            class={clsx(
+              "flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px]",
+              hasSelection()
+                ? "text-editor-text-dim hover:border-editor-field-border hover:text-editor-text cursor-pointer"
+                : "text-editor-text-dim opacity-30 pointer-events-none"
+            )}
+          >
+            <Icon name="flip-h" class="size-3" strokeWidth={1.5} />
+            Invert
+          </button>
+        </Tooltip>
+
+        <Tooltip content="Delete Selection Pixels" shortcut="Del">
+          <button
+            onClick={handleDelete}
+            disabled={!hasSelection()}
+            class={clsx(
+              "flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px]",
+              hasSelection()
+                ? "text-editor-text-dim hover:border-editor-field-border hover:text-editor-text cursor-pointer"
+                : "text-editor-text-dim opacity-30 pointer-events-none"
+            )}
+          >
+            <Icon name="trash" class="size-3" strokeWidth={1.5} />
+            Delete
+          </button>
+        </Tooltip>
+
+        <Tooltip content="Deselect" shortcut="Esc">
+          <button
+            onClick={handleDeselect}
+            disabled={!hasSelection()}
+            class={clsx(
+              "flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px]",
+              hasSelection()
+                ? "text-editor-text-dim hover:border-editor-field-border hover:text-editor-text cursor-pointer"
+                : "text-editor-text-dim opacity-30 pointer-events-none"
+            )}
+          >
+            <Icon name="x" class="size-3" strokeWidth={1.5} />
+            Deselect
+          </button>
+        </Tooltip>
+      </div>
+
+      {/* Overflow dropdown for narrow container */}
+      <MoreDropdown>
+        <div class="flex flex-col gap-1.5">
+          <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Position</span>
+          <div class="grid grid-cols-2 gap-1.5">
+            <EditableNumField label="X" value={selection()?.x ?? 0} onSubmit={submitX} disabled={!hasSelection()} class="w-full" />
+            <EditableNumField label="Y" value={selection()?.y ?? 0} onSubmit={submitY} disabled={!hasSelection()} class="w-full" />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Size</span>
+          <div class="grid grid-cols-2 gap-1.5">
+            <EditableNumField label="W" value={selection()?.width ?? 0} onSubmit={submitW} disabled={!hasSelection()} class="w-full" />
+            <EditableNumField label="H" value={selection()?.height ?? 0} onSubmit={submitH} disabled={!hasSelection()} class="w-full" />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Rotation</span>
+          <EditableNumField
+            label="R"
+            value={selection()?.angle ?? 0}
+            suffix="°"
+            onSubmit={submitAngle}
+            disabled={!hasSelection()}
+            class="w-full"
+          />
+        </div>
+
+        <div class="h-px bg-editor-divider my-1" />
+
+        <div class="grid grid-cols-2 gap-1.5">
           <Tooltip content="Cut Selection" shortcut="Ctrl+X">
             <button
               onClick={handleCut}
-              class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
+              disabled={!hasSelection()}
+              class={clsx(
+                "flex h-[24px] items-center justify-center gap-1 rounded-[3px] border px-2 text-[11px] transition-colors",
+                hasSelection()
+                  ? "border-editor-field-border bg-editor-field text-editor-text hover:bg-editor-field/85 cursor-pointer"
+                  : "border-transparent text-editor-text-dim opacity-30 pointer-events-none"
+              )}
             >
               <Icon name="slice" class="size-3" strokeWidth={1.5} />
               Cut
             </button>
           </Tooltip>
-
           <Tooltip content="Copy Selection" shortcut="Ctrl+C">
             <button
               onClick={handleCopy}
-              class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
+              disabled={!hasSelection()}
+              class={clsx(
+                "flex h-[24px] items-center justify-center gap-1 rounded-[3px] border px-2 text-[11px] transition-colors",
+                hasSelection()
+                  ? "border-editor-field-border bg-editor-field text-editor-text hover:bg-editor-field/85 cursor-pointer"
+                  : "border-transparent text-editor-text-dim opacity-30 pointer-events-none"
+              )}
             >
               <Icon name="copy" class="size-3" strokeWidth={1.5} />
               Copy
             </button>
           </Tooltip>
-
           <Tooltip content="Paste" shortcut="Ctrl+V">
             <button
               onClick={handlePaste}
-              class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
+              disabled={!hasSelection()}
+              class={clsx(
+                "flex h-[24px] items-center justify-center gap-1 rounded-[3px] border px-2 text-[11px] transition-colors",
+                hasSelection()
+                  ? "border-editor-field-border bg-editor-field text-editor-text hover:bg-editor-field/85 cursor-pointer"
+                  : "border-transparent text-editor-text-dim opacity-30 pointer-events-none"
+              )}
             >
               <Icon name="square-dashed" class="size-3" strokeWidth={1.5} />
               Paste
             </button>
           </Tooltip>
-
-          <Divider />
-
           <Tooltip content="Invert Selection" shortcut="Ctrl+I">
             <button
               onClick={handleInvert}
-              class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
+              disabled={!hasSelection()}
+              class={clsx(
+                "flex h-[24px] items-center justify-center gap-1 rounded-[3px] border px-2 text-[11px] transition-colors",
+                hasSelection()
+                  ? "border-editor-field-border bg-editor-field text-editor-text hover:bg-editor-field/85 cursor-pointer"
+                  : "border-transparent text-editor-text-dim opacity-30 pointer-events-none"
+              )}
             >
               <Icon name="flip-h" class="size-3" strokeWidth={1.5} />
               Invert
             </button>
           </Tooltip>
-
           <Tooltip content="Delete Selection Pixels" shortcut="Del">
             <button
               onClick={handleDelete}
-              class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
+              disabled={!hasSelection()}
+              class={clsx(
+                "flex h-[24px] items-center justify-center gap-1 rounded-[3px] border px-2 text-[11px] transition-colors",
+                hasSelection()
+                  ? "border-editor-field-border bg-editor-field text-editor-text hover:bg-editor-field/85 cursor-pointer"
+                  : "border-transparent text-editor-text-dim opacity-30 pointer-events-none"
+              )}
             >
               <Icon name="trash" class="size-3" strokeWidth={1.5} />
               Delete
             </button>
           </Tooltip>
-
           <Tooltip content="Deselect" shortcut="Esc">
             <button
               onClick={handleDeselect}
-              class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-transparent px-2 text-[11px] text-editor-text-dim hover:border-editor-field-border hover:text-editor-text"
+              disabled={!hasSelection()}
+              class={clsx(
+                "flex h-[24px] items-center justify-center gap-1 rounded-[3px] border px-2 text-[11px] transition-colors",
+                hasSelection()
+                  ? "border-editor-field-border bg-editor-field text-editor-text hover:bg-editor-field/85 cursor-pointer"
+                  : "border-transparent text-editor-text-dim opacity-30 pointer-events-none"
+              )}
             >
               <Icon name="x" class="size-3" strokeWidth={1.5} />
               Deselect
             </button>
           </Tooltip>
-        </Show>
-      </div>
-
-      {/* Overflow dropdown for narrow container */}
-      <MoreDropdown>
-        <Show when={hasSelection()}>
-          <div class="flex flex-col gap-1.5">
-            <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Position</span>
-            <div class="grid grid-cols-2 gap-1.5">
-              <EditableNumField label="X" value={selection()?.x ?? 0} onSubmit={submitX} class="w-full" />
-              <EditableNumField label="Y" value={selection()?.y ?? 0} onSubmit={submitY} class="w-full" />
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-1.5">
-            <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Size</span>
-            <div class="grid grid-cols-2 gap-1.5">
-              <EditableNumField label="W" value={selection()?.width ?? 0} onSubmit={submitW} class="w-full" />
-              <EditableNumField label="H" value={selection()?.height ?? 0} onSubmit={submitH} class="w-full" />
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-1.5">
-            <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Rotation</span>
-            <EditableNumField
-              label="R"
-              value={selection()?.angle ?? 0}
-              suffix="°"
-              onSubmit={submitAngle}
-              class="w-full"
-            />
-          </div>
-
-          <div class="h-px bg-editor-divider my-1" />
-
-          <div class="grid grid-cols-2 gap-1.5">
-            <Tooltip content="Cut Selection" shortcut="Ctrl+X">
-              <button
-                onClick={handleCut}
-                class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
-              >
-                <Icon name="slice" class="size-3" strokeWidth={1.5} />
-                Cut
-              </button>
-            </Tooltip>
-            <Tooltip content="Copy Selection" shortcut="Ctrl+C">
-              <button
-                onClick={handleCopy}
-                class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
-              >
-                <Icon name="copy" class="size-3" strokeWidth={1.5} />
-                Copy
-              </button>
-            </Tooltip>
-            <Tooltip content="Paste" shortcut="Ctrl+V">
-              <button
-                onClick={handlePaste}
-                class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
-              >
-                <Icon name="square-dashed" class="size-3" strokeWidth={1.5} />
-                Paste
-              </button>
-            </Tooltip>
-            <Tooltip content="Invert Selection" shortcut="Ctrl+I">
-              <button
-                onClick={handleInvert}
-                class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
-              >
-                <Icon name="flip-h" class="size-3" strokeWidth={1.5} />
-                Invert
-              </button>
-            </Tooltip>
-            <Tooltip content="Delete Selection Pixels" shortcut="Del">
-              <button
-                onClick={handleDelete}
-                class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
-              >
-                <Icon name="trash" class="size-3" strokeWidth={1.5} />
-                Delete
-              </button>
-            </Tooltip>
-            <Tooltip content="Deselect" shortcut="Esc">
-              <button
-                onClick={handleDeselect}
-                class="flex h-[24px] items-center justify-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text hover:bg-editor-field/85 transition-colors"
-              >
-                <Icon name="x" class="size-3" strokeWidth={1.5} />
-                Deselect
-              </button>
-            </Tooltip>
-          </div>
-        </Show>
-
-        <Show when={!hasSelection()}>
-          <span class="text-[11px] text-editor-text-dim">
-            Drag on canvas to create a selection
-          </span>
-        </Show>
+        </div>
       </MoreDropdown>
     </>
   );

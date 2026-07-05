@@ -190,4 +190,94 @@ describe("input-handler: selection tool draw modifiers", () => {
       expect(history.commit).not.toHaveBeenCalled();
     });
   });
+
+  describe("isPointInSelection", () => {
+    it("returns true for point inside axis-aligned selection", () => {
+      const bounds = { x: 50, y: 50, width: 200, height: 150 };
+      expect(isPointInSelection(100, 100, bounds)).toBe(true);
+    });
+
+    it("returns true for point exactly on top-left edge", () => {
+      const bounds = { x: 50, y: 50, width: 200, height: 150 };
+      expect(isPointInSelection(50, 50, bounds)).toBe(true);
+    });
+
+    it("returns true for point exactly on bottom-right edge", () => {
+      const bounds = { x: 50, y: 50, width: 200, height: 150 };
+      expect(isPointInSelection(250, 200, bounds)).toBe(true);
+    });
+
+    it("returns false for point above selection", () => {
+      const bounds = { x: 50, y: 50, width: 200, height: 150 };
+      expect(isPointInSelection(100, 10, bounds)).toBe(false);
+    });
+
+    it("returns false for point to the left of selection", () => {
+      const bounds = { x: 50, y: 50, width: 200, height: 150 };
+      expect(isPointInSelection(10, 100, bounds)).toBe(false);
+    });
+
+    it("returns false for point below selection", () => {
+      const bounds = { x: 50, y: 50, width: 200, height: 150 };
+      expect(isPointInSelection(100, 300, bounds)).toBe(false);
+    });
+
+    it("returns false for point to the right of selection", () => {
+      const bounds = { x: 50, y: 50, width: 200, height: 150 };
+      expect(isPointInSelection(300, 100, bounds)).toBe(false);
+    });
+
+    it("returns true for point inside rotated selection (45 degrees)", () => {
+      // A 45-degree rotated square: the original unrotated bounds are (0,0,100,100).
+      // The center is at (50,50). After 45° rotation, the square's corners are at
+      // the midpoints of each edge. The center point (50,50) should still be inside.
+      const bounds = { x: 0, y: 0, width: 100, height: 100, angle: 45 };
+      expect(isPointInSelection(50, 50, bounds)).toBe(true);
+    });
+
+    it("returns false for point outside rotated selection (45 degrees)", () => {
+      // A 45-degree rotated square at (0,0,100,100).
+      // Point at (0, 0) is a corner in the original, but after 45° rotation,
+      // the original corners are cut off. The point (0,0) should be outside.
+      const bounds = { x: 0, y: 0, width: 100, height: 100, angle: 45 };
+      // The corner (0,0) is outside the 45° rotated square
+      expect(isPointInSelection(0, 0, bounds)).toBe(false);
+    });
+
+    it("handles negative rotation angle", () => {
+      const bounds = { x: 100, y: 100, width: 200, height: 150, angle: -30 };
+      // Center should always be inside regardless of rotation
+      expect(isPointInSelection(200, 175, bounds)).toBe(true);
+    });
+
+    it("handles default angle (undefined treated as 0)", () => {
+      const bounds = { x: 50, y: 50, width: 200, height: 150 };
+      expect(isPointInSelection(100, 100, bounds)).toBe(true);
+      expect(isPointInSelection(0, 0, bounds)).toBe(false);
+    });
+
+    it("correctly identifies point near a rotated edge (90 degrees)", () => {
+      // 90° rotation makes the selection a 100x100 box rotated.
+      const bounds = { x: 0, y: 0, width: 100, height: 100, angle: 90 };
+      // After 90° rotation around center (50,50): the box now occupies the
+      // same area as the original since it's a square.
+      expect(isPointInSelection(25, 50, bounds)).toBe(true);
+      expect(isPointInSelection(-10, 50, bounds)).toBe(false);
+    });
+
+    it("works with selection containing negative coordinates (off-canvas selection)", () => {
+      const bounds = { x: -50, y: -50, width: 100, height: 100 };
+      expect(isPointInSelection(0, 0, bounds)).toBe(true);
+      expect(isPointInSelection(-25, -25, bounds)).toBe(true);
+      expect(isPointInSelection(-60, 0, bounds)).toBe(false);
+      expect(isPointInSelection(60, 0, bounds)).toBe(false);
+    });
+
+    it("works with zero-area selection (width=0, height=0)", () => {
+      const bounds = { x: 50, y: 50, width: 0, height: 0 };
+      // A zero-area selection is just a point
+      expect(isPointInSelection(50, 50, bounds)).toBe(true);
+      expect(isPointInSelection(51, 50, bounds)).toBe(false);
+    });
+  });
 });

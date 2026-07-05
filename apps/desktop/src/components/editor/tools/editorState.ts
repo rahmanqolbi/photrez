@@ -54,6 +54,11 @@ export function createEditorState() {
   const [selectedLayerId, setSelectedLayerId] = createSignal<string | null>(null);
   const [selection, setSelection] = createSignal<SelectionState | null>(null);
   const [selectionEditMode, setSelectionEditMode] = createSignal(false);
+  const [selectionConstraintMode, setSelectionConstraintMode] = createSignal<"normal" | "ratio" | "size">("normal");
+  const [selectionRatioW, setSelectionRatioW] = createSignal(1);
+  const [selectionRatioH, setSelectionRatioH] = createSignal(1);
+  const [selectionSizeW, setSelectionSizeW] = createSignal(100);
+  const [selectionSizeH, setSelectionSizeH] = createSignal(100);
   const [showResizeDialog, setShowResizeDialog] = createSignal(false);
   const [showExportDialog, setShowExportDialog] = createSignal(false);
   const [showPrintDialog, setShowPrintDialog] = createSignal(false);
@@ -67,6 +72,11 @@ export function createEditorState() {
     selectedLayerId, setSelectedLayerId,
     selection, setSelection,
     selectionEditMode, setSelectionEditMode,
+    selectionConstraintMode, setSelectionConstraintMode,
+    selectionRatioW, setSelectionRatioW,
+    selectionRatioH, setSelectionRatioH,
+    selectionSizeW, setSelectionSizeW,
+    selectionSizeH, setSelectionSizeH,
     fgColor, setFgColor,
     bgColor, setBgColor,
     zoom, setZoom,

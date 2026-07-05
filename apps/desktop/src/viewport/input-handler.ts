@@ -52,6 +52,11 @@ export interface ToolContext {
   rotateCenter?: { x: number; y: number };
   rotateStartAngle?: number;
   selectionAngle?: number;
+  selectionConstraintMode?: "normal" | "ratio" | "size";
+  selectionRatioW?: number;
+  selectionRatioH?: number;
+  selectionSizeW?: number;
+  selectionSizeH?: number;
 
   // Deferred-history pattern: pointerDown records the pre-mutation snapshot
   // here without committing. pointerUp commits IF and ONLY IF the operation
@@ -96,7 +101,15 @@ export function handlePointerDown(
       context.dragStart = { x: docX - bounds.x, y: docY - bounds.y };
     } else {
       context.dragMode = "draw";
-      context.onSelectionCreated?.(docX, docY, 0, 0);
+      if (context.selectionConstraintMode === "size") {
+        const sw = context.selectionSizeW ?? 100;
+        const sh = context.selectionSizeH ?? 100;
+        const x = docX - sw / 2;
+        const y = docY - sh / 2;
+        context.onSelectionCreated?.(x, y, sw, sh);
+      } else {
+        context.onSelectionCreated?.(docX, docY, 0, 0);
+      }
     }
   } else if (tool === "crop") {
     context.onCropCreated?.(docX, docY, 0, 0);
@@ -162,29 +175,63 @@ export function handlePointerMove(
       let w = Math.abs(dx);
       let h = Math.abs(dy);
 
-      if (context.isShiftPressed) {
-        const side = Math.max(w, h);
-        w = side;
-        h = side;
-      }
-
-      if (context.isAltPressed) {
-        w *= 2;
-        h *= 2;
-      }
-
-      let x: number;
-      let y: number;
-
-      if (context.isAltPressed) {
-        x = centerX - w / 2;
-        y = centerY - h / 2;
+      if (context.selectionConstraintMode === "size") {
+        const sw = context.selectionSizeW ?? 100;
+        const sh = context.selectionSizeH ?? 100;
+        w = sw;
+        h = sh;
+        let x = centerX - w / 2;
+        let y = centerY - h / 2;
+        context.onSelectionCreated?.(x, y, w, h);
+      } else if (context.selectionConstraintMode === "ratio") {
+        const rw = context.selectionRatioW ?? 1;
+        const rh = context.selectionRatioH ?? 1;
+        if (rw > 0 && rh > 0) {
+          const targetAspect = rw / rh;
+          const currentAspect = w / h;
+          if (currentAspect > targetAspect) {
+            h = w / targetAspect;
+          } else {
+            w = h * targetAspect;
+          }
+        }
+        let x: number;
+        let y: number;
+        if (context.isAltPressed) {
+          w *= 2;
+          h *= 2;
+          x = centerX - w / 2;
+          y = centerY - h / 2;
+        } else {
+          x = dx >= 0 ? centerX : centerX - w;
+          y = dy >= 0 ? centerY : centerY - h;
+        }
+        context.onSelectionCreated?.(x, y, w, h);
       } else {
-        x = Math.min(centerX, docX);
-        y = Math.min(centerY, docY);
-      }
+        if (context.isShiftPressed) {
+          const side = Math.max(w, h);
+          w = side;
+          h = side;
+        }
 
-      context.onSelectionCreated?.(x, y, w, h);
+        if (context.isAltPressed) {
+          w *= 2;
+          h *= 2;
+        }
+
+        let x: number;
+        let y: number;
+
+        if (context.isAltPressed) {
+          x = centerX - w / 2;
+          y = centerY - h / 2;
+        } else {
+          x = Math.min(centerX, docX);
+          y = Math.min(centerY, docY);
+        }
+
+        context.onSelectionCreated?.(x, y, w, h);
+      }
     }
   } else if (tool === "crop") {
     const x = Math.min(context.dragStart.x, docX);
@@ -266,32 +313,70 @@ export function handlePointerUp(
       let w = Math.abs(dx);
       let h = Math.abs(dy);
 
-      if (context.isShiftPressed) {
-        const side = Math.max(w, h);
-        w = side;
-        h = side;
-      }
-
-      if (context.isAltPressed) {
-        w *= 2;
-        h *= 2;
-      }
-
-      let x: number;
-      let y: number;
-
-      if (context.isAltPressed) {
-        x = centerX - w / 2;
-        y = centerY - h / 2;
-      } else {
-        x = Math.min(centerX, docX);
-        y = Math.min(centerY, docY);
-      }
-
-      if (w > 2 && h > 2) {
+      if (context.selectionConstraintMode === "size") {
+        const sw = context.selectionSizeW ?? 100;
+        const sh = context.selectionSizeH ?? 100;
+        w = sw;
+        h = sh;
+        let x = centerX - w / 2;
+        let y = centerY - h / 2;
         engine.createSelection(x, y, w, h);
+      } else if (context.selectionConstraintMode === "ratio") {
+        const rw = context.selectionRatioW ?? 1;
+        const rh = context.selectionRatioH ?? 1;
+        if (rw > 0 && rh > 0) {
+          const targetAspect = rw / rh;
+          const currentAspect = w / h;
+          if (currentAspect > targetAspect) {
+            h = w / targetAspect;
+          } else {
+            w = h * targetAspect;
+          }
+        }
+        let x: number;
+        let y: number;
+        if (context.isAltPressed) {
+          w *= 2;
+          h *= 2;
+          x = centerX - w / 2;
+          y = centerY - h / 2;
+        } else {
+          x = dx >= 0 ? centerX : centerX - w;
+          y = dy >= 0 ? centerY : centerY - h;
+        }
+        if (w > 2 && h > 2) {
+          engine.createSelection(x, y, w, h);
+        } else {
+          engine.clearSelection();
+        }
       } else {
-        engine.clearSelection();
+        if (context.isShiftPressed) {
+          const side = Math.max(w, h);
+          w = side;
+          h = side;
+        }
+
+        if (context.isAltPressed) {
+          w *= 2;
+          h *= 2;
+        }
+
+        let x: number;
+        let y: number;
+
+        if (context.isAltPressed) {
+          x = centerX - w / 2;
+          y = centerY - h / 2;
+        } else {
+          x = Math.min(centerX, docX);
+          y = Math.min(centerY, docY);
+        }
+
+        if (w > 2 && h > 2) {
+          engine.createSelection(x, y, w, h);
+        } else {
+          engine.clearSelection();
+        }
       }
     }
     context.dragMode = null;

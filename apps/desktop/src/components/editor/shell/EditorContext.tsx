@@ -65,6 +65,16 @@ export interface EditorContextValue {
   setSelection: Setter<SelectionState | null>;
   selectionEditMode: Accessor<boolean>;
   setSelectionEditMode: Setter<boolean>;
+  selectionConstraintMode: Accessor<"normal" | "ratio" | "size">;
+  setSelectionConstraintMode: Setter<"normal" | "ratio" | "size">;
+  selectionRatioW: Accessor<number>;
+  setSelectionRatioW: Setter<number>;
+  selectionRatioH: Accessor<number>;
+  setSelectionRatioH: Setter<number>;
+  selectionSizeW: Accessor<number>;
+  setSelectionSizeW: Setter<number>;
+  selectionSizeH: Accessor<number>;
+  setSelectionSizeH: Setter<number>;
   hoveredLayerId: Accessor<string | null>;
   setHoveredLayerId: Setter<string | null>;
   hoverHandle: Accessor<string | null>;

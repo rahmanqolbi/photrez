@@ -249,6 +249,7 @@ export function EditableNumField(props: {
         ref={inputRef}
         type="text"
         value={text()}
+        disabled={props.disabled}
         onFocus={() => {
           if (props.disabled) return;
           setEditing(true);

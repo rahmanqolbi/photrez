@@ -171,6 +171,7 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
   const handlePointerDown = (e: PointerEvent, type: string) => {
     if (props.isNavigationMode) return;
     e.stopPropagation();
+    e.preventDefault();
     props.onStopMomentum?.();
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();

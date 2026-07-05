@@ -40,6 +40,7 @@ function createMockEditorParams(toolId: string) {
     getHeight: () => 100,
     getLayers: () => [],
     setActiveLayer: vi.fn(),
+    getSelection: () => null,
   } as unknown as DocumentEngine;
 
   let currentLastPaintCoords: any = null;
