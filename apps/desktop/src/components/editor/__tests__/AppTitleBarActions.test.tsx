@@ -25,8 +25,8 @@ vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn().mockResolvedValue(vi.fn()),
 }));
 
-// Mock @/lib/desktop because runTauriWindowAction uses import(/* @vite-ignore */ ...)
-// which bypasses vi.mock for @tauri-apps/api/window.
+// Mock @/lib/desktop because the test needs to control the Tauri runtime flag
+// independently of window.__TAURI_INTERNALS__ for the non-Tauri guard test.
 const runTauriActionMock = vi.hoisted(() => vi.fn());
 const tauriRuntimeFlag = vi.hoisted(() => ({ value: true }));
 
@@ -113,6 +113,26 @@ describe("titlebar window action buttons", () => {
     it("shows maximize (square) icon by default", () => {
       const host = renderTitlebar();
       expect(host.container.querySelector('[aria-label="Maximize window"]')).toBeTruthy();
+      host.dispose();
+    });
+
+    it("sets up onResized listener on mount (after isMaximized resolves)", async () => {
+      // The maximize icon subscribes to window resize events via onResized(),
+      // which is called inside onMount after isMaximized() resolves.
+      const host = renderTitlebar();
+      // Flush microtasks so the onResized call from onMount's async chain runs
+      await new Promise((r) => setTimeout(r, 0));
+      expect(windowMock.onResized).toHaveBeenCalledOnce();
+      host.dispose();
+    });
+
+    it("updates to restore icon when isMaximized resolves to true", async () => {
+      windowMock.isMaximized.mockResolvedValueOnce(true);
+      const host = renderTitlebar();
+      // isMaximized().then() runs on microtask after render
+      await new Promise((r) => setTimeout(r, 0));
+      expect(host.container.querySelector('[aria-label="Restore window"]')).toBeTruthy();
+      expect(host.container.querySelector('[aria-label="Maximize window"]')).toBeFalsy();
       host.dispose();
     });
   });

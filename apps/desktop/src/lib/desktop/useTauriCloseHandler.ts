@@ -1,4 +1,6 @@
 import { onCleanup } from "solid-js";
+import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { WorkspaceManager } from "@/engine/workspace";
 
 // Minimal dialog interface matching useDialog() return type
@@ -127,7 +129,6 @@ export function useTauriCloseHandler(
     // Use destroy() NOT close() because in Tauri 2, close() also triggers
     // CloseRequested → prevent_close() → infinite loop. destroy() bypasses it.
     try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
       await getCurrentWindow().destroy();
     } catch {
       // Fallback for non-Tauri or test env
@@ -137,12 +138,12 @@ export function useTauriCloseHandler(
   // Only set up listener in Tauri runtime
   if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
     let unlisten: (() => void) | undefined;
-    import("@tauri-apps/api/event").then(({ listen }) => {
-      listen("close-requested", handleCloseRequested).then((fn) => {
-        unlisten = fn;
-      });
+    let cancelled = false;
+    listen("close-requested", handleCloseRequested).then((fn) => {
+      if (!cancelled) unlisten = fn;
     });
     onCleanup(() => {
+      cancelled = true;
       unlisten?.();
     });
   }

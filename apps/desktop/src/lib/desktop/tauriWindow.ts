@@ -1,3 +1,5 @@
+import { getCurrentWindow } from "@tauri-apps/api/window";
+
 type TauriWindowAction =
   | "minimize"
   | "toggleMaximize"
@@ -18,7 +20,6 @@ export async function runTauriWindowAction(action: TauriWindowAction) {
   if (!isTauriRuntime()) return;
 
   try {
-    const { getCurrentWindow } = await import(/* @vite-ignore */ "@tauri-apps/api/window");
     await getCurrentWindow()[action]();
   } catch (error) {
     console.warn(`Failed to run Tauri window action: ${action}`, error);

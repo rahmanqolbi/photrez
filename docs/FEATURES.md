@@ -19,6 +19,10 @@
 | ✅ DONE | Hardcoded accent colors → CSS variables (`var(--color-editor-accent)`) across SelectionTransformOverlay, CropOverlayHandles, CropOverlayTooltip |
 | ✅ DONE | Hardcoded panel colors → Tailwind theme tokens (`bg-editor-panel`) in CropModeIndicator and Tooltip |
 | ✅ DONE | Smart guide colors extracted to CSS custom properties (`--guide-center`, `--guide-edge`) in `:root` |
+| ✅ DONE | `useSelectionTransformDrag.test.ts` — 42 comprehensive wiring tests (pointerDown/Move/Up/Cancel/lostCapture/Escape for move/resize/rotate) closed a ZERO-coverage gap on 429-line critical transform/resize hook |
+| ✅ DONE | Alt+resize center-drift fix — Step 3 of `applyResizeHandle` changed from incremental `vx -= dw/2` to absolute center positioning, fixing up to 160% center drift on "w"/"n" handles at all rotation angles |
+| ✅ DONE | Move tool implementation-contract tests — 18 new tests (24 total) for `useCanvasLayerDrag` covering signal state machine, guard conditions with listener isolation verification, event listener lifecycle, cancel behavior, DragController integration (beginLayerDrag/endDrag payload), auto-select OFF paths (selected layer vs hit layer, no-selection guard, locked-selected-layer fallthrough), same-doc tab drop revert, layer detection order, and invisible layer skipping; unified TestApi exposes dcState, moveSnapEnabled, moveAutoSelect, selectedLayerId |
+| ✅ DONE | Close button dynamic import → static import fix: replaced `import(/* @vite-ignore */)` with static `import` in `tauriWindow.ts` and `useTauriCloseHandler.ts` — the `@vite-ignore` prevented Vite optimization, causing runtime resolution failures in production webview; added 10 implementation tests (tauriWindow: 6, useTauriCloseHandler: 2 lifecycle, AppTitleBarActions: 2 maximize state); cancelled flag prevents race on listen promise resolving after cleanup |
 
 ---
 
@@ -66,6 +70,7 @@
 | ✅ DONE | Move selection boundary (click+drag inside marquee)                                                                                                                                          |
 | ✅ DONE | Rotate selection marquee (rotation handle drag)                                                                                                                                              |
 | ✅ DONE | Selection OptionBar — editable X/Y/W/H/Angle, Invert, Deselect buttons                                                                                                                       |
+| ✅ DONE | Selection OptionBar constraints and persistent layout — Style dropdown (Normal, Fixed Ratio, Fixed Size), aspect ratio/dimension constraints for drawing, and layout preservation (disabled coordinate fields/action buttons displayed when no active selection) |
 | ✅ DONE | Selection keyboard shortcuts — Ctrl+D (deselect), Ctrl+I (invert), Ctrl+T (transform toggle), Ctrl+X (cut), Ctrl+C (copy), Ctrl+V (paste), Delete/Backspace (delete pixels), Escape (cancel) |
 | ✅ DONE | Selection cut/copy/paste/delete (real pixel ops on active layer — in-memory clipboard; cut=copy+clear, delete=clear pixels, paste=creates new "Pasted Layer")                                |
 | ✅ DONE | Selection option bar — Cut / Copy / Paste / Delete buttons in addition to Invert / Deselect                                                                                                  |
@@ -379,7 +384,7 @@
 | ✅ DONE | CI pipeline (GitHub Actions: type-check, lint, dependency audit, frontend tests, build, browser E2E, Rust workspace tests)                                                                                                                                                |
 | ✅ DONE | Unit tests (core crate) — 89 tests, 114 workspace total                                                                                                                                                                                                                   |
 | ✅ DONE | Desktop shell Rust tests — 25 tests (commands, response, window_state, menu)                                                                                                                                                                                              |
-| ✅ DONE | Frontend tests — 1561 passing tests (121 files), latest recorded 2026-07-02                                                                                                                                                                                               |
+| ✅ DONE | Frontend tests — 1774 passing tests (127 files), latest recorded 2026-07-05 |
 | ✅ DONE | Split Vitest feedback paths — 783 pure-Node tests (~6.5s), 778 isolated jsdom tests, full 1561-test gate ~53s (76.8% faster than 228.33s baseline)                                                                                                                        |
 | ✅ DONE | E2E browser tests — 25 Playwright tests (+1 grand-tour native smoke), including dialog screenshots, keyboard/focus contracts, and full pixel pipeline smoke                                                                                                              |
 | ✅ DONE | E2E visible-pixel sampling compatible with `preserveDrawingBuffer: false` — checkerboard, brush/eraser, and selection undo/redo tests sample composited screenshots instead of an undefined default WebGL framebuffer                                                     |

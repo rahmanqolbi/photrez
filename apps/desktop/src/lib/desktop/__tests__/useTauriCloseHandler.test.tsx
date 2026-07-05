@@ -152,6 +152,41 @@ describe("useTauriCloseHandler", () => {
     expect(tauriState.listenCallback).toBeInstanceOf(Function);
   });
 
+  it("calls listen() synchronously during render (no dynamic import deferral)", () => {
+    // With static imports (replacing import(@vite-ignore) pattern),
+    // listen() must be invoked inline, not deferred to a .then() callback.
+    (window as any).__TAURI_INTERNALS__ = {};
+    const workspace = makeWorkspace([]);
+    const dialog = { confirmSave: vi.fn() };
+
+    // Render WITHOUT await — after render() returns, listen() should have been called.
+    dispose = render(() => Harness({ workspace, dialog, scheduler: { requestRender: vi.fn() } }), container);
+
+    expect(tauriState.listenEvent).toBe("close-requested");
+    expect(tauriState.listenCallback).toBeInstanceOf(Function);
+  });
+
+  it("does not call unlisten if cleanup happens before listen promise resolves", async () => {
+    // Edge case: the listen() promise resolves (microtask) after the component
+    // has already been disposed. The cancelled flag prevents assigning unlisten
+    // to a stale variable in the .then() callback.
+    (window as any).__TAURI_INTERNALS__ = {};
+    const workspace = makeWorkspace([]);
+    const dialog = { confirmSave: vi.fn() };
+
+    dispose = render(() => Harness({ workspace, dialog, scheduler: { requestRender: vi.fn() } }), container);
+
+    // Dispose immediately — before listen().then() microtask runs
+    dispose();
+    dispose = null;
+
+    // Flush microtasks — .then() runs but cancelled=true prevents unlisten assignment
+    await flush();
+
+    // unlisten was never assigned (cancelled guarded), so unlisten?.() was no-op
+    expect(tauriState.unlisten).not.toHaveBeenCalled();
+  });
+
   it("does NOT set up listener outside Tauri runtime", async () => {
     const workspace = makeWorkspace([]);
     const dialog = { confirmSave: vi.fn() };

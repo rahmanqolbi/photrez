@@ -110,3 +110,6 @@ worktrees/
 
 # Local AI agent tools (vendor — clone manually, see AGENTS.md)
 .tools/
+
+# Reserved Windows device name
+nul
