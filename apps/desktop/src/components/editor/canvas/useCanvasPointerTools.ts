@@ -347,18 +347,31 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     interactiveState.onPaintStroke = params.onPaintStroke;
   }
 
+  /**
+   * Convert pointer event coordinates to document space.
+   *
+   * Uses pan()/zoom() signals instead of engine.getViewport() because the
+   * engine viewport goes stale during pan/scroll/momentum (usePanNavigation
+   * intentionally skips engine.setViewport during panning to avoid triggering
+   * layer re-selection). Using the always-up-to-date signals ensures all tools
+   * (selection, brush, eraser, crop) get correct coordinates regardless of
+   * viewport state.
+   *
+   * Bug 2026-07-05: tools broke after panning because engine.getViewport()
+   * returned stale pan/zoom values while the camera + signals were already
+   * updated via direct setZoom/setPan calls.
+   */
   const getDocCoords = (e: PointerEvent) => {
     const container = params.getCanvasContainerRef();
     if (!container) return { x: 0, y: 0 };
     const rect = container.getBoundingClientRect();
-    const activeEngine = workspace.getActiveEngine();
-    if (!activeEngine) return { x: 0, y: 0 };
-    return screenToDocument(
-      e.clientX,
-      e.clientY,
-      rect,
-      activeEngine.getViewport(),
-    );
+    const p = pan();
+    const z = zoom();
+    if (!Number.isFinite(z) || z <= 0) return { x: 0, y: 0 };
+    return {
+      x: (e.clientX - rect.left - p.x) / z,
+      y: (e.clientY - rect.top - p.y) / z,
+    };
   };
 
   const handleDoubleClick = (e: MouseEvent) => {

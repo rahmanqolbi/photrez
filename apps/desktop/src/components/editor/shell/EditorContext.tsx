@@ -204,6 +204,16 @@ export interface EditorContextValue {
   rightDockPanel: Accessor<"layers" | "history">;
   setRightDockPanel: Setter<"layers" | "history">;
 
+  // Transform mini undo/redo
+  commitTransformState: (transform: Transform2D) => void;
+  canTransformUndo: () => boolean;
+  canTransformRedo: () => boolean;
+  undoTransform: () => { transform: Transform2D } | null;
+  redoTransform: () => { transform: Transform2D } | null;
+  undoTransformWithCurrent: (currentTransform: Transform2D) => { transform: Transform2D } | null;
+  redoTransformWithCurrent: (currentTransform: Transform2D) => { transform: Transform2D } | null;
+  clearTransformStacks: () => void;
+
   // Side dock state
   rightDockOpen: Accessor<boolean>;
   setRightDockOpen: (open: boolean) => void;

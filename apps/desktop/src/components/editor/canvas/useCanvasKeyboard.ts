@@ -53,6 +53,9 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     redoModernCrop,
     commitModernCropState,
     commitCropState,
+    undoTransformWithCurrent,
+    redoTransformWithCurrent,
+    clearTransformStacks,
     cropDeletePixels,
     cropFillEnabled,
     cropFillSource,
@@ -155,10 +158,50 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
 
       // Layer transform session keyboard shortcuts (takes precedence over crop/tool shortcuts)
       if (layerTransformSession()) {
+        const ctrl = e.ctrlKey || e.metaKey;
+        const key = e.key.toLowerCase();
+
+        // Ctrl+Z / Ctrl+Y: transform mini undo/redo within the active session.
+        // Each pointerDown for a resize/rotate gesture saves a snapshot to the
+        // mini undo stack, so these keys revert/restore individual gestures.
+        if (ctrl && key === "z" && !e.shiftKey) {
+          const session = layerTransformSession();
+          const layer = engine.getLayer(session!.layerId);
+          if (layer) {
+            const entry = undoTransformWithCurrent(layer.transform);
+            if (entry) {
+              e.preventDefault();
+              e.stopPropagation();
+              engine.transformLayer(layer.id, entry.transform);
+              scheduler.requestRender();
+              return;
+            }
+            // Mini undo stack empty — fall through so useEditorCommands.ts
+            // can cancel the session (existing Ctrl+Z behavior).
+          }
+        }
+
+        if ((ctrl && key === "y") || (ctrl && e.shiftKey && key === "z")) {
+          const session = layerTransformSession();
+          const layer = engine.getLayer(session!.layerId);
+          if (layer) {
+            const entry = redoTransformWithCurrent(layer.transform);
+            if (entry) {
+              e.preventDefault();
+              e.stopPropagation();
+              engine.transformLayer(layer.id, entry.transform);
+              scheduler.requestRender();
+              return;
+            }
+            // Mini redo stack empty — fall through to general redo handler.
+          }
+        }
+
         if (e.key === "Enter") {
           e.preventDefault();
           e.stopPropagation();
           if (commitLayerTransformSession(layerTransformSession(), engine, history)) {
+            clearTransformStacks();
             setLayerTransformSession(null);
             scheduler.requestRender();
           }
@@ -169,6 +212,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
           e.preventDefault();
           e.stopPropagation();
           if (cancelLayerTransformSession(layerTransformSession(), engine)) {
+            clearTransformStacks();
             setLayerTransformSession(null);
             scheduler.requestRender();
           }

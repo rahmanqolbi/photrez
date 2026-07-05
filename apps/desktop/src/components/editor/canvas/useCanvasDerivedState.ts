@@ -31,6 +31,7 @@ export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
     docWidth,
     docHeight,
     clearCropStacks,
+    clearTransformStacks,
     cropInteractionMode,
     modernCropFrame,
   } = useEditor();
@@ -134,6 +135,15 @@ export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
     if (activeTool() === "crop" && cropInteractionMode() === "modern" && !modernCropFrame()) {
       setHoverHandle(null);
       setHoverPos(null);
+    }
+  });
+
+  // Clear transform mini stacks when tool changes away from move/selection.
+  // This prevents stale undo entries from accumulating across tool sessions.
+  createEffect(() => {
+    const tool = activeTool();
+    if (tool !== "move" && tool !== "selection") {
+      clearTransformStacks();
     }
   });
 

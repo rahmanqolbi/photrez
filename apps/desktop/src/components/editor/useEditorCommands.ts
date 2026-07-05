@@ -119,11 +119,14 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
     if (command === "file.new") return !editor.workspace.isFull();
     if (requiresDocument(command) && !editor.activeDocumentId()) return false;
     if (command === "edit.undo") {
-      return editor.layerTransformSession() !== null
-        || (editor.activeTool() === "crop" && (editor.canCropUndo() || editor.canModernCropUndo()))
+      // When a transform session exists, undo is always available:
+      // mini undo first (revert individual gesture), then cancel-session fallback.
+      if (editor.layerTransformSession()) return true;
+      return (editor.activeTool() === "crop" && (editor.canCropUndo() || editor.canModernCropUndo()))
         || editor.workspace.getActiveHistory()?.canUndo() === true;
     }
     if (command === "edit.redo") {
+      if (editor.layerTransformSession()) return true;
       return (editor.activeTool() === "crop" && (editor.canCropRedo() || editor.canModernCropRedo()))
         || editor.workspace.getActiveHistory()?.canRedo() === true;
     }
@@ -166,6 +169,36 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
   };
 
   const restoreHistorySnapshot = (direction: "undo" | "redo") => {
+    // Try transform mini undo/redo first when session is active.
+    // Each pointerDown for resize/rotate saves a snapshot to the mini undo
+    // stack, so Ctrl+Z reverts individual gestures within the session.
+    if (editor.layerTransformSession()) {
+      const engine = editor.workspace.getActiveEngine();
+      if (engine) {
+        const session = editor.layerTransformSession()!;
+        const layer = engine.getLayer(session.layerId);
+        if (layer) {
+          if (direction === "undo") {
+            const entry = editor.undoTransformWithCurrent(layer.transform);
+            if (entry) {
+              engine.transformLayer(layer.id, entry.transform);
+              editor.scheduler.requestRender();
+              editor.workspace.notifyVisualChange();
+              return;
+            }
+          } else {
+            const entry = editor.redoTransformWithCurrent(layer.transform);
+            if (entry) {
+              engine.transformLayer(layer.id, entry.transform);
+              editor.scheduler.requestRender();
+              editor.workspace.notifyVisualChange();
+              return;
+            }
+          }
+        }
+      }
+    }
+
     if (cancelActiveTransformSession()) {
       return;
     }

@@ -38,7 +38,7 @@ interface UseSelectionTransformDragParams {
 }
 
 export function useSelectionTransformDrag(props: UseSelectionTransformDragParams) {
-  const { workspace, selectedLayerId, layers, zoom, pan, scheduler, activeTool, hoverHandle, setHoverHandle, moveSnapEnabled, setHoverPos, hoverPos, layerTransformSession, setLayerTransformSession } = useEditor();
+  const { workspace, selectedLayerId, layers, zoom, pan, scheduler, activeTool, hoverHandle, setHoverHandle, moveSnapEnabled, setHoverPos, hoverPos, layerTransformSession, setLayerTransformSession, commitTransformState } = useEditor();
 
   const activeLayer = createMemo(() => {
     const id = selectedLayerId();
@@ -189,6 +189,11 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
     }
 
     if (isLayerTransformSessionType(type)) {
+      // Save current transform to mini undo stack BEFORE modifying it.
+      // Each pointerDown for resize/rotate creates an undo entry so
+      // Ctrl+Z during the active session can revert individual gestures.
+      commitTransformState({ ...layer.transform });
+
       if (!layerTransformSession()) {
         const originalSnapshot = engine.snapshot();
         setLayerTransformSession({

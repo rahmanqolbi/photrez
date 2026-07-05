@@ -67,6 +67,55 @@ export function createEditorState() {
   const [renameLayerName, setRenameLayerName] = createSignal("");
   const [chromeVisible, setChromeVisible] = createSignal(true);
 
+  // Transform mini undo/redo state (like crop's mini undo/redo)
+  const [transformUndoStack, setTransformUndoStack] = createSignal<{ transform: Transform2D }[]>([]);
+  const [transformRedoStack, setTransformRedoStack] = createSignal<{ transform: Transform2D }[]>([]);
+
+  const commitTransformState = (transform: Transform2D) => {
+    setTransformUndoStack(prev => [...prev, { transform: { ...transform } }]);
+    setTransformRedoStack([]);
+  };
+
+  const canTransformUndo = () => transformUndoStack().length > 0;
+  const canTransformRedo = () => transformRedoStack().length > 0;
+
+  const undoTransform = (): { transform: Transform2D } | null => {
+    const stack = transformUndoStack();
+    if (stack.length === 0) return null;
+    const entry = stack[stack.length - 1];
+    setTransformUndoStack(prev => prev.slice(0, -1));
+    return entry;
+  };
+
+  const redoTransform = (): { transform: Transform2D } | null => {
+    const stack = transformRedoStack();
+    if (stack.length === 0) return null;
+    const entry = stack[stack.length - 1];
+    setTransformRedoStack(prev => prev.slice(0, -1));
+    return entry;
+  };
+
+  const undoTransformWithCurrent = (currentTransform: Transform2D): { transform: Transform2D } | null => {
+    const entry = undoTransform();
+    if (entry) {
+      setTransformRedoStack(prev => [...prev, { transform: { ...currentTransform } }]);
+    }
+    return entry;
+  };
+
+  const redoTransformWithCurrent = (currentTransform: Transform2D): { transform: Transform2D } | null => {
+    const entry = redoTransform();
+    if (entry) {
+      setTransformUndoStack(prev => [...prev, { transform: { ...currentTransform } }]);
+    }
+    return entry;
+  };
+
+  const clearTransformStacks = () => {
+    setTransformUndoStack([]);
+    setTransformRedoStack([]);
+  };
+
   return {
     activeTool, setActiveTool,
     selectedLayerId, setSelectedLayerId,
@@ -116,5 +165,14 @@ export function createEditorState() {
     renamingLayerId, setRenamingLayerId,
     renameLayerName, setRenameLayerName,
     chromeVisible, setChromeVisible,
+    // Transform mini undo/redo
+    commitTransformState,
+    canTransformUndo,
+    canTransformRedo,
+    undoTransform,
+    redoTransform,
+    undoTransformWithCurrent,
+    redoTransformWithCurrent,
+    clearTransformStacks,
   };
 }
