@@ -195,7 +195,7 @@ describe('resolveCursor', () => {
   it('returns default for unknown tool', () => {
     const ctx: CursorContext = {
       ...base,
-      activeTool: 'unknown' as any,
+      activeTool: 'unknown' as unknown as import("../components/editor/tools/toolTypes").ToolId,
     };
     expect(resolveCursor(ctx)).toBe('default');
   });

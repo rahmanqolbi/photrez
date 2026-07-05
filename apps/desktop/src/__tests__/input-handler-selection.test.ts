@@ -231,7 +231,7 @@ describe("input-handler: selection tool draw modifiers", () => {
         selectionSizeH: 40,
       });
       handlePointerDown("selection", 100, 100, engine, createMockHistory(), vi.fn(), ctx);
-      (ctx.onSelectionCreated as any).mockClear();
+      vi.mocked(ctx.onSelectionCreated!).mockClear();
 
       // Drag far away — size should remain 60x40, still centered at start (100,100)
       handlePointerMove("selection", 500, 400, engine, vi.fn(), ctx);
@@ -247,7 +247,7 @@ describe("input-handler: selection tool draw modifiers", () => {
         selectionSizeH: 100,
       });
       handlePointerDown("selection", 300, 200, engine, createMockHistory(), vi.fn(), ctx);
-      (engine.createSelection as any).mockClear();
+      vi.mocked(engine.createSelection).mockClear();
 
       handlePointerUp("selection", 400, 300, engine, createMockHistory(), vi.fn(), ctx);
       expect(engine.createSelection).toHaveBeenCalledWith(225, 150, 150, 100);
@@ -265,7 +265,7 @@ describe("input-handler: selection tool draw modifiers", () => {
         selectionRatioH: 9,
       });
       handlePointerDown("selection", 100, 100, engine, createMockHistory(), vi.fn(), ctx);
-      (ctx.onSelectionCreated as any).mockClear();
+      vi.mocked(ctx.onSelectionCreated!).mockClear();
 
       // Drag to (300, 130) → dx=200, dy=30, currentAspect = 200/30 ≈ 6.67, targetAspect = 16/9 ≈ 1.78
       // currentAspect > targetAspect → h = w / targetAspect = 200 / (16/9) = 112.5
@@ -283,7 +283,7 @@ describe("input-handler: selection tool draw modifiers", () => {
         selectionRatioH: 3,
       });
       handlePointerDown("selection", 100, 100, engine, createMockHistory(), vi.fn(), ctx);
-      (ctx.onSelectionCreated as any).mockClear();
+      vi.mocked(ctx.onSelectionCreated!).mockClear();
 
       // Drag to (130, 400) → dx=30, dy=300, currentAspect = 30/300 = 0.1, targetAspect = 4/3 ≈ 1.33
       // currentAspect < targetAspect → w = h * targetAspect = 300 * (4/3) = 400
@@ -301,7 +301,7 @@ describe("input-handler: selection tool draw modifiers", () => {
         selectionRatioH: 1,
       });
       handlePointerDown("selection", 300, 300, engine, createMockHistory(), vi.fn(), ctx);
-      (ctx.onSelectionCreated as any).mockClear();
+      vi.mocked(ctx.onSelectionCreated!).mockClear();
 
       // Drag to (100, 100) → dx=-200, dy=-200, w=200, h=200
       // currentAspect = 200/200 = 1, targetAspect = 2/1 = 2
@@ -322,7 +322,7 @@ describe("input-handler: selection tool draw modifiers", () => {
         isAltPressed: true,
       });
       handlePointerDown("selection", 200, 200, engine, createMockHistory(), vi.fn(), ctx);
-      (ctx.onSelectionCreated as any).mockClear();
+      vi.mocked(ctx.onSelectionCreated!).mockClear();
 
       // center=(200,200), current=(300,250), dx=100, dy=50, w=100, h=50
       // currentAspect = 100/50 = 2, targetAspect = 1/1 = 1
@@ -341,7 +341,7 @@ describe("input-handler: selection tool draw modifiers", () => {
         selectionRatioH: 2,
       });
       handlePointerDown("selection", 50, 50, engine, createMockHistory(), vi.fn(), ctx);
-      (engine.createSelection as any).mockClear();
+      vi.mocked(engine.createSelection).mockClear();
 
       handlePointerUp("selection", 200, 100, engine, createMockHistory(), vi.fn(), ctx);
       // dx=150, dy=50, w=150, h=50, currentAspect=3, targetAspect=1.5
@@ -358,7 +358,7 @@ describe("input-handler: selection tool draw modifiers", () => {
         selectionRatioH: 1,
       });
       handlePointerDown("selection", 100, 100, engine, createMockHistory(), vi.fn(), ctx);
-      (engine.createSelection as any).mockClear();
+      vi.mocked(engine.createSelection).mockClear();
 
       // dx=1, dy=1 → w=1, h=1 → too small (w <= 2 && h <= 2) → clearSelection
       handlePointerUp("selection", 101, 101, engine, createMockHistory(), vi.fn(), ctx);
@@ -377,7 +377,7 @@ describe("input-handler: selection tool draw modifiers", () => {
         isShiftPressed: true,
       });
       handlePointerDown("selection", 0, 0, engine, createMockHistory(), vi.fn(), ctx);
-      (ctx.onSelectionCreated as any).mockClear();
+      vi.mocked(ctx.onSelectionCreated!).mockClear();
 
       // Drag to (160, 90) → dx=160, dy=90, currentAspect = 160/90 = 1.778, targetAspect = 16/9 ≈ 1.778
       // currentAspect ≈ targetAspect → h stays = 90, w stays = 160
@@ -385,7 +385,7 @@ describe("input-handler: selection tool draw modifiers", () => {
       expect(ctx.onSelectionCreated).toHaveBeenCalledWith(0, 0, 160, 90);
       // Even with Shift pressed, ratio mode should use its own aspect ratio, not square
       // Verify it's NOT a square (160 != 160*9/16=90)
-      const call = (ctx.onSelectionCreated as any).mock.calls[0];
+      const call = vi.mocked(ctx.onSelectionCreated!).mock.calls[0];
       expect(call[2] / call[3]).toBeCloseTo(16 / 9, 5);
     });
   });
@@ -401,7 +401,7 @@ describe("input-handler: selection tool draw modifiers", () => {
         selectionRatioH: 1,
       });
       handlePointerDown("selection", 100, 100, engine, createMockHistory(), vi.fn(), ctx);
-      (ctx.onSelectionCreated as any).mockClear();
+      vi.mocked(ctx.onSelectionCreated!).mockClear();
 
       // rw=0 so targetAspect = 0/1 = 0 → currentAspect > 0 → h = w / 0 → NaN or Infinity
       // The guard `if (rw > 0 && rh > 0)` should prevent the ratio branch
@@ -450,7 +450,7 @@ describe("input-handler: selection tool draw modifiers", () => {
       const engine = createMockEngine(["snapshot"]);
       const ctx = createToolContext({
         selectedLayerId: null,
-        pendingHistorySnapshot: { snap: 1 } as any,
+        pendingHistorySnapshot: { snap: 1 } as unknown as import("../engine/types").DocumentModel,
         pendingOriginalSelectionPos: { x: 10, y: 20 },
         onSelectionCreated: vi.fn(),
       });

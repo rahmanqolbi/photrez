@@ -44,7 +44,7 @@ function makeCtx(
     brushSize: 20,
     brushHardness: 1,
     brushOpacity: 1,
-    paintSettings: { size: 20, hardness: 1, opacity: 1, flow: 1, smoothing: 0 } as any,
+    paintSettings: { size: 20, hardness: 1, opacity: 1, flow: 1, smoothing: 0 },
     selectedLayerId,
     isAltPressed: false,
     isShiftPressed: false,
@@ -803,7 +803,7 @@ describe("history audit — snapshot/restore independence", () => {
 
     history.commit(engine.snapshot());
     // Aggressive: also mutate the original layer object reference.
-    (layer.transform as any).x = 12345;
+    (layer.transform as unknown as { x: number; [key: string]: unknown }).x = 12345;
     engine.moveLayer(layer.id, 999, 999);
 
     const prev = history.undo(engine.snapshot())!;

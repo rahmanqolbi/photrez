@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildCropSnapTargets, snapCropRect } from "../viewport/cropSnap";
+import type { CropSnapTargets } from "../viewport/cropSnap";
 
 describe("buildCropSnapTargets", () => {
   it("includes canvas edges, centers, and visible layer edges", () => {
@@ -208,7 +209,7 @@ describe("snapCropRect — handle-specific edge snap verification (implementatio
 
   it("undefined targets produce no snapping", () => {
     const rect = { x: 8, y: 8, w: 200, h: 150 };
-    const { rect: snapped, lines } = snapCropRect(rect, "nw", {} as any, 15);
+    const { rect: snapped, lines } = snapCropRect(rect, "nw", {} as unknown as CropSnapTargets, 15);
     expect(snapped).toEqual(rect);
     expect(lines).toEqual([]);
   });
