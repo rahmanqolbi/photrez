@@ -4,7 +4,9 @@ import { EditorProvider, useEditor } from "../../shell/EditorContext";
 import { useCanvasLayerDrag } from "../useCanvasLayerDrag";
 import { WorkspaceManager } from "@/engine/workspace";
 import { ViewportCamera } from "../../../../viewport/viewportCamera";
+import { useDragController, type DragState } from "../../DragController";
 import type { LayerNode } from "@/engine/types";
+import type { ToolId } from "../../tools/toolTypes";
 
 function makeLayer(name: string, x: number, y: number, w = 100, h = 100): LayerNode {
   return {
@@ -15,23 +17,32 @@ function makeLayer(name: string, x: number, y: number, w = 100, h = 100): LayerN
     opacity: 1,
     locked: false,
     blendMode: "normal",
-    transform: {
-      x,
-      y,
-      scaleX: 1,
-      scaleY: 1,
-      rotation: 0,
-      flipH: false,
-      flipV: false,
-    },
+    transform: { x, y, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
     width: w,
     height: h,
     imageBitmap: null,
   };
 }
 
+interface TestApi {
+  dragApi: ReturnType<typeof useCanvasLayerDrag>;
+  dcState: () => DragState;
+  setTool: (t: ToolId) => void;
+  setMoveSnapEnabled: (v: boolean) => void;
+  setMoveAutoSelect: (v: boolean) => void;
+  setSelectedLayerId: (id: string | null) => void;
+}
+
 describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => {
-  function setupWithLayer() {
+  type LayerCtx = ReturnType<typeof setupWithLayer>;
+
+  function setupWithLayer(): {
+    ws: WorkspaceManager;
+    canvasEl: HTMLElement;
+    testApi: TestApi;
+    dispose: () => void;
+    container: HTMLElement;
+  } {
     const ws = new WorkspaceManager();
     const session = WorkspaceManager.createBlankDocument("wiring-canvas", "Canvas", 800, 600);
     ws.addDocument(session);
@@ -40,9 +51,7 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
     a.transform.y = 100;
     a.width = 200;
     a.height = 200;
-    // addLayer inserts at index 0 (newest at front). findLayerAt now iterates
-    // top→bottom (index 0 first) so the freshly-added Draggable is on top and
-    // hit first. No reorder workaround needed.
+
     const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
     const scheduler = { requestRender: vi.fn() };
     const camera = new ViewportCamera();
@@ -57,9 +66,16 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
     canvasEl.style.height = "600px";
     document.body.appendChild(canvasEl);
 
-    let dragApi: ReturnType<typeof useCanvasLayerDrag> | null = null;
+    const testApi: TestApi = {} as TestApi;
     function Probe() {
-      dragApi = useCanvasLayerDrag();
+      const ed = useEditor();
+      const dc = useDragController();
+      testApi.dragApi = useCanvasLayerDrag();
+      testApi.dcState = () => dc.state();
+      testApi.setTool = (t: ToolId) => ed.setActiveTool(t);
+      testApi.setMoveSnapEnabled = (v: boolean) => ed.setMoveSnapEnabled(v);
+      testApi.setMoveAutoSelect = (v: boolean) => ed.setMoveAutoSelect(v);
+      testApi.setSelectedLayerId = (id: string | null) => ed.setSelectedLayerId(id);
       return null;
     }
     const dispose = render(
@@ -70,18 +86,18 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       ),
       container,
     );
-    // Attach the hook's pointerdown handler to canvasEl (mimics what CanvasViewport does)
-    canvasEl.addEventListener("pointerdown", (e) => dragApi?.handlePointerDown(e as PointerEvent));
-    return { ws, canvasEl, getDragApi: () => dragApi!, dispose, container };
+    canvasEl.addEventListener("pointerdown", (e) => testApi.dragApi?.handlePointerDown(e as PointerEvent));
+    return { ws, canvasEl, testApi, dispose, container };
   }
 
-  function teardown(ctx: { dispose: () => void; container: HTMLDivElement; canvasEl: HTMLDivElement }) {
+  function teardown(ctx: LayerCtx) {
     ctx.dispose();
     ctx.container.parentNode?.removeChild(ctx.container);
     ctx.canvasEl.parentNode?.removeChild(ctx.canvasEl);
     vi.restoreAllMocks();
   }
 
+  type TwoDocCtx = ReturnType<typeof setupWithTwoDocs>;
   function setupWithTwoDocs() {
     const ws = new WorkspaceManager();
     const source = WorkspaceManager.createBlankDocument("doc-a", "A", 800, 600);
@@ -109,9 +125,16 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
     canvasEl.style.height = "600px";
     document.body.appendChild(canvasEl);
 
-    let dragApi: ReturnType<typeof useCanvasLayerDrag> | null = null;
+    const testApi: TestApi = {} as TestApi;
     function Probe() {
-      dragApi = useCanvasLayerDrag();
+      const ed = useEditor();
+      const dc = useDragController();
+      testApi.dragApi = useCanvasLayerDrag();
+      testApi.dcState = () => dc.state();
+      testApi.setTool = (t: ToolId) => ed.setActiveTool(t);
+      testApi.setMoveSnapEnabled = (v: boolean) => ed.setMoveSnapEnabled(v);
+      testApi.setMoveAutoSelect = (v: boolean) => ed.setMoveAutoSelect(v);
+      testApi.setSelectedLayerId = (id: string | null) => ed.setSelectedLayerId(id);
       return null;
     }
     const dispose = render(
@@ -122,9 +145,11 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       ),
       container,
     );
-    canvasEl.addEventListener("pointerdown", (e) => dragApi?.handlePointerDown(e as PointerEvent));
-    return { ws, canvasEl, getDragApi: () => dragApi!, dispose, container };
+    canvasEl.addEventListener("pointerdown", (e) => testApi.dragApi?.handlePointerDown(e as PointerEvent));
+    return { ws, canvasEl, testApi, dispose, container };
   }
+
+  // ── Behavioral: full drag cycle ──
 
   it("click+drag in canvas translates the layer's transform.x and transform.y", () => {
     const ctx = setupWithLayer();
@@ -134,37 +159,22 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       expect(layer.transform.x).toBe(100);
       expect(layer.transform.y).toBe(100);
 
-      // Simulate pointerdown inside layer's top-left bounds (layer at 100,100 → 300,300)
       ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
-        bubbles: true,
-        cancelable: true,
-        button: 0,
-        clientX: 150,
-        clientY: 150,
+        bubbles: true, cancelable: true, button: 0, clientX: 150, clientY: 150,
       }));
-
-      // Simulate pointermove at (250, 200) on document
       document.dispatchEvent(new PointerEvent("pointermove", {
-        bubbles: true,
-        button: 0,
-        clientX: 250,
-        clientY: 200,
+        bubbles: true, button: 0, clientX: 250, clientY: 200,
       }));
 
-      // Layer should have moved by the delta (100,50)
+      // Delta (100,50) applied to layer at (100,100) → (200,150)
       expect(layer.transform.x).toBe(200);
       expect(layer.transform.y).toBe(150);
-      expect(ctx.getDragApi().isDragging()).toBe(true);
+      expect(ctx.testApi.dragApi.isDragging()).toBe(true);
 
-      // Simulate pointerup at (200, 150)
       document.dispatchEvent(new PointerEvent("pointerup", {
-        bubbles: true,
-        button: 0,
-        clientX: 200,
-        clientY: 150,
+        bubbles: true, button: 0, clientX: 200, clientY: 150,
       }));
-
-      expect(ctx.getDragApi().isDragging()).toBe(false);
+      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
     } finally {
       teardown(ctx);
     }
@@ -178,22 +188,13 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       const startX = layer.transform.x;
       const startY = layer.transform.y;
 
-      // Click at (900, 700) → outside the Draggable (100,100)→(300,300) AND outside the Background (0,0)→(800,600)
       ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
-        bubbles: true,
-        cancelable: true,
-        button: 0,
-        clientX: 900,
-        clientY: 700,
+        bubbles: true, cancelable: true, button: 0, clientX: 900, clientY: 700,
       }));
-
       document.dispatchEvent(new PointerEvent("pointermove", {
-        bubbles: true,
-        clientX: 710,
-        clientY: 510,
+        bubbles: true, button: 0, clientX: 710, clientY: 510,
       }));
-
-      expect(ctx.getDragApi().isDragging()).toBe(false);
+      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
       expect(layer.transform.x).toBe(startX);
       expect(layer.transform.y).toBe(startY);
     } finally {
@@ -215,42 +216,30 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
         .mockReturnValue(tabEl);
 
       ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
-        bubbles: true,
-        cancelable: true,
-        button: 0,
-        clientX: 150,
-        clientY: 150,
+        bubbles: true, cancelable: true, button: 0, clientX: 150, clientY: 150,
       }));
 
+      // First move — normal (elementFromPoint returns null → move)
       document.dispatchEvent(new PointerEvent("pointermove", {
-        bubbles: true,
-        button: 0,
-        clientX: 20,
-        clientY: 20,
+        bubbles: true, button: 0, clientX: 20, clientY: 20,
       }));
       expect(sourceLayer.transform.x).toBe(-30);
       expect(sourceLayer.transform.y).toBe(-30);
 
+      // Second move — tab hover (elementFromPoint returns tabEl → freeze)
       document.dispatchEvent(new PointerEvent("pointermove", {
-        bubbles: true,
-        button: 0,
-        clientX: 20,
-        clientY: 20,
+        bubbles: true, button: 0, clientX: 20, clientY: 20,
       }));
-
-      expect(ctx.ws.getActiveDocumentId()).toBe("doc-a");
       expect(sourceLayer.transform.x).toBe(-30);
       expect(sourceLayer.transform.y).toBe(-30);
+
       vi.advanceTimersByTime(500);
       expect(ctx.ws.getActiveDocumentId()).toBe("doc-b");
       expect(sourceLayer.transform.x).toBe(-30);
       expect(sourceLayer.transform.y).toBe(-30);
 
       document.dispatchEvent(new PointerEvent("pointercancel", {
-        bubbles: true,
-        button: 0,
-        clientX: 20,
-        clientY: 20,
+        bubbles: true, button: 0, clientX: 20, clientY: 20,
       }));
       expect(sourceLayer.transform.x).toBe(100);
       expect(sourceLayer.transform.y).toBe(100);
@@ -274,23 +263,13 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       const history = ctx.ws.getActiveHistory()!;
 
       ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
-        bubbles: true,
-        cancelable: true,
-        button: 0,
-        clientX: 150,
-        clientY: 150,
+        bubbles: true, cancelable: true, button: 0, clientX: 150, clientY: 150,
       }));
       document.dispatchEvent(new PointerEvent("pointermove", {
-        bubbles: true,
-        button: 0,
-        clientX: 250,
-        clientY: 200,
+        bubbles: true, button: 0, clientX: 250, clientY: 200,
       }));
       document.dispatchEvent(new PointerEvent("pointerup", {
-        bubbles: true,
-        button: 0,
-        clientX: 250,
-        clientY: 200,
+        bubbles: true, button: 0, clientX: 250, clientY: 200,
       }));
 
       expect(layer.transform.x).toBe(200);
@@ -311,23 +290,13 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       const startY = layer.transform.y;
 
       ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
-        bubbles: true,
-        cancelable: true,
-        button: 0,
-        clientX: 150,
-        clientY: 150,
+        bubbles: true, cancelable: true, button: 0, clientX: 150, clientY: 150,
       }));
       document.dispatchEvent(new PointerEvent("pointermove", {
-        bubbles: true,
-        button: 0,
-        clientX: 250,
-        clientY: 200,
+        bubbles: true, button: 0, clientX: 250, clientY: 200,
       }));
       document.dispatchEvent(new PointerEvent("pointerup", {
-        bubbles: true,
-        button: 0,
-        clientX: 250,
-        clientY: 200,
+        bubbles: true, button: 0, clientX: 250, clientY: 200,
       }));
 
       expect(history.getUndoCount()).toBe(1);
@@ -353,32 +322,538 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       expect(targetHistory.getUndoCount()).toBe(0);
 
       ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
-        bubbles: true,
-        cancelable: true,
-        button: 0,
-        clientX: 150,
-        clientY: 150,
+        bubbles: true, cancelable: true, button: 0, clientX: 150, clientY: 150,
       }));
       document.dispatchEvent(new PointerEvent("pointermove", {
-        bubbles: true,
-        button: 0,
-        clientX: 250,
-        clientY: 200,
+        bubbles: true, button: 0, clientX: 250, clientY: 200,
       }));
 
-      // Simulate mid-drag active-doc switch
       ctx.ws.switchDocument("doc-b");
 
       document.dispatchEvent(new PointerEvent("pointerup", {
-        bubbles: true,
-        button: 0,
-        clientX: 250,
-        clientY: 200,
+        bubbles: true, button: 0, clientX: 250, clientY: 200,
       }));
 
       expect(sourceLayer.transform.x).toBe(200);
       expect(sourceHistory.getUndoCount()).toBe(1);
       expect(targetHistory.getUndoCount()).toBe(0);
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Implementation Contract: drag signal state machine
+  // ════════════════════════════════════════════════════════════════════════════
+
+  it("state contract: isDragging() is false before any interaction", () => {
+    const ctx = setupWithLayer();
+    try {
+      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  it("state contract: pointerDown sets isDragging=true, pointerUp resets to false", () => {
+    const ctx = setupWithLayer();
+    try {
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      expect(ctx.testApi.dragApi.isDragging()).toBe(true);
+
+      document.dispatchEvent(new PointerEvent("pointerup", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  it("state contract: pointerCancel restores original transform and resets isDragging", () => {
+    const ctx = setupWithLayer();
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      const layer = engine.getLayers().find((l) => l.name === "Draggable")!;
+      const startX = layer.transform.x;
+      const startY = layer.transform.y;
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 250, clientY: 200,
+      }));
+      expect(layer.transform.x).not.toBe(startX);
+      expect(ctx.testApi.dragApi.isDragging()).toBe(true);
+
+      document.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true, button: 0 }));
+      expect(layer.transform.x).toBe(startX);
+      expect(layer.transform.y).toBe(startY);
+      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Implementation Contract: guard conditions + listener isolation
+  // ════════════════════════════════════════════════════════════════════════════
+  // Setiap guard harus mencegah drag DAN mencegah registrasi document listener.
+  // Jika guard return tapi listeners terdaftar, stray pointermove bisa menyebabkan
+  // silent mutation.
+
+  it("guard: right-click (button=2) on layer does NOT start drag (no listeners)", () => {
+    const ctx = setupWithLayer();
+    const addSpy = vi.spyOn(document, "addEventListener");
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      const layer = engine.getLayers().find((l) => l.name === "Draggable")!;
+      const startX = layer.transform.x;
+      addSpy.mockClear();
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 2, clientX: 150, clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 2, clientX: 250, clientY: 200,
+      }));
+      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
+      expect(layer.transform.x).toBe(startX);
+      // Implementation: guard return sebelum addEventListener → no listeners
+      expect(addSpy).not.toHaveBeenCalledWith("pointermove", expect.any(Function));
+      expect(addSpy).not.toHaveBeenCalledWith("pointerup", expect.any(Function));
+    } finally {
+      addSpy.mockRestore();
+      teardown(ctx);
+    }
+  });
+
+  it("guard: pointerDown on [data-handle] element does NOT start drag (no listeners)", () => {
+    const ctx = setupWithLayer();
+    const addSpy = vi.spyOn(document, "addEventListener");
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      const layer = engine.getLayers().find((l) => l.name === "Draggable")!;
+      const startX = layer.transform.x;
+      addSpy.mockClear();
+
+      const handleEl = document.createElement("div");
+      handleEl.setAttribute("data-handle", "se");
+      ctx.canvasEl.appendChild(handleEl);
+
+      handleEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 250, clientY: 200,
+      }));
+      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
+      expect(layer.transform.x).toBe(startX);
+      expect(addSpy).not.toHaveBeenCalledWith("pointermove", expect.any(Function));
+    } finally {
+      addSpy.mockRestore();
+      teardown(ctx);
+    }
+  });
+
+  it("guard: non-move tool (brush) does NOT start drag (no listeners)", () => {
+    const ctx = setupWithLayer();
+    const addSpy = vi.spyOn(document, "addEventListener");
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      const layer = engine.getLayers().find((l) => l.name === "Draggable")!;
+      const startX = layer.transform.x;
+      addSpy.mockClear();
+
+      ctx.testApi.setTool("brush");
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 250, clientY: 200,
+      }));
+      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
+      expect(layer.transform.x).toBe(startX);
+      expect(addSpy).not.toHaveBeenCalledWith("pointermove", expect.any(Function));
+    } finally {
+      addSpy.mockRestore();
+      teardown(ctx);
+    }
+  });
+
+  it("guard: locked layer does NOT start drag (no listeners)", () => {
+    const ctx = setupWithLayer();
+    const addSpy = vi.spyOn(document, "addEventListener");
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      const layer = engine.getLayers().find((l) => l.name === "Draggable")!;
+      layer.locked = true;
+      // Lock semua layer agar findLayerAt tidak menemukan apa pun
+      // (Background tidak terkunci dan bisa memulai drag)
+      engine.getLayers().forEach((l) => { l.locked = true; });
+      const startX = layer.transform.x;
+      addSpy.mockClear();
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 250, clientY: 200,
+      }));
+      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
+      expect(layer.transform.x).toBe(startX);
+      expect(addSpy).not.toHaveBeenCalledWith("pointermove", expect.any(Function));
+    } finally {
+      addSpy.mockRestore();
+      teardown(ctx);
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Implementation Contract: event listener lifecycle
+  // ════════════════════════════════════════════════════════════════════════════
+
+  it("lifecycle: pointerDown registers document pointermove/up/cancel listeners", () => {
+    const addSpy = vi.spyOn(document, "addEventListener");
+    const ctx = setupWithLayer();
+    try {
+      addSpy.mockClear();
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+
+      expect(addSpy).toHaveBeenCalledWith("pointermove", expect.any(Function));
+      expect(addSpy).toHaveBeenCalledWith("pointerup", expect.any(Function));
+      expect(addSpy).toHaveBeenCalledWith("pointercancel", expect.any(Function));
+    } finally {
+      teardown(ctx);
+      addSpy.mockRestore();
+    }
+  });
+
+  it("lifecycle: pointerUp removes document pointermove/up/cancel listeners", () => {
+    const addSpy = vi.spyOn(document, "addEventListener");
+    const removeSpy = vi.spyOn(document, "removeEventListener");
+    const ctx = setupWithLayer();
+    try {
+      addSpy.mockClear();
+      removeSpy.mockClear();
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      const moveFn = addSpy.mock.calls.find(c => c[0] === "pointermove")?.[1];
+      const upFn = addSpy.mock.calls.find(c => c[0] === "pointerup")?.[1];
+      const cancelFn = addSpy.mock.calls.find(c => c[0] === "pointercancel")?.[1];
+
+      document.dispatchEvent(new PointerEvent("pointerup", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+
+      expect(removeSpy).toHaveBeenCalledWith("pointermove", moveFn);
+      expect(removeSpy).toHaveBeenCalledWith("pointerup", upFn);
+      expect(removeSpy).toHaveBeenCalledWith("pointercancel", cancelFn);
+    } finally {
+      teardown(ctx);
+      addSpy.mockRestore();
+      removeSpy.mockRestore();
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Implementation Contract: DragController integration
+  // ════════════════════════════════════════════════════════════════════════════
+
+  it("integration: pointerDown calls beginLayerDrag with correct payload via dcState", () => {
+    const ctx = setupWithLayer();
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      const layer = engine.getLayers().find((l) => l.name === "Draggable")!;
+      expect(ctx.testApi.dcState().dragKind).toBeNull();
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+
+      // beginLayerDrag sets dragKind="layer" + payload with layer metadata
+      expect(ctx.testApi.dcState().dragKind).toBe("layer");
+      const payload = ctx.testApi.dcState().payload;
+      expect(payload).toBeTruthy();
+      expect(payload!.layerId).toBe(layer.id);
+      expect(payload!.sourceDocId).toBe("wiring-canvas");
+      expect(payload!.sourceName).toBe("Draggable");
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  it("integration: pointerUp calls endDrag and clears dropTarget", () => {
+    const ctx = setupWithLayer();
+    try {
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      expect(ctx.testApi.dcState().dragKind).toBe("layer");
+
+      document.dispatchEvent(new PointerEvent("pointerup", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+
+      expect(ctx.testApi.dcState().dragKind).toBeNull();
+      expect(ctx.testApi.dcState().dropTarget).toBeNull();
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  it("integration: pointerCancel calls endDrag and clears dropTarget", () => {
+    const ctx = setupWithLayer();
+    try {
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      expect(ctx.testApi.dcState().dragKind).toBe("layer");
+
+      document.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true, button: 0 }));
+
+      expect(ctx.testApi.dcState().dragKind).toBeNull();
+      expect(ctx.testApi.dcState().dropTarget).toBeNull();
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Implementation Contract: auto-select OFF
+  // ════════════════════════════════════════════════════════════════════════════
+  // Regression path 2026-07-03: auto-select OFF harus drag layer yang terpilih
+  // (selectedLayerId), bukan layer di bawah kursor. Test ini diverifikasi dengan
+  // memeriksa layer mana yang bergerak — tidak cukup hanya isDragging().
+
+  it("auto-select OFF: selected layer moves instead of hit layer", () => {
+    const ctx = setupWithLayer();
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      // Layer kedua — posisinya di DALAM Draggable (140,140) → (190,190)
+      const underCursor = engine.addLayer("UnderCursor") as LayerNode;
+      underCursor.transform.x = 140;
+      underCursor.transform.y = 140;
+      underCursor.width = 50;
+      underCursor.height = 50;
+
+      // Pilih Draggable (bukan yang di bawah kursor)
+      const selected = engine.getLayers().find((l) => l.name === "Draggable")!;
+      ctx.testApi.setSelectedLayerId(selected.id);
+      ctx.testApi.setMoveAutoSelect(false);
+      // pointerDown di (150,150) — kena UnderCursor (140→190, 140→190)
+      // Tapi auto-select OFF, jadi SELECTED layer (Draggable) yang harus bergerak
+      expect(selected.transform.x).toBe(100);
+      expect(underCursor.transform.x).toBe(140);
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 200, clientY: 150,
+      }));
+
+      // Delta (50,0) → Draggable bergerak ke (150,100)
+      expect(selected.transform.x).toBe(150);
+      expect(selected.transform.y).toBe(100);
+      // UnderCursor TIDAK boleh bergerak
+      expect(underCursor.transform.x).toBe(140);
+      expect(underCursor.transform.y).toBe(140);
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  it("auto-select OFF + no selection: click on layer does NOT start drag", () => {
+    const ctx = setupWithLayer();
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      const layer = engine.getLayers().find((l) => l.name === "Draggable")!;
+      ctx.testApi.setSelectedLayerId(null);
+      ctx.testApi.setMoveAutoSelect(false);
+      const startX = layer.transform.x;
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 250, clientY: 200,
+      }));
+
+      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
+      expect(layer.transform.x).toBe(startX);
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  it("auto-select OFF + locked selected layer: falls through to hit layer", () => {
+    const ctx = setupWithLayer();
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      // Layer kedua yang tidak terkunci — tepat di bawah kursor
+      const underCursor = engine.addLayer("UnderCursor") as LayerNode;
+      underCursor.transform.x = 140;
+      underCursor.transform.y = 140;
+      underCursor.width = 50;
+      underCursor.height = 50;
+
+      // Selected layer (Draggable) dikunci
+      const selected = engine.getLayers().find((l) => l.name === "Draggable")!;
+      selected.locked = true;
+      ctx.testApi.setSelectedLayerId(selected.id);
+      ctx.testApi.setMoveAutoSelect(false);
+
+      // Klik di (150,150) — kena UnderCursor (140→190, 140→190) yang tidak terkunci
+      // Auto-select OFF code: selectedLayer locked → skip block → pakai hit layer
+      // findLayerAt: Draggable locked → skip → UnderCursor unlocked → hit
+      // Maka drag pada UnderCursor
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+
+      expect(ctx.testApi.dragApi.isDragging()).toBe(true);
+      // UnderCursor belum bergerak (baru pointerDown)
+      expect(underCursor.transform.x).toBe(140);
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Implementation Contract: same-doc tab drop reverts
+  // ════════════════════════════════════════════════════════════════════════════
+
+  it("same-doc tab drop: pointerUp on same doc tab reverts to start position", () => {
+    const ctx = setupWithTwoDocs();
+    const tabEl = document.createElement("div");
+    const originalElementFromPoint = (document as any).elementFromPoint;
+    try {
+      const sourceEngine = ctx.ws.getEngine("doc-a")!;
+      const sourceLayer = sourceEngine.getLayers().find((l) => l.name === "Draggable")!;
+      tabEl.setAttribute("data-document-tab", "doc-a");
+      document.body.appendChild(tabEl);
+
+      // Step 1: pointerDown starts drag
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      expect(ctx.testApi.dragApi.isDragging()).toBe(true);
+
+      // Step 2: normal move (elementFromPoint returns null via setup mock)
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 200, clientY: 150,
+      }));
+      // The setup.ts mock always returns null, so this should be a normal move
+      expect(sourceLayer.transform.x).toBe(150); // delta (50,0)
+      expect(sourceLayer.transform.y).toBe(100);
+
+      // Step 3: override elementFromPoint to return the same-doc tab element
+      (document as any).elementFromPoint = vi.fn().mockReturnValue(tabEl);
+
+      // Move 3 — tab hover: freeze position, set dropTarget = {type:"tab", docId:"doc-a"}
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 200, clientY: 150,
+      }));
+      expect(sourceLayer.transform.x).toBe(150); // frozen
+      expect(sourceLayer.transform.y).toBe(100);
+
+      // Verify dropTarget was set to the same-doc tab
+      const dcState = ctx.testApi.dcState();
+      expect(dcState.dropTarget).toEqual({ type: "tab", docId: "doc-a" });
+
+      // Step 4: drop on same doc tab → revert to start position
+      document.dispatchEvent(new PointerEvent("pointerup", {
+        bubbles: true, button: 0, clientX: 200, clientY: 150,
+      }));
+
+      expect(sourceLayer.transform.x).toBe(100);
+      expect(sourceLayer.transform.y).toBe(100);
+      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
+    } finally {
+      if (originalElementFromPoint) {
+        (document as any).elementFromPoint = originalElementFromPoint;
+      } else {
+        delete (document as any).elementFromPoint;
+      }
+      tabEl.parentNode?.removeChild(tabEl);
+      teardown(ctx);
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Implementation Contract: layer detection order
+  // ════════════════════════════════════════════════════════════════════════════
+
+  it("findLayerAt hits the topmost (first) visible unlocked layer", () => {
+    const ctx = setupWithLayer();
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      // addLayer inserts di index 0 (top). Layer yang terakhir ditambah ada di TOP.
+      // UnderCursor (140,140,50,50) ada di DALAM Draggable (100,100,200,200)
+      const topLayer = engine.addLayer("TopLayer") as LayerNode;
+      topLayer.transform.x = 140;
+      topLayer.transform.y = 140;
+      topLayer.width = 50;
+      topLayer.height = 50;
+
+      // findLayerAt iterates top→bottom (index 0 first)
+      // Klik di (150,150) — kena kedua layer, TopLayer (index 0) harus kena duluan
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 200, clientY: 150,
+      }));
+
+      // Delta (50,0) → TopLayer bergerak
+      expect(topLayer.transform.x).toBe(190);
+      expect(topLayer.transform.y).toBe(140);
+      // Draggable (di bawah) TIDAK bergerak
+      const draggable = engine.getLayers().find((l) => l.name === "Draggable")!;
+      expect(draggable.transform.x).toBe(100);
+      expect(draggable.transform.y).toBe(100);
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  it("findLayerAt skips invisible layers", () => {
+    const ctx = setupWithLayer();
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      // Layer di atas Draggable tapi invisible → harus di-skip
+      const invisibleLayer = engine.addLayer("Invisible") as LayerNode;
+      invisibleLayer.transform.x = 140;
+      invisibleLayer.transform.y = 140;
+      invisibleLayer.width = 50;
+      invisibleLayer.height = 50;
+      invisibleLayer.visible = false;
+
+      // Klik di (150,150) — kena Invisible (skip karena tidak visible)
+      // → lanjut ke Draggable (100,100,200,200) → hit
+      const draggable = engine.getLayers().find((l) => l.name === "Draggable")!;
+      expect(draggable.transform.x).toBe(100);
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 200, clientY: 150,
+      }));
+
+      // Delta (50,0) → Draggable bergerak (bukan Invisible)
+      expect(draggable.transform.x).toBe(150);
+      // Invisible tidak bergerak
+      expect(invisibleLayer.transform.x).toBe(140);
     } finally {
       teardown(ctx);
     }
