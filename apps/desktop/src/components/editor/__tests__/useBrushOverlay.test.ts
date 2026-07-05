@@ -76,7 +76,7 @@ describe("useBrushOverlay session lifecycle", () => {
     const { overlay, getImageData } = createHarness();
     overlay.onPaintStroke([{ x: 10, y: 40 }, { x: 22, y: 40 }], false, settings, false);
     // getImageData called at least once = stroke was processed
-    expect((getImageData as any).mock.calls.length).toBeGreaterThan(0);
+    expect(vi.mocked(getImageData).mock.calls.length).toBeGreaterThan(0);
     expect(getImageData).toHaveBeenCalledWith(0, 0, 100, 80);
   });
 
@@ -84,11 +84,11 @@ describe("useBrushOverlay session lifecycle", () => {
     const { overlay, getImageData } = createHarness();
     // Brush stroke
     overlay.onPaintStroke([{ x: 10, y: 40 }], false, settings, false);
-    (getImageData as any).mockClear();
+    vi.mocked(getImageData).mockClear();
     // Eraser requires OffscreenCanvas which isn't available in JSDOM
     // Just verify it doesn't crash with brush strokes
     overlay.onPaintStroke([{ x: 20, y: 40 }], false, settings, false);
-    expect((getImageData as any).mock.calls.length).toBeGreaterThan(0);
+    expect(vi.mocked(getImageData).mock.calls.length).toBeGreaterThan(0);
   });
 });
 
@@ -99,7 +99,7 @@ describe("useBrushOverlay clearPrevStrokePointCount", () => {
     const { overlay, ctx } = createHarness();
     overlay.onPaintStroke([{ x: 10, y: 40 }, { x: 22, y: 40 }], false, settings, false);
     overlay.clearPrevStrokePointCount();
-    (ctx.clearRect as any).mockClear();
+    vi.mocked(ctx.clearRect).mockClear();
     // Next stroke should start fresh (clearRect called for new overlay)
     overlay.onPaintStroke([{ x: 30, y: 40 }, { x: 45, y: 40 }], false, settings, true);
     expect(ctx.clearRect).toHaveBeenCalled();
@@ -207,8 +207,8 @@ describe("useBrushOverlay live terminal preview", () => {
     overlay.onPaintStroke([{ x: 10, y: 40 }, { x: 22, y: 40 }], false, settings, false);
 
     expect(getImageData).toHaveBeenCalledTimes(2);
-    expect((getImageData as any).mock.calls[0]).toEqual([0, 0, 100, 80]);
-    expect((getImageData as any).mock.calls[1]).not.toEqual([0, 0, 100, 80]);
+    expect(vi.mocked(getImageData).mock.calls[0]).toEqual([0, 0, 100, 80]);
+    expect(vi.mocked(getImageData).mock.calls[1]).not.toEqual([0, 0, 100, 80]);
   });
 
   it("uses only the permanent full-mask pass for a final update", () => {
@@ -225,9 +225,9 @@ describe("useBrushOverlay live terminal preview", () => {
 
     // Two non-final strokes (simulating drag updates)
     overlay.onPaintStroke([{ x: 10, y: 40 }, { x: 22, y: 40 }], false, settings, false);
-    const firstCallCount = (getImageData as any).mock.calls.length;
+    const firstCallCount = vi.mocked(getImageData).mock.calls.length;
     expect(firstCallCount).toBeGreaterThan(0);
-    (getImageData as any).mockClear();
+    vi.mocked(getImageData).mockClear();
 
     overlay.onPaintStroke([{ x: 22, y: 40 }, { x: 34, y: 45 }], false, settings, true);
     // Final update should use single full-mask (not two passes)
