@@ -33,7 +33,6 @@ const nodeTestFiles = [
   "src/components/editor/__tests__/crossDocLayerOps.engine.test.ts",
   "src/components/editor/__tests__/brushTipMask.test.ts",
   "src/features/selection/__tests__/SelectionValidator.test.ts",
-  "src/features/selection/__tests__/SelectionManager.test.ts",
   "src/features/selection/__tests__/SelectionOperations.test.ts",
   "src/renderer/__tests__/webgl2-scissor.test.ts",
   "src/ui-sanity.test.ts",

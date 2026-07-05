@@ -23,6 +23,12 @@ export class SelectionOperations {
 
   /**
    * Copy pixels from the active layer within the selection bounds.
+   *
+   * Clamps source coordinates to the layer bounds so selections extending
+   * beyond the canvas do not crash.  Also auto-trims fully-transparent
+   * rows/columns from the edges so that empty areas of the selection are
+   * not included in the clipboard.
+   *
    * Returns the ImageData (also stored in module-level clipboard) or null
    * if no selection or no active layer.
    */
@@ -38,12 +44,29 @@ export class SelectionOperations {
     const layer = engine.getLayer(activeId);
     if (!layer) return null;
 
-    const w = sel.inverted ? layer.width : Math.max(0, Math.round(sel.width));
-    const h = sel.inverted ? layer.height : Math.max(0, Math.round(sel.height));
-    if (w === 0 || h === 0) return null;
+    const layerW = layer.width;
+    const layerH = layer.height;
 
-    const sx = Math.round(sel.x);
-    const sy = Math.round(sel.y);
+    let w: number, h: number, sx: number, sy: number;
+
+    if (sel.inverted) {
+      // Inverted selection: copy the full layer, then clear the excluded rect
+      sx = 0;
+      sy = 0;
+      w = layerW;
+      h = layerH;
+    } else {
+      // Clamp source rect to layer bounds to avoid Canvas drawImage crash
+      // when the selection extends beyond the canvas.
+      sx = Math.max(0, Math.round(sel.x));
+      sy = Math.max(0, Math.round(sel.y));
+      const se = Math.min(layerW, Math.round(sel.x + sel.width));
+      const sb = Math.min(layerH, Math.round(sel.y + sel.height));
+      w = Math.max(0, se - sx);
+      h = Math.max(0, sb - sy);
+    }
+
+    if (w === 0 || h === 0) return null;
 
     const offscreen = new OffscreenCanvas(w, h);
     const ctx = offscreen.getContext("2d");
@@ -52,7 +75,7 @@ export class SelectionOperations {
     try {
       if (sel.inverted) {
         ctx.drawImage(bitmap, 0, 0);
-        ctx.clearRect(sx, sy, Math.round(sel.width), Math.round(sel.height));
+        ctx.clearRect(Math.round(sel.x), Math.round(sel.y), Math.round(sel.width), Math.round(sel.height));
       } else {
         ctx.drawImage(
           bitmap,
@@ -61,12 +84,74 @@ export class SelectionOperations {
         );
       }
       const data = ctx.getImageData(0, 0, w, h);
-      SelectionOperations.clipboard = data;
-      return data;
+      // Auto-trim transparent pixels so empty areas are not included.
+      // Skip for inverted selections: the excluded region may touch the
+      // layer edge, causing trimTransparent to cut off visible content.
+      const trimmed = sel.inverted ? data : SelectionOperations.trimTransparent(data);
+      SelectionOperations.clipboard = trimmed;
+      return trimmed;
     } catch (err) {
       console.error("copySelection failed:", err);
       return null;
     }
+  }
+
+  /**
+   * Remove fully-transparent rows/columns from the edges of ImageData.
+   * If every pixel is transparent, returns the original data unchanged.
+   */
+  private static trimTransparent(imageData: ImageData): ImageData {
+    const { width, height, data: pixels } = imageData;
+
+    // Find bounding box of non-transparent pixels
+    let top = height;
+    let bottom = 0;
+    let left = width;
+    let right = 0;
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (pixels[(y * width + x) * 4 + 3] > 0) {
+          if (y < top) top = y;
+          if (y > bottom) bottom = y;
+          if (x < left) left = x;
+          if (x > right) right = x;
+        }
+      }
+    }
+
+    // Fully transparent — nothing to trim
+    if (top > bottom) {
+      return imageData;
+    }
+
+    const trimmedW = right - left + 1;
+    const trimmedH = bottom - top + 1;
+
+    // Already minimal — no trimming needed
+    if (trimmedW === width && trimmedH === height) {
+      return imageData;
+    }
+
+    // Extract the trimmed region into a new buffer
+    const trimmedData = new Uint8ClampedArray(trimmedW * trimmedH * 4);
+    for (let y = 0; y < trimmedH; y++) {
+      for (let x = 0; x < trimmedW; x++) {
+        const srcIdx = ((top + y) * width + (left + x)) * 4;
+        const dstIdx = (y * trimmedW + x) * 4;
+        trimmedData[dstIdx] = pixels[srcIdx];
+        trimmedData[dstIdx + 1] = pixels[srcIdx + 1];
+        trimmedData[dstIdx + 2] = pixels[srcIdx + 2];
+        trimmedData[dstIdx + 3] = pixels[srcIdx + 3];
+      }
+    }
+
+    return {
+      data: trimmedData,
+      width: trimmedW,
+      height: trimmedH,
+      colorSpace: "srgb",
+    } as ImageData;
   }
 
   /**

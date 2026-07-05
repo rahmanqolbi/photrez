@@ -282,6 +282,283 @@ describe("SelectionOperations — real pixel operations", () => {
       expect(result.data[4 * (15 * 100 + 15) + 3]).toBe(0);
       expect(result.data[4 * (50 * 100 + 50) + 3]).toBe(255);
     });
+
+    it("clamps selection to layer bounds when partially outside canvas (left edge)", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      // Selection extends 20px beyond left edge: x=-20, width=100
+      engine.createSelection(-20, 0, 100, 100);
+      const result = SelectionOperations.copySelection(engine)!;
+
+      // Should clamp to x=0, width=80 (only the visible portion)
+      expect(result.width).toBe(80);
+      expect(result.height).toBe(100);
+      // Pixel at (0,0) in result should be red (was at layer x=0)
+      expect(result.data[3]).toBe(255);
+    });
+
+    it("clamps selection to layer bounds when partially outside canvas (right edge)", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#00FF00";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      // Selection extends 30px beyond right edge: x=80, width=50
+      engine.createSelection(80, 0, 50, 100);
+      const result = SelectionOperations.copySelection(engine)!;
+
+      // Should clamp to x=80, width=20
+      expect(result.width).toBe(20);
+      expect(result.height).toBe(100);
+      // Pixel should be green
+      expect(result.data[1]).toBe(255);
+    });
+
+    it("returns null when selection is fully outside canvas", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      // Selection entirely to the left of canvas
+      engine.createSelection(-200, 0, 50, 50);
+      const result = SelectionOperations.copySelection(engine);
+      expect(result).toBeNull();
+    });
+
+    it("returns null when selection is fully below canvas", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      // Selection entirely below canvas
+      engine.createSelection(0, 200, 50, 50);
+      const result = SelectionOperations.copySelection(engine);
+      expect(result).toBeNull();
+    });
+
+    it("auto-trims transparent rows/columns from the edges", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      // Draw a 30x40 red rect at position (10, 10), surrounded by transparency
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(10, 10, 30, 40);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      // Select entire layer
+      engine.createSelection(0, 0, 100, 100);
+      const result = SelectionOperations.copySelection(engine)!;
+
+      // Should be trimmed to 30x40 bounding box of the red rect
+      expect(result.width).toBe(30);
+      expect(result.height).toBe(40);
+      // Pixel at (0,0) of result should be red (was at layer position 10,10)
+      expect(result.data[0]).toBe(255);
+      expect(result.data[3]).toBe(255);
+    });
+
+    it("returns original data unchanged when content fully fills the selection", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#0000FF";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      engine.createSelection(0, 0, 100, 100);
+      const result = SelectionOperations.copySelection(engine)!;
+
+      // Full layer is filled, so no trimming occurs
+      expect(result.width).toBe(100);
+      expect(result.height).toBe(100);
+      expect(result.data[2]).toBe(255);
+      expect(result.data[3]).toBe(255);
+    });
+
+    it("returns original data unchanged when content is fully transparent", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      // Don't fill anything — fully transparent
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      engine.createSelection(10, 10, 50, 50);
+      const result = SelectionOperations.copySelection(engine)!;
+
+      // Fully transparent should be returned as-is (50x50)
+      expect(result.width).toBe(50);
+      expect(result.height).toBe(50);
+      // All pixels should have alpha=0
+      let allTransparent = true;
+      for (let i = 0; i < result.data.length; i += 4) {
+        if (result.data[i + 3] !== 0) {
+          allTransparent = false;
+          break;
+        }
+      }
+      expect(allTransparent).toBe(true);
+    });
+
+    it("clamps and auto-trims when selection partially outside canvas with partial content", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      // Draw a small red circle-like rect at (5, 5), size 20x20
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(5, 5, 20, 20);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      // Selection extends 20px beyond left edge: x=-10, width=60, height=60
+      engine.createSelection(-10, -10, 60, 60);
+      const result = SelectionOperations.copySelection(engine)!;
+
+      // After clamping: source is (0, 0, 50, 50), then auto-trim to content (5,5,20,20) = 20x20
+      expect(result.width).toBe(20);
+      expect(result.height).toBe(20);
+      expect(result.data[3]).toBe(255);
+    });
+
+    it("copies a rotated selection correctly — angle does not affect pixel data", () => {
+      // The copySelection operation reads from the layer bitmap in source space;
+      // rotation angle is a visual property only and should not skew the copied pixels.
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(20, 30, 50, 40);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      // Selection with an angle (rotation is a display property, not a pixel transform)
+      engine.createSelection(20, 30, 50, 40, 45);
+      const result = SelectionOperations.copySelection(engine)!;
+
+      // Should copy the axis-aligned rect in source space
+      expect(result.width).toBe(50);
+      expect(result.height).toBe(40);
+      // Top-left pixel should be red
+      expect(result.data[0]).toBe(255);
+      expect(result.data[3]).toBe(255);
+    });
+
+    it("correctly handles selection at exact top-left corner (x=0, y=0)", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#00FF00";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      engine.createSelection(0, 0, 100, 100);
+      const result = SelectionOperations.copySelection(engine)!;
+
+      expect(result.width).toBe(100);
+      expect(result.height).toBe(100);
+      expect(result.data[1]).toBe(255);
+    });
+
+    it("handles selection larger than layer bounds — clamps on all four sides", () => {
+      const layer = engine.addLayer("Layer 1", 50, 50);
+      const offscreen = new OffscreenCanvas(50, 50);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(0, 0, 50, 50);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      // Selection extends beyond all edges: x=-20, y=-10, width=100, height=80
+      engine.createSelection(-20, -10, 100, 80);
+      const result = SelectionOperations.copySelection(engine)!;
+
+      // Clamped to (0, 0, 50, 50)
+      expect(result.width).toBe(50);
+      expect(result.height).toBe(50);
+      expect(result.data[3]).toBe(255);
+    });
+
+    it("skips auto-trim for inverted selections (regression test)", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      // Invert select a small region — should return full 100x100,
+      // NOT auto-trimmed to just the excluded region
+      engine.createSelection(10, 10, 20, 20);
+      engine.invertSelection();
+      const result = SelectionOperations.copySelection(engine)!;
+
+      expect(result.width).toBe(100);
+      expect(result.height).toBe(100);
+      // The excluded region (10,10,20,20) should be transparent
+      expect(result.data[4 * (15 * 100 + 15) + 3]).toBe(0);
+      // Outside excluded region should be visible
+      expect(result.data[4 * (5 * 100 + 5) + 3]).toBe(255);
+    });
+
+    it("auto-trim works correctly when content touches the selection edge", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      // Draw content that touches the right edge of selection
+      ctx.fillStyle = "#0000FF";
+      ctx.fillRect(70, 10, 20, 20);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      // Select (50, 0, 50, 40) — content starts at x=70, so left 20px are transparent
+      engine.createSelection(50, 0, 50, 40);
+      const result = SelectionOperations.copySelection(engine)!;
+
+      // Auto-trim: left edge at 70-50=20, right at 90-50=40, top at 10-0=10, bottom at 30-0=30
+      expect(result.width).toBe(20);
+      expect(result.height).toBe(20);
+      expect(result.data[2]).toBe(255);
+    });
+
+    it("preserves clipboard across sequential copy operations", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      engine.createSelection(0, 0, 10, 10);
+      const first = SelectionOperations.copySelection(engine)!;
+      expect(first.width).toBe(10);
+
+      engine.createSelection(20, 20, 30, 30);
+      const second = SelectionOperations.copySelection(engine)!;
+      expect(second.width).toBe(30);
+
+      // Clipboard should now hold the second copy
+      expect(SelectionOperations.hasClipboard()).toBe(true);
+      const clipboardResult = SelectionOperations.getSelectionBounds(engine);
+      // selection was cleared by the second copy's cleanup...
+      // Actually engine selection is still set from createSelection(20,20,30,30)
+      expect(clipboardResult).not.toBeNull();
+    });
+
+    it("returns null when no layer image bitmap exists", () => {
+      // Add a layer without setting an image bitmap
+      engine.addLayer("Empty Layer", 100, 100);
+      engine.createSelection(0, 0, 50, 50);
+      const result = SelectionOperations.copySelection(engine);
+      expect(result).toBeNull();
+    });
   });
 
   describe("cutSelection", () => {
@@ -299,6 +576,43 @@ describe("SelectionOperations — real pixel operations", () => {
       engine.createSelection(0, 0, 50, 50);
       SelectionOperations.cutSelection(engine);
       expect(engine.getSelection()).toBeNull();
+    });
+
+    it("actually removes pixels from the source layer (pixel verification)", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      engine.createSelection(10, 10, 30, 30);
+      SelectionOperations.cutSelection(engine);
+
+      const bitmap = engine.getLayerImageBitmap(layer.id);
+      const pixels = (bitmap as any)._buffer;
+
+      // Inside the cut region should be transparent
+      expect(pixels[4 * (15 * 100 + 15) + 3]).toBe(0);
+      // Outside the cut region should remain red
+      expect(pixels[4 * (5 * 100 + 5) + 0]).toBe(255);
+      expect(pixels[4 * (5 * 100 + 5) + 3]).toBe(255);
+    });
+
+    it("cut also populates the clipboard", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+      engine.createSelection(0, 0, 50, 50);
+      SelectionOperations.__resetClipboard();
+      expect(SelectionOperations.hasClipboard()).toBe(false);
+
+      SelectionOperations.cutSelection(engine);
+
+      expect(SelectionOperations.hasClipboard()).toBe(true);
     });
   });
 
@@ -361,6 +675,42 @@ describe("SelectionOperations — real pixel operations", () => {
       expect(pixels[4 * (50 * 100 + 50) + 3]).toBe(0);
       expect(engine.getSelection()).toBeNull();
     });
+
+    it("does NOT populate clipboard (unlike cut)", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+      SelectionOperations.__resetClipboard();
+
+      engine.createSelection(10, 10, 30, 30);
+      SelectionOperations.deleteSelection(engine);
+
+      expect(SelectionOperations.hasClipboard()).toBe(false);
+    });
+
+    it("handles delete when selection partially extends beyond layer bounds", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#00FF00";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      // Selection partially outside the layer
+      engine.createSelection(-10, -10, 50, 50);
+      // Should not throw
+      SelectionOperations.deleteSelection(engine);
+
+      const pixels = (engine.getLayerImageBitmap(layer.id) as any)._buffer;
+      // Pixel at (0,0) — inside the clamped selection area — should be transparent
+      expect(pixels[3]).toBe(0);
+      // Pixel at (40, 40) — outside the selection — should still be green
+      expect(pixels[4 * (40 * 100 + 40) + 1]).toBe(255);
+      expect(engine.getSelection()).toBeNull();
+    });
   });
 
   describe("pasteSelection", () => {
@@ -389,6 +739,167 @@ describe("SelectionOperations — real pixel operations", () => {
       SelectionOperations.pasteSelection(engine, data);
       const layers = engine.getLayers();
       expect(layers[0].name).toContain("Pasted");
+    });
+
+    it("pasted pixel data matches the original copied data (copy→paste roundtrip)", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF8800";
+      ctx.fillRect(10, 10, 40, 30);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      // Copy a region
+      engine.createSelection(10, 10, 40, 30);
+      const copied = SelectionOperations.copySelection(engine)!;
+      expect(copied.width).toBe(40);
+
+      // Paste into new document
+      const engine2 = new DocumentEngine("paste-test", "Paste Test", 200, 200);
+      SelectionOperations.pasteSelection(engine2, copied);
+
+      // Verify pasted layer has the same pixel data
+      const pastedLayer = engine2.getLayer(engine2.getActiveLayerId()!)!;
+      expect(pastedLayer.width).toBe(40);
+      expect(pastedLayer.height).toBe(30);
+      const pastedBitmap = pastedLayer.imageBitmap as any;
+      expect(pastedBitmap).not.toBeNull();
+      // Center pixel should match
+      expect(pastedBitmap._buffer[4 * (15 * 40 + 20) + 0]).toBe(255); // R
+      expect(pastedBitmap._buffer[4 * (15 * 40 + 20) + 1]).toBe(136); // G
+      expect(pastedBitmap._buffer[4 * (15 * 40 + 20) + 2]).toBe(0);   // B
+      expect(pastedBitmap._buffer[4 * (15 * 40 + 20) + 3]).toBe(255); // A
+    });
+
+    it("pastes from module-level clipboard when no data argument provided", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(0, 0, 20, 20);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      engine.createSelection(0, 0, 20, 20);
+      SelectionOperations.copySelection(engine);
+
+      // Paste without passing data (should use clipboard)
+      SelectionOperations.pasteSelection(engine);
+
+      // Should have created a new layer
+      const layers = engine.getLayers();
+      expect(layers.length).toBe(2);
+      expect(layers[0].name).toContain("Pasted");
+    });
+
+    it("pasted layer is created at the correct size (width and height from ImageData)", () => {
+      const data = {
+        width: 75,
+        height: 25,
+        data: new Uint8ClampedArray(75 * 25 * 4),
+      } as unknown as ImageData;
+      SelectionOperations.pasteSelection(engine, data);
+      const pastedLayer = engine.getLayer(engine.getActiveLayerId()!)!;
+      expect(pastedLayer.width).toBe(75);
+      expect(pastedLayer.height).toBe(25);
+    });
+  });
+
+  describe("copy → cut → paste sequence (integration)", () => {
+    it("copies content, cuts it from original, then pastes to a new layer — original region becomes transparent", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#00FF00";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      // 1. Create selection
+      engine.createSelection(10, 10, 40, 40);
+
+      // 2. Cut it (copies to clipboard + removes from source)
+      const cutData = SelectionOperations.cutSelection(engine);
+      expect(cutData).not.toBeNull();
+
+      // 3. Verify original layer has transparent hole
+      const afterCut = (engine.getLayerImageBitmap(layer.id) as any)._buffer;
+      expect(afterCut[4 * (15 * 100 + 15) + 3]).toBe(0);
+      expect(afterCut[4 * (5 * 100 + 5) + 0]).toBe(0);   // G=0 (used to be 255)
+      expect(afterCut[4 * (5 * 100 + 5) + 1]).toBe(255);  // G=255 (outside selection)
+
+      // 4. Paste into new layer
+      SelectionOperations.pasteSelection(engine);
+      const pastedLayer = engine.getLayer(engine.getActiveLayerId()!)!;
+      expect(pastedLayer.name).toContain("Pasted");
+      expect(pastedLayer.width).toBe(40);
+      expect(pastedLayer.height).toBe(40);
+    });
+
+    it("delete removes pixels without storing in clipboard, then copy+paste retrieves earlier clipboard", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      // 1. Copy first region (populates clipboard)
+      engine.createSelection(0, 0, 10, 10);
+      SelectionOperations.copySelection(engine);
+
+      // 2. Delete a different region (does NOT overwrite clipboard)
+      engine.createSelection(50, 50, 20, 20);
+      SelectionOperations.deleteSelection(engine);
+
+      // 3. Clipboard should still hold the first copy, not the deleted region
+      expect(SelectionOperations.hasClipboard()).toBe(true);
+
+      // 4. Paste should recreate the 10x10 region, not the deleted 20x20 region
+      SelectionOperations.pasteSelection(engine);
+      const pastedLayer = engine.getLayer(engine.getActiveLayerId()!)!;
+      expect(pastedLayer.width).toBe(10);
+      expect(pastedLayer.height).toBe(10);
+    });
+  });
+
+  describe("edge cases — extreme values", () => {
+    it("handles selection with fractional coordinates (rounds to nearest pixel)", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      // Non-integer selection coordinates
+      engine.createSelection(10.3, 20.7, 50.2, 60.8);
+      const result = SelectionOperations.copySelection(engine)!;
+      // Should round to (10, 21, 50, 61)
+      expect(result.width).toBeGreaterThan(0);
+      expect(result.height).toBeGreaterThan(0);
+    });
+
+    it("handles empty layer when no bitmap is set on the active layer", () => {
+      engine.addLayer("Empty", 100, 100);
+      engine.createSelection(0, 0, 50, 50);
+      // No bitmap set on this layer
+      const result = SelectionOperations.copySelection(engine);
+      expect(result).toBeNull();
+    });
+
+    it("hasClipboard returns false after __resetClipboard", () => {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = "#FF0000";
+      ctx.fillRect(0, 0, 10, 10);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+
+      engine.createSelection(0, 0, 10, 10);
+      SelectionOperations.copySelection(engine);
+      expect(SelectionOperations.hasClipboard()).toBe(true);
+
+      SelectionOperations.__resetClipboard();
+      expect(SelectionOperations.hasClipboard()).toBe(false);
     });
   });
 });
