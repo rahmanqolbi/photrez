@@ -742,8 +742,18 @@ export class DocumentEngine {
         this.textureHandles.delete(existingId);
       }
     }
+    // Mark all restored layers as dirty so any consumer (renderer, UI)
+    // knows textures need re-upload.  Previous code called dirtyLayerIds.clear()
+    // here, which left consumers with no signal that the layer bitmaps had
+    // changed (regression 2026-07-05: "layer turns black on undo" because
+    // the renderer's WebGL texture was re-uploaded only by the direct caller
+    // (restoreHistorySnapshot), but code paths such as cancelLayerTransformSession
+    // called engine.restore() without the re-upload step).
     this.dirtyLayerIds.clear();
-    this.notifyChange();
+    for (const layer of this.model.layers) {
+      this.dirtyLayerIds.add(layer.id);
+    }
+    this.notifyVisualChange();
   }
 
   // ─── Memory Budget ───

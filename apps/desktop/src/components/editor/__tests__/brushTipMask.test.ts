@@ -15,6 +15,9 @@ import {
   paintMaskToContext,
   paintTransientBrushTipToContext,
   getEffectiveFlowMultiplier,
+  clamp01,
+  brushPointsEqual,
+  parsePaintColor,
   type BrushTip,
 } from "../brushTipMask";
 
@@ -341,5 +344,203 @@ describe("brushTipMask effective flow multiplier", () => {
     const hardAlphaScale = opacity * flow * getEffectiveFlowMultiplier(1.0);
     expect(hardAlphaScale).toBe(1.0);
     expect(softAlphaScale).toBe(hardAlphaScale);
+  });
+});
+
+describe("clamp01", () => {
+  it("clamps within 0..1 range", () => {
+    expect(clamp01(-1)).toBe(0);
+    expect(clamp01(0)).toBe(0);
+    expect(clamp01(0.5)).toBe(0.5);
+    expect(clamp01(1)).toBe(1);
+    expect(clamp01(2)).toBe(1);
+  });
+
+  it("handles NaN and Infinity (returns 0 for non-finite)", () => {
+    expect(clamp01(NaN)).toBe(0);
+    // Implementasi: !Number.isFinite → return 0
+    expect(clamp01(Infinity)).toBe(0);
+    expect(clamp01(-Infinity)).toBe(0);
+  });
+});
+
+describe("brushPointsEqual", () => {
+  it("returns true for identical points", () => {
+    expect(brushPointsEqual({ x: 10, y: 20 }, { x: 10, y: 20 })).toBe(true);
+  });
+
+  it("returns true for points within tolerance (0.0001)", () => {
+    expect(brushPointsEqual({ x: 10, y: 20 }, { x: 10.00005, y: 20.00005 })).toBe(true);
+  });
+
+  it("returns false for points beyond tolerance", () => {
+    expect(brushPointsEqual({ x: 10, y: 20 }, { x: 11, y: 20 })).toBe(false);
+  });
+
+  it("returns false when either point is null", () => {
+    expect(brushPointsEqual(null, { x: 10, y: 20 })).toBe(false);
+    expect(brushPointsEqual({ x: 10, y: 20 }, null)).toBe(false);
+    expect(brushPointsEqual(null, null)).toBe(false);
+  });
+});
+
+describe("parsePaintColor", () => {
+  it("parses 6-digit hex", () => {
+    const c = parsePaintColor("#ff8800");
+    expect(c.r).toBe(255);
+    expect(c.g).toBe(136);
+    expect(c.b).toBe(0);
+    expect(c.a).toBe(1);
+  });
+
+  it("parses 3-digit hex", () => {
+    const c = parsePaintColor("#f80");
+    expect(c.r).toBe(255);
+    expect(c.g).toBe(136);
+    expect(c.b).toBe(0);
+    expect(c.a).toBe(1);
+  });
+
+  it("parses rgba() with alpha", () => {
+    const c = parsePaintColor("rgba(100, 200, 50, 0.5)");
+    expect(c.r).toBe(100);
+    expect(c.g).toBe(200);
+    expect(c.b).toBe(50);
+    expect(c.a).toBeCloseTo(0.5, 6);
+  });
+
+  it("parses rgb() without alpha (defaults to 1)", () => {
+    const c = parsePaintColor("rgb(10, 20, 30)");
+    expect(c.r).toBe(10);
+    expect(c.g).toBe(20);
+    expect(c.b).toBe(30);
+    expect(c.a).toBe(1);
+  });
+
+  it("returns black+opaque for unparseable strings", () => {
+    const c = parsePaintColor("not-a-color");
+    expect(c.r).toBe(0);
+    expect(c.g).toBe(0);
+    expect(c.b).toBe(0);
+    expect(c.a).toBe(1);
+  });
+
+  it("does not match negative rgb values (falls through to default)", () => {
+    // Regex \\d+ doesn't match '-5' → falls through to hex → fails → black
+    const c = parsePaintColor("rgb(300, -5, 128)");
+    expect(c.r).toBe(0);
+    expect(c.g).toBe(0);
+    expect(c.b).toBe(0);
+  });
+});
+
+describe("interpolateDabs edge cases", () => {
+  it("returns empty dabs for zero distance", () => {
+    const result = interpolateDabs({ x: 10, y: 10 }, { x: 10, y: 10 }, 5, 0);
+    expect(result.dabs).toEqual([]);
+    expect(result.carry).toBe(0);
+  });
+
+  it("returns empty dabs when distance is smaller than spacing", () => {
+    const result = interpolateDabs({ x: 0, y: 0 }, { x: 3, y: 0 }, 10, 0);
+    expect(result.dabs).toEqual([]);
+    expect(result.carry).toBe(3);
+  });
+
+  it("carry reduces first dab distance", () => {
+    const result = interpolateDabs({ x: 0, y: 0 }, { x: 10, y: 0 }, 10, 5);
+    // first dab at spacing-carry = 5, then at 15 > 10 → only one dab
+    expect(result.dabs).toEqual([{ x: 5, y: 0 }]);
+    expect(result.carry).toBe(5);
+  });
+
+  it("handles carry larger than spacing (wraps)", () => {
+    const result = interpolateDabs({ x: 0, y: 0 }, { x: 30, y: 0 }, 10, 12);
+    // next = 10-12 = -2, while -2 <= 30: dab at -2/30 = -0.067 → x = -2
+    // then next = 8, 18, 28 → dabs at 8, 18, 28
+    expect(result.dabs).toHaveLength(4);
+    expect(result.carry).toBe(2); // 30 - (38-10) = 2
+  });
+
+  it("handles large carry (distant from previous segment)", () => {
+    const result = interpolateDabs({ x: 0, y: 0 }, { x: 5, y: 5 }, 10, 8);
+    // distance = 7.07, next = 2 → dab at t=2/7.07, then next=12 > 7.07
+    // carry = 7.07 - (12-10) = 5.07
+    expect(result.dabs).toHaveLength(1);
+    expect(result.carry).toBeCloseTo(5.07, 2);
+  });
+});
+
+describe("stampBrushTip edge cases", () => {
+  it("clamps alphaScale to 0..1", () => {
+    const tip = createBrushTip({ size: 3, hardness: 1, curve: "cosine" });
+    const mask = new Uint8ClampedArray(9);
+    stampBrushTip(mask, 3, 3, tip, 1, 1, 2.0);  // > 1
+    expect(mask[4]).toBe(255);  // saturates (same as alphaScale=1)
+  });
+
+  it("does nothing when alphaScale is 0", () => {
+    const tip = createBrushTip({ size: 3, hardness: 0, curve: "cosine" });
+    const mask = new Uint8ClampedArray(9);
+    stampBrushTip(mask, 3, 3, tip, 1, 1, 0);
+    expect(mask[4]).toBe(0);
+  });
+
+  it("does nothing when alphaScale is negative", () => {
+    const tip = createBrushTip({ size: 3, hardness: 0, curve: "cosine" });
+    const mask = new Uint8ClampedArray(9);
+    stampBrushTip(mask, 3, 3, tip, 1, 1, -1);
+    expect(mask[4]).toBe(0);
+  });
+
+  it("handles stamp at mask edge (partial overlap)", () => {
+    const tip = createBrushTip({ size: 5, hardness: 1, curve: "cosine" });
+    const mask = new Uint8ClampedArray(3 * 3);
+    // Center at (0, 0) — only bottom-right quadrant of tip overlaps
+    stampBrushTip(mask, 3, 3, tip, 0, 0, 1.0);
+    // Tip extends from center - 3 to center + 3, but mask clips to 0..2
+    // At least some pixels in mask should be painted
+    const painted = Array.from(mask).filter(a => a > 0);
+    expect(painted.length).toBeGreaterThan(0);
+  });
+
+  it("handles stamp completely outside mask (no overlap)", () => {
+    const tip = createBrushTip({ size: 3, hardness: 1, curve: "cosine" });
+    const mask = new Uint8ClampedArray(3 * 3);
+    stampBrushTip(mask, 3, 3, tip, -10, -10, 1.0);
+    expect(Array.from(mask).every(v => v === 0)).toBe(true);
+  });
+
+  it("handles stamp with fractional center coordinates", () => {
+    const tip = createBrushTip({ size: 3, hardness: 1, curve: "cosine" });
+    // Integer stamp
+    const maskInt = new Uint8ClampedArray(9);
+    stampBrushTip(maskInt, 3, 3, tip, 1, 1, 1.0);
+    // Fractional stamp
+    const maskFrac = new Uint8ClampedArray(9);
+    stampBrushTip(maskFrac, 3, 3, tip, 1.3, 0.7, 1.0);
+    expect(maskFrac).not.toEqual(maskInt);
+  });
+});
+
+describe("getBrushTipOuterRadius edge cases", () => {
+  it("returns radius for cosine curve regardless of hardness", () => {
+    expect(getBrushTipOuterRadius(50, 0, "cosine")).toBe(50);
+    expect(getBrushTipOuterRadius(50, 1, "cosine")).toBe(50);
+  });
+
+  it("returns radius+0.5 for soft curve below reliable threshold", () => {
+    // 21px diameter → 10.5 radius < 11 (MIN_RELIABLE = 22/2 = 11)
+    expect(getBrushTipOuterRadius(10.5, 0, "soft")).toBe(11);
+  });
+
+  it("expands support for soft curve above threshold", () => {
+    // 100px diameter → 50 radius
+    const result = getBrushTipOuterRadius(50, 0, "soft");
+    expect(result).toBeGreaterThan(50);
+  });
+
+  it("returns radius for hard edge soft curve", () => {
+    expect(getBrushTipOuterRadius(50, 1, "soft")).toBe(50);
   });
 });

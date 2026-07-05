@@ -3,13 +3,16 @@ import {
   clampPaintSize,
   clampPaintPercent,
   clampPaintSettings,
+  clampPaintSmoothing,
   getActivePaintToolSettings,
   adjustPaintSize,
+  adjustPaintHardness,
   getPaintToolBlockReason,
   sizeSliderToPaintSize,
   paintSizeToSizeSlider,
   BRUSH_PRESETS,
   applyPaintPreset,
+  MIN_PAINT_SIZE,
   MAX_PAINT_SIZE,
   MAX_LINEAR_SIZE,
   type PaintToolState,
@@ -169,5 +172,79 @@ describe("brushToolState", () => {
       eraserOpacity: 1,
       eraserFlow: 0.85,
     });
+  });
+
+  // ── Edge case tests ──
+
+  it("clampPaintPercent handles NaN and Infinity", () => {
+    expect(clampPaintPercent(NaN)).toBe(1);
+    expect(clampPaintPercent(Infinity)).toBe(1);
+    expect(clampPaintPercent(-Infinity)).toBe(1);  // !Number.isFinite → 1
+  });
+
+  it("clampPaintSize handles NaN and Infinity", () => {
+    expect(clampPaintSize(NaN)).toBe(MIN_PAINT_SIZE);
+    expect(clampPaintSize(Infinity)).toBe(MIN_PAINT_SIZE);  // !Number.isFinite → MIN
+    expect(clampPaintSize(-Infinity)).toBe(MIN_PAINT_SIZE);
+  });
+
+  it("clampPaintSmoothing clamps to 0..100", () => {
+    expect(clampPaintSmoothing(-10)).toBe(0);
+    expect(clampPaintSmoothing(50)).toBe(50);
+    expect(clampPaintSmoothing(150)).toBe(100);
+  });
+
+  it("clampPaintSmoothing handles NaN and Infinity", () => {
+    expect(clampPaintSmoothing(NaN)).toBe(0);
+    expect(clampPaintSmoothing(Infinity)).toBe(0);  // !Number.isFinite → 0
+    expect(clampPaintSmoothing(-Infinity)).toBe(0);
+  });
+
+  it("clampPaintSettings clamps all fields", () => {
+    const clamped = clampPaintSettings({
+      size: 9999,
+      hardness: -1,
+      opacity: 2,
+      flow: NaN,
+      smoothing: Infinity,
+    });
+    expect(clamped.size).toBe(MAX_PAINT_SIZE);
+    expect(clamped.hardness).toBe(0);
+    expect(clamped.opacity).toBe(1);
+    expect(clamped.flow).toBe(1);  // NaN → 1
+    expect(clamped.smoothing).toBe(0);  // Infinity not finite → 0
+  });
+
+  it("adjustPaintHardness increments brush hardness without affecting eraser", () => {
+    const result = adjustPaintHardness("brush", state, 0.1);
+    expect(result.brushHardness).toBeCloseTo(0.9, 6);
+    expect(result.eraserHardness).toBe(1);
+  });
+
+  it("adjustPaintHardness increments eraser hardness without affecting brush", () => {
+    const result = adjustPaintHardness("eraser", state, -0.2);
+    expect(result.eraserHardness).toBeCloseTo(0.8, 6);
+    expect(result.brushHardness).toBe(0.8);
+  });
+
+  it("adjustPaintHardness clamps hardness to 0..1", () => {
+    const result = adjustPaintHardness("brush", state, -5);
+    expect(result.brushHardness).toBe(0);
+    const result2 = adjustPaintHardness("brush", state, 5);
+    expect(result2.brushHardness).toBe(1);
+  });
+
+  it("clampPaintSettings rounds brush size to nearest integer", () => {
+    const clamped = clampPaintSettings({
+      size: 25.7, hardness: 1, opacity: 1, flow: 1, smoothing: 0,
+    });
+    expect(clamped.size).toBe(26);
+  });
+
+  it("clampPaintSettings rounds smoothing to nearest integer", () => {
+    const clamped = clampPaintSettings({
+      size: 20, hardness: 1, opacity: 1, flow: 1, smoothing: 3.3,
+    });
+    expect(clamped.smoothing).toBe(3);
   });
 });

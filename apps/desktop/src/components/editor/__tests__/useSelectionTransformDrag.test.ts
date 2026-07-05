@@ -163,6 +163,7 @@ function setupHook(
     hoverHandle: null,
     hoverPos: null,
     moveSnapEnabled: opts.snapEnabled ?? false,
+    commitTransformState: vi.fn(),
     layerTransformSession: null,
     docWidth: 800,
     docHeight: 600,

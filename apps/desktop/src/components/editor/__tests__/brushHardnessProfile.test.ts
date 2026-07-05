@@ -97,4 +97,78 @@ describe("reference-calibrated brush profile", () => {
   it("declares the measured small-tip reliability boundary", () => {
     expect(MIN_RELIABLE_BRUSH_DIAMETER_PX).toBe(22);
   });
+
+  // ── Edge case tests ──
+
+  it("clampHardness handles NaN and Infinity (non-finite → 0)", () => {
+    expect(getBrushProfileParameters(NaN).sigma).toBeCloseTo(0.661, 12);
+    expect(getBrushProfileParameters(Infinity).sigma).toBeCloseTo(0.661, 12);  // !Number.isFinite → 0
+    expect(getBrushProfileParameters(-Infinity).sigma).toBeCloseTo(0.661, 12);
+  });
+
+  it("interpolates exactly at calibration knot points", () => {
+    for (const [hardness, sigma, n] of calibrationKnots) {
+      const params = getBrushProfileParameters(hardness);
+      expect(params.sigma).toBeCloseTo(sigma, 12);
+      expect(params.n).toBeCloseTo(n, 12);
+    }
+  });
+
+  it("brushAlpha returns 0 for rNorm > 1 at hard edge (>=0.97)", () => {
+    expect(brushAlpha(1.0001, 1)).toBe(0);
+    expect(brushAlpha(1.0001, 0.97)).toBe(0);
+  });
+
+  it("brushAlpha returns 1 for rNorm <= 1 at hard edge", () => {
+    expect(brushAlpha(1, 1)).toBe(1);
+    expect(brushAlpha(0.5, 1)).toBe(1);
+    expect(brushAlpha(0, 1)).toBe(1);
+  });
+
+  it("brushAlpha with negative rNorm treated as 0", () => {
+    const a = brushAlpha(-1, 0.5);
+    // rNorm = 0 → sigma*n = 0.935, Math.exp(0) = 1
+    expect(a).toBe(1);
+  });
+
+  it("brushAlpha handles NaN hardness gracefully", () => {
+    const a = brushAlpha(0.5, NaN);
+    expect(Number.isFinite(a)).toBe(true);
+    expect(a).toBeGreaterThan(0);
+  });
+
+  it("getBrushCursorRadiusScale handles NaN hardness", () => {
+    const scale = getBrushCursorRadiusScale(NaN);
+    expect(Number.isFinite(scale)).toBe(true);
+    expect(scale).toBeGreaterThan(0);
+  });
+
+  it("getBrushProfileSupportNorm handles NaN hardness", () => {
+    const norm = getBrushProfileSupportNorm(NaN);
+    expect(Number.isFinite(norm)).toBe(true);
+    expect(norm).toBeGreaterThanOrEqual(1);
+  });
+
+  it("getBrushProfileSupportNorm returns 1 at hard edge", () => {
+    expect(getBrushProfileSupportNorm(0.97)).toBe(1);
+    expect(getBrushProfileSupportNorm(1)).toBe(1);
+  });
+
+  it("brushAlpha monotonically decreases as rNorm increases", () => {
+    let prev = brushAlpha(0, 0.3);
+    for (let r = 0.1; r <= 3; r += 0.1) {
+      const current = brushAlpha(r, 0.3);
+      expect(current).toBeLessThanOrEqual(prev + 1e-10);
+      prev = current;
+    }
+  });
+
+  it("getBrushCursorRadiusScale increases monotonically with hardness", () => {
+    let prev = getBrushCursorRadiusScale(0);
+    for (let step = 1; step <= 100; step += 1) {
+      const current = getBrushCursorRadiusScale(step / 100);
+      expect(current).toBeGreaterThanOrEqual(prev - 1e-10);
+      prev = current;
+    }
+  });
 });
