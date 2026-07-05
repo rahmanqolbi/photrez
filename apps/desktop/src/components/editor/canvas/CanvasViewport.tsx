@@ -304,9 +304,17 @@ export function CanvasViewport() {
 
   const screenToDocumentPoint = (e: PointerEvent) => {
     const rect = canvasContainerRef?.getBoundingClientRect();
-    const engine = workspace.getActiveEngine();
-    if (!rect || !engine) return { x: e.clientX, y: e.clientY };
-    return screenToDocument(e.clientX, e.clientY, rect, engine.getViewport());
+    if (!rect) return { x: e.clientX, y: e.clientY };
+    // Use fresh pan/zoom signals instead of engine.getViewport() because
+    // the engine viewport goes stale during panning (usePanNavigation skips
+    // engine.setViewport to avoid triggering layer re-selection).
+    // Reference: useCanvasPointerTools.ts getDocCoords() comment (bug 2026-07-05).
+    return screenToDocument(e.clientX, e.clientY, rect, {
+      panX: pan().x,
+      panY: pan().y,
+      zoom: zoom(),
+      rotation: 0,
+    });
   };
 
   const { isFitTransition, fitToScreenAndRender } = useViewportRenderer({
