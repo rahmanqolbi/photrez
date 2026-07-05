@@ -852,8 +852,18 @@ describe("getCursorForHandle", () => {
   });
   it("handles flipX sign (scaleX*scaleY < 0)", () => {
     const c = getCursorForHandle("e", 0, -1, 1);
-    // flipX makes visual rotation mirrored
-    expect(typeof c).toBe("string");
+    // flipX makes visual rotation mirrored; at 0° rotation the cursor
+    // should still be the same as non-flipped since there's no rotation
+    // to mirror.
+    expect(c).toBe("ew-resize");
+  });
+
+  it("flipX mirrors cursor at 45° rotation", () => {
+    // At 45° rotation, E handle normally maps to nwse-resize.
+    // With flipX (scaleX*scaleY < 0), visualRotation = -45° → totalAngle
+    // wraps to 315° → index 7 → nesw-resize (mirrored).
+    const c = getCursorForHandle("e", 45, -1, 1);
+    expect(c).toBe("nesw-resize");
   });
 });
 
@@ -902,19 +912,88 @@ describe("documentToLayerLocal", () => {
     expect(result.y).toBeCloseTo(50);
   });
 
-  it("Alt+proportional SE 45° rotated: center-anchored with visual-diagonal projection + rotation correction", () => {
+  // ── Alt (center-anchored) resize ──
+  // Regression: old Step 3 used "vx -= dw/2" which failed for handles with
+  // "w"/"n" adjustments because Step 2 had already shifted vx/vy — the
+  // dw/2 correction did not undo the full shift, causing center drift of
+  // up to 160% of the drag distance (e.g. 80px drift for 50px drag on SW).
+  // Fix: directly set vx/vy to keep the original LOCAL center.
+
+  it("Alt+SE 45° rotated: center stays fixed, scaleX=scaleY, rotation preserved", () => {
     // 100×100 square at (100,100), rotation=45°, SE handle, screenDy=10, altKey=true
-    // At 45° rotation the visual diagonal from NW→SE is vertical, so dy projects fully
-    // Result: scaleX=scaleY (proportional), rotation preserved, Alt centers (x,y change)
+    // 100×100 at 45°: diagLen=141.42, projected=20 (Alt), factor=1.14142
     const start = { x: 100, y: 100, scaleX: 1, scaleY: 1, rotation: 45, flipH: false, flipV: false };
     const result = applyResizeHandle(start, 100, 100, "se", 0, 10, false, true);
-    expect(result.scaleX).toBeCloseTo(result.scaleY, 5);
+    expect(result.scaleX).toBeCloseTo(1.1414, 3);
+    expect(result.scaleY).toBeCloseTo(1.1414, 3);
     expect(result.rotation).toBe(45);
-    expect(result.scaleX).toBeGreaterThan(1);
-    expect(result.scaleY).toBeGreaterThan(1);
-    // Alt centers: x and y must differ from original (100,100)
-    expect(result.x).not.toBe(100);
-    expect(result.y).not.toBe(100);
+    expect(result.x).toBeCloseTo(92.93, 1);
+    expect(result.y).toBeCloseTo(92.93, 1);
+    // Center must stay at original (150, 150)
+    const cx = result.x + (result.scaleX * 100 / 2);
+    const cy = result.y + (result.scaleY * 100 / 2);
+    expect(cx).toBeCloseTo(150, 4);
+    expect(cy).toBeCloseTo(150, 4);
+  });
+
+  it("Alt+SW at rotation=0: center stays fixed (regression: old code drifted 80px for 50px drag)", () => {
+    const start = { x: 100, y: 100, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false };
+    const result = applyResizeHandle(start, 200, 100, "sw", 50, 0, false, true);
+    // projected=-89.442, factor=0.6, vw=120, vh=60
+    expect(result.scaleX).toBeCloseTo(0.6, 4);
+    expect(result.scaleY).toBeCloseTo(0.6, 4);
+    // Center must stay at original (200, 150)
+    const cx = result.x + (result.scaleX * 200 / 2);
+    const cy = result.y + (result.scaleY * 100 / 2);
+    expect(cx).toBeCloseTo(200, 4);
+    expect(cy).toBeCloseTo(150, 4);
+    expect(result.x).toBeCloseTo(140, 4);
+    expect(result.y).toBeCloseTo(120, 4);
+  });
+
+  it("Alt+NW at rotation=0: center stays fixed", () => {
+    const start = { x: 100, y: 100, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false };
+    const result = applyResizeHandle(start, 200, 100, "nw", 50, 0, false, true);
+    expect(result.scaleX).toBeCloseTo(0.6, 4);
+    expect(result.scaleY).toBeCloseTo(0.6, 4);
+    const cx = result.x + (result.scaleX * 200 / 2);
+    const cy = result.y + (result.scaleY * 100 / 2);
+    expect(cx).toBeCloseTo(200, 4);
+    expect(cy).toBeCloseTo(150, 4);
+    expect(result.x).toBeCloseTo(140, 4);
+    expect(result.y).toBeCloseTo(120, 4);
+  });
+
+  it("Alt+SW at 45° rotated: center stays fixed with rotation correction", () => {
+    const start = { x: 100, y: 100, scaleX: 1, scaleY: 1, rotation: 45, flipH: false, flipV: false };
+    const result = applyResizeHandle(start, 200, 100, "sw", 50, 0, false, true);
+    // projected=-94.868, factor=0.576, vw=115.2, vh=57.6
+    expect(result.scaleX).toBeCloseTo(0.576, 3);
+    expect(result.scaleY).toBeCloseTo(0.576, 3);
+    expect(result.rotation).toBe(45);
+    expect(result.x).toBeCloseTo(142.4, 1);
+    expect(result.y).toBeCloseTo(121.2, 1);
+    // Local center stays at original (200, 150)
+    const cx = result.x + (result.scaleX * 200 / 2);
+    const cy = result.y + (result.scaleY * 100 / 2);
+    expect(cx).toBeCloseTo(200, 4);
+    expect(cy).toBeCloseTo(150, 4);
+  });
+
+  it("Alt+NW at 45° rotated: center stays fixed with rotation correction", () => {
+    const start = { x: 100, y: 100, scaleX: 1, scaleY: 1, rotation: 45, flipH: false, flipV: false };
+    const result = applyResizeHandle(start, 200, 100, "nw", 50, 0, false, true);
+    // projected=-31.623, factor=0.85858, vw=171.716, vh=85.858
+    expect(result.scaleX).toBeCloseTo(0.8586, 3);
+    expect(result.scaleY).toBeCloseTo(0.8586, 3);
+    expect(result.rotation).toBe(45);
+    expect(result.x).toBeCloseTo(114.14, 2);
+    expect(result.y).toBeCloseTo(107.07, 2);
+    // Local center stays at original (200, 150)
+    const cx = result.x + (result.scaleX * 200 / 2);
+    const cy = result.y + (result.scaleY * 100 / 2);
+    expect(cx).toBeCloseTo(200, 4);
+    expect(cy).toBeCloseTo(150, 4);
   });
 
   it("flipV proportional: scaleY=-1 sign preserved after resize (SE)", () => {

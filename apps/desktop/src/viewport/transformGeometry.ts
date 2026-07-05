@@ -271,12 +271,16 @@ export function applyResizeHandle(
     }
   }
 
-  // Step 3: Alt-key resize from center (after proportional constraint)
+  // Step 3: Alt-key resize from center (after proportional constraint).
+  // Directly set position so the LOCAL center stays at the original center.
+  // The old approach (vx -= dw/2) failed for handles with "w"/"n" adjustments
+  // because Step 1/2 had already shifted vx/vy — dw/2 didn't undo the full shift,
+  // causing center drift proportional to the drag distance (up to 160%).
   if (altKey) {
-    const dw = vw - oldVw;
-    const dh = vh - oldVh;
-    vx -= dw / 2;
-    vy -= dh / 2;
+    const oldCX = transform.x + oldVw / 2;
+    const oldCY = transform.y + oldVh / 2;
+    vx = oldCX - vw / 2;
+    vy = oldCY - vh / 2;
   }
 
   // Step 4: Center rotation correction (for rotated layers only).
