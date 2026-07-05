@@ -23,14 +23,25 @@ export function startSelectionRotation(
 
   const centerX = box.x + box.w / 2;
   const centerY = box.y + box.h / 2;
-  const initialAngle = Math.atan2(0, -1) * (180 / Math.PI);
+  // Lazily capture the reference angle on first pointermove instead of hardcoding
+  // to 180° (which caused the selection to jump to a wrong angle on every rotation
+  // drag — bug: initialAngle was Math.atan2(0,-1)*180/π = 180 instead of the actual
+  // angle from center to cursor at pointerdown).
+  let referenceAngle: number | null = null;
 
   const handleDocPointerMove = (e: PointerEvent) => {
     const rect = getContainerRef()?.getBoundingClientRect();
     if (!rect) return;
     const docPt = screenToDocument(e.clientX, e.clientY, rect, engine.getViewport());
     const currentAngle = Math.atan2(docPt.y - centerY, docPt.x - centerX) * (180 / Math.PI);
-    let angle = currentAngle - initialAngle;
+
+    if (referenceAngle === null) {
+      referenceAngle = currentAngle;
+      // First move: delta = 0, so angle = existing angle — no visual jump.
+    }
+
+    const delta = currentAngle - referenceAngle;
+    let angle = box.angle + delta;
     if (e.shiftKey) {
       angle = Math.round(angle / 15) * 15;
     }
@@ -39,17 +50,26 @@ export function startSelectionRotation(
     setSelectionBox({ ...box, angle });
   };
 
-  const handleDocPointerUp = () => {
+  const handleDocPointerUp = (e: PointerEvent) => {
     document.removeEventListener("pointermove", handleDocPointerMove);
-    document.removeEventListener("pointerup", handleDocPointerUp);
+    document.removeEventListener("pointerup", handleDocPointerUp, true);
     // Persist the final rotation to the engine so it survives tool switches,
     // undo/redo, and pointerUp syncs (otherwise the rotation was only visual).
     const finalBox = getSelectionBox();
     if (finalBox) {
       engine.createSelection(finalBox.x, finalBox.y, finalBox.w, finalBox.h, finalBox.angle);
+      // Re-sync the signal AFTER committing to engine so any concurrent
+      // canvas-element pointerUp handler that read stale engine state is
+      // overwritten with the correct angle. Also request a render so the
+      // visual updates immediately (Bug #1 race condition fix).
+      setSelectionBox(finalBox);
     }
   };
 
   document.addEventListener("pointermove", handleDocPointerMove);
-  document.addEventListener("pointerup", handleDocPointerUp);
+  // Use capture phase so this fires BEFORE the canvas-element onPointerUp.
+  // This ensures engine.createSelection() has already committed the new
+  // angle before the canvas handler reads engine.getSelection() — preventing
+  // the stale-angle race condition (Bug #1).
+  document.addEventListener("pointerup", handleDocPointerUp, true);
 }

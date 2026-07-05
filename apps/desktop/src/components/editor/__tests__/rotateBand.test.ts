@@ -20,10 +20,11 @@ describe("rotateBand", () => {
     const x = 100, y = 50, w = 400, h = 300;
     const pad = ROTATE_BAND_PX + ROTATE_CORNER_EXTRA; // 22
 
-    it("returns a non-empty path string", () => {
+    it("returns a valid SVG path starting with M and ending with Z", () => {
       const path = getRotateBandPath(x, y, w, h);
       expect(path).toBeTruthy();
-      expect(typeof path).toBe("string");
+      expect(path.startsWith("M ")).toBe(true);
+      expect(path.endsWith("Z")).toBe(true);
     });
 
     it("contains two M commands (outer + inner)", () => {
