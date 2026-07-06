@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
 import { EditorProvider, useEditor } from "../shell/EditorContext";
 import { useCanvasKeyboard } from "../canvas/useCanvasKeyboard";
+import { clearRegistry } from "../keyboardRegistry";
 import { WorkspaceManager } from "@/engine/workspace";
 import { SelectionOperations } from "@/features/selection/SelectionOperations";
 import type { ToolType } from "@/viewport/input-handler";
@@ -75,6 +76,7 @@ describe("selection tool keyboard shortcuts", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    clearRegistry();
   });
 
   it("Ctrl+D in selection tool calls clearSelection (regression: brace nesting bug)", () => {

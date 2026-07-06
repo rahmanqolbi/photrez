@@ -3,6 +3,7 @@ import { render } from "solid-js/web";
 import { EditorProvider } from "../shell/EditorContext";
 import { useEditor } from "../shell/EditorContext";
 import { useCanvasKeyboard } from "../canvas/useCanvasKeyboard";
+import { clearRegistry } from "../keyboardRegistry";
 import { WorkspaceManager } from "@/engine/workspace";
 
 function KeyboardHarness(props: { captureEditor: (editor: ReturnType<typeof useEditor>) => void }) {
@@ -24,6 +25,10 @@ function KeyboardHarness(props: { captureEditor: (editor: ReturnType<typeof useE
 }
 
 describe("Tool Keyboard Shortcuts", () => {
+  afterEach(() => {
+    clearRegistry();
+  });
+
   it("should switch to move, selection, crop, and eyedropper on keypress", () => {
     let capturedEditor!: ReturnType<typeof useEditor>;
     const ws = new WorkspaceManager();

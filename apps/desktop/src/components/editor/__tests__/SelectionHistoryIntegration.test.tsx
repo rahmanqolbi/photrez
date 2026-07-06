@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
 import { EditorProvider, useEditor } from "../shell/EditorContext";
 import { useCanvasKeyboard } from "../canvas/useCanvasKeyboard";
+import { clearRegistry } from "../keyboardRegistry";
 import { WorkspaceManager } from "@/engine/workspace";
 import type { ToolType } from "@/viewport/input-handler";
 
@@ -190,6 +191,7 @@ describe("selection tool — history + renderer integration on edit (regression:
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    clearRegistry();
   });
 
   // ── Bug 1: redo doesn't work for selection edits ──

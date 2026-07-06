@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "identifier": "com.photrez.app",
   "build": {
-    "beforeDevCommand": "bun run dev",
+    "beforeDevCommand": {
+    "script": "bun scripts/dev/kill-port.cjs && bun run dev",
+    "wait": false
+  },
     "beforeBuildCommand": "bun run build",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"

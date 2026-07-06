@@ -1,4 +1,5 @@
-import { onCleanup, onMount } from "solid-js";
+import { batch, onCleanup, onMount } from "solid-js";
+import { registerShortcut } from "./keyboardRegistry";
 import { listen } from "@tauri-apps/api/event";
 import { isEditableTarget } from "@/lib/dom";
 import { isTauriRuntime, runTauriWindowAction } from "@/lib/desktop";
@@ -508,14 +509,22 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
         const engine = editor.workspace.getActiveEngine();
         if (!engine) break;
         engine.fitToScreen(editor.viewportWidth(), editor.viewportHeight());
-        editor.syncViewport();
+        const vp = engine.getViewport();
+        // Directly update camera + signals to bypass lastVp cache in syncViewport.
+        // After panning, the engine viewport may already equal the fit values from
+        // initial load, causing syncViewport to bail early (lastVp comparison).
+        editor.camera.setState({ x: vp.panX, y: vp.panY, zoom: vp.zoom });
+        batch(() => {
+          editor.setZoom(vp.zoom);
+          editor.setPan({ x: vp.panX, y: vp.panY });
+        });
         // Center modern crop frame at new viewport center in document coordinates
         // + reset offset so the image isn't shifted by stale offsetX/Y
         if (editor.cropInteractionMode() === "modern") {
+          const z = vp.zoom;
+          const p = { x: vp.panX, y: vp.panY };
           editor.setModernCropFrame((prev) => {
             if (!prev) return null;
-            const z = editor.zoom();
-            const p = editor.pan();
             const docCenterX = (editor.viewportWidth() / 2 - p.x) / z;
             const docCenterY = (editor.viewportHeight() / 2 - p.y) / z;
             return {
@@ -555,6 +564,20 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
   };
 
   onMount(() => {
+    // ── Register keyboard shortcuts (conflict detection) ──
+    registerShortcut("Ctrl+Z", "useEditorCommands");
+    registerShortcut("Ctrl+Shift+Z", "useEditorCommands");
+    registerShortcut("Ctrl+Y", "useEditorCommands");
+    registerShortcut("Ctrl+N", "useEditorCommands");
+    registerShortcut("Ctrl+O", "useEditorCommands");
+    registerShortcut("Ctrl+Shift+S", "useEditorCommands");
+    registerShortcut("Ctrl+S", "useEditorCommands");
+    registerShortcut("Ctrl+Alt+E", "useEditorCommands");
+    registerShortcut("Ctrl+P", "useEditorCommands");
+    registerShortcut("Ctrl+1", "useEditorCommands");
+    registerShortcut("Ctrl+=", "useEditorCommands");
+    registerShortcut("Ctrl+-", "useEditorCommands");
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (document.querySelector('[aria-modal="true"]')) return;
 
@@ -578,7 +601,6 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
       else if (commandKey && event.altKey && key === "e") command = "file.export";
       else if (commandKey && key === "p") command = "file.print";
       else if (commandKey && key === "1") command = "view.actual-size";
-      else if (commandKey && key === "0") command = "view.fit-canvas";
       else if (commandKey && (key === "=" || key === "+")) command = "view.zoom-in";
       else if (commandKey && (key === "-" || key === "_")) command = "view.zoom-out";
 

@@ -5,6 +5,7 @@ import { SelectionOperations } from "@/features/selection/SelectionOperations";
 import { EditorProvider, useEditor } from "../../shell/EditorContext";
 import { CanvasContextMenu } from "../CanvasContextMenu";
 import { useEditorCommands } from "../../useEditorCommands";
+import { clearRegistry } from "../../keyboardRegistry";
 
 let setTool: (tool: any) => void = () => {};
 
@@ -32,6 +33,7 @@ describe("CanvasContextMenu wiring", () => {
     SelectionOperations.__resetClipboard();
     document.body.innerHTML = "";
     vi.restoreAllMocks();
+    clearRegistry();
   });
 
   it("routes Deselect through the production editor command handler", async () => {

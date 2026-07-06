@@ -160,11 +160,47 @@ These shortcuts are reserved for future features and must not be reassigned in M
 - `Tab` is reserved for default browser focus navigation (accessibility). UI panel toggle uses `Ctrl+Shift+T` instead.
 - `Ctrl+Alt+E` for Export avoids conflict with `Ctrl+E` for Merge Down (canvas keyboard handler always wins for Ctrl+E).
 
-## 7) Customization (Post-MVP)
+## 7) Keyboard Registry (MVP)
 
-- MVP uses hardcoded shortcuts only.
-- Post-MVP: implement `ShortcutRegistry` pattern (see existing reference project).
-- Post-MVP: allow user shortcut customization with conflict detection.
+The codebase uses a lightweight conflict-detection registry at
+`src/components/editor/keyboardRegistry.ts` to prevent duplicate-shortcut bugs:
+
+```typescript
+registerShortcut("Ctrl+0", "useCanvasKeyboard");
+// If another handler already registered "Ctrl+0":
+// → console.warn("[KeyboardRegistry] Shortcut \"Ctrl+0\" already registered by: [useEditorCommands]")
+```
+
+### Architecture — Two keyboard handlers
+
+Shortcuts are split across two hooks that both listen on `window.keydown`:
+
+| Handler | Location | Scope |
+|---|---|---|
+| `useEditorCommands` | `AppTitleBar` (parent) | **Global commands** — file ops, zoom, undo/redo. Also wired to menu bar, context menu, and Tauri native menu. |
+| `useCanvasKeyboard` | `CanvasViewport` (child) | **Canvas operations** — tool selection, layer ops, brush size, pan, crop shortcuts. |
+
+Both hooks register `registerShortcut(...)` at the top of their `onMount` block.
+
+### Intentional overlaps (chain-of-responsibility)
+
+`Ctrl+Z` and `Ctrl+Y`/`Ctrl+Shift+Z` are handled by BOTH hooks intentionally:
+1. `useCanvasKeyboard` tries transform/crop undo/redo first.
+2. If the mini-stack is empty, it falls through (`e.defaultPrevented` is NOT set).
+3. `useEditorCommands` then runs the global undo/redo.
+
+### Adding a new shortcut
+
+1. Update this document first (section 2-5).
+2. Add the `registerShortcut(keys, owner)` call to the appropriate handler's `onMount` block.
+3. If the shortcut is intentionally handled by both hooks (chain-of-responsibility), add an explicit `// intentional overlap` comment.
+4. Run `bun run test` — the `keyboardRegistry.test.ts` unit tests verify conflict detection.
+
+### Testing
+
+- `keyboardRegistry.test.ts` — Unit tests for conflict warning, same-owner dedup, clear, snapshot.
+- `CanvasKeyboardLayerShortcuts.test.tsx` — Integration tests for Ctrl+0 (keyboard path) and `dispatchEditorCommand('view.fit-canvas')` (menu path).
+- All test files that mount keyboard hooks call `clearRegistry()` in `afterEach` to prevent cross-test pollution.
 
 ## 8) Change Control
 

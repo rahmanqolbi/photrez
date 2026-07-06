@@ -9,6 +9,7 @@ import { discardCropSession, applyCropPreview } from "../cropToolActions";
 import { PAINT_SIZE_STEP, PAINT_SIZE_STEP_HARDNESS, adjustPaintSize, adjustPaintHardness } from "../brushToolState";
 import { SelectionOperations } from "@/features/selection/SelectionOperations";
 import { showToast } from "../Toast";
+import { registerShortcut } from "../keyboardRegistry";
 
 interface CanvasKeyboardOptions {
   isSpacePressed: () => boolean;
@@ -106,6 +107,44 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
   );
 
   onMount(() => {
+    // ── Register keyboard shortcuts (conflict detection) ──
+    // Intentional overlap with useEditorCommands (chain-of-responsibility):
+    registerShortcut("Ctrl+Z", "useCanvasKeyboard");     // transform undo → fallthrough
+    registerShortcut("Ctrl+Y", "useCanvasKeyboard");     // transform redo → fallthrough
+    registerShortcut("Ctrl+Shift+Z", "useCanvasKeyboard");
+    // Canvas-only shortcuts:
+    registerShortcut("Ctrl+Shift+T", "useCanvasKeyboard");
+    registerShortcut("Ctrl+Shift+Alt+E", "useCanvasKeyboard");
+    registerShortcut("Ctrl+E", "useCanvasKeyboard");
+    registerShortcut("Ctrl+J", "useCanvasKeyboard");
+    registerShortcut("Ctrl+Shift+N", "useCanvasKeyboard");
+    registerShortcut("Ctrl+]", "useCanvasKeyboard");
+    registerShortcut("Ctrl+[", "useCanvasKeyboard");
+    registerShortcut("Ctrl+Shift+]", "useCanvasKeyboard");
+    registerShortcut("Ctrl+Shift+[", "useCanvasKeyboard");
+    registerShortcut("Ctrl+G", "useCanvasKeyboard");
+    registerShortcut("Ctrl+Shift+G", "useCanvasKeyboard");
+    registerShortcut("Ctrl+0", "useCanvasKeyboard");
+    registerShortcut("B", "useCanvasKeyboard");
+    registerShortcut("E", "useCanvasKeyboard");
+    registerShortcut("V", "useCanvasKeyboard");
+    registerShortcut("M", "useCanvasKeyboard");
+    registerShortcut("C", "useCanvasKeyboard");
+    registerShortcut("I", "useCanvasKeyboard");
+    registerShortcut("Space", "useCanvasKeyboard");
+    registerShortcut("Alt", "useCanvasKeyboard");
+    registerShortcut("[", "useCanvasKeyboard");
+    registerShortcut("]", "useCanvasKeyboard");
+    registerShortcut("Shift+[", "useCanvasKeyboard");
+    registerShortcut("Shift+]", "useCanvasKeyboard");
+    registerShortcut("0-9", "useCanvasKeyboard");
+    registerShortcut("Delete", "useCanvasKeyboard");
+    registerShortcut("Backspace", "useCanvasKeyboard");
+    registerShortcut("F2", "useCanvasKeyboard");
+    registerShortcut("Escape", "useCanvasKeyboard");
+    registerShortcut("Enter", "useCanvasKeyboard");
+    registerShortcut("Arrow keys", "useCanvasKeyboard");
+
     const handleKeyDown = async (e: KeyboardEvent) => {
       const active = document.activeElement;
       if (

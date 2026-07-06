@@ -4,6 +4,7 @@ import { EditorProvider, useEditor } from "../EditorContext";
 import { RightDock } from "../RightDock";
 import { WorkspaceManager } from "@/engine/workspace";
 import { useEditorCommands, dispatchEditorCommand } from "../../useEditorCommands";
+import { clearRegistry } from "../../keyboardRegistry";
 
 function renderWithEditor(renderChildren: () => any, workspace = new WorkspaceManager()) {
   const renderer = {
@@ -41,6 +42,7 @@ describe("RightDock layout and tab navigation", () => {
     document.body.replaceChildren();
     vi.restoreAllMocks();
     localStorage.clear();
+    clearRegistry();
   });
 
   it("renders with default values and allows switching top-level and sub-tabs", () => {

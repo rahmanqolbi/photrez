@@ -3,7 +3,8 @@ import { render } from "solid-js/web";
 import { EditorProvider } from "../../shell/EditorContext";
 import { useEditor } from "../../shell/EditorContext";
 import { useCanvasKeyboard } from "../useCanvasKeyboard";
-import { useEditorCommands } from "../../useEditorCommands";
+import { useEditorCommands, dispatchEditorCommand } from "../../useEditorCommands";
+import { clearRegistry } from "../../keyboardRegistry";
 import { WorkspaceManager } from "@/engine/workspace";
 import { easeOutCubic } from "@/viewport/easing";
 
@@ -111,6 +112,7 @@ describe("canvas layer keyboard shortcuts", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    clearRegistry();
   });
 
   // ─── Zoom keyboard wiring tests ──────────────────────────────────────────
@@ -456,9 +458,44 @@ describe("canvas layer keyboard shortcuts", () => {
     dispose();
   });
 
-  it("Ctrl+0 through useEditorCommands calls engine.fitToScreen (production path)", async () => {
+  it("Ctrl+0 routes to fit-to-screen through useCanvasKeyboard (not useEditorCommands)", async () => {
     const ws = new WorkspaceManager();
-    const session = WorkspaceManager.createBlankDocument("fit-editor-cmds", "Fit Cmds", 800, 600);
+    const session = WorkspaceManager.createBlankDocument("fit-cmds", "Fit Cmds", 800, 600);
+    ws.addDocument(session);
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let captured: ReturnType<typeof useEditor> | undefined;
+    const fitToScreenSpy = vi.spyOn(session.engine, "fitToScreen");
+    const fitToScreenAndRender = vi.fn();
+
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <ZoomCommandHarness
+            captureEditor={(e) => { captured = e; }}
+            fitToScreenAndRender={fitToScreenAndRender}
+          />
+        </EditorProvider>
+      ),
+      container,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "0", code: "Digit0", ctrlKey: true }));
+
+    // Ctrl+0 now routes through useCanvasKeyboard → fitToScreenAndRender(false)
+    expect(fitToScreenAndRender).toHaveBeenCalledWith(false);
+    // useEditorCommands no longer intercepts Ctrl+0
+    expect(fitToScreenSpy).not.toHaveBeenCalled();
+
+    dispose();
+  });
+
+  it("dispatchEditorCommand('view.fit-canvas') updates camera via menu path (regression: lastVp cache)", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("fit-menu", "Fit Menu", 800, 600);
     ws.addDocument(session);
     const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
     const scheduler = { requestRender: vi.fn() };
@@ -476,21 +513,29 @@ describe("canvas layer keyboard shortcuts", () => {
       container,
     );
     await new Promise((resolve) => setTimeout(resolve, 0));
+
     const editor = captured!;
     editor.camera.setViewportSize(1000, 700);
 
-    // editor.viewportWidth()/Height are EditorContext signals (default 800×600
-    // in test), NOT the camera viewport size we set above.
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "0", code: "Digit0", ctrlKey: true }));
+    // Step 1: simulate user panning the viewport
+    editor.camera.setState({ x: 200, y: 150, zoom: 3 });
 
-    // useEditorCommands path: engine.fitToScreen + syncViewport + requestRender
+    // Step 2: dispatch menu command (same path as View > Fit Canvas)
+    dispatchEditorCommand("view.fit-canvas");
+
+    // Step 3: verify engine.fitToScreen was called (menu path goes through useEditorCommands)
     expect(fitToScreenSpy).toHaveBeenCalledOnce();
     expect(fitToScreenSpy).toHaveBeenCalledWith(expect.any(Number), expect.any(Number));
+
+    // Step 4: verify camera moved from panned position to fit-to-screen values
+    const state = editor.camera.getState();
+    expect(state.zoom).toBeLessThan(1.5); // zoomed out from 3x
+    expect(state.x).not.toBe(200); // panX changed
+    expect(state.y).not.toBe(150); // panY changed
+
+    // Step 5: verify render was requested
     expect(scheduler.requestRender).toHaveBeenCalled();
 
-    // useCanvasKeyboard path must NOT fire because useEditorCommands
-    // handles Ctrl+0 first and prevents default.  ZoomCommandHarness
-    // passes a vi.fn() as fitToScreenAndRender — check it was NOT called.
     dispose();
   });
 

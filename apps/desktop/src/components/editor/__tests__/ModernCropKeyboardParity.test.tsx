@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
 import { useCanvasKeyboard } from "../canvas/useCanvasKeyboard";
+import { clearRegistry } from "../keyboardRegistry";
 import { applyCropPreview } from "../cropToolActions";
 
 const editorMock = vi.hoisted(() => ({ current: null as any }));
@@ -115,6 +116,7 @@ function renderHarness(editor = makeEditor()) {
 describe("Modern Crop keyboard parity", () => {
   afterEach(() => {
     vi.clearAllMocks();
+    clearRegistry();
   });
 
   it("applies Modern Crop on Enter using the crop engine rotation convention", () => {

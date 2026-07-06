@@ -4,6 +4,7 @@ import { EditorProvider, useEditor } from "../shell/EditorContext";
 import { PropertiesPanel } from "../PropertiesPanel";
 import { AdjustmentsPanel } from "../AdjustmentsPanel";
 import { useEditorCommands } from "../useEditorCommands";
+import { clearRegistry } from "../keyboardRegistry";
 import { WorkspaceManager } from "@/engine/workspace";
 
 function tick(): Promise<void> {
@@ -60,6 +61,7 @@ describe("PropertiesPanel basic adjustments", () => {
   afterEach(() => {
     document.body.replaceChildren();
     vi.restoreAllMocks();
+    clearRegistry();
   });
 
   it("previews adjustment on the active bitmap layer as the slider changes", async () => {
@@ -260,6 +262,7 @@ describe("AdjustmentsPanel — production engine behavior (no applyBasicAdjustme
     document.body.replaceChildren();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    clearRegistry();
   });
 
   /** Simulate what useEditorCommands.restoreHistorySnapshot does:
