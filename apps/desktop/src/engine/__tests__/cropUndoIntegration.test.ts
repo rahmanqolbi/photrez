@@ -6,9 +6,17 @@ function setupOffscreenCanvasMock() {
   const MockConstructor = function (this: any, w: number, h: number) {
     this.width = w;
     this.height = h;
+    const noop = vi.fn();
     this.ctx = {
       fillStyle: "",
-      fillRect: vi.fn(),
+      fillRect: noop,
+      clearRect: noop,
+      save: noop,
+      restore: noop,
+      translate: noop,
+      rotate: noop,
+      scale: noop,
+      drawImage: noop,
     };
     this.getContext = vi.fn(() => this.ctx);
     this.transferToImageBitmap = vi.fn(() => ({ width: this.width, height: this.height } as ImageBitmap));
@@ -204,5 +212,61 @@ describe("crop + undo integration", () => {
 
     clearCropStacks();
     expect(cropUndoStack.length).toBe(0);
+  });
+
+  // Regression: 2026-07-06 — "layer turns black on undo after modern crop"
+  //
+  // Root cause: performApplyCrop in cropApply.ts closes the old layer.imageBitmap
+  // when applying a crop with deleteCroppedPixels: true. But applyCropPreview
+  // stores an engine.snapshot() in the history BEFORE calling engine.applyCrop().
+  // The snapshot's imageBitmap reference is the just-closed bitmap, so undo
+  // restores a layer whose imageBitmap is a detached/closed GPU buffer. The
+  // renderer then tries to upload the closed bitmap, producing a black/empty
+  // texture on screen.
+  //
+  // The contract this test pins: snapshots taken before a destructive crop
+  // must keep their layer.imageBitmap references valid (i.e., .close() must
+  // not have been called on them) for the entire lifetime of the snapshot in
+  // the history stack.
+  it("snapshot bitmap survives applyCrop with deleteCroppedPixels=true", () => {
+    setupOffscreenCanvasMock();
+
+    let closeCount = 0;
+    const fakeBitmap = {
+      width: 100,
+      height: 100,
+      close: () => { closeCount++; },
+    } as unknown as ImageBitmap;
+
+    const engine = new DocumentEngine("doc-del-bmp", "Del Bmp", 100, 100);
+    const layer = engine.addLayer("Layer 1", 100, 100);
+    engine.setLayerImageBitmap(layer.id, fakeBitmap);
+    const history = new CommandHistory();
+
+    // Snapshot taken BEFORE the crop — should pin the bitmap
+    const snap = engine.snapshot();
+    expect(snap.layers[0].imageBitmap).toBe(fakeBitmap);
+    // Commit pre-crop snapshot to history (mirrors applyCropPreview flow)
+    history.commit(snap);
+
+    const closeCountBeforeCrop = closeCount;
+
+    // Apply crop with deleteCroppedPixels=true (the default for modern crop)
+    engine.applyCrop(10, 10, 50, 50, { deleteCroppedPixels: true });
+
+    // CONTRACT: bitmaps referenced by snapshots in the history must NOT be
+    // closed, because restore() puts those references back into live layers
+    // and the renderer tries to upload them to a WebGL texture. A closed
+    // ImageBitmap produces a black/empty texture ("image source is detached").
+    expect(closeCount).toBe(closeCountBeforeCrop);
+    expect(snap.layers[0].imageBitmap).toBe(fakeBitmap);
+
+    // Undo must restore a layer with the same usable bitmap
+    const restored = history.undo(engine.snapshot());
+    expect(restored).not.toBeNull();
+    engine.restore(restored!);
+
+    const restoredLayer = engine.getLayer(layer.id)!;
+    expect(restoredLayer.imageBitmap).toBe(fakeBitmap);
   });
 });

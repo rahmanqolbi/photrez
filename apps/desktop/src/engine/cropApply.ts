@@ -90,16 +90,14 @@ export function performApplyCrop(
           ctx.restore();
 
           const newBitmap = offscreen.transferToImageBitmap();
-          // Free the previous bitmap before swapping — otherwise
-          // the old GPU buffer stays pinned until layer deletion.
-          if (layer.imageBitmap) {
-            try {
-              layer.imageBitmap.close();
-            } catch {
-              // jsdom and some test doubles don't implement close().
-            }
-          }
-          // Also free the baseImageBitmap if it exists to bake adjustments
+          // NOTE: we intentionally do NOT close the old imageBitmap here.
+          // applyCropPreview commits engine.snapshot() to history BEFORE
+          // calling engine.applyCrop(), so the snapshot holds a reference
+          // to the bitmap we are about to replace. Closing it would make
+          // the snapshot point to a closed/detached ImageBitmap, causing
+          // "image source is detached" errors on restore (undo/redo) —
+          // the layer would render as a black/empty texture. Memory is
+          // reclaimed by GC once all snapshot references are evicted.
           if (layer.baseImageBitmap) {
             try {
               layer.baseImageBitmap.close();
