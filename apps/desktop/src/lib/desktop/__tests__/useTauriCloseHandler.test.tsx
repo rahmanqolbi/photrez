@@ -14,7 +14,7 @@
 //   4. Cancel stops close entirely
 //   5. Discard skips to next dirty doc
 //   6. Save persists and continues
-// 7. All docs handled → window.destroy() is called
+// 7. All docs handled → invoke("close_app") is called
 
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render } from "solid-js/web";
@@ -26,17 +26,17 @@ const tauriState = vi.hoisted(() => ({
   unlisten: vi.fn().mockReturnThis(),
 }));
 
+const invokeMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: invokeMock,
+}));
+
 vi.mock("@tauri-apps/api/event", () => ({
   listen: (event: string, cb: (event: unknown) => void) => {
     tauriState.listenEvent = event;
     tauriState.listenCallback = cb;
     return Promise.resolve(tauriState.unlisten);
   },
-}));
-
-const destroyWindowMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
-vi.mock("@tauri-apps/api/window", () => ({
-  getCurrentWindow: () => ({ destroy: destroyWindowMock }),
 }));
 
 vi.mock("@/tauri/native", () => ({
@@ -128,7 +128,7 @@ describe("useTauriCloseHandler", () => {
     tauriState.listenEvent = null;
     tauriState.listenCallback = null;
     tauriState.unlisten.mockClear();
-    destroyWindowMock.mockClear();
+    invokeMock.mockClear();
   });
 
   afterEach(() => {
@@ -153,8 +153,6 @@ describe("useTauriCloseHandler", () => {
   });
 
   it("calls listen() synchronously during render (no dynamic import deferral)", () => {
-    // With static imports (replacing import(@vite-ignore) pattern),
-    // listen() must be invoked inline, not deferred to a .then() callback.
     (window as any).__TAURI_INTERNALS__ = {};
     const workspace = makeWorkspace([]);
     const dialog = { confirmSave: vi.fn() };
@@ -216,7 +214,7 @@ describe("useTauriCloseHandler", () => {
 
   // ─── Dialog Flow: No Dirty Docs ───
 
-  it("immediately closes window when no dirty documents exist", async () => {
+  it("invokes close_app when no dirty documents exist", async () => {
     (window as any).__TAURI_INTERNALS__ = {};
     const sessions = [makeSession("doc-1", "Doc 1", false, "/path/doc1.png")];
     const workspace = makeWorkspace(sessions);
@@ -228,7 +226,8 @@ describe("useTauriCloseHandler", () => {
     await fireCloseRequested();
 
     expect(dialog.confirmSave).not.toHaveBeenCalled();
-    expect(destroyWindowMock).toHaveBeenCalledTimes(1);
+    // invoke("close_app") called to exit app via Rust's app.exit()
+    expect(invokeMock).toHaveBeenCalledWith("close_app");
   });
 
   // ─── Dialog Flow: Cancel ───
@@ -248,7 +247,7 @@ describe("useTauriCloseHandler", () => {
     await fireCloseRequested();
 
     expect(dialog.confirmSave).toHaveBeenCalledTimes(1);
-    expect(destroyWindowMock).not.toHaveBeenCalled();
+    expect(invokeMock).not.toHaveBeenCalled();
     expect(sessions[0].dirty).toBe(true);
     expect(sessions[1].dirty).toBe(true);
   });
@@ -277,7 +276,7 @@ describe("useTauriCloseHandler", () => {
     expect(sessions[0].dirty).toBe(false);
     expect(sessions[0].engine.clearDirty).not.toHaveBeenCalled();
     expect(sessions[1].dirty).toBe(true);
-    expect(destroyWindowMock).not.toHaveBeenCalled();
+    expect(invokeMock).not.toHaveBeenCalled(); // Cancel on doc-2 stops close
   });
 
   // ─── Dialog Flow: Save ───
@@ -306,7 +305,7 @@ describe("useTauriCloseHandler", () => {
     const { encodeComposite } = await import("@/components/editor/exportDocument");
     expect(encodeComposite).toHaveBeenCalledWith(expect.anything(), "png", 92);
     expect(sessions[1].dirty).toBe(true);
-    expect(destroyWindowMock).not.toHaveBeenCalled();
+    expect(invokeMock).not.toHaveBeenCalled(); // Cancel on doc-2 stops close
   });
 
   // ─── Dialog Flow: Save All → Close ───
@@ -334,7 +333,8 @@ describe("useTauriCloseHandler", () => {
     expect(sessions[1].engine.clearDirty).toHaveBeenCalled();
     expect(sessions[0].dirty).toBe(false);
     expect(sessions[1].dirty).toBe(false);
-    expect(destroyWindowMock).toHaveBeenCalledTimes(1);
+    // invoke("close_app") called after all dirty docs saved
+    expect(invokeMock).toHaveBeenCalledWith("close_app")
   });
 
   // ─── Dialog Flow: No sourcePath Save ───
@@ -358,7 +358,8 @@ describe("useTauriCloseHandler", () => {
     expect(sessions[0].engine.clearDirty).toHaveBeenCalled();
     expect(sessions[0].dirty).toBe(false);
     expect(sessions[0].sourcePath).toBe("/fake/path/doc.png");
-    expect(destroyWindowMock).toHaveBeenCalledTimes(1);
+    // invoke("close_app") called after saving
+    expect(invokeMock).toHaveBeenCalledWith("close_app")
   });
 
   // ─── Dialog Flow: Save Failure ───
@@ -387,7 +388,8 @@ describe("useTauriCloseHandler", () => {
       expect.objectContaining({ title: "Save Failed" }),
     );
     expect(sessions[0].dirty).toBe(false);
-    expect(destroyWindowMock).toHaveBeenCalledTimes(1);
+    // invoke("close_app") called after discard despite save failure
+    expect(invokeMock).toHaveBeenCalledWith("close_app")
   });
 
   it("stops close on retry Cancel", async () => {
@@ -413,7 +415,7 @@ describe("useTauriCloseHandler", () => {
 
     expect(dialog.confirm).toHaveBeenCalled();
     expect(sessions[0].dirty).toBe(true);
-    expect(destroyWindowMock).not.toHaveBeenCalled();
+    expect(invokeMock).not.toHaveBeenCalled(); // Retry Cancel stops close
   });
 
   // ─── Dialog Flow: Discard all → Close ───
@@ -439,7 +441,8 @@ describe("useTauriCloseHandler", () => {
     expect(dialog.confirmSave).toHaveBeenCalledTimes(2);
     expect(sessions[0].dirty).toBe(false);
     expect(sessions[1].dirty).toBe(false);
-    expect(destroyWindowMock).toHaveBeenCalledTimes(1);
+    // invoke("close_app") called after all dirty docs discarded
+    expect(invokeMock).toHaveBeenCalledWith("close_app")
   });
 
   // ─── Dialog Flow: no confirmSave (fallback) ───
@@ -459,6 +462,7 @@ describe("useTauriCloseHandler", () => {
 
     expect(dialog.confirm).toHaveBeenCalledTimes(1);
     expect(sessions[0].dirty).toBe(false);
-    expect(destroyWindowMock).toHaveBeenCalledTimes(1);
+    // invoke("close_app") called after discard
+    expect(invokeMock).toHaveBeenCalledWith("close_app")
   });
 });

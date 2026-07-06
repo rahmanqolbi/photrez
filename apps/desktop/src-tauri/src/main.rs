@@ -56,7 +56,8 @@ fn main() {
                     window_state::save_window_state(window);
                     // Prevent the window from closing immediately. The frontend
                     // will show sequential save-confirm dialogs for each dirty
-                    // document, then call getCurrentWindow().close() when done.
+                    // document, then invoke("close_app") to exit the app via Rust's
+                    // app.exit() which bypasses this CloseRequested handler.
                     api.prevent_close();
                     let _ = window.emit("close-requested", ());
                 }
@@ -71,6 +72,7 @@ fn main() {
             commands::save_project,
             commands::load_project,
             commands::print_image,
+            commands::close_app,
         ])
         .run(tauri::generate_context!())
         .expect("Error while running Photrez");

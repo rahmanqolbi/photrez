@@ -185,6 +185,15 @@ pub(crate) fn load_project(path: String) -> Result<Value, Value> {
     }))
 }
 
+/// Close the application. Called by the frontend after all dirty documents
+/// have been handled. Bypasses CloseRequested handler entirely by exiting
+/// the Tauri app process directly.
+#[tauri::command]
+pub(crate) fn close_app(app: tauri::AppHandle) -> Result<Value, Value> {
+    app.exit(0);
+    ok_response(serde_json::json!({ "closed": true }))
+}
+
 /// Print an image file using the system's native print dialog.
 /// On Windows, calls ShellExecuteW("print") which opens the compact
 /// Windows print dialog (same one used by Paint, Photoshop, etc.)

@@ -1,6 +1,6 @@
 import { onCleanup } from "solid-js";
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
 import type { WorkspaceManager } from "@/engine/workspace";
 
 // Minimal dialog interface matching useDialog() return type
@@ -18,6 +18,10 @@ interface CloseDialog {
  * titlebar close, Rust's CloseRequested handler prevents the default
  * close and emits a "close-requested" event. This hook listens for that
  * event, iterates through dirty documents, and shows a dialog per doc.
+ *
+ * After all dirty docs are handled (or none exist), invoke("close_app")
+ * is called which calls app.exit(0) on the Rust side, bypassing the
+ * CloseRequested handler entirely.
  *
  * Only "Discard" and "Cancel" stop / continue the flow.
  * "Save" persists the document before moving to the next dirty doc.
@@ -125,13 +129,13 @@ export function useTauriCloseHandler(
       }
     }
 
-    // All dirty docs handled — close the window.
-    // Use destroy() NOT close() because in Tauri 2, close() also triggers
-    // CloseRequested → prevent_close() → infinite loop. destroy() bypasses it.
+    // All dirty docs handled — close the app via Rust app.exit().
+    // invoke("close_app") bypasses the CloseRequested handler entirely.
     try {
-      await getCurrentWindow().destroy();
-    } catch {
+      await invoke("close_app");
+    } catch (error) {
       // Fallback for non-Tauri or test env
+      console.warn("[useTauriCloseHandler] invoke('close_app') failed:", error);
     }
   };
 
