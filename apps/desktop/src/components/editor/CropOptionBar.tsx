@@ -261,6 +261,8 @@ export function CropOptionBar() {
       docHeight: docHeight(),
       zoom: zoom(),
       aspect,
+      panX: pan().x,
+      panY: pan().y,
     });
     setModernCropFrame(fitted);
   };
@@ -899,6 +901,8 @@ onChange={(e) => {
               docHeight: docHeight(),
               zoom: zoom(),
               aspect: ea,
+              panX: pan().x,
+              panY: pan().y,
             }));
           } else {
             resetCropPreviewToCanvas({

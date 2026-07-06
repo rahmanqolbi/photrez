@@ -1,6 +1,5 @@
 import { createSignal, onCleanup } from "solid-js";
 import { useEditor } from "../shell/EditorContext";
-import type { ModernCropFrame } from "@/viewport/modernCropGeometry";
 
 interface PanNavigationOptions {
   getCanvasContainerRef: () => HTMLDivElement | undefined;
@@ -8,16 +7,7 @@ interface PanNavigationOptions {
 }
 
 export function usePanNavigation(options: PanNavigationOptions) {
-  const { workspace, scheduler, camera, syncFromCamera, modernCropFrame, setModernCropFrame, cropInteractionMode, setZoom, setPan } = useEditor();
-
-  /** When panning in Modern crop mode, shift the frame along with the viewport. */
-  function shiftModernCropFrame(dx: number, dy: number) {
-    if (cropInteractionMode() !== "modern") return;
-    setModernCropFrame((prev: ModernCropFrame | null) => {
-      if (!prev) return null;
-      return { ...prev, x: prev.x + dx, y: prev.y + dy };
-    });
-  }
+  const { workspace, scheduler, camera, syncFromCamera, setZoom, setPan, zoom, viewportWidth, viewportHeight } = useEditor();
 
   const [isSpacePressed, setIsSpacePressed] = createSignal(false);
   const [isPanning, setIsPanning] = createSignal(false);
@@ -64,7 +54,6 @@ export function usePanNavigation(options: PanNavigationOptions) {
       }
 
       camera.pan(momentumVelocity.x, momentumVelocity.y);
-      shiftModernCropFrame(momentumVelocity.x, momentumVelocity.y);
       // Direct signal update instead of syncFromCamera() to avoid
       // engine.setViewport → notifyChange → sync → setSelectedLayerId.
       const ms = camera.getState();
@@ -93,7 +82,9 @@ export function usePanNavigation(options: PanNavigationOptions) {
 
       // Zoom centered at cursor position (container-relative coordinates) - instant for Ctrl+scroll
       const containerRect = canvasContainerRef.getBoundingClientRect();
-      camera.zoomToPoint(factor, e.clientX - containerRect.left, e.clientY - containerRect.top);
+      const cx = e.clientX - containerRect.left;
+      const cy = e.clientY - containerRect.top;
+      camera.zoomToPoint(factor, cx, cy);
       syncFromCamera();
       scheduler.requestRender();
     } else {
@@ -106,7 +97,6 @@ export function usePanNavigation(options: PanNavigationOptions) {
         dy = 0;
       }
       camera.pan(dx, dy);
-      shiftModernCropFrame(dx, dy);
       // Direct signal update instead of syncFromCamera() to avoid
       // engine.setViewport → notifyChange → sync → setSelectedLayerId.
       const ws = camera.getState();
@@ -155,7 +145,6 @@ export function usePanNavigation(options: PanNavigationOptions) {
     });
     const actualDx = camera.getState().x - prevPanX;
     const actualDy = camera.getState().y - prevPanY;
-    shiftModernCropFrame(actualDx, actualDy);
     // Update zoom/pan signals without calling syncFromCamera() (which also
     // calls engine.setViewport → notifyChange → sync → setSelectedLayerId).
     // During panning that would re-select a deselected layer on every tick.

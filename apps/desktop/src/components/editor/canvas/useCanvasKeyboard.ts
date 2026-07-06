@@ -1,6 +1,6 @@
 import { onMount, onCleanup } from "solid-js";
 import { constrainCropRectToDocument } from "@/viewport/cropGeometry";
-import { getModernCropApplyRotation, modernFrameToCropRect } from "@/viewport/modernCropGeometry";
+import { docFrameToScreenFrame, getModernCropApplyRotation, modernFrameToCropRect } from "@/viewport/modernCropGeometry";
 import type { ToolType } from "@/viewport/input-handler";
 import { useEditor } from "../shell/EditorContext";
 import { flattenAllLayers, mergeActiveLayerDown, stampVisibleLayers } from "../layers/layerOperations";
@@ -266,24 +266,26 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
           }
           return;
         }
-        if (e.key === "Enter") {
-          e.preventDefault();
-          if (cropInteractionMode() === "modern" && modernCropFrame()) {
-            const rect = modernFrameToCropRect({
-              frame: modernCropFrame()!,
-              viewport: {
-                width: viewportWidth(),
-                height: viewportHeight(),
-                panX: pan().x,
-                panY: pan().y,
-                zoom: zoom(),
-              },
-              transform: modernCropImageTransform(),
-            });
-            applyCropPreview({
-              workspace, renderer,
-              viewport: { width: viewportWidth(), height: viewportHeight() },
-              cropRect: rect,
+          if (e.key === "Enter") {
+            e.preventDefault();
+            if (cropInteractionMode() === "modern" && modernCropFrame()) {
+              // Convert doc-coord frame to screen space for modernFrameToCropRect
+              const screenFrame = docFrameToScreenFrame(modernCropFrame(), zoom(), pan());
+              const rect = modernFrameToCropRect({
+                frame: screenFrame!,
+                viewport: {
+                  width: viewportWidth(),
+                  height: viewportHeight(),
+                  panX: pan().x,
+                  panY: pan().y,
+                  zoom: zoom(),
+                },
+                transform: modernCropImageTransform(),
+              });
+              applyCropPreview({
+                workspace, renderer,
+                viewport: { width: viewportWidth(), height: viewportHeight() },
+                cropRect: rect,
               cropMode: cropMode(),
               cropSizeTarget: cropSizeTarget(),
               cropDeletePixels: cropDeletePixels(),

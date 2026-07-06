@@ -27,11 +27,13 @@ import { BrushContextMenu } from "../BrushContextMenu";
 import { CanvasContextMenu } from "./CanvasContextMenu";
 import { getPasteboardClickAction } from "../tools/pasteboardClickPolicy";
 import {
+  docFrameToScreenFrame,
   getDefaultModernCropFrame,
   getModernCropApplyRotation,
   getModernCropImagePivot,
   getProjectedCanvasSize,
   modernFrameToCropRect,
+  screenFrameToDocFrame,
 } from "@/viewport/modernCropGeometry";
 import { fitCropRectToAspect } from "@/viewport/cropAutoFit";
 import {
@@ -179,8 +181,10 @@ export function CanvasViewport() {
     }
 
     // With frame: compute pivot, apply full transform
+    // getModernCropImagePivot expects screen-space frame
+    const screenFrame = modernCropScreenFrame();
     const pivot = getModernCropImagePivot({
-      frame,
+      frame: screenFrame!,
       viewport: {
         width: viewportWidth(),
         height: viewportHeight(),
@@ -210,8 +214,10 @@ export function CanvasViewport() {
       return `translate3d(${pan().x + transform.offsetX}px, ${pan().y + transform.offsetY}px, 0) scale(${zoom() * transform.scale})`;
     }
 
+    // getModernCropImagePivot expects screen-space frame
+    const screenFrame = modernCropScreenFrame();
     const pivot = getModernCropImagePivot({
-      frame,
+      frame: screenFrame!,
       viewport: {
         width: viewportWidth(),
         height: viewportHeight(),
@@ -249,8 +255,14 @@ export function CanvasViewport() {
     };
   });
 
+  // Derived screen-space frame from doc-space frame + zoom + pan.
+  // Used for rendering, pivot computation, and overlay positioning.
+  const modernCropScreenFrame = createMemo(() => {
+    return docFrameToScreenFrame(modernCropFrame(), zoom(), pan());
+  });
+
   const modernCropFillPreviewStyle = createMemo(() => {
-    const frame = modernCropFrame();
+    const frame = modernCropScreenFrame();
     if (!frame) return {};
     return {
       position: "absolute" as const,
@@ -447,6 +459,8 @@ export function CanvasViewport() {
           zoom: zoom(),
           scale: modernCropImageTransform().scale,
           aspect,
+          panX: centerPanX,
+          panY: centerPanY,
         }),
       );
     }
@@ -1132,7 +1146,9 @@ export function CanvasViewport() {
             return (
               <ModernCropOverlay
                 isNavigationMode={isSpacePressed() || isPanning()}
-                frame={frame()}
+                // frame() is a reactive accessor for modernCropFrame()
+                // Convert doc-coords to screen-coords for overlay positioning
+                frame={docFrameToScreenFrame(frame(), zoom(), pan())!}
                 imageTransform={modernCropImageTransform()}
                 viewportWidth={viewportWidth()}
                 viewportHeight={viewportHeight()}
@@ -1146,14 +1162,16 @@ export function CanvasViewport() {
                 cropMode={cropMode()}
                 cropAspect={ea()}
                 guideMode={cropGuideMode()}
-                onFrameChange={setModernCropFrame}
+                onFrameChange={(screenFrame) => setModernCropFrame(
+                  screenFrameToDocFrame(screenFrame, zoom(), pan())!,
+                )}
                 onImageTransformChange={setModernCropImageTransform}
                 onHoverHandleChange={setHoverHandle}
                 onDragStateChange={setIsCropDragging}
                 onModernCropCommit={() => commitModernCropState()}
                 isAltPressed={isAltPressed}
                 onApplyCrop={() => {
-                  const f = modernCropFrame();
+                  const f = modernCropScreenFrame();
                   if (!f) return;
                   const rect = modernFrameToCropRect({
                     frame: f,

@@ -509,6 +509,23 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
         if (!engine) break;
         engine.fitToScreen(editor.viewportWidth(), editor.viewportHeight());
         editor.syncViewport();
+        // Center modern crop frame at new viewport center in document coordinates
+        // + reset offset so the image isn't shifted by stale offsetX/Y
+        if (editor.cropInteractionMode() === "modern") {
+          editor.setModernCropFrame((prev) => {
+            if (!prev) return null;
+            const z = editor.zoom();
+            const p = editor.pan();
+            const docCenterX = (editor.viewportWidth() / 2 - p.x) / z;
+            const docCenterY = (editor.viewportHeight() / 2 - p.y) / z;
+            return {
+              ...prev,
+              x: Math.round(docCenterX - prev.w / 2),
+              y: Math.round(docCenterY - prev.h / 2),
+            };
+          });
+          editor.setModernCropImageTransform((prev) => ({ ...prev, offsetX: 0, offsetY: 0 }));
+        }
         editor.scheduler.requestRender();
         break;
       }

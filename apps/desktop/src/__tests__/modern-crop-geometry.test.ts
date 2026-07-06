@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  docFrameToScreenFrame,
+  screenFrameToDocFrame,
   getProjectedCanvasSize,
   clampFrameToProjectedBounds,
   getDefaultModernCropFrame,
@@ -160,9 +162,10 @@ describe("modern crop geometry", () => {
     expect(rect.y).toBeCloseTo(110);
   });
 
-  it("fits the default frame inside the smaller of viewport and projected canvas", () => {
-    // projected canvas: 1600*0.5=800, 900*0.5=450; viewport: 1000x700
-    // maxW = min(1000, 800) = 800, maxH = min(700, 450) = 450
+  it("fits the default frame inside document bounds with 1:1 aspect (doc coords)", () => {
+    // zoom 0.5: visible area in doc = 2000x1400, doc = 1600x900
+    // maxW = min(2000, 1600) = 1600, maxH = min(1400, 900) = 900
+    // aspect 1:1 → w = h = 900
     const frame = getDefaultModernCropFrame({
       viewportWidth: 1000,
       viewportHeight: 700,
@@ -173,13 +176,13 @@ describe("modern crop geometry", () => {
     });
 
     expect(frame.w).toBeCloseTo(frame.h);
-    expect(frame.w).toBeLessThanOrEqual(800);
-    expect(frame.h).toBeLessThanOrEqual(450);
-    expect(frame).toEqual({ x: 275, y: 125, w: 450, h: 450 });
+    expect(frame.w).toBeLessThanOrEqual(1600);
+    expect(frame.h).toBeLessThanOrEqual(900);
+    expect(frame).toEqual({ x: 550, y: 250, w: 900, h: 900 });
   });
 
-  it("defaults to projected canvas size when smaller than viewport", () => {
-    // projected: 1600*0.7=1120, 900*0.7=630; viewport: 1200x800
+  it("defaults to full document when it fits in visible area (doc coords)", () => {
+    // zoom 0.7: visible in doc = 1714x1143, doc = 1600x900 fits
     expect(getDefaultModernCropFrame({
       viewportWidth: 1200,
       viewportHeight: 800,
@@ -187,22 +190,22 @@ describe("modern crop geometry", () => {
       docHeight: 900,
       zoom: 0.7,
       aspect: null,
-    })).toEqual({ x: 40, y: 85, w: 1120, h: 630 });
+    })).toEqual({ x: 57, y: 121, w: 1600, h: 900 });
   });
 
-  it("frame size tracks projected canvas bounds, clamped by viewport", () => {
-    // zoom 0.5: projected 800x450 < viewport 1200x800 → frame = 800x450
+  it("returns full document or visible portion depending on zoom (doc coords)", () => {
+    // zoom 0.5: visible 2400x1600 > doc 1600x900 → frame = full doc
     const frame1 = getDefaultModernCropFrame({
       viewportWidth: 1200, viewportHeight: 800,
       docWidth: 1600, docHeight: 900, zoom: 0.5,
     });
-    // zoom 2.0: projected 3200x1800 > viewport 1200x800 → frame = 1200x800
+    // zoom 2.0: visible 600x400 < doc 1600x900 → frame = visible portion
     const frame2 = getDefaultModernCropFrame({
       viewportWidth: 1200, viewportHeight: 800,
       docWidth: 1600, docHeight: 900, zoom: 2.0,
     });
-    expect(frame1).toEqual({ x: 200, y: 175, w: 800, h: 450 });
-    expect(frame2).toEqual({ x: 0, y: 0, w: 1200, h: 800 });
+    expect(frame1).toEqual({ x: 400, y: 350, w: 1600, h: 900 });
+    expect(frame2).toEqual({ x: 0, y: 0, w: 600, h: 400 });
   });
 
   it("allows center resize beyond projected canvas bounds", () => {
@@ -1306,5 +1309,156 @@ describe("modern crop one-sided resize", () => {
       expect(result.frame.w).toBeGreaterThanOrEqual(24);
       expect(result.frame.h).toBeGreaterThanOrEqual(24);
     });
+  });
+});
+
+describe("docFrameToScreenFrame", () => {
+  it("converts doc frame to screen frame using zoom and pan", () => {
+    const doc = { x: 100, y: 50, w: 200, h: 150 };
+    const result = docFrameToScreenFrame(doc, 2, { x: 50, y: 30 });
+    // screenX = 100 * 2 + 50 = 250
+    // screenY = 50 * 2 + 30 = 130
+    // screenW = 200 * 2 = 400
+    // screenH = 150 * 2 = 300
+    expect(result).toEqual({ x: 250, y: 130, w: 400, h: 300 });
+  });
+
+  it("returns null when doc frame is null", () => {
+    expect(docFrameToScreenFrame(null, 1, { x: 0, y: 0 })).toBeNull();
+  });
+
+  it("handles zoom=1, pan=0 (identity case) — doc = screen", () => {
+    const doc = { x: 100, y: 50, w: 200, h: 150 };
+    const result = docFrameToScreenFrame(doc, 1, { x: 0, y: 0 });
+    expect(result).toEqual(doc);
+  });
+
+  it("handles fractional zoom", () => {
+    const doc = { x: 100, y: 50, w: 200, h: 150 };
+    const result = docFrameToScreenFrame(doc, 0.5, { x: -20, y: 10 });
+    // screenX = 100 * 0.5 + (-20) = 30
+    // screenY = 50 * 0.5 + 10 = 35
+    // screenW = 200 * 0.5 = 100
+    // screenH = 150 * 0.5 = 75
+    expect(result).toEqual({ x: 30, y: 35, w: 100, h: 75 });
+  });
+
+  it("rounds result to nearest integer", () => {
+    const doc = { x: 100, y: 50, w: 201, h: 149 };
+    const result = docFrameToScreenFrame(doc, 0.3, { x: 10, y: 5 });
+    // x = 100 * 0.3 + 10 = 40 → 40
+    // y = 50 * 0.3 + 5 = 20 → 20
+    // w = 201 * 0.3 = 60.3 → 60
+    // h = 149 * 0.3 = 44.7 → 45
+    expect(result).toEqual({ x: 40, y: 20, w: 60, h: 45 });
+  });
+});
+
+describe("screenFrameToDocFrame", () => {
+  it("converts screen frame to doc frame using zoom and pan", () => {
+    const screen = { x: 250, y: 130, w: 400, h: 300 };
+    const result = screenFrameToDocFrame(screen, 2, { x: 50, y: 30 });
+    // docX = (250 - 50) / 2 = 100
+    // docY = (130 - 30) / 2 = 50
+    // docW = 400 / 2 = 200
+    // docH = 300 / 2 = 150
+    expect(result).toEqual({ x: 100, y: 50, w: 200, h: 150 });
+  });
+
+  it("returns null when screen frame is null", () => {
+    expect(screenFrameToDocFrame(null, 1, { x: 0, y: 0 })).toBeNull();
+  });
+
+  it("converts with fractional zoom", () => {
+    const screen = { x: 30, y: 35, w: 100, h: 75 };
+    const result = screenFrameToDocFrame(screen, 0.5, { x: -20, y: 10 });
+    // docX = (30 - (-20)) / 0.5 = 100
+    // docY = (35 - 10) / 0.5 = 50
+    // docW = 100 / 0.5 = 200
+    // docH = 75 / 0.5 = 150
+    expect(result).toEqual({ x: 100, y: 50, w: 200, h: 150 });
+  });
+
+  it("rounds result to nearest integer", () => {
+    const screen = { x: 40, y: 20, w: 60, h: 45 };
+    const result = screenFrameToDocFrame(screen, 0.3, { x: 10, y: 5 });
+    // docX = (40 - 10) / 0.3 = 100
+    // docY = (20 - 5) / 0.3 = 50
+    // docW = 60 / 0.3 = 200
+    // docH = 45 / 0.3 = 150
+    expect(result).toEqual({ x: 100, y: 50, w: 200, h: 150 });
+  });
+
+  it("round-trips with docFrameToScreenFrame", () => {
+    const doc = { x: 100, y: 50, w: 200, h: 150 };
+    const zoom = 1.5;
+    const pan = { x: 75, y: -20 };
+    const screen = docFrameToScreenFrame(doc, zoom, pan)!;
+    const back = screenFrameToDocFrame(screen, zoom, pan)!;
+    expect(back).toEqual(doc);
+  });
+});
+
+describe("getDefaultModernCropFrame (doc coordinates)", () => {
+  it("frame matches full document when document fits in visible area", () => {
+    // viewport 1000x700, doc 1600x900, zoom=0.5
+    // visible area in doc space: 2000x1400, doc (1600x900) fits
+    const frame = getDefaultModernCropFrame({
+      viewportWidth: 1000,
+      viewportHeight: 700,
+      docWidth: 1600,
+      docHeight: 900,
+      zoom: 0.5,
+    });
+    // Full document centered in viewport at current pan (0,0)
+    // docCenter = (1000/2)/0.5 = 1000, (700/2)/0.5 = 700
+    // x = 1000 - 800 = 200, y = 700 - 450 = 250
+    expect(frame).toEqual({ x: 200, y: 250, w: 1600, h: 900 });
+  });
+
+  it("with aspect constraint: frame respects aspect ratio and fits inside visible area", () => {
+    const frame = getDefaultModernCropFrame({
+      viewportWidth: 1000,
+      viewportHeight: 700,
+      docWidth: 1600,
+      docHeight: 900,
+      zoom: 0.5,
+      aspect: { w: 1, h: 1 },
+    });
+    // 1:1 aspect, constrained by doc bounds: w=h=900
+    // docCenter = 1000, 700 → x = 550, y = 250
+    expect(frame.w).toBe(frame.h);
+    expect(frame.w).toBeLessThanOrEqual(1600);
+    expect(frame.h).toBeLessThanOrEqual(900);
+    expect(frame).toEqual({ x: 550, y: 250, w: 900, h: 900 });
+  });
+
+  it("defaults to projected canvas size when smaller than viewport (doc coords)", () => {
+    // zoom 0.7, visible: 1714x1143, doc: 1600x900 fits
+    expect(getDefaultModernCropFrame({
+      viewportWidth: 1200,
+      viewportHeight: 800,
+      docWidth: 1600,
+      docHeight: 900,
+      zoom: 0.7,
+      aspect: null,
+    })).toEqual({ x: 57, y: 121, w: 1600, h: 900 });
+  });
+
+  it("frame size is the visible portion when document is larger than viewport", () => {
+    // zoom 0.5: visible 2400x1600 > doc 1600x900 → frame = full doc
+    const frame1 = getDefaultModernCropFrame({
+      viewportWidth: 1200, viewportHeight: 800,
+      docWidth: 1600, docHeight: 900, zoom: 0.5,
+    });
+    // zoom 2.0: visible 600x400 < doc 1600x900 → frame = visible portion
+    const frame2 = getDefaultModernCropFrame({
+      viewportWidth: 1200, viewportHeight: 800,
+      docWidth: 1600, docHeight: 900, zoom: 2.0,
+    });
+    // frame1: full doc centered at current pan
+    expect(frame1).toEqual({ x: 400, y: 350, w: 1600, h: 900 });
+    // frame2: visible portion (600x400) at viewport center
+    expect(frame2).toEqual({ x: 0, y: 0, w: 600, h: 400 });
   });
 });

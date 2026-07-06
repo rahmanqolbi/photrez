@@ -727,6 +727,8 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
           docHeight: docHeight(),
           zoom: zoom(),
           aspect,
+          panX: centerPanX,
+          panY: centerPanY,
         }));
         scheduler.requestRender();
       }
@@ -778,15 +780,32 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   ) {
     const vw = viewportWidth();
     const vh = viewportHeight();
+    const z = zoom();
+    const p = pan();
     const snappedPreview = modernDragSnappedPreview;
-    const selW = snappedPreview ? snappedPreview.w : Math.abs(endX - startX);
-    const selH = snappedPreview ? snappedPreview.h : Math.abs(endY - startY);
-    const selCenterX = snappedPreview
-      ? snappedPreview.x + snappedPreview.w / 2
-      : Math.min(startX, endX) + selW / 2;
-    const selCenterY = snappedPreview
-      ? snappedPreview.y + snappedPreview.h / 2
-      : Math.min(startY, endY) + selH / 2;
+
+    // Compute selection bounds in DOCUMENT coordinates
+    let docSelW: number;
+    let docSelH: number;
+    let docSelCenterX: number;
+    let docSelCenterY: number;
+
+    if (snappedPreview) {
+      // snappedPreview is in screen space → convert to doc coords
+      docSelW = snappedPreview.w / z;
+      docSelH = snappedPreview.h / z;
+      docSelCenterX = (snappedPreview.x + snappedPreview.w / 2 - p.x) / z;
+      docSelCenterY = (snappedPreview.y + snappedPreview.h / 2 - p.y) / z;
+    } else {
+      const docStartX = (startX - p.x) / z;
+      const docStartY = (startY - p.y) / z;
+      const docEndX = (endX - p.x) / z;
+      const docEndY = (endY - p.y) / z;
+      docSelW = Math.abs(docEndX - docStartX);
+      docSelH = Math.abs(docEndY - docStartY);
+      docSelCenterX = Math.min(docStartX, docEndX) + docSelW / 2;
+      docSelCenterY = Math.min(docStartY, docEndY) + docSelH / 2;
+    }
 
     const mode = cropMode();
     const ratioAspect = cropAspect();
@@ -796,55 +815,54 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     let frameH: number;
 
     if (mode === "free" && shiftKey) {
-      const size = Math.max(selW, selH);
+      const size = Math.max(docSelW, docSelH);
       frameW = size;
       frameH = size;
     } else if (mode === "free") {
-      frameW = selW;
-      frameH = selH;
+      frameW = docSelW;
+      frameH = docSelH;
     } else if (mode === "ratio" && ratioAspect && ratioAspect.w > 0 && ratioAspect.h > 0) {
       const ar = ratioAspect.w / ratioAspect.h;
-      const area = Math.max(selW * selH, MIN_CROP_SIZE * MIN_CROP_SIZE);
+      const area = Math.max(docSelW * docSelH, MIN_CROP_SIZE * MIN_CROP_SIZE);
       frameW = Math.sqrt(area * ar);
       frameH = frameW / ar;
     } else if (mode === "size" && sizeTarget && sizeTarget.w > 0 && sizeTarget.h > 0) {
       frameW = sizeTarget.w;
       frameH = sizeTarget.h;
     } else {
-      frameW = selW;
-      frameH = selH;
+      frameW = docSelW;
+      frameH = docSelH;
     }
 
     frameW = Math.max(MIN_CROP_SIZE, frameW);
     frameH = Math.max(MIN_CROP_SIZE, frameH);
 
-    const projected = getProjectedCanvasSize({
-      docWidth: docWidth(),
-      docHeight: docHeight(),
-      zoom: zoom(),
-    });
-
     const clamped = clampFrameToProjectedBounds(
       { x: 0, y: 0, w: frameW, h: frameH },
-      projected,
+      { w: docWidth(), h: docHeight() },
       MIN_CROP_SIZE,
     );
 
+    // Center frame at viewport center in document coordinates
+    const docCenterX = (vw / 2 - p.x) / z;
+    const docCenterY = (vh / 2 - p.y) / z;
     const frame = {
       ...clamped,
-      x: (vw - clamped.w) / 2,
-      y: (vh - clamped.h) / 2,
+      x: Math.round(docCenterX - clamped.w / 2),
+      y: Math.round(docCenterY - clamped.h / 2),
     };
 
     setModernCropFrame(frame);
 
-    // Shift image so selection center maps to viewport center
+    // Shift image so selection center maps to viewport center (screen pixels)
     const vpCenterX = vw / 2;
     const vpCenterY = vh / 2;
+    const selCenterScreenX = docSelCenterX * z + p.x;
+    const selCenterScreenY = docSelCenterY * z + p.y;
     setModernCropImageTransform({
       ...modernCropImageTransform(),
-      offsetX: vpCenterX - selCenterX,
-      offsetY: vpCenterY - selCenterY,
+      offsetX: vpCenterX - selCenterScreenX,
+      offsetY: vpCenterY - selCenterScreenY,
     });
     scheduler.requestRender();
   }

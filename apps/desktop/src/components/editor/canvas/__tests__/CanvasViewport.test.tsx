@@ -86,6 +86,8 @@ let setCropSizeTargetState: (target: any) => void = () => {};
 let getActiveDocId: () => string | null = () => null;
 let clearCropStacksState: () => void = () => {};
 let setBgColorState: (color: string) => void = () => {};
+let setZoomState: (z: number) => void = () => {};
+let setPanState: (p: { x: number; y: number }) => void = () => {};
 let setCropFillEnabledState: (enabled: boolean) => void = () => {};
 let setCropFillSourceState: (source: "background" | "custom") => void = () => {};
 let setCropFillCustomColorState: (color: string) => void = () => {};
@@ -128,6 +130,8 @@ const TestConsumer = () => {
   setCropFillEnabledState = editor.setCropFillEnabled;
   setCropFillSourceState = editor.setCropFillSource;
   setCropFillCustomColorState = editor.setCropFillCustomColor;
+  setZoomState = editor.setZoom;
+  setPanState = editor.setPan;
 
   getSelectionState = editor.selection;
   setSelectionState = editor.setSelection;
@@ -1757,6 +1761,8 @@ describe("CanvasViewport Modern Crop dashed canvas boundary line", () => {
     setModernFrameState({ x: -200, y: -200, w: 1200, h: 1000 });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
+
+
     const dashedAfterFrame = container.querySelector(
       'rect[stroke-dasharray="6,4"]',
     ) as SVGRectElement | null;
@@ -2076,5 +2082,104 @@ describe("CanvasViewport Selection Constraints Integration", () => {
     // Centered around (150, 150) => x = 150 - 120 / 2 = 90, y = 150 - 80 / 2 = 110
     expect(sel!.x).toBe(90);
     expect(sel!.y).toBe(110);
+  });
+});
+
+describe("Crop resize: frame stays in doc coords (no screen leak)", () => {
+  let ws: WorkspaceManager;
+  let renderer: any;
+  let scheduler: any;
+  let container: HTMLDivElement;
+  let dispose: () => void;
+
+  beforeEach(() => {
+    ws = new WorkspaceManager();
+    renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    scheduler = { requestRender: vi.fn() };
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    mockOnViewportPointerDown.mockClear();
+    mockOnViewportPointerUp.mockClear();
+    mockOnViewportPointerCancel.mockClear();
+    mockOnViewportLostPointerCapture.mockClear();
+    mockCommitBrushStroke.mockClear();
+    mockSpacePressed = false;
+    mockPanningActive = false;
+
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+  });
+
+  afterEach(() => {
+    if (dispose) dispose();
+    container.parentNode?.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  function renderViewport() {
+    const session = WorkspaceManager.createBlankDocument("cap-doc", "Cap Doc", 800, 600);
+    ws.addDocument(session);
+    const result = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer} scheduler={scheduler}>
+          <TestConsumer />
+          <CanvasViewport />
+        </EditorProvider>
+      ),
+      container,
+    );
+    dispose = result;
+    setCropInteractionMode("modern");
+    return { session };
+  }
+
+  it("resize drag at zoom=2 stores doc-coord frame (not screen-coord)", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Set zoom=2 so screen≠doc — reveals any missing screen→doc conversion
+    setZoomState(2);
+    setPanState({ x: 0, y: 0 });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    setTool("crop");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Replace auto-created frame with a known doc-coord frame
+    setModernFrameState({ x: 0, y: 0, w: 400, h: 300 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Find the SE handle on the overlay
+    const svg = container.querySelector("[data-modern-crop-overlay]") as SVGSVGElement;
+    if (!svg) throw new Error("Modern crop overlay SVG not found");
+
+    const seHandle = svg.querySelector('[data-modern-crop-handle="se"]') as SVGRectElement;
+    if (!seHandle) throw new Error("SE handle not found");
+
+    // Simulate drag on SE handle: 50px right, 30px down
+    seHandle.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, pointerId: 42, clientX: 800, clientY: 600,
+    }));
+    seHandle.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, pointerId: 42, clientX: 850, clientY: 630,
+    }));
+    seHandle.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, pointerId: 42, clientX: 850, clientY: 630,
+    }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const frame = getModernFrame();
+    expect(frame).not.toBeNull();
+
+    // After drag, w should be in doc coords: expect ~450 (start 400 + 50px/zoom*2)
+    // If screen coords leaked, w would be ~900 (400*2 + 100, stored as doc)
+    // docWidth=800 → w < 800 proves doc-coord storage
+    expect(frame!.w).toBeLessThanOrEqual(800);
+    expect(frame!.h).toBeLessThanOrEqual(600);
+
+    // w should have INCREASED from 400 (SE drag increases size)
+    expect(frame!.w).toBeGreaterThan(400);
+    expect(frame!.h).toBeGreaterThan(300);
   });
 });

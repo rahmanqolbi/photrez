@@ -95,7 +95,7 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
       props.frame,
       props.viewportWidth,
       props.viewportHeight,
-    ),
+    )!,
   );
   const center = createMemo(() => {
     const rect = screenRect();

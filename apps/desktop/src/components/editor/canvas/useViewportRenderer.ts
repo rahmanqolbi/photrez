@@ -1,6 +1,6 @@
 import { createSignal, createEffect, onMount, onCleanup } from "solid-js";
 import { useEditor } from "../shell/EditorContext";
-import { centerModernCropFrame, type ModernCropFrame } from "@/viewport/modernCropGeometry";
+import type { ModernCropFrame } from "@/viewport/modernCropGeometry";
 import { easeOutCubic } from "@/viewport/easing";
 import { WEBGL2_CONTEXT_RESTORED_EVENT } from "@/renderer/webgl2";
 import { showToast } from "../Toast";
@@ -23,6 +23,8 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
     setViewportHeight,
     modernCropFrame,
     setModernCropFrame,
+    modernCropImageTransform,
+    setModernCropImageTransform,
     cropInteractionMode,
     activeTool,
     viewportWidth,
@@ -81,8 +83,18 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
       if (cropInteractionMode() === "modern") {
         setModernCropFrame((prev: ModernCropFrame | null) => {
           if (!prev) return null;
-          return centerModernCropFrame(prev, rect.width, rect.height);
+          // After fit-to-screen the zoom/pan have changed — re-center frame
+          // at the new viewport center in document coordinates
+          const docCenterX = (rect.width / 2 - targetX) / fitZoom;
+          const docCenterY = (rect.height / 2 - targetY) / fitZoom;
+          return {
+            ...prev,
+            x: Math.round(docCenterX - prev.w / 2),
+            y: Math.round(docCenterY - prev.h / 2),
+          };
         });
+        // Reset offset so the image isn't shifted on top of the newly centered frame
+        setModernCropImageTransform((prev) => ({ ...prev, offsetX: 0, offsetY: 0 }));
       }
       resizeRenderer();
       scheduler.requestRender();

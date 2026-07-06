@@ -22,6 +22,42 @@ export interface ModernCropViewport {
   zoom: number;
 }
 
+/**
+ * Convert a document-space frame to screen-space using zoom and pan.
+ * Returns null when the input frame is null.
+ */
+export function docFrameToScreenFrame(
+  doc: ModernCropFrame | null,
+  zoom: number,
+  pan: { x: number; y: number },
+): ModernCropFrame | null {
+  if (!doc) return null;
+  return {
+    x: Math.round(doc.x * zoom + pan.x),
+    y: Math.round(doc.y * zoom + pan.y),
+    w: Math.round(doc.w * zoom),
+    h: Math.round(doc.h * zoom),
+  };
+}
+
+/**
+ * Convert a screen-space frame back to document-space using zoom and pan.
+ * Returns null when the input frame is null.
+ */
+export function screenFrameToDocFrame(
+  screen: ModernCropFrame | null,
+  zoom: number,
+  pan: { x: number; y: number },
+): ModernCropFrame | null {
+  if (!screen) return null;
+  return {
+    x: Math.round((screen.x - pan.x) / zoom),
+    y: Math.round((screen.y - pan.y) / zoom),
+    w: Math.round(screen.w / zoom),
+    h: Math.round(screen.h / zoom),
+  };
+}
+
 export function getProjectedCanvasSize(params: {
   docWidth: number;
   docHeight: number;
@@ -36,10 +72,11 @@ export function getProjectedCanvasSize(params: {
 }
 
 export function getModernCropFrameScreenRect(
-  frame: ModernCropFrame,
+  frame: ModernCropFrame | null,
   _viewportWidth?: number,
   _viewportHeight?: number,
-) {
+): ModernCropFrame | null {
+  if (!frame) return null;
   return {
     x: frame.x,
     y: frame.y,
@@ -105,16 +142,16 @@ export function getDefaultModernCropFrame(params: {
   zoom: number;
   scale?: number;
   aspect?: { w: number; h: number } | null;
+  panX?: number;
+  panY?: number;
 }): ModernCropFrame {
-  const projected = getProjectedCanvasSize({
-    docWidth: params.docWidth,
-    docHeight: params.docHeight,
-    zoom: params.zoom,
-    scale: params.scale,
-  });
-
-  const maxW = Math.min(params.viewportWidth, projected.w);
-  const maxH = Math.min(params.viewportHeight, projected.h);
+  const scale = params.scale ?? 1;
+  // Visible document area at this zoom, in document coordinates
+  const visibleW = params.viewportWidth / params.zoom;
+  const visibleH = params.viewportHeight / params.zoom;
+  // Frame can't exceed scaled document bounds
+  const maxW = Math.min(visibleW, params.docWidth * scale);
+  const maxH = Math.min(visibleH, params.docHeight * scale);
   const aspect = params.aspect && params.aspect.w > 0 && params.aspect.h > 0
     ? params.aspect.w / params.aspect.h
     : maxW / maxH;
@@ -126,12 +163,18 @@ export function getDefaultModernCropFrame(params: {
     w = h * aspect;
   }
 
-  return { w: Math.max(1, w), h: Math.max(1, h), x: (params.viewportWidth - w) / 2, y: (params.viewportHeight - h) / 2 };
-}
+  // Center the frame at the viewport center in document coordinates.
+  // panX/panY default to 0 for backward compatibility (callers that
+  // don't pass pan assume the viewport origin aligns with doc origin).
+  const docCenterX = (params.viewportWidth / 2 - (params.panX ?? 0)) / params.zoom;
+  const docCenterY = (params.viewportHeight / 2 - (params.panY ?? 0)) / params.zoom;
 
-/** Re-center an existing frame in the viewport. */
-export function centerModernCropFrame(frame: ModernCropFrame, viewportWidth: number, viewportHeight: number): ModernCropFrame {
-  return { ...frame, x: (viewportWidth - frame.w) / 2, y: (viewportHeight - frame.h) / 2 };
+  return {
+    w: Math.max(1, Math.round(w)),
+    h: Math.max(1, Math.round(h)),
+    x: Math.round(docCenterX - w / 2),
+    y: Math.round(docCenterY - h / 2),
+  };
 }
 
 export function resizeModernFrameFromCenter(params: {

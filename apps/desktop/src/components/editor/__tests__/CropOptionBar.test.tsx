@@ -300,11 +300,12 @@ describe("CropOptionBar", () => {
         }, container);
 
         // Switch to Size mode — frame fills canvas at target 800x600 (4:3) aspect
-        // Even at zoom=0.5, the frame should fill the max canvas bounds
+        // Even at zoom=0.5, the frame should fill the max canvas bounds (in screen space)
         clickPill(container, "Size");
         let frame = setModernFrameSpy.mock.lastCall?.[0];
-        expect(frame.w).toBeLessThanOrEqual(MAX_W);
-        expect(frame.h).toBeLessThanOrEqual(MAX_H);
+        // Frame is in doc coords; multiply by zoom to check screen-space bounds
+        expect(frame.w * 0.5).toBeLessThanOrEqual(MAX_W);
+        expect(frame.h * 0.5).toBeLessThanOrEqual(MAX_H);
         expect(frame.w / frame.h).toBeCloseTo(800 / 600, 1);
 
         done();
