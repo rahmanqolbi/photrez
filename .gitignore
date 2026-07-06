@@ -92,6 +92,7 @@ src-tauri/wix/
 
 # Workspace Cleanliness: Scratch Scripts, Reference Files & Archives
 scripts/fix-mojibake.ts
+scripts/dev.ps1
 Detail-Design-Spec.zip
 RapidRAW-main/
 photrez-solid-tailwind/
