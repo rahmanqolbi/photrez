@@ -19,6 +19,7 @@ import { DragGlobalGuard } from "../DragController";
 import { isTauriRuntime } from "@/lib/desktop/tauriWindow";
 import { useTauriCloseHandler } from "@/lib/desktop/useTauriCloseHandler";
 import { useDialog } from "../dialogs/DialogProvider";
+import { cancelLayerTransformSession } from "../transformSession";
 
 // Core singletons import
 import { WorkspaceManager } from "@/engine/workspace";
@@ -87,7 +88,6 @@ export function EditorShell() {
   const toggleRightDock = () => setRightDockOpen((open) => !open);
 
   useDesktopGuards();
-  useDesktopShortcuts({ onToggleRightDock: toggleRightDock });
 
   // ─── Singletons Initialization ───
   const workspace = new WorkspaceManager();
@@ -142,6 +142,7 @@ export function EditorShell() {
       <GlobalDragDropHost />
       <DragGlobalGuard />
       <TauriCloseGuard workspace={workspace} scheduler={scheduler} />
+      <DesktopShortcutsGuard onToggleRightDock={toggleRightDock} />
       <EditorLayout
         rightDockOpen={rightDockOpen()}
         toggleRightDock={toggleRightDock}
@@ -158,5 +159,47 @@ function TauriCloseGuard(props: {
 }) {
   const dialog = useDialog();
   useTauriCloseHandler(props.workspace, dialog as any, props.scheduler);
+  return null;
+}
+
+/** Inner component that wires desktop shortcuts requiring useEditor() access. */
+function DesktopShortcutsGuard(props: {
+  onToggleRightDock: () => void;
+}) {
+  const { workspace, activeDocumentId, scheduler, layerTransformSession, setLayerTransformSession } = useEditor();
+  const dialog = useDialog();
+
+  useDesktopShortcuts({
+    onToggleRightDock: props.onToggleRightDock,
+    onCloseDocument: async () => {
+      const id = activeDocumentId();
+      if (!id) return;
+
+      // Cancel any active transform session first (consistent with DocumentTabsBar.handleCloseTab)
+      if (layerTransformSession()) {
+        const engine = workspace.getActiveEngine();
+        if (cancelLayerTransformSession(layerTransformSession(), engine)) {
+          setLayerTransformSession(null);
+          scheduler.requestRender();
+        }
+      }
+
+      const session = workspace.getSession(id);
+      if (session?.dirty) {
+        const confirmed = await dialog.confirm({
+          title: "Unsaved Changes",
+          message: `"${session.displayName}" has unsaved changes. Discard them?`,
+          confirmLabel: "Discard",
+          cancelLabel: "Cancel",
+          tone: "danger",
+        });
+        if (!confirmed) return;
+      }
+
+      workspace.removeDocument(id);
+      scheduler.requestRender();
+    },
+  });
+
   return null;
 }

@@ -40,7 +40,12 @@ export class WorkspaceManager {
       this.notifyChange();
     });
     session.engine.onVisualChange(() => {
-      session.dirty = true;
+      // Always sync session.dirty with engine.isDirty() — this ensures that
+      // undo to a clean snapshot (engine.restore → notifyVisualChange with
+      // model.dirty === false) correctly clears the session dirty flag.
+      // Previously this was set unconditionally to true, which left the
+      // document stuck dirty after undo (regression 2026-07-06).
+      session.dirty = session.engine.isDirty();
       this.notifyVisualChange();
     });
 

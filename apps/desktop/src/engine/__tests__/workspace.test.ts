@@ -45,4 +45,73 @@ describe('WorkspaceManager', () => {
     expect(wm.getDocumentCount()).toBe(1);
     expect(wm.getActiveDocumentId()).toBe('doc-2');
   });
+
+  // ──────────────────────────────────────────────────────────────
+  // DIRTY STATE — UNDO TO CLEAN
+  // ──────────────────────────────────────────────────────────────
+
+  describe('dirty state after undo', () => {
+    it('undo to clean state resets session.dirty to false (regression 2026-07-06)', () => {
+      const ws = new WorkspaceManager();
+      const doc = WorkspaceManager.createBlankDocument('doc-dirty-undo', 'Dirty Undo', 800, 600);
+      ws.addDocument(doc);
+      const engine = doc.engine;
+      const layer = engine.addLayer('Layer 1');
+
+      // Clear dirty from addLayer so we start clean
+      engine.clearDirty();
+      doc.dirty = false;
+
+      // Commit clean initial state
+      doc.history.commit(engine.snapshot(), 'Initial');
+
+      expect(engine.isDirty()).toBe(false);
+      expect(doc.dirty).toBe(false);
+
+      // Simulate edit: move layer
+      engine.moveLayer(layer.id, 100, 50);
+      expect(engine.isDirty()).toBe(true);
+      expect(doc.dirty).toBe(true);
+
+      // Undo back to initial clean state
+      const prev = doc.history.undo(engine.snapshot());
+      engine.restore(prev!);
+
+      // After undo, engine should be clean
+      expect(engine.isDirty()).toBe(false);
+      // session.dirty must also be clean (the bug: onVisualChange always set dirty=true)
+      expect(doc.dirty).toBe(false);
+    });
+
+    it('undo after brush stroke then undo to clean resets session.dirty', () => {
+      const ws = new WorkspaceManager();
+      const doc = WorkspaceManager.createBlankDocument('doc-brush-undo', 'Brush Undo', 800, 600);
+      ws.addDocument(doc);
+      const engine = doc.engine;
+      const layer = engine.addLayer('Layer 1', 100, 100);
+      const originalBitmap = { width: 100, height: 100 } as ImageBitmap;
+      engine.setLayerImageBitmap(layer.id, originalBitmap);
+      engine.clearDirty();
+      doc.dirty = false;
+
+      // Commit clean state
+      doc.history.commit(engine.snapshot(), 'Brush Initial');
+      expect(engine.isDirty()).toBe(false);
+      expect(doc.dirty).toBe(false);
+
+      // Simulate brush stroke: replace bitmap
+      const newBitmap = { width: 100, height: 100 } as ImageBitmap;
+      engine.setLayerImageBitmap(layer.id, newBitmap);
+      expect(engine.isDirty()).toBe(true);
+      expect(doc.dirty).toBe(true);
+
+      // Undo back to original bitmap
+      const prev = doc.history.undo(engine.snapshot());
+      engine.restore(prev!);
+
+      expect(engine.getLayer(layer.id)!.imageBitmap).toBe(originalBitmap);
+      expect(engine.isDirty()).toBe(false);
+      expect(doc.dirty).toBe(false);
+    });
+  });
 });
