@@ -19,6 +19,16 @@ describe('WorkspaceManager', () => {
     expect(session.engine.getLayers()[0].name).toBe('Background');
   });
 
+  it('creates Background layer with isBackground and position/rotation locks', () => {
+    const session = WorkspaceManager.createBlankDocument('doc-bg-test', 'BG Test', 400, 300);
+    const layers = session.engine.getLayers();
+    expect(layers).toHaveLength(1);
+    expect(layers[0].name).toBe('Background');
+    expect(layers[0].isBackground).toBe(true);
+    expect(layers[0].lockPosition).toBe(true);
+    expect(layers[0].lockRotation).toBe(true);
+  });
+
   it('manages document lifecycle sessions correctly', () => {
     const wm = new WorkspaceManager();
     const session1 = WorkspaceManager.createBlankDocument('doc-1', 'Doc 1', 800, 600);

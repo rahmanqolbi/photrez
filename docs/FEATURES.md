@@ -26,6 +26,7 @@
 | ✅ DONE | Tauri native splash screen with cache-busting, custom HTML/CSS logo pulsing, and Rust close command triggered post-hydration |
 | ✅ DONE | Option Bar label standardization ("Brush Options" -> "Brush", lowercase "move" -> "Move") and Eyedropper Option Bar (HEX readout, copy, auto-copy to clipboard) |
 | ✅ DONE | Shared constants consolidation — `HANDLE_SIZE`/`HANDLE_HIT`, `ROTATE_BAND_PX` moved to `rotateBand.ts` as single source of truth; `ModernCropOverlay` imports instead of local `RING_WIDTH`/`RING_PAD` |
+| ✅ DONE | UI Color Picker polish — fixed asymmetric padding by using responsive dialog width, removed fake non-functional radio buttons, and centered Hex input at the bottom of the right panel |
 
 ---
 

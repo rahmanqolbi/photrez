@@ -1,11 +1,12 @@
-import { For, onMount, onCleanup } from "solid-js";
+import { createSignal, For, onCleanup, onMount } from "solid-js";
 import { clsx } from "clsx";
 import { Icon } from "../icons";
-import { TOOL_ITEMS } from "../editorData";
 import { useEditor } from "./EditorContext";
 import { cancelLayerTransformSession } from "../transformSession";
 import type { ToolId } from "../tools/toolTypes";
 import { Tooltip } from "../Tooltip";
+import { useDialog } from "../dialogs/DialogProvider";
+import { TOOL_ITEMS } from "../editorData";
 
 const TOOL_SHORTCUTS: Record<ToolId, string> = {
   move: "V",
@@ -18,6 +19,7 @@ const TOOL_SHORTCUTS: Record<ToolId, string> = {
 
 export function LeftToolRail(props: { disabled?: boolean }) {
   const { activeTool, setActiveTool, fgColor, setFgColor, bgColor, setBgColor, scheduler, workspace, layerTransformSession, setLayerTransformSession } = useEditor();
+  const dialogs = useDialog();
 
   const cancelActiveTransformSession = () => {
     const engine = workspace.getActiveEngine();
@@ -45,6 +47,40 @@ export function LeftToolRail(props: { disabled?: boolean }) {
     scheduler.requestRender();
   };
 
+  const handleResetColors = () => {
+    if (props.disabled) return;
+    setFgColor("#E15A17");
+    setBgColor("#FFFFFF");
+    scheduler.requestRender();
+  };
+
+  const handleOpenColorPicker = async (type: "foreground" | "background") => {
+    if (props.disabled) return;
+    const initialColor = type === "foreground" ? fgColor() : bgColor();
+    const title = type === "foreground" ? "Foreground Color" : "Background Color";
+    const selectedColor = await dialogs.colorPicker({
+      title,
+      initialColor,
+      onChange: (color) => {
+        if (type === "foreground") {
+          setFgColor(color);
+        } else {
+          setBgColor(color);
+        }
+        scheduler.requestRender();
+      }
+    });
+    if (selectedColor === null) {
+      // Revert back to the initial color if cancelled
+      if (type === "foreground") {
+        setFgColor(initialColor);
+      } else {
+        setBgColor(initialColor);
+      }
+      scheduler.requestRender();
+    }
+  };
+
   // Keyboard shortcut listener for X (swap) and D (reset)
   const handleKeyDown = (e: KeyboardEvent) => {
     if (document.querySelector('[aria-modal="true"]')) return;
@@ -58,9 +94,7 @@ export function LeftToolRail(props: { disabled?: boolean }) {
       setBgColor(temp);
       scheduler.requestRender();
     } else if (e.key.toLowerCase() === "d") {
-      setFgColor("#E15A17");
-      setBgColor("#FFFFFF");
-      scheduler.requestRender();
+      handleResetColors();
     }
   };
 
@@ -100,41 +134,23 @@ export function LeftToolRail(props: { disabled?: boolean }) {
       <div class="mb-1 mt-auto h-px w-6 shrink-0 bg-editor-divider" />
       
       {/* Overlapping Color Swatches Container */}
-      <div class="relative size-[38px] shrink-0 group my-2">
-        {/* Background Swatch with Native Color Input */}
+      <div class="relative size-[38px] shrink-0 group my-2 select-none">
+        {/* Background Swatch */}
         <Tooltip content="Background Color" placement="right">
           <div 
-            class="absolute bottom-0 right-0 size-[28px] rounded-full border border-white/20 shadow-md cursor-pointer overflow-hidden transition-transform duration-100 hover:scale-105"
+            onClick={() => handleOpenColorPicker("background")}
+            class="absolute bottom-0 right-0 size-[28px] rounded-full border border-white/20 shadow-md cursor-pointer transition-transform duration-100 hover:scale-105"
             style={{ "background-color": bgColor() }}
-          >
-            <input
-              type="color"
-              value={bgColor()}
-              onInput={(e) => {
-                setBgColor(e.currentTarget.value);
-                scheduler.requestRender();
-              }}
-              class="opacity-0 absolute inset-0 cursor-pointer"
-            />
-          </div>
+          />
         </Tooltip>
 
-        {/* Foreground Swatch with Native Color Input */}
+        {/* Foreground Swatch */}
         <Tooltip content="Foreground Color" placement="right">
           <div 
-            class="absolute top-0 left-0 size-[28px] rounded-full border border-white/30 outline outline-1 outline-black/40 shadow-md cursor-pointer overflow-hidden z-10 transition-transform duration-100 hover:scale-105"
+            onClick={() => handleOpenColorPicker("foreground")}
+            class="absolute top-0 left-0 size-[28px] rounded-full border border-white/30 outline outline-1 outline-black/40 shadow-md cursor-pointer z-10 transition-transform duration-100 hover:scale-105"
             style={{ "background-color": fgColor() }}
-          >
-            <input
-              type="color"
-              value={fgColor()}
-              onInput={(e) => {
-                setFgColor(e.currentTarget.value);
-                scheduler.requestRender();
-              }}
-              class="opacity-0 absolute inset-0 cursor-pointer"
-            />
-          </div>
+          />
         </Tooltip>
 
         {/* Diagonal Swap Micro-Arrow Trigger */}
@@ -142,6 +158,7 @@ export function LeftToolRail(props: { disabled?: boolean }) {
           <button
             onClick={handleSwapColors}
             class="absolute -top-1.5 -right-1.5 z-20 size-4 bg-editor-toolbar border border-editor-divider rounded-full flex items-center justify-center text-editor-icon hover:text-editor-text scale-0 group-hover:scale-100 transition-transform duration-150 shadow cursor-pointer"
+            aria-label="Swap Colors"
           >
             <Icon name="rotate" class="size-2.5" />
           </button>

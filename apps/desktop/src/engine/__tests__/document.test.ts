@@ -620,4 +620,56 @@ describe('DocumentEngine', () => {
       expect(() => engine.addLayer('OK', 4096, 4096)).not.toThrow();
     });
   });
+
+  describe('Background layer', () => {
+    it('does not delete the Background layer', () => {
+      const engine = new DocumentEngine('doc-bg-test', 'BG Test', 800, 600);
+      const bg = engine.addLayer('Background');
+      bg.isBackground = true;
+      bg.lockPosition = true;
+      bg.lockRotation = true;
+
+      engine.deleteLayer(bg.id);
+      const layers = engine.getLayers();
+      expect(layers.some(l => l.id === bg.id)).toBe(true);
+      expect(engine.getLayers()).toHaveLength(1);
+    });
+
+    it('does not reorder the Background layer away from index 0', () => {
+      const engine = new DocumentEngine('doc-bg-test', 'BG Test', 800, 600);
+      const bg = engine.addLayer('Background');
+      bg.isBackground = true;
+      bg.lockPosition = true;
+      bg.lockRotation = true;
+      engine.addLayer('Layer 1');
+
+      engine.reorderLayer(0, 1);
+      const layers = engine.getLayers();
+      expect(layers[0].id).toBe(bg.id);
+    });
+
+    it('renaming Background removes isBackground and locks', () => {
+      const engine = new DocumentEngine('doc-bg-test', 'BG Test', 800, 600);
+      const bg = engine.addLayer('Background');
+      bg.isBackground = true;
+      bg.lockPosition = true;
+      bg.lockRotation = true;
+
+      engine.setLayerName(bg.id, 'My Photo');
+      expect(bg.isBackground).toBeUndefined();
+      expect(bg.lockPosition).toBe(false);
+      expect(bg.lockRotation).toBe(false);
+      expect(bg.name).toBe('My Photo');
+    });
+
+    it('snapshot preserves isBackground flag', () => {
+      const engine = new DocumentEngine('doc-bg-test', 'BG Test', 800, 600);
+      const bg = engine.addLayer('Background');
+      bg.isBackground = true;
+
+      const snap = engine.snapshot();
+      const restoredLayer = snap.layers.find(l => l.id === bg.id);
+      expect(restoredLayer?.isBackground).toBe(true);
+    });
+  });
 });

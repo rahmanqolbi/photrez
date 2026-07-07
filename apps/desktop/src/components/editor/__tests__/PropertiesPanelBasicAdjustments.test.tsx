@@ -109,6 +109,7 @@ describe("PropertiesPanel basic adjustments", () => {
     const session = WorkspaceManager.createBlankDocument("transform-doc", "Transform Doc", 20, 10);
     workspace.addDocument(session);
     const layer = session.engine.getLayers()[0];
+    layer.lockPosition = false;
 
     const transformSpy = vi.spyOn(session.engine, "transformLayer");
     const history = workspace.getActiveHistory();
@@ -120,7 +121,7 @@ describe("PropertiesPanel basic adjustments", () => {
 
     const xField = container.querySelectorAll<HTMLInputElement>("input[type='text']")[0];
     if (!xField) throw new Error("Transform X field was not rendered");
-    xField.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+    xField.focus();
     xField.value = "42";
     xField.dispatchEvent(new InputEvent("input", { bubbles: true }));
     xField.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
