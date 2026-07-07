@@ -500,9 +500,9 @@ export function LayersPanel() {
             <Icon name="square-dashed" class="size-[17px]" strokeWidth={1.75} />
           </button>
         </Tooltip>
-        <Tooltip content="Delete Layer">
+        <Tooltip content={activeLayer()?.isBackground ? "Cannot delete Background layer" : "Delete Layer"}>
           <button
-            disabled={layers().length <= 1}
+            disabled={layers().length <= 1 || activeLayer()?.isBackground}
             onClick={handleDeleteActiveLayer}
             class="ml-auto hover:text-editor-accent disabled:opacity-30 disabled:hover:text-editor-icon"
             aria-label="Delete Layer"
