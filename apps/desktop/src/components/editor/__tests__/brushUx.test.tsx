@@ -31,6 +31,7 @@ function createMockEditor(overrides: Record<string, any> = {}) {
     bgColor: "#ffffff",
     zoom: 1,
     pan: { x: 0, y: 0 },
+    camera: { pan: vi.fn(), getState: () => ({ x: 0, y: 0 }) },
     docWidth: 100,
     docHeight: 100,
     brushSize: 20,
@@ -57,10 +58,11 @@ function createMockEditor(overrides: Record<string, any> = {}) {
     const ownedSignals: Record<string, any> = {
       workspace: merged.workspace,
       scheduler: { requestRender: vi.fn() },
+      camera: merged.camera,
     };
 
     for (const [key, val] of Object.entries(merged)) {
-      if (key === "workspace" || key === "scheduler") continue;
+      if (key === "workspace" || key === "scheduler" || key === "camera") continue;
       const [s, set] = createSignal(val);
       ownedSignals[key] = s;
       const setKey = "set" + key.charAt(0).toUpperCase() + key.slice(1);

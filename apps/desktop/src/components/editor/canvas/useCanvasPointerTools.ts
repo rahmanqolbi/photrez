@@ -567,6 +567,9 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   const onCanvasPointerMove = (e: PointerEvent) => {
     if (params.isPanning()) return;
 
+    edgeLastClientX = e.clientX;
+    edgeLastClientY = e.clientY;
+
     // Modern crop drag-to-create: show selection preview rect
     if (
       activeTool() === "crop" &&
@@ -660,6 +663,40 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     interactiveState.isShiftPressed = e.shiftKey;
     interactiveState.screenPos = { x: e.clientX, y: e.clientY };
 
+    // Edge auto-scroll: pan camera when dragging near viewport edge
+    if (interactiveState.isDragging) {
+      const tool = activeTool();
+      if (tool === "brush" || tool === "eraser" || tool === "selection" || tool === "crop") {
+        const container = params.getCanvasContainerRef();
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          const cx = e.clientX - rect.left;
+          const cy = e.clientY - rect.top;
+          const midX = rect.width / 2;
+          const midY = rect.height / 2;
+          const dirX = cx < midX ? 1 : -1;
+          const dirY = cy < midY ? 1 : -1;
+          const distX = cx < midX ? cx : (rect.width - cx);
+          const distY = cy < midY ? cy : (rect.height - cy);
+          if (distX < EDGE_ZONE_PX || distY < EDGE_ZONE_PX) {
+            const now = performance.now();
+            const dt = edgeLastTime > 0 ? (now - edgeLastTime) / 1000 : 0;
+            edgeLastTime = now;
+            const tX = Math.min(1, Math.max(0, (EDGE_ZONE_PX - distX) / EDGE_ZONE_PX));
+            const tY = Math.min(1, Math.max(0, (EDGE_ZONE_PX - distY) / EDGE_ZONE_PX));
+            const sX = dirX * tX * MAX_SCROLL_SPX * dt;
+            const sY = dirY * tY * MAX_SCROLL_SPX * dt;
+            camera.pan(sX, sY);
+            const ms = camera.getState();
+            setPan({ x: ms.x, y: ms.y });
+            startEdgeRaf();
+          } else {
+            stopEdgeRaf();
+          }
+        }
+      }
+    }
+
     let coords = getDocCoords(e);
 
     if ((activeTool() === "brush" || activeTool() === "eraser") && interactiveState.isDragging) {
@@ -703,6 +740,8 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (!engine || !history) return;
+
+    stopEdgeRaf();
 
     if ((activeTool() === "brush" || activeTool() === "eraser") && params.isAltPressed()) {
       tryReleasePointerCapture(params.getCanvasRef(), e.pointerId);
