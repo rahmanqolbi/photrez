@@ -1,31 +1,26 @@
-import { For } from "solid-js";
 import { Icon } from "../icons";
 import { useEditor } from "./EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
 import { MAX_OPEN_DOCUMENTS } from "@/engine/types";
 import { showToast } from "../Toast";
-
-const CANVAS_PRESETS = [
-  { label: "Small", width: 800, height: 600 },
-  { label: "Wide", width: 1600, height: 1000 },
-  { label: "HD", width: 1920, height: 1080 },
-] as const;
+import { useDialog } from "../dialogs/DialogProvider";
 
 export function EmptyWorkspace() {
   const { openImage, workspace, scheduler } = useEditor();
+  const dialog = useDialog();
 
-  const createCanvas = (width: number, height: number) => {
-    // toast instead of a silent throw from workspace.addDocument.
-    // The other entry points (crossDocLayerOps, editorOpenImage)
-    // already check isFull() before adding; this was the missing one.
+  const handleNewCanvas = async () => {
     if (workspace.isFull()) {
       showToast(`Workspace full — close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
       return;
     }
-    const id = `doc-${crypto.randomUUID()}`;
-    const session = WorkspaceManager.createBlankDocument(id, `Untitled ${width}x${height}`, width, height);
-    workspace.addDocument(session);
-    scheduler.requestRender();
+    const result = await dialog.newDocument();
+    if (result) {
+      const id = `doc-${crypto.randomUUID()}`;
+      const session = WorkspaceManager.createBlankDocument(id, result.name, result.width, result.height, { backgroundColor: result.backgroundColor });
+      workspace.addDocument(session);
+      scheduler.requestRender();
+    }
   };
 
   return (
@@ -57,30 +52,12 @@ export function EmptyWorkspace() {
           </button>
           <button
             type="button"
-            onClick={() => createCanvas(1600, 1000)}
+            onClick={handleNewCanvas}
             class="flex h-9 w-full items-center justify-center gap-2 rounded-[4px] border border-editor-field-border bg-editor-field px-3 text-[13px] font-medium text-editor-text transition-colors hover:bg-white/[0.045] focus-visible:outline focus-visible:outline-1 focus-visible:outline-editor-accent"
           >
             <Icon name="plus" class="size-4" strokeWidth={1.75} />
-            New Canvas
+            New Document
           </button>
-        </div>
-
-        <div class="border-t border-editor-divider px-5 py-4">
-          <div class="mb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-editor-text-dim">Blank presets</div>
-          <div class="grid grid-cols-3 gap-2">
-            <For each={CANVAS_PRESETS}>
-              {(preset) => (
-                <button
-                  type="button"
-                  onClick={() => createCanvas(preset.width, preset.height)}
-                  class="flex min-h-[54px] flex-col justify-center rounded-[4px] border border-editor-divider bg-transparent px-3 text-left transition-colors hover:bg-white/[0.03] focus-visible:outline focus-visible:outline-1 focus-visible:outline-editor-accent"
-                >
-                  <span class="text-[12px] font-medium text-editor-text">{preset.label}</span>
-                  <span class="mt-0.5 text-[11px] text-editor-text-dim">{preset.width} x {preset.height}</span>
-                </button>
-              )}
-            </For>
-          </div>
         </div>
 
         <div class="flex items-center justify-between border-t border-editor-divider px-5 py-3 text-[11px] text-editor-text-dim">

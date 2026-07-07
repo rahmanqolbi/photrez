@@ -173,13 +173,25 @@ export class WorkspaceManager {
     id: DocumentId,
     name: string,
     width: number,
-    height: number
+    height: number,
+    options?: { backgroundColor?: "white" | "transparent" }
   ): DocumentSession {
     const engine = new DocumentEngine(id, name, width, height);
     const bg = engine.addLayer("Background"); // Default empty background layer
     bg.isBackground = true;
     bg.lockPosition = true;
     bg.lockRotation = true;
+
+    if (options?.backgroundColor === "white") {
+      const canvas = new OffscreenCanvas(width, height);
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        bg.imageBitmap = canvas.transferToImageBitmap();
+      }
+    }
+
     engine.clearDirty();
 
     return {

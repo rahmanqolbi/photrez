@@ -267,17 +267,28 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
 
     switch (command) {
       case "file.new": {
-        // instead of letting workspace.addDocument throw silently.
+        console.log("[TEST DEBUG] file.new command received", !!dialog.newDocument);
         if (editor.workspace.isFull()) {
           showToast(`Workspace full — close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
           break;
         }
-        const id = `doc-${crypto.randomUUID()}`;
-        const name = `Untitled-${editor.workspace.getDocumentCount() + 1}`;
-        editor.workspace.addDocument(
-          WorkspaceManager.createBlankDocument(id, name, 800, 600),
-        );
-        editor.scheduler.requestRender();
+        void (async () => {
+          try {
+            console.log("[TEST DEBUG] awaiting dialog.newDocument");
+            const result = await dialog.newDocument();
+            console.log("[TEST DEBUG] dialog result:", result);
+            if (result) {
+              const id = `doc-${crypto.randomUUID()}`;
+              editor.workspace.addDocument(
+                WorkspaceManager.createBlankDocument(id, result.name, result.width, result.height, { backgroundColor: result.backgroundColor }),
+              );
+              editor.scheduler.requestRender();
+              console.log("[TEST DEBUG] document added, new count:", editor.workspace.getDocumentCount());
+            }
+          } catch (err) {
+            console.error("[TEST DEBUG] dialog error:", err);
+          }
+        })();
         break;
       }
       case "file.open":

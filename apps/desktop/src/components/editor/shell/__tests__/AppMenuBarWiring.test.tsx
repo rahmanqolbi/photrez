@@ -6,6 +6,7 @@ import { WorkspaceManager } from "@/engine/workspace";
 import { ViewportCamera } from "@/viewport/viewportCamera";
 import { SelectionOperations } from "@/features/selection/SelectionOperations";
 import { EditorProvider, useEditor } from "../EditorContext";
+import { DialogProvider } from "../../dialogs/DialogProvider";
 import { AppTitleBar } from "../AppTitleBar";
 
 function Probe() {
@@ -42,8 +43,10 @@ function renderTitleBar() {
   const dispose = render(
     () => (
       <EditorProvider workspace={workspace} renderer={renderer} scheduler={scheduler} camera={camera}>
-        <AppTitleBar isRightDockOpen={true} onToggleRightDock={vi.fn()} />
-        <Probe />
+        <DialogProvider>
+          <AppTitleBar isRightDockOpen={true} onToggleRightDock={vi.fn()} />
+          <Probe />
+        </DialogProvider>
       </EditorProvider>
     ),
     container,
@@ -54,12 +57,22 @@ function renderTitleBar() {
 describe("custom application menu wiring", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it("creates a real blank document from File > New Document", () => {
+  it("creates a real blank document from File > New Document", async () => {
     const host = renderTitleBar();
 
     button(host.container, "File").click();
     expect(host.workspace.getDocumentCount()).toBe(0);
     button(host.container, "New Document").click();
+
+    await Promise.resolve(); // wait for the dialog to mount
+
+    const createBtn = Array.from(document.querySelectorAll("button")).find((btn) => btn.textContent === "Create");
+    if (!createBtn) throw new Error("Create button not found in dialog");
+    createBtn.click();
+
+    // The 'file.new' command triggers an async IIFE that awaits the dialog result.
+    // A single microtask flush might not be enough, use a real macro-task delay.
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(host.workspace.getDocumentCount()).toBe(1);
     expect(host.scheduler.requestRender).toHaveBeenCalled();
