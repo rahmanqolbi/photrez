@@ -232,6 +232,9 @@ export class DocumentEngine {
   }
 
   deleteLayer(id: LayerId): void {
+    const layer = this.getLayer(id);
+    if (layer?.isBackground) return;
+
     if (this.model.layers.length <= 1) {
       return; // prevent deleting the last layer
     }
@@ -269,6 +272,9 @@ export class DocumentEngine {
         toIndex < 0 || toIndex >= this.model.layers.length) {
       return;
     }
+
+    const fromLayer = this.model.layers[fromIndex];
+    if (fromLayer?.isBackground) return;
 
     const updated = [...this.model.layers];
     const [moved] = updated.splice(fromIndex, 1);
@@ -370,6 +376,12 @@ export class DocumentEngine {
   setLayerName(id: LayerId, name: string): void {
     const layer = this.getLayer(id);
     if (layer) {
+      // Renaming Background → normal layer (Photoshop behavior)
+      if (layer.isBackground) {
+        layer.isBackground = undefined;
+        layer.lockPosition = false;
+        layer.lockRotation = false;
+      }
       layer.name = name;
       this.model.dirty = true;
       this.notifyChange();
@@ -631,7 +643,7 @@ export class DocumentEngine {
 
   applyBasicAdjustment(id: LayerId, adjustment: BasicAdjustment): void {
     const layer = this.getLayer(id);
-    if (!layer || layer.locked || !layer.imageBitmap) return;
+    if (!layer || !layer.imageBitmap) return;
 
     // Cache the unadjusted bitmap on first adjustment
     if (!layer.baseImageBitmap) {
@@ -674,7 +686,7 @@ export class DocumentEngine {
 
   clearBasicAdjustments(id: LayerId): void {
     const layer = this.getLayer(id);
-    if (layer && !layer.locked) {
+    if (layer) {
       if (layer.baseImageBitmap) {
         // NOTE: we intentionally do NOT close the old imageBitmap here.
         // Same reason as applyBasicAdjustment — snapshots hold a reference.

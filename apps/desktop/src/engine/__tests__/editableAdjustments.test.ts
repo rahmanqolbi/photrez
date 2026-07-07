@@ -213,7 +213,7 @@ describe("Editable Basic Adjustments", () => {
 
   // --- Edge Case Tests ---
 
-  it("Edge Case: applyBasicAdjustment immediately returns on locked layers", () => {
+  it("Edge Case: applyBasicAdjustment works on locked layers (Background compatible)", () => {
     const engine = new DocumentEngine("doc-1", "Test Doc", 100, 100);
     const layer = engine.addLayer("Layer 1");
     const initialBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
@@ -223,9 +223,9 @@ describe("Editable Basic Adjustments", () => {
     const adj = { brightness: 10, contrast: 20, saturation: -30 };
     engine.applyBasicAdjustment(layer.id, adj);
 
-    expect(layer.baseImageBitmap).toBeNull();
-    expect(layer.basicAdjustment).toBeUndefined();
-    expect(layer.imageBitmap).toBe(initialBitmap);
+    expect(layer.baseImageBitmap).toBe(initialBitmap);
+    expect(layer.basicAdjustment).toEqual(adj);
+    expect(layer.imageBitmap).not.toBe(initialBitmap);
   });
 
   it("Edge Case: applyBasicAdjustment immediately returns on empty layers (null bitmap)", () => {
