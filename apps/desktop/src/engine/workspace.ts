@@ -176,7 +176,10 @@ export class WorkspaceManager {
     height: number
   ): DocumentSession {
     const engine = new DocumentEngine(id, name, width, height);
-    engine.addLayer("Background"); // Default empty background layer
+    const bg = engine.addLayer("Background"); // Default empty background layer
+    bg.isBackground = true;
+    bg.lockPosition = true;
+    bg.lockRotation = true;
     engine.clearDirty();
 
     return {
@@ -196,6 +199,9 @@ export class WorkspaceManager {
     const engine = new DocumentEngine(id, name, bitmap.width, bitmap.height);
     const bgLayer = engine.addLayer("Background", bitmap.width, bitmap.height);
     engine.setLayerImageBitmap(bgLayer.id, bitmap);
+    bgLayer.isBackground = true;
+    bgLayer.lockPosition = true;
+    bgLayer.lockRotation = true;
     engine.clearDirty();
 
     return {
