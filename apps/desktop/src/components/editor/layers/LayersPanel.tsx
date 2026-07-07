@@ -295,9 +295,11 @@ export function LayersPanel() {
       <div class={clsx("flex items-center gap-4 px-3.5 py-3", !activeDocumentId() && "opacity-50 pointer-events-none")}>
         <span class="text-[12px] text-editor-text-dim">Lock:</span>
         <div class="flex items-center gap-4 text-editor-icon">
-          <Tooltip content={activeLayer()?.locked ? "Unlock layer" : "Lock layer"}>
+          <Tooltip content={
+              activeLayer()?.isBackground ? "Rename layer to unlock" : (activeLayer()?.locked ? "Unlock layer" : "Lock layer")
+            }>
             <button
-              disabled={!activeLayer()}
+              disabled={!activeLayer() || activeLayer()?.isBackground}
               onClick={(e) => activeLayer() && handleToggleLock(e, activeLayer()!.id)}
               class={clsx(
                 "hover:text-editor-text transition-colors flex items-center justify-center size-4",
@@ -307,9 +309,11 @@ export function LayersPanel() {
               <Icon name={activeLayer()?.locked ? "lock" : "unlock"} class="size-[15px]" strokeWidth={1.75} />
             </button>
           </Tooltip>
-          <Tooltip content={activeLayer()?.lockTransparency ? "Unlock Transparency" : "Lock Transparency"}>
+          <Tooltip content={
+              activeLayer()?.isBackground ? "Rename layer to unlock" : (activeLayer()?.lockTransparency ? "Unlock Transparency" : "Lock Transparency")
+            }>
             <button
-              disabled={!activeLayer() || activeLayer()?.locked}
+              disabled={!activeLayer() || activeLayer()?.locked || activeLayer()?.isBackground}
               onClick={(e) => activeLayer() && handleToggleLockTransparency(e, activeLayer()!.id)}
               class={clsx(
                 "hover:text-editor-text transition-colors flex items-center justify-center size-4 disabled:opacity-30",
@@ -319,9 +323,11 @@ export function LayersPanel() {
               <Icon name="paint-bucket" class="size-[15px]" strokeWidth={1.75} />
             </button>
           </Tooltip>
-          <Tooltip content={activeLayer()?.lockPosition ? "Unlock Position" : "Lock Position"}>
+          <Tooltip content={
+              activeLayer()?.isBackground ? "Rename layer to unlock" : (activeLayer()?.lockPosition ? "Unlock Position" : "Lock Position")
+            }>
             <button
-              disabled={!activeLayer() || activeLayer()?.locked}
+              disabled={!activeLayer() || activeLayer()?.locked || activeLayer()?.isBackground}
               onClick={(e) => activeLayer() && handleToggleLockPosition(e, activeLayer()!.id)}
               class={clsx(
                 "hover:text-editor-text transition-colors flex items-center justify-center size-4 disabled:opacity-30",
@@ -331,9 +337,11 @@ export function LayersPanel() {
               <Icon name="maximize" class="size-[15px]" strokeWidth={1.75} />
             </button>
           </Tooltip>
-          <Tooltip content={activeLayer()?.lockRotation ? "Unlock Rotation" : "Lock Rotation"}>
+          <Tooltip content={
+              activeLayer()?.isBackground ? "Rename layer to unlock" : (activeLayer()?.lockRotation ? "Unlock Rotation" : "Lock Rotation")
+            }>
             <button
-              disabled={!activeLayer() || activeLayer()?.locked}
+              disabled={!activeLayer() || activeLayer()?.locked || activeLayer()?.isBackground}
               onClick={(e) => activeLayer() && handleToggleLockRotation(e, activeLayer()!.id)}
               class={clsx(
                 "hover:text-editor-text transition-colors flex items-center justify-center size-4 disabled:opacity-30",
