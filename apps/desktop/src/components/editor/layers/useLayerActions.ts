@@ -196,6 +196,11 @@ export function useLayerActions() {
     const history = workspace.getActiveHistory();
     const activeId = activeLayerId();
     if (engine && history && activeId) {
+      const layer = engine.getLayer(activeId);
+      if (layer?.isBackground) {
+        showToast("Cannot delete the Background layer", "warn");
+        return;
+      }
       if (engine.getLayers().length <= 1) return;
       history.commit(engine.snapshot(), "Delete Layer");
       engine.deleteLayer(activeId);
