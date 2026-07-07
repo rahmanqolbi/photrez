@@ -952,6 +952,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   }
 
   const onCanvasPointerCancel = (e: PointerEvent) => {
+    stopEdgeRaf();
     paintSmoother.reset();
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
@@ -996,6 +997,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   };
 
   const onCanvasLostPointerCapture = (e: PointerEvent) => {
+    stopEdgeRaf();
     paintSmoother.reset();
     // Capture already lost →no releasePointerCapture call needed
     const engine = workspace.getActiveEngine();
