@@ -97,6 +97,7 @@ Detail-Design-Spec.zip
 RapidRAW-main/
 photrez-solid-tailwind/
 *.png
+!docs/screenshots/*.png
 *.jpg
 *.jpeg
 !apps/desktop/src/assets/**/*
@@ -115,3 +116,5 @@ worktrees/
 
 # Reserved Windows device name
 nul
+
+docs/archive/logo-design-history/

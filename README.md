@@ -33,6 +33,14 @@ Photrez is currently **pre-release software**. The editor is usable in developme
 - **Clear boundaries:** SolidJS owns UI, TypeScript owns the current MVP document engine, WebGL2 owns active rendering, and Rust crates track core domain work.
 - **Open-source first:** Public contribution, security, governance, issue, and pull request docs are included.
 
+## Screenshots
+
+![Photrez Editor](docs/screenshots/hero.png)
+*Main editor workspace — canvas, toolbar, layers, and document tabs*
+
+![Layers & History](docs/screenshots/layers.png)
+*Layers panel and history*
+
 ## Current Capabilities
 
 | Area | Status |
@@ -148,7 +156,7 @@ docs/PRODUCT.md     Product context
 
 Near-term work is focused on:
 
-- Public README screenshots and release notes.
+- ~~Public README screenshots~~ and release notes.
 - First-run and empty workspace polish.
 - Native runtime smoke evidence.
 - UI cleanup for placeholder-looking surfaces.

@@ -444,7 +444,7 @@ describe("CropOverlay handle hit detection", () => {
 
     const seHandle = container.querySelector('[data-crop-handle="se"]');
     expect(seHandle).not.toBeNull();
-    expect(seHandle!.getAttribute("width")).toBe("20");
+    expect(seHandle!.getAttribute("width")).toBe("32");
 
     onCropRectChange.mockClear();
 
