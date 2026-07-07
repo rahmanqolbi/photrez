@@ -59,7 +59,8 @@
 | ✅ DONE | Properties Transform fields — editable X/Y, W/H, Rotation, and Scale controls with history checkpointing, lock guards, and mounted wiring coverage                                                                                                                     |
 | ✅ DONE | Properties state hints — inline guidance for locked layers, position/rotation locks, and layers without pixel data                                                                                                                                                     |
 | ✅ DONE | Properties history polish — opacity slider creates one undo checkpoint per edit session and Properties edits use descriptive History labels                                                                                                                            |
-| ✅ DONE | Adjustments row marker — sliders icon next to layer lock when basic adjustments are active                                                                                                                                                                             |
+| ✅ DONE | Adjustments row marker — sliders icon next to layer lock when basic adjustments are active
+| ✅ DONE | Background layer lock — initial layer starts with `isBackground: true`, `lockPosition: true`, `lockRotation: true`; guarded against delete/reorder; adjustments and brush/erase work on locked layers; rename auto-converts to normal layer; lock icon + disabled lock toggles + disabled delete in UI |
 
 ---
 
