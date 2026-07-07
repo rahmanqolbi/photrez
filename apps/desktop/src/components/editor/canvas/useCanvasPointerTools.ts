@@ -1,4 +1,4 @@
-import { createSignal, createEffect } from "solid-js";
+import { createSignal, createEffect, onCleanup } from "solid-js";
 import { useEditor } from "../shell/EditorContext";
 import { screenToDocument, documentToScreen } from "@/viewport/coords";
 import { snapCropRect, type CropSnapTargets } from "@/viewport/cropSnap";
@@ -69,7 +69,9 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     setBgColor,
     zoom,
     pan,
+    camera,
     setViewportState,
+    setPan,
     cropRect,
     cropMode,
     cropAspect,
@@ -116,6 +118,57 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   let modernDragExceededThreshold = false;
   let modernDragEnd: { x: number; y: number } | null = null;
   let modernDragSnappedPreview: { x: number; y: number; w: number; h: number } | null = null;
+
+  // ── Edge auto-scroll ──────────────────────────────────────────
+  const EDGE_ZONE_PX = 40;
+  const MAX_SCROLL_SPX = 200;
+
+  let edgeRafId = 0;
+  let edgeLastClientX = 0;
+  let edgeLastClientY = 0;
+  let edgeLastTime = 0;
+
+  function stopEdgeRaf() {
+    if (edgeRafId) {
+      cancelAnimationFrame(edgeRafId);
+      edgeRafId = 0;
+    }
+    edgeLastTime = 0;
+  }
+
+  function startEdgeRaf() {
+    if (edgeRafId) return;
+    const container = params.getCanvasContainerRef();
+    if (!container) return;
+    const tick = (time: number) => {
+      const dt = edgeLastTime > 0 ? (time - edgeLastTime) / 1000 : 0;
+      edgeLastTime = time;
+      const rect = container.getBoundingClientRect();
+      const cx = edgeLastClientX - rect.left;
+      const cy = edgeLastClientY - rect.top;
+      const distL = cx;
+      const distR = rect.width - cx;
+      const distT = cy;
+      const distB = rect.height - cy;
+      const eDX = distL < distR ? distL : -distR;
+      const eDY = distT < distB ? distT : -distB;
+      // Stop if pointer moved back to safe zone on ALL axes
+      if (Math.abs(eDX) >= EDGE_ZONE_PX && Math.abs(eDY) >= EDGE_ZONE_PX) {
+        edgeRafId = 0;
+        return;
+      }
+      const tX = Math.min(1, Math.max(0, (EDGE_ZONE_PX - Math.abs(eDX)) / EDGE_ZONE_PX));
+      const tY = Math.min(1, Math.max(0, (EDGE_ZONE_PX - Math.abs(eDY)) / EDGE_ZONE_PX));
+      const sX = -Math.sign(eDX || 1) * tX * MAX_SCROLL_SPX * dt;
+      const sY = -Math.sign(eDY || 1) * tY * MAX_SCROLL_SPX * dt;
+      camera.pan(sX, sY);
+      const ms = camera.getState();
+      setPan({ x: ms.x, y: ms.y });
+      edgeRafId = requestAnimationFrame(tick);
+    };
+    edgeRafId = requestAnimationFrame(tick);
+  }
+  // ── end edge auto-scroll ─────────────────────────────────────
 
   function resetModernDragState() {
     modernDragStart = null;
