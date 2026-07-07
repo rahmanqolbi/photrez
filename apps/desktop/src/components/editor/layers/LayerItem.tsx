@@ -181,7 +181,7 @@ export function LayerItem(props: LayerItemProps) {
         fallback={
           <span
             onDblClick={(e: MouseEvent) => {
-              if (props.layer.locked) return;
+              if (props.layer.locked && !props.layer.isBackground) return;
               e.stopPropagation();
               props.setEditingLayerId(props.layer.id);
               props.setEditName(props.layer.name);
