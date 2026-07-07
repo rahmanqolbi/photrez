@@ -121,12 +121,37 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
 
   // ── Edge auto-scroll ──────────────────────────────────────────
   const EDGE_ZONE_PX = 40;
-  const MAX_SCROLL_SPX = 200;
+  const MAX_EDGE_SCROLL_PX_PER_SEC = 200;
 
   let edgeRafId = 0;
   let edgeLastClientX = 0;
   let edgeLastClientY = 0;
   let edgeLastTime = 0;
+
+  function applyEdgeScroll(dt: number) {
+    const container = params.getCanvasContainerRef();
+    if (!container) return { scrolled: false };
+    const rect = container.getBoundingClientRect();
+    const cx = edgeLastClientX - rect.left;
+    const cy = edgeLastClientY - rect.top;
+    const midX = rect.width / 2;
+    const midY = rect.height / 2;
+    const dirX = cx < midX ? 1 : -1;
+    const dirY = cy < midY ? 1 : -1;
+    const distX = cx < midX ? cx : (rect.width - cx);
+    const distY = cy < midY ? cy : (rect.height - cy);
+    if (distX >= EDGE_ZONE_PX && distY >= EDGE_ZONE_PX) {
+      return { scrolled: false };
+    }
+    const tX = Math.min(1, Math.max(0, (EDGE_ZONE_PX - distX) / EDGE_ZONE_PX));
+    const tY = Math.min(1, Math.max(0, (EDGE_ZONE_PX - distY) / EDGE_ZONE_PX));
+    const sX = dirX * tX * MAX_EDGE_SCROLL_PX_PER_SEC * dt;
+    const sY = dirY * tY * MAX_EDGE_SCROLL_PX_PER_SEC * dt;
+    camera.pan(sX, sY);
+    const ms = camera.getState();
+    setPan({ x: ms.x, y: ms.y });
+    return { scrolled: true };
+  }
 
   function stopEdgeRaf() {
     if (edgeRafId) {
@@ -138,34 +163,14 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
 
   function startEdgeRaf() {
     if (edgeRafId) return;
-    const container = params.getCanvasContainerRef();
-    if (!container) return;
     const tick = (time: number) => {
-      const rect = container.getBoundingClientRect();
-      const cx = edgeLastClientX - rect.left;
-      const cy = edgeLastClientY - rect.top;
-      const midX = rect.width / 2;
-      const midY = rect.height / 2;
-      const dirX = cx < midX ? 1 : -1;
-      const dirY = cy < midY ? 1 : -1;
-      const distX = cx < midX ? cx : (rect.width - cx);
-      const distY = cy < midY ? cy : (rect.height - cy);
-
-      if (distX < EDGE_ZONE_PX || distY < EDGE_ZONE_PX) {
-        const now = performance.now();
-        const dt = edgeLastTime > 0 ? (now - edgeLastTime) / 1000 : 0;
-        edgeLastTime = now;
-        const tX = Math.min(1, Math.max(0, (EDGE_ZONE_PX - distX) / EDGE_ZONE_PX));
-        const tY = Math.min(1, Math.max(0, (EDGE_ZONE_PX - distY) / EDGE_ZONE_PX));
-        const sX = dirX * tX * MAX_SCROLL_SPX * dt;
-        const sY = dirY * tY * MAX_SCROLL_SPX * dt;
-        camera.pan(sX, sY);
-        const ms = camera.getState();
-        setPan({ x: ms.x, y: ms.y });
-        edgeRafId = requestAnimationFrame(tick);
-      } else {
-        stopEdgeRaf();
+      const dt = edgeLastTime > 0 ? (time - edgeLastTime) / 1000 : 0;
+      edgeLastTime = time;
+      if (!applyEdgeScroll(dt).scrolled) {
+        edgeRafId = 0;
+        return;
       }
+      edgeRafId = requestAnimationFrame(tick);
     };
     edgeRafId = requestAnimationFrame(tick);
   }
@@ -667,32 +672,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     if (interactiveState.isDragging) {
       const tool = activeTool();
       if (tool === "brush" || tool === "eraser" || tool === "selection" || tool === "crop") {
-        const container = params.getCanvasContainerRef();
-        if (container) {
-          const rect = container.getBoundingClientRect();
-          const cx = e.clientX - rect.left;
-          const cy = e.clientY - rect.top;
-          const midX = rect.width / 2;
-          const midY = rect.height / 2;
-          const dirX = cx < midX ? 1 : -1;
-          const dirY = cy < midY ? 1 : -1;
-          const distX = cx < midX ? cx : (rect.width - cx);
-          const distY = cy < midY ? cy : (rect.height - cy);
-          if (distX < EDGE_ZONE_PX || distY < EDGE_ZONE_PX) {
-            const now = performance.now();
-            const dt = edgeLastTime > 0 ? (now - edgeLastTime) / 1000 : 0;
-            edgeLastTime = now;
-            const tX = Math.min(1, Math.max(0, (EDGE_ZONE_PX - distX) / EDGE_ZONE_PX));
-            const tY = Math.min(1, Math.max(0, (EDGE_ZONE_PX - distY) / EDGE_ZONE_PX));
-            const sX = dirX * tX * MAX_SCROLL_SPX * dt;
-            const sY = dirY * tY * MAX_SCROLL_SPX * dt;
-            camera.pan(sX, sY);
-            const ms = camera.getState();
-            setPan({ x: ms.x, y: ms.y });
-            startEdgeRaf();
-          } else {
-            stopEdgeRaf();
-          }
+        const now = performance.now();
+        const dt = edgeLastTime > 0 ? (now - edgeLastTime) / 1000 : 0;
+        edgeLastTime = now;
+        if (applyEdgeScroll(dt).scrolled) {
+          startEdgeRaf();
+        } else {
+          stopEdgeRaf();
         }
       }
     }

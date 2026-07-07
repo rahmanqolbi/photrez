@@ -1,12 +1,12 @@
-# Current Task: Edge Auto-Scroll — Task 2: Wire into pointer handlers [COMPLETE]
+# Current Task: Edge Auto-Scroll — Refactor: extract shared applyEdgeScroll [COMPLETE]
 
 **Status**: COMPLETE
 
 ## Task Description
-Wire edge auto-scroll detection into `onCanvasPointerMove` and `onCanvasPointerUp`:
-1. Store pointer position in `onCanvasPointerMove` right after the panning guard.
-2. Edge detection block before `getDocCoords` call, checking tool is brush/eraser/selection/crop and dragging is active.
-3. Stop RAF on pointer up in `onCanvasPointerUp` after the engine guard.
+Fix code review findings for Task 2:
+1. Extract duplicate edge math into shared `applyEdgeScroll(dt)` helper
+2. Remove stale container ref capture in RAF closure
+3. Rename `MAX_SCROLL_SPX` to `MAX_EDGE_SCROLL_PX_PER_SEC`
 
 ## Verification
 - ✅ Build green (`bun run build` completed successfully)

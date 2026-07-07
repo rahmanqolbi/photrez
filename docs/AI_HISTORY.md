@@ -1,3 +1,21 @@
+## [2026-07-07] Edge Auto-Scroll — Refactor: extract shared applyEdgeScroll [COMPLETE]
+
+### Category: REFACTOR / FRONTEND
+
+### Module: UI / FRONTEND
+
+### What was done
+- Extracted duplicate edge math from `startEdgeRaf` tick and `onCanvasPointerMove` into shared `applyEdgeScroll(dt)` helper
+- Removed stale container ref (`params.getCanvasContainerRef()`) captured outside the RAF tick closure — `applyEdgeScroll` fetches it fresh each frame
+- Renamed `MAX_SCROLL_SPX` to `MAX_EDGE_SCROLL_PX_PER_SEC` for clarity
+
+### Files Changed
+- `apps/desktop/src/components/editor/canvas/useCanvasPointerTools.ts` — added `applyEdgeScroll` function, simplified `startEdgeRaf` and `onCanvasPointerMove` edge block
+
+### Verification
+- ✅ Build green (`bun run build` completed successfully)
+- ✅ All 2286 frontend tests passed
+
 ## [2026-07-07] Edge Auto-Scroll — Task 2: Wire into pointer handlers [COMPLETE]
 
 ### Category: FEATURE
