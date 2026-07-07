@@ -7,8 +7,8 @@ import {
 
 describe("rotateBand", () => {
   describe("constants", () => {
-    it("ROTATE_BAND_PX is 20", () => {
-      expect(ROTATE_BAND_PX).toBe(20);
+    it("ROTATE_BAND_PX is 100", () => {
+      expect(ROTATE_BAND_PX).toBe(100);
     });
 
     it("ROTATE_CORNER_EXTRA is 2", () => {
@@ -18,7 +18,7 @@ describe("rotateBand", () => {
 
   describe("getRotateBandPath", () => {
     const x = 100, y = 50, w = 400, h = 300;
-    const pad = ROTATE_BAND_PX + ROTATE_CORNER_EXTRA; // 22
+    const pad = ROTATE_BAND_PX + ROTATE_CORNER_EXTRA; // 102
 
     it("returns a valid SVG path starting with M and ending with Z", () => {
       const path = getRotateBandPath(x, y, w, h);
@@ -52,9 +52,9 @@ describe("rotateBand", () => {
 
     it("band extends pad = bandWidth + cornerRadius outward on all sides", () => {
       const path = getRotateBandPath(0, 0, 100, 100);
-      // Right edge vertical before arc: V 120 (100 + 22 - 2)
+      // Right edge vertical before arc: V 200 (100 + 102 - 2)
       expect(path).toContain(`V ${100 + pad - ROTATE_CORNER_EXTRA}`);
-      // Bottom edge horizontal before arc: H -20 (-(22 - 2))
+      // Bottom edge horizontal before arc: H -100 (-(102 - 2))
       expect(path).toContain(`H ${-(pad - ROTATE_CORNER_EXTRA)}`);
     });
 
@@ -74,14 +74,14 @@ describe("rotateBand", () => {
   });
 
   describe("band geometry — diagonal reach at corners", () => {
-    it("corner reach is approximately 30px (20√2 + 2 ≈ 30.3)", () => {
+    it("corner reach is approximately 143px (100√2 + 2 ≈ 143.4)", () => {
       const expectedReach = Math.sqrt(2) * ROTATE_BAND_PX + ROTATE_CORNER_EXTRA;
-      expect(Math.abs(expectedReach - 30.3)).toBeLessThan(0.1);
+      expect(Math.abs(expectedReach - 143.4)).toBeLessThan(0.1);
     });
 
-    it("point at (crop_right + 15, crop_bottom + 15) is within 30px diagonal", () => {
-      const dist = Math.sqrt(15 * 15 + 15 * 15);
-      expect(dist).toBeLessThan(30.3);
+    it("point at (crop_right + 72, crop_bottom + 72) is within 143px diagonal", () => {
+      const dist = Math.sqrt(72 * 72 + 72 * 72);
+      expect(dist).toBeLessThan(143.4);
     });
 
     it("point at (crop_right + 28, crop_bottom + 28) is beyond 30px diagonal", () => {

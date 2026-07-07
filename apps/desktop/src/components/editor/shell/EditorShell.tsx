@@ -125,6 +125,14 @@ export function EditorShell() {
       window.addEventListener("beforeunload", handleBeforeUnload);
       onCleanup(() => window.removeEventListener("beforeunload", handleBeforeUnload));
     });
+  } else {
+    // We are in Tauri environment. The UI is now hydrated and ready to be displayed.
+    // Close the splashscreen and show the main window.
+    onMount(() => {
+      import("@tauri-apps/api/core").then(({ invoke }) => {
+        invoke("close_splashscreen").catch((err) => console.error("Failed to close splashscreen:", err));
+      }).catch(console.error);
+    });
   }
 
   onCleanup(() => {

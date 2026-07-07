@@ -65,7 +65,7 @@ describe("MoveOptionBar", () => {
     document.body.appendChild(container);
     const dispose = render(() => <MoveOptionBar />, container);
 
-    expect(container.textContent).toContain("move");
+    expect(container.textContent).toContain("Move");
     dispose();
     container.parentNode?.removeChild(container);
   });
@@ -792,7 +792,7 @@ describe("MoveOptionBar", () => {
     document.body.appendChild(container);
     const dispose = render(() => <MoveOptionBar />, container);
 
-    expect(container.textContent).toContain("move");
+    expect(container.textContent).toContain("Move");
     expect(container.textContent).toContain("Auto");
     expect(container.textContent).toContain("Snap");
     expect(container.textContent).not.toContain("X:");

@@ -9,7 +9,7 @@
  * rendered with SVG evenodd fill rule.
  */
 
-export const ROTATE_BAND_PX = 20;
+export const ROTATE_BAND_PX = 100;
 export const ROTATE_CORNER_EXTRA = 2;
 
 function roundedRectPath(x: number, y: number, w: number, h: number, r: number): string {

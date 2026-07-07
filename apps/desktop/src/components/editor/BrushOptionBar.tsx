@@ -28,7 +28,7 @@ export function BrushOptionBar() {
   } = useEditor();
 
   const isEraser = () => activeTool() === "eraser";
-  const label = () => (isEraser() ? "Eraser Options" : "Brush Options");
+  const label = () => (isEraser() ? "Eraser" : "Brush");
   const size = () => (isEraser() ? eraserSize() : brushSize());
   const hardness = () => (isEraser() ? eraserHardness() : brushHardness());
   const opacity = () => (isEraser() ? eraserOpacity() : brushOpacity());

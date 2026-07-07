@@ -10,6 +10,7 @@ const CropOptionBar = lazy(() => import("../CropOptionBar").then(m => ({ default
 const BrushOptionBar = lazy(() => import("../BrushOptionBar").then(m => ({ default: m.BrushOptionBar })));
 const TransformOptionBar = lazy(() => import("../TransformOptionBar").then(m => ({ default: m.TransformOptionBar })));
 const SelectionOptionBar = lazy(() => import("../SelectionOptionBar").then(m => ({ default: m.SelectionOptionBar })));
+const EyedropperOptionBar = lazy(() => import("../EyedropperOptionBar").then(m => ({ default: m.EyedropperOptionBar })));
 
 export function OptionBar() {
   const { activeTool, layerTransformSession } = useEditor();
@@ -35,6 +36,10 @@ export function OptionBar() {
 
               <Show when={activeTool() === "brush" || activeTool() === "eraser"}>
                 <FadeIn><BrushOptionBar /></FadeIn>
+              </Show>
+
+              <Show when={activeTool() === "eyedropper"}>
+                <FadeIn><EyedropperOptionBar /></FadeIn>
               </Show>
             </>
           }

@@ -24,8 +24,8 @@ import { CropOverlayTooltip } from "./CropOverlayTooltip";
 const HANDLE_TYPES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 const HANDLE_SIZE = 8;
 const HANDLE_HIT = 32;
-const RING_PAD = 12;
-const RING_WIDTH = 20;
+const RING_PAD = 0;
+const RING_WIDTH = 100;
 
 interface ModernCropOverlayProps {
   isNavigationMode?: boolean;

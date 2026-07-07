@@ -40,7 +40,7 @@ describe("BrushOptionBar", () => {
     document.body.appendChild(root);
     const dispose = render(() => <BrushOptionBar />, root);
 
-    expect(root.textContent).toContain("Brush Options");
+    expect(root.textContent).toContain("Brush");
     expect(root.querySelector<HTMLInputElement>("[data-paint-size]")?.value).toBe("20");
     expect(root.querySelector<HTMLInputElement>("[data-paint-hardness]")?.value).toBe("80");
     expect(root.querySelector<HTMLInputElement>("[data-paint-opacity]")?.value).toBe("100");
@@ -58,7 +58,7 @@ describe("BrushOptionBar", () => {
     document.body.appendChild(root);
     const dispose = render(() => <BrushOptionBar />, root);
 
-    expect(root.textContent).toContain("Eraser Options");
+    expect(root.textContent).toContain("Eraser");
     expect(root.querySelector<HTMLInputElement>("[data-paint-size]")?.value).toBe("32");
     expect(root.querySelector<HTMLInputElement>("[data-paint-hardness]")?.value).toBe("100");
 

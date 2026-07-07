@@ -29,7 +29,7 @@ interface SelectionTransformOverlayProps {
 }
 
 const HANDLE_SIZE = 8;
-const HANDLE_HIT = 20;
+const HANDLE_HIT = 32;
 const ROTATE_OUTER = 44;
 const HANDLE_TYPES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 

@@ -173,7 +173,7 @@ export function MoveOptionBar() {
 
   return (
     <>
-      <ToolPill icon="cursor" label={activeTool()} />
+      <ToolPill icon="cursor" label="Move" />
 
       <Divider />
 
