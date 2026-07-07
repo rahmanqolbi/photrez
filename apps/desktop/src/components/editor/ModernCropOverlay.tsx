@@ -20,12 +20,9 @@ import {
 } from "@/viewport/modernCropGeometry";
 import { CropOverlayGuides } from "./CropOverlayGuides";
 import { CropOverlayTooltip } from "./CropOverlayTooltip";
+import { ROTATE_BAND_PX, HANDLE_SIZE, HANDLE_HIT } from "@/viewport/rotateBand";
 
 const HANDLE_TYPES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
-const HANDLE_SIZE = 8;
-const HANDLE_HIT = 32;
-const RING_PAD = 0;
-const RING_WIDTH = 100;
 
 interface ModernCropOverlayProps {
   isNavigationMode?: boolean;
@@ -126,15 +123,11 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
 
   const rotateRingPath = createMemo(() => {
     const r = screenRect();
-    const ix = r.x - RING_PAD;
-    const iy = r.y - RING_PAD;
-    const iw = r.w + RING_PAD * 2;
-    const ih = r.h + RING_PAD * 2;
-    const ox = ix - RING_WIDTH;
-    const oy = iy - RING_WIDTH;
-    const ow = iw + RING_WIDTH * 2;
-    const oh = ih + RING_WIDTH * 2;
-    return `M ${ox} ${oy} H ${ox + ow} V ${oy + oh} H ${ox} Z M ${ix} ${iy} V ${iy + ih} H ${ix + iw} V ${iy} Z`;
+    const ox = r.x - ROTATE_BAND_PX;
+    const oy = r.y - ROTATE_BAND_PX;
+    const ow = r.w + ROTATE_BAND_PX * 2;
+    const oh = r.h + ROTATE_BAND_PX * 2;
+    return `M ${ox} ${oy} H ${ox + ow} V ${oy + oh} H ${ox} Z M ${r.x} ${r.y} V ${r.y + r.h} H ${r.x + r.w} V ${r.y} Z`;
   });
 
   const rotateCursor = createMemo(() => {

@@ -12,6 +12,10 @@
 export const ROTATE_BAND_PX = 100;
 export const ROTATE_CORNER_EXTRA = 2;
 
+/** Shared resize handle sizes — used by CropOverlay, ModernCropOverlay, and SelectionTransformOverlay */
+export const HANDLE_SIZE = 8;
+export const HANDLE_HIT = 32;
+
 function roundedRectPath(x: number, y: number, w: number, h: number, r: number): string {
   const rx = Math.min(r, w / 2);
   const ry = Math.min(r, h / 2);

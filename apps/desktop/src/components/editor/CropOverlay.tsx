@@ -3,7 +3,7 @@ import { useEditor } from "./shell/EditorContext";
 import type { CropRect } from "@/viewport/cropGeometry";
 import type { CropSnapTargets } from "@/viewport/cropSnap";
 import type { SnapLine } from "@/viewport/smartGuides";
-import { getRotateBandPath, ROTATE_BAND_PX, ROTATE_CORNER_EXTRA } from "@/viewport/rotateBand";
+import { getRotateBandPath, ROTATE_BAND_PX, ROTATE_CORNER_EXTRA, HANDLE_SIZE, HANDLE_HIT } from "@/viewport/rotateBand";
 import { useCropOverlayDrag } from "./useCropOverlayDrag";
 import { CropOverlayGuides } from "./CropOverlayGuides";
 import { CropOverlayHandles } from "./CropOverlayHandles";
@@ -37,9 +37,6 @@ interface CropOverlayProps {
 }
 
 const HANDLE_TYPES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
-
-const HANDLE_SIZE = 8;
-const HANDLE_HIT = 32;
 
 export function CropOverlay(props: CropOverlayProps) {
   const { pan } = useEditor();

@@ -3,6 +3,7 @@ import { useEditor } from "./shell/EditorContext";
 import type { HudMode } from "./TransformHud";
 import type { SnapRect, SnapResult } from "@/viewport/smartGuides";
 import { getCursorForHandle, documentToLayerLocal } from "@/viewport/transformGeometry";
+import { HANDLE_SIZE, HANDLE_HIT } from "@/viewport/rotateBand";
 import { useSelectionTransformDrag } from "./useSelectionTransformDrag";
 import { commitLayerTransformSession } from "./transformSession";
 
@@ -28,9 +29,6 @@ interface SelectionTransformOverlayProps {
   onStopMomentum?: () => void;
 }
 
-const HANDLE_SIZE = 8;
-const HANDLE_HIT = 32;
-const ROTATE_OUTER = 44;
 const HANDLE_TYPES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 
 export function getRotatePath(type: string, cx: number, cy: number, ro: number, ri: number): string {
@@ -107,7 +105,6 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
 
   const hs = () => HANDLE_SIZE;
   const ht = () => HANDLE_HIT;
-  const ro = () => ROTATE_OUTER;
 
   const screenCenter = createMemo(() => {
     const c = center();

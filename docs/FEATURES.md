@@ -23,6 +23,9 @@
 | ✅ DONE | Alt+resize center-drift fix — Step 3 of `applyResizeHandle` changed from incremental `vx -= dw/2` to absolute center positioning, fixing up to 160% center drift on "w"/"n" handles at all rotation angles |
 | ✅ DONE | Move tool implementation-contract tests — 18 new tests (24 total) for `useCanvasLayerDrag` covering signal state machine, guard conditions with listener isolation verification, event listener lifecycle, cancel behavior, DragController integration (beginLayerDrag/endDrag payload), auto-select OFF paths (selected layer vs hit layer, no-selection guard, locked-selected-layer fallthrough), same-doc tab drop revert, layer detection order, and invisible layer skipping; unified TestApi exposes dcState, moveSnapEnabled, moveAutoSelect, selectedLayerId |
 | ✅ DONE | Close button dynamic import → static import fix: replaced `import(/* @vite-ignore */)` with static `import` in `tauriWindow.ts` and `useTauriCloseHandler.ts` — the `@vite-ignore` prevented Vite optimization, causing runtime resolution failures in production webview; added 10 implementation tests (tauriWindow: 6, useTauriCloseHandler: 2 lifecycle, AppTitleBarActions: 2 maximize state); cancelled flag prevents race on listen promise resolving after cleanup |
+| ✅ DONE | Tauri native splash screen with cache-busting, custom HTML/CSS logo pulsing, and Rust close command triggered post-hydration |
+| ✅ DONE | Option Bar label standardization ("Brush Options" -> "Brush", lowercase "move" -> "Move") and Eyedropper Option Bar (HEX readout, copy, auto-copy to clipboard) |
+| ✅ DONE | Shared constants consolidation — `HANDLE_SIZE`/`HANDLE_HIT`, `ROTATE_BAND_PX` moved to `rotateBand.ts` as single source of truth; `ModernCropOverlay` imports instead of local `RING_WIDTH`/`RING_PAD` |
 
 ---
 
