@@ -103,6 +103,12 @@ export async function writeFileBytes(path: string, data: Uint8Array): Promise<vo
   if (!result.ok) throw asError(result);
 }
 
+// ─── File Deletion (temp file cleanup) ───
+export async function deleteFile(path: string): Promise<void> {
+  const result = await invoke("delete_file", { path }) as ApiResponse;
+  if (!result.ok) throw asError(result);
+}
+
 // ─── Ping ───
 export async function ping(): Promise<boolean> {
   try {

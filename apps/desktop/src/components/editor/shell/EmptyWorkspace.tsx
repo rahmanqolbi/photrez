@@ -85,7 +85,7 @@ export function EmptyWorkspace() {
 
         <div class="flex items-center justify-between border-t border-editor-divider px-5 py-3 text-[11px] text-editor-text-dim">
           <span>Drop PNG, JPEG, or WebP files anywhere in this workspace.</span>
-          <kbd class="rounded-[3px] border border-editor-divider bg-editor-field px-1.5 py-0.5 text-[10px] text-editor-text-dim">Ctrl+O</kbd>
+          <kbd class="font-sans rounded-[3px] border border-editor-divider bg-editor-field px-1.5 py-0.5 text-[10px] text-editor-text-dim">Ctrl+O</kbd>
         </div>
       </section>
     </div>

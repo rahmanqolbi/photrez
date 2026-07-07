@@ -246,7 +246,7 @@ export function LayersPanel() {
             <div class="absolute right-0 top-[30px] z-50 flex w-[150px] flex-col gap-2 rounded-[6px] border border-editor-divider bg-editor-panel p-3 shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
               <div class="flex items-center justify-between text-[11px] text-editor-text-dim">
                 <span>Opacity</span>
-                <span class="font-mono text-editor-text">
+                <span class="font-sans tabular-nums text-editor-text">
                   {activeLayer() ? Math.round(activeLayer()!.opacity * 100) : 100}%
                 </span>
               </div>

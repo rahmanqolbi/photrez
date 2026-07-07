@@ -231,7 +231,7 @@ export function ExportDialog() {
               <div class="border-t border-editor-divider pt-4">
                 <div class="mb-1.5 flex items-center justify-between text-[11px] text-editor-text-dim">
                   <label for="export-quality" class="font-semibold uppercase tracking-wider">Quality</label>
-                  <span class="font-mono text-editor-text font-bold">{quality()}%</span>
+                  <span class="font-sans tabular-nums text-editor-text font-bold">{quality()}%</span>
                 </div>
                 <div class="relative flex items-center h-[14px]">
                   <Slider

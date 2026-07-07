@@ -287,6 +287,7 @@ export class DocumentEngine {
   }
 
   // ─── Layer Properties ───
+  // NOTE: caller MUST call history.commit() BEFORE this method
   setLayerOpacity(id: LayerId, opacity: number): void {
     const layer = this.getLayer(id);
     if (layer && !layer.locked) {
@@ -314,6 +315,7 @@ export class DocumentEngine {
     }
   }
 
+  // NOTE: caller MUST call history.commit() BEFORE this method
   setLayerLockTransparency(id: LayerId, locked: boolean): void {
     const layer = this.getLayer(id);
     if (layer) {
@@ -323,6 +325,7 @@ export class DocumentEngine {
     }
   }
 
+  // NOTE: caller MUST call history.commit() BEFORE this method
   setLayerLockPosition(id: LayerId, locked: boolean): void {
     const layer = this.getLayer(id);
     if (layer) {
@@ -332,6 +335,7 @@ export class DocumentEngine {
     }
   }
 
+  // NOTE: caller MUST call history.commit() BEFORE this method
   setLayerLockRotation(id: LayerId, locked: boolean): void {
     const layer = this.getLayer(id);
     if (layer) {
@@ -362,6 +366,7 @@ export class DocumentEngine {
     return `${base} ${maxNum + 1}`;
   }
 
+  // NOTE: caller MUST call history.commit() BEFORE this method
   setLayerName(id: LayerId, name: string): void {
     const layer = this.getLayer(id);
     if (layer) {
@@ -371,6 +376,7 @@ export class DocumentEngine {
     }
   }
 
+  // NOTE: caller MUST call history.commit() BEFORE this method
   setLayerBlendMode(id: LayerId, mode: BlendMode): void {
     const layer = this.getLayer(id);
     if (layer && !layer.locked) {
@@ -558,6 +564,22 @@ export class DocumentEngine {
     if (width <= 0 || height <= 0) return;
     const maxDim = getEffectiveMaxDim();
     if (width > maxDim || height > maxDim) return;
+
+    // Memory budget check: resizing to larger dimensions could cause OOM
+    // if layers are later re-allocated at the new size.
+    const newBytes = width * height * 4;
+    // Estimate: each existing layer could be resized to the new canvas size.
+    // This is conservative — layers may keep their own dimensions, but
+    // paint operations or crop/resize to canvas size could trigger re-alloc.
+    const layerCount = this.model.layers.length;
+    if (layerCount > 0) {
+      const estimatedGrowth = (newBytes - (this.model.width * this.model.height * 4)) * layerCount;
+      const projected = this.calculateMemoryUsage() + Math.max(0, estimatedGrowth);
+      if (projected > MAX_PIXEL_BUDGET) {
+        throw new Error("E_RESOURCE_LIMIT: Resizing canvas exceeds maximum pixel memory budget.");
+      }
+    }
+
     this.model.width = width;
     this.model.height = height;
     this.model.dirty = true;
@@ -576,6 +598,18 @@ export class DocumentEngine {
       if (!bitmap) {
         throw new TypeError("Bitmap cannot be null");
       }
+
+      // Memory budget check: reject bitmap that would exceed the pixel
+      // memory budget.  Subtract the current layer's bytes since the new
+      // bitmap replaces the old one.
+      const bitmapBytes = bitmap.width * bitmap.height * 4;
+      const oldBytes = layer.width * layer.height * 4;
+      const currentBytes = this.calculateMemoryUsage();
+      const totalBytes = currentBytes - oldBytes + bitmapBytes;
+      if (totalBytes > MAX_PIXEL_BUDGET) {
+        throw new Error("E_RESOURCE_LIMIT: Setting this bitmap exceeds maximum pixel memory budget.");
+      }
+
       // NOTE: we intentionally do NOT close the old imageBitmap here.
       // Snapshots in the undo/redo stack may hold a reference to it;
       // closing it here would make those snapshots point to a closed/
@@ -613,14 +647,24 @@ export class DocumentEngine {
     imageData.data.set(applyBasicAdjustmentToPixels(imageData.data, adjustment));
     ctx.putImageData(imageData, 0, 0);
 
-    // NOTE: we intentionally do NOT close the old imageBitmap here.
-    // Snapshots in the undo/redo stack may hold a reference to it;
-    // closing it here would make those snapshots point to a closed/
-    // detached bitmap, causing "image source is detached" errors on
-    // restore (undo/redo).  Cleanup happens in restore() when the
-    // snapshot that owns the reference is no longer the active one.
+    // Save reference to the previous bitmap so we can close it after
+    // assigning the new one.  The old bitmap is an intermediate preview
+    // frame that is NOT referenced by any snapshot in the history stack
+    // (history is committed BEFORE the drag loop starts, not during).
+    // We must NOT close baseImageBitmap though — that IS referenced by
+    // the snapshot checkpoint taken when the slider was first engaged.
+    const previousBitmap = layer.imageBitmap;
 
     layer.imageBitmap = canvas.transferToImageBitmap();
+
+    // Close the previous intermediate bitmap to prevent ImageBitmap
+    // leak during slider drag (regression: every drag tick created a
+    // new ImageBitmap that was never closed, leaking GPU memory).
+    // Skip close if previousBitmap is baseImageBitmap — that reference
+    // is preserved in the history snapshot for undo/redo.
+    if (previousBitmap && previousBitmap !== layer.baseImageBitmap) {
+      previousBitmap.close();
+    }
     layer.basicAdjustment = adjustment;
     layer.hasAdjustments = adjustment.brightness !== 0 || adjustment.contrast !== 0 || adjustment.saturation !== 0;
     this.model.dirty = true;

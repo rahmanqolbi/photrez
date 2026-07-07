@@ -149,7 +149,7 @@ export function ResizeCanvasModal() {
                   type="button"
                   onClick={() => setAspectLocked(!aspectLocked())}
                   aria-pressed={aspectLocked()}
-                  class={`flex h-6 items-center gap-1.5 rounded-[6px] px-1.5 text-[11px] outline-none transition-all duration-75 focus-visible:ring-1 focus-visible:ring-editor-accent/50 ${
+                  class={`flex h-6 items-center gap-1.5 rounded-[6px] px-1.5 text-[11px] outline-none transition-all duration-75 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-editor-accent/70 ${
                     aspectLocked()
                       ? "border border-editor-accent/40 bg-editor-accent/10 text-editor-accent shadow-[inset_0_1px_2px_rgba(225,90,23,0.15)]"
                       : "border border-transparent bg-transparent text-editor-text-dim hover:bg-white/[0.05] hover:text-editor-text"

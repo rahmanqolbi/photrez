@@ -392,6 +392,9 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const history = workspace.getActiveHistory();
     if (!engine || !history) return;
 
+    // Eyedropper is not a canvas pointer tool — handled via menu/keyboard.
+    if (activeTool() === "eyedropper") return;
+
     if ((activeTool() === "brush" || activeTool() === "eraser") && params.isAltPressed()) {
       const coords = getDocCoords(e);
       const color = engine.samplePixel(coords.x, coords.y);

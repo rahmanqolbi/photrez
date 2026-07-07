@@ -72,6 +72,7 @@ fn main() {
             commands::save_project,
             commands::load_project,
             commands::print_image,
+            commands::delete_file,
             commands::close_app,
         ])
         .run(tauri::generate_context!())

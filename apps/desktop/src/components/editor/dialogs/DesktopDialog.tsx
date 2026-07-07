@@ -94,16 +94,26 @@ export function DesktopDialog(props: DesktopDialogProps) {
         >
           <svg viewBox="0 0 512 512" class="size-[18px] shrink-0" aria-hidden="true">
             <defs>
-              <linearGradient id="pageGradientDialog" x1="0%" y1="0%" x2="0%" y2="100%">
+              <linearGradient id="brandGradientDialog" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stop-color="#FFB31A" />
                 <stop offset="100%" stop-color="#E15A17" />
               </linearGradient>
+              <linearGradient id="bgDarkDialog" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#2C2C2E" />
+                <stop offset="100%" stop-color="#151516" />
+              </linearGradient>
+              <mask id="mountainMaskDialog" maskUnits="userSpaceOnUse" x="-500" y="-500" width="2000" height="2000">
+                <rect x="-500" y="-500" width="2000" height="2000" fill="white" />
+                <polygon points="250.4,320 300.86,127 307,127 357.6,320" fill="black" />
+              </mask>
+              <filter id="pShadowDialog" x="-20%" y="-20%" width="150%" height="150%">
+                <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#000000" flood-opacity="0.5" />
+              </filter>
             </defs>
-            <rect x="16" y="16" width="480" height="480" rx="28" fill="#1A1A1A" />
-            <g transform="translate(-20, 15)">
-              <path d="M 240 50 L 460 50 L 390 310 L 253 310 L 219 440 L 136 440 Z" fill="url(#pageGradientDialog)" />
-              <circle cx="322" cy="175" r="30" fill="#FFE57F" />
-              <polygon points="270,310 337,127 343,127 330,310" fill="#1A1A1A" />
+            <rect x="24" y="24" width="464" height="464" rx="100" fill="url(#bgDarkDialog)" />
+            <g transform="translate(8, 48) scale(0.85)" filter="url(#pShadowDialog)">
+              <path d="M 240 50 L 460 50 L 390 310 L 253 310 L 219 440 L 136 440 Z" fill="url(#brandGradientDialog)" mask="url(#mountainMaskDialog)" />
+              <circle cx="333" cy="175" r="30" fill="#FFE57F" mask="url(#mountainMaskDialog)" />
             </g>
           </svg>
           <h2 id={titleId} class="text-[12px] font-medium tracking-[0.01em] text-editor-text">
@@ -145,7 +155,7 @@ export function DesktopDialogButton(props: DesktopDialogButtonProps) {
       type={props.type ?? "button"}
       disabled={props.disabled}
       class={clsx(
-        "h-7 min-w-16 rounded-[6px] border px-3 text-[11px] font-medium outline-none transition-colors duration-75 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-1 focus-visible:ring-editor-accent/50",
+        "h-7 min-w-16 rounded-[6px] border px-3 text-[11px] font-medium outline-none transition-colors duration-75 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-editor-accent/70",
         props.variant === "primary"
           ? "border-editor-accent bg-editor-accent text-editor-bg hover:bg-editor-accent/90"
           : "border-editor-field-border bg-editor-field text-editor-text hover:bg-white/[0.06] hover:border-editor-accent/50 focus-visible:border-editor-accent",

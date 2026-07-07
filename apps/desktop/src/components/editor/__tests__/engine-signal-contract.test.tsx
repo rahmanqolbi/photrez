@@ -150,6 +150,22 @@ describe("Engine ↔ Signal contract", () => {
     expect(ed.activeLayerId()).toBe(l1.id);
   });
 
+  it("engine.setActiveLayer(null) → activeLayerId() and selectedLayerId() both go null", async () => {
+    const ed = editorRef.current!;
+    const engine = ws.getActiveEngine()!;
+    const l1 = engine.addLayer("L1");
+    await tick();
+
+    expect(ed.activeLayerId()).toBe(l1.id);
+    expect(ed.selectedLayerId()).toBe(l1.id);
+
+    engine.setActiveLayer(null);
+    await tick();
+
+    expect(ed.activeLayerId()).toBeNull();
+    expect(ed.selectedLayerId()).toBeNull();
+  });
+
   it("engine.addLayer(name) → layers() signal includes new layer at correct index", async () => {
     const ed = editorRef.current!;
     const engine = ws.getActiveEngine()!;
@@ -182,6 +198,30 @@ describe("Engine ↔ Signal contract", () => {
     expect(ed.layers().find((l: any) => l.id === l2.id)).toBeUndefined();
     // After deleting active layer, engine should fall back to another layer
     expect(ed.activeLayerId()).not.toBe(l2.id);
+    expect(ed.activeLayerId()).toBe(l1.id);
+  });
+
+  it("deleteLayer of active layer → selectedLayerId also shifts (stays in sync)", async () => {
+    const ed = editorRef.current!;
+    const engine = ws.getActiveEngine()!;
+
+    const bgId = engine.getLayers()[0].id;
+    const l1 = engine.addLayer("L1");
+    const l2 = engine.addLayer("L2");
+    engine.setActiveLayer(l1.id);
+    await tick();
+
+    expect(ed.selectedLayerId()).toBe(l1.id);
+    expect(ed.activeLayerId()).toBe(l1.id);
+
+    // Layers: [L2(0), L1(1), bg(2)] — active is L1 at index 1
+    engine.deleteLayer(l1.id);
+    await tick();
+
+    // Engine fallback selects layers[Math.min(1, 1)] = layers[1] = bg
+    expect(ed.selectedLayerId()).not.toBe(l1.id);
+    expect(ed.selectedLayerId()).toBe(bgId);
+    expect(ed.activeLayerId()).toBe(bgId);
   });
 
   it("engine.transformLayer(id, x, y) → updates layer.transform via signal", async () => {
@@ -251,6 +291,32 @@ describe("Engine ↔ Signal contract", () => {
     expect(ed.activeDocumentId()).toBe("contract");
     expect(ed.docWidth()).toBe(800);
     expect(ed.docHeight()).toBe(600);
+  });
+
+  it("switch document → selectedLayerId follows new doc's active layer, not stale", async () => {
+    const ed = editorRef.current!;
+    const engineA = ws.getActiveEngine()!;
+
+    // Doc A setup: add a layer, select it
+    const a1 = engineA.addLayer("A1");
+    engineA.setActiveLayer(a1.id);
+    await tick();
+    expect(ed.selectedLayerId()).toBe(a1.id);
+
+    // Doc B setup: different active layer
+    const s2 = WorkspaceManager.createBlankDocument("doc-2", "Doc 2", 400, 300);
+    ws.addDocument(s2);
+    await tick();
+    // Now active is doc-2 — its background layer should be selected
+    const engineB = ws.getEngine("doc-2")!;
+    const bBg = engineB.getLayers()[0];
+    expect(ed.selectedLayerId()).toBe(bBg.id);
+    expect(ed.selectedLayerId()).not.toBe(a1.id); // NOT stale from doc A
+
+    // Switch back to doc A
+    ws.switchDocument("contract");
+    await tick();
+    expect(ed.selectedLayerId()).toBe(a1.id);
   });
 
   it("history.commit() → history cursor signals (canUndo/canModernCropUndo) reflect state", async () => {

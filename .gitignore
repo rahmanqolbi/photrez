@@ -107,6 +107,9 @@ rtk.exe
 .omo/
 .playwright-mcp/
 
+# Icon design history / backup
+docs/icon-history/
+
 # Git Worktrees (isolated workspaces)
 .worktrees/
 worktrees/

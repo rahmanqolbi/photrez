@@ -217,28 +217,81 @@ describe("encodeComposite", () => {
     expect(capturedBlobOptions.quality).toBe(0.75);
   });
 
-  it("returns encoded bytes with the requested format signature", async () => {
-    const signatures: Record<string, number[]> = {
-      "image/png": [0x89, 0x50, 0x4e, 0x47],
-      "image/jpeg": [0xff, 0xd8, 0xff, 0xe0],
-      "image/webp": [0x52, 0x49, 0x46, 0x46],
+  it("returns correct magic bytes for each export format", async () => {
+    // Magic byte sequences for each image format:
+    //   PNG:  0x89 'P' 'N' 'G' (\x89PNG)
+    //   JPEG: 0xFF 0xD8 0xFF    (SOI marker)
+    //   WebP: 'R' 'I' 'F' 'F'   (RIFF container)
+    const signatures: Record<string, { magic: number[]; label: string }> = {
+      "image/png":  { magic: [0x89, 0x50, 0x4e, 0x47], label: "\\x89PNG" },
+      "image/jpeg": { magic: [0xff, 0xd8, 0xff, 0xe0], label: "\\xFF\\xD8\\xFF" },
+      "image/webp": { magic: [0x52, 0x49, 0x46, 0x46], label: "RIFF" },
     };
     vi.stubGlobal("OffscreenCanvas", vi.fn(function (this: any, w: number, h: number) {
       this.width = w;
       this.height = h;
       this.getContext = () => createOffscreenCtxMock();
       this.convertToBlob = vi.fn((opts: any) => {
-        const signature = signatures[opts.type] ?? [];
-        return Promise.resolve(new Blob([new Uint8Array(signature)]));
+        const sig = signatures[opts.type]?.magic ?? [];
+        return Promise.resolve(new Blob([new Uint8Array(sig)]));
       });
     }));
 
     const { encodeComposite } = await import("../exportDocument");
     const engine = makeMockEngine([]);
 
-    expect(Array.from((await encodeComposite(engine, "png", 100)).slice(0, 4))).toEqual(signatures["image/png"]);
-    expect(Array.from((await encodeComposite(engine, "jpeg", 85)).slice(0, 4))).toEqual(signatures["image/jpeg"]);
-    expect(Array.from((await encodeComposite(engine, "webp", 75)).slice(0, 4))).toEqual(signatures["image/webp"]);
+    for (const [format, { magic, label }] of Object.entries(signatures)) {
+      const formatKey = format.replace("image/", "") as "png" | "jpeg" | "webp";
+      const bytes = await encodeComposite(engine, formatKey, 85);
+      const firstBytes = Array.from(bytes.slice(0, magic.length));
+      expect(firstBytes, `${formatKey}: magic bytes ${label}`).toEqual(magic);
+    }
+  });
+
+  it("quality extremes (1, 50, 100) all produce non-empty bytes with valid magic", async () => {
+    const sig: Record<string, number[]> = {
+      "image/png":  [0x89, 0x50, 0x4e, 0x47],
+      "image/jpeg": [0xff, 0xd8, 0xff, 0xe0],
+      "image/webp": [0x52, 0x49, 0x46, 0x46],
+    };
+
+    const assertFormatAtQuality = async (
+      engine: DocumentEngine,
+      format: "png" | "jpeg" | "webp",
+      quality: number,
+    ) => {
+      const bytes = await encodeComposite(engine, format, quality);
+      expect(bytes.length, `${format}@${quality}: non-empty`).toBeGreaterThan(0);
+      expect(Array.from(bytes.slice(0, 4)), `${format}@${quality}: magic bytes`)
+        .toEqual(sig[`image/${format}`]);
+    };
+
+    let callCount = 0;
+    vi.stubGlobal("OffscreenCanvas", vi.fn(function (this: any, w: number, h: number) {
+      this.width = w;
+      this.height = h;
+      this.getContext = () => createOffscreenCtxMock();
+      this.convertToBlob = vi.fn((opts: any) => {
+        const payload = sig[opts.type] ?? [];
+        const data = [...payload, callCount++];
+        return Promise.resolve(new Blob([new Uint8Array(data)]));
+      });
+    }));
+
+    const { encodeComposite } = await import("../exportDocument");
+    const engine = makeMockEngine([
+      { ...BASE_LAYER, id: "bg", name: "Bg", imageBitmap: { width: 2, height: 2 } as ImageBitmap },
+    ]);
+
+    const formats = ["png", "jpeg", "webp"] as const;
+    const qualities = [1, 50, 100];
+
+    for (const format of formats) {
+      for (const quality of qualities) {
+        // eslint-disable-next-line no-await-in-loop
+        await assertFormatAtQuality(engine, format, quality);
+      }
+    }
   });
 
   it("document dimensions match output canvas size", async () => {
@@ -259,6 +312,160 @@ describe("encodeComposite", () => {
 
     expect(capturedW).toBe(1920);
     expect(capturedH).toBe(1080);
+  });
+
+  it("produces valid bytes even when there are no layers", async () => {
+    const mockCtx = createOffscreenCtxMock();
+    vi.stubGlobal("OffscreenCanvas", vi.fn(function (this: any, w: number, h: number) {
+      this.width = w;
+      this.height = h;
+      this.getContext = () => mockCtx;
+      this.convertToBlob = vi.fn().mockResolvedValue(new Blob(["PNG-EMPTY"]));
+    }));
+
+    const { encodeComposite } = await import("../exportDocument");
+    const engine = makeMockEngine([], 800, 600);
+    const bytes = await encodeComposite(engine, "png", 100);
+
+    expect(bytes).toBeDefined();
+    expect(bytes.length).toBeGreaterThan(0);
+    // No layers → no drawImage calls
+    expect(mockCtx.drawImage).not.toHaveBeenCalled();
+  });
+
+  it("produces valid bytes when all layers are invisible (empty composite)", async () => {
+    const mockCtx = createOffscreenCtxMock();
+    vi.stubGlobal("OffscreenCanvas", vi.fn(function (this: any, w: number, h: number) {
+      this.width = w;
+      this.height = h;
+      this.getContext = () => mockCtx;
+      this.convertToBlob = vi.fn().mockResolvedValue(new Blob(["PNG-HIDDEN"]));
+    }));
+
+    const { encodeComposite } = await import("../exportDocument");
+    const hiddenLayer: LayerNode = { ...BASE_LAYER, id: "h", name: "Hidden", visible: false, imageBitmap: { width: 2, height: 2 } as ImageBitmap };
+    const engine = makeMockEngine([hiddenLayer], 800, 600);
+    const bytes = await encodeComposite(engine, "png", 100);
+
+    expect(bytes).toBeDefined();
+    expect(bytes.length).toBeGreaterThan(0);
+    expect(mockCtx.drawImage).not.toHaveBeenCalled();
+  });
+
+  it("applies layer transform position and scale during export", async () => {
+    const mockCtx = createOffscreenCtxMock();
+    vi.stubGlobal("OffscreenCanvas", vi.fn(function (this: any, w: number, h: number) {
+      this.width = w;
+      this.height = h;
+      this.getContext = () => mockCtx;
+      this.convertToBlob = vi.fn().mockResolvedValue(new Blob(["PNG"]));
+    }));
+
+    const { encodeComposite } = await import("../exportDocument");
+    const transformed: LayerNode = {
+      ...BASE_LAYER, id: "t", name: "Transformed",
+      width: 100, height: 50,
+      transform: { x: 50, y: 30, scaleX: 2, scaleY: 0.5, rotation: 0, flipH: false, flipV: false },
+      imageBitmap: { width: 100, height: 50 } as ImageBitmap,
+    };
+    const engine = makeMockEngine([transformed], 800, 600);
+    await encodeComposite(engine, "png", 100);
+
+    // Center = (x + w*|sx|/2, y + h*|sy|/2) = (50 + 100*2/2, 30 + 50*0.5/2) = (150, 42.5)
+    expect(mockCtx.translate).toHaveBeenCalledWith(150, 42.5);
+    // Scale = (scaleX, scaleY)
+    expect(mockCtx.scale).toHaveBeenCalledWith(2, 0.5);
+  });
+
+  it("applies layer rotation during export", async () => {
+    const mockCtx = createOffscreenCtxMock();
+    vi.stubGlobal("OffscreenCanvas", vi.fn(function (this: any, w: number, h: number) {
+      this.width = w;
+      this.height = h;
+      this.getContext = () => mockCtx;
+      this.convertToBlob = vi.fn().mockResolvedValue(new Blob(["PNG"]));
+    }));
+
+    const { encodeComposite } = await import("../exportDocument");
+    const rotated: LayerNode = {
+      ...BASE_LAYER, id: "r", name: "Rotated",
+      width: 100, height: 100,
+      transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 45, flipH: false, flipV: false },
+      imageBitmap: { width: 100, height: 100 } as ImageBitmap,
+    };
+    const engine = makeMockEngine([rotated], 800, 600);
+    await encodeComposite(engine, "png", 100);
+
+    // rotation 45° → radians = 45 * PI / 180
+    expect(mockCtx.rotate).toHaveBeenCalledWith((45 * Math.PI) / 180);
+  });
+
+  it("applies layer flip during export (negative scale)", async () => {
+    const mockCtx = createOffscreenCtxMock();
+    vi.stubGlobal("OffscreenCanvas", vi.fn(function (this: any, w: number, h: number) {
+      this.width = w;
+      this.height = h;
+      this.getContext = () => mockCtx;
+      this.convertToBlob = vi.fn().mockResolvedValue(new Blob(["PNG"]));
+    }));
+
+    const { encodeComposite } = await import("../exportDocument");
+    const flipped: LayerNode = {
+      ...BASE_LAYER, id: "f", name: "Flipped",
+      width: 100, height: 100,
+      transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: true, flipV: false },
+      imageBitmap: { width: 100, height: 100 } as ImageBitmap,
+    };
+    const engine = makeMockEngine([flipped], 800, 600);
+    await encodeComposite(engine, "png", 100);
+
+    // flipH=true → flipX=-1, so scale = (1 * -1, 1 * 1) = (-1, 1)
+    expect(mockCtx.scale).toHaveBeenCalledWith(-1, 1);
+  });
+
+  it("sets globalCompositeOperation for blend modes during export", async () => {
+    const mockCtx = createOffscreenCtxMock();
+    vi.stubGlobal("OffscreenCanvas", vi.fn(function (this: any, w: number, h: number) {
+      this.width = w;
+      this.height = h;
+      this.getContext = () => mockCtx;
+      this.convertToBlob = vi.fn().mockResolvedValue(new Blob(["PNG"]));
+    }));
+
+    const { encodeComposite } = await import("../exportDocument");
+    const multiplyLayer: LayerNode = {
+      ...BASE_LAYER, id: "m", name: "Multiply",
+      blendMode: "multiply",
+      imageBitmap: { width: 100, height: 100 } as ImageBitmap,
+    };
+    const engine = makeMockEngine([multiplyLayer], 800, 600);
+    await encodeComposite(engine, "png", 100);
+
+    expect(mockCtx.save).toHaveBeenCalled();
+    // The export code calls drawLayerToContext which sets globalCompositeOperation
+    expect((mockCtx as any).globalCompositeOperation).toBe("multiply");
+  });
+
+  it("skips layers without imageBitmap (no drawImage call)", async () => {
+    const mockCtx = createOffscreenCtxMock();
+    vi.stubGlobal("OffscreenCanvas", vi.fn(function (this: any, w: number, h: number) {
+      this.width = w;
+      this.height = h;
+      this.getContext = () => mockCtx;
+      this.convertToBlob = vi.fn().mockResolvedValue(new Blob(["PNG"]));
+    }));
+
+    const { encodeComposite } = await import("../exportDocument");
+    const noBitmap: LayerNode = { ...BASE_LAYER, id: "n", name: "NoBitmap", imageBitmap: null! };
+    const withBitmap: LayerNode = {
+      ...BASE_LAYER, id: "w", name: "WithBitmap",
+      imageBitmap: { width: 100, height: 100 } as ImageBitmap,
+    };
+    const engine = makeMockEngine([noBitmap, withBitmap], 800, 600);
+    await encodeComposite(engine, "png", 100);
+
+    // Only one drawImage call (for the layer WITH bitmap)
+    expect(mockCtx.drawImage).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -308,5 +515,37 @@ describe("exportActiveDocument", () => {
 
     expect(result).toBeNull();
     expect(mockWriteFileBytes).not.toHaveBeenCalled();
+  });
+
+  it("throws when showSaveDialog rejects (Tauri IPC failure)", async () => {
+    const ipcError = new Error("IPC channel closed");
+    mockShowSaveDialog.mockRejectedValueOnce(ipcError);
+
+    const { exportActiveDocument } = await import("../exportDocument");
+    const engine = makeMockEngine([]);
+
+    await expect(exportActiveDocument(engine, "test.png", "png", 100)).rejects.toThrow("IPC channel closed");
+    expect(mockWriteFileBytes).not.toHaveBeenCalled();
+  });
+
+  it("throws when writeFileBytes rejects (Tauri IPC failure)", async () => {
+    const ipcError = new Error("Disk full");
+    mockShowSaveDialog.mockResolvedValueOnce("./output/test.png");
+    mockWriteFileBytes.mockRejectedValueOnce(ipcError);
+
+    // encodeComposite is called internally — need OffscreenCanvas stub
+    const mockCtx = createOffscreenCtxMock();
+    vi.stubGlobal("OffscreenCanvas", vi.fn(function (this: any, w: number, h: number) {
+      this.width = w;
+      this.height = h;
+      this.getContext = () => mockCtx;
+      this.convertToBlob = vi.fn().mockResolvedValue(new Blob(["DATA"]));
+    }));
+
+    const { exportActiveDocument } = await import("../exportDocument");
+    const engine = makeMockEngine([]);
+
+    await expect(exportActiveDocument(engine, "test.png", "png", 100)).rejects.toThrow("Disk full");
+    expect(mockWriteFileBytes).toHaveBeenCalled();
   });
 });

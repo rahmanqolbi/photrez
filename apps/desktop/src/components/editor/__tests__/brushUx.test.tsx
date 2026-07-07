@@ -291,6 +291,53 @@ describe("Brush & Eraser UX modifiers (Alt / Shift)", () => {
     },
   );
 
+  it("brush targets engine's active layer even after move deselect (selectedLayerId=null)", () => {
+    // Regression: after move tool deselects via pasteboard click, selectedLayerId
+    // signal becomes null. Brush should still paint on engine.getActiveLayerId().
+    const { signals, mockEngine, dispose } = createMockEditor({
+      selectedLayerId: null, // simulate move deselect
+      activeTool: "brush",
+    });
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(signals as any);
+
+    const canvas = document.createElement("canvas");
+    canvas.setPointerCapture = vi.fn();
+    canvas.releasePointerCapture = vi.fn();
+    const onPaintStroke = vi.fn();
+    const commitBrushStroke = vi.fn();
+    const params = {
+      getCanvasContainerRef: () => document.createElement("div"),
+      getCanvasRef: () => canvas,
+      isSpacePressed: () => false,
+      isPanning: () => false,
+      isAltPressed: () => false,
+      stopMomentum: vi.fn(),
+      fitToScreenAndRender: vi.fn(),
+      commitBrushStroke,
+      onPaintStroke,
+    };
+
+    const { tools, dispose: disposeTools } = createPointerTools(params);
+
+    // Brush stroke after deselect
+    tools.onCanvasPointerDown({ button: 0, clientX: 10, clientY: 10, pointerId: 1 } as any);
+    // prepareToolContext should have set interactiveState.selectedLayerId = engine.getActiveLayerId()
+    // handlePointerDown should fire onPaintStroke with the initial point
+    expect(onPaintStroke).toHaveBeenCalled();
+
+    tools.onCanvasPointerMove({ clientX: 20, clientY: 10, buttons: 1, pointerId: 1 } as any);
+    tools.onCanvasPointerUp({ clientX: 20, clientY: 10, pointerId: 1 } as any);
+
+    // onCanvasPointerUp calls commitBrushStroke with engine.getActiveLayerId() (not selectedLayerId signal)
+    expect(commitBrushStroke).toHaveBeenCalled();
+    const commitCall = commitBrushStroke.mock.calls[0];
+    expect(commitCall[2]).toBe(mockEngine.getActiveLayerId()); // layerId matches engine
+
+    disposeTools();
+    dispose();
+    vi.restoreAllMocks();
+  });
+
   it("synchronizes lastPaintCoords with active history on undo/redo actions", () => {
     let mockCoords: { x: number; y: number } | null = null;
     const mockHistory = {

@@ -148,7 +148,6 @@ describe.each([
   ["crop (classic)", "crop"],
   ["brush", "brush"],
   ["eraser", "eraser"],
-  ["eyedropper", "eyedropper"],
 ] as const)("pointer routing: %s", (label, toolId) => {
   it(`routes onCanvasPointerDown to handlePointerDown with tool='${toolId}'`, () => {
     const { signals, dispose } = createMockEditorParams(toolId);
@@ -165,14 +164,6 @@ describe.each([
       commitBrushStroke: vi.fn(),
     });
 
-    // Eyedropper is NOT a canvas tool via pointer — it's handled via menu/keyboard.
-    // Skip it for pointer routing.
-    if (toolId === "eyedropper") {
-      disposeTools();
-      dispose();
-      return;
-    }
-
     tools.onCanvasPointerDown(makePointerEvent());
 
     // For classic crop mode, handlePointerDown IS called.
@@ -188,6 +179,32 @@ describe.each([
       const callToolArg = handlePointerDownSpy.mock.calls[0][0];
       expect(callToolArg).toBe(toolId);
     }
+
+    disposeTools();
+    dispose();
+  });
+});
+
+describe("eyedropper does NOT route to handlePointerDown", () => {
+  it("does NOT call handlePointerDown when activeTool is eyedropper", () => {
+    const { signals, dispose } = createMockEditorParams("eyedropper");
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(signals as any);
+
+    const { tools, dispose: disposeTools } = createPointerTools({
+      getCanvasContainerRef: () => document.createElement("div"),
+      getCanvasRef: () => document.createElement("canvas"),
+      isSpacePressed: () => false,
+      isPanning: () => false,
+      isAltPressed: () => false,
+      stopMomentum: vi.fn(),
+      fitToScreenAndRender: vi.fn(),
+      commitBrushStroke: vi.fn(),
+    });
+
+    tools.onCanvasPointerDown(makePointerEvent());
+
+    // Eyedropper exits early before reaching handlePointerDown
+    expect(handlePointerDownSpy).not.toHaveBeenCalled();
 
     disposeTools();
     dispose();
@@ -290,6 +307,153 @@ describe("move auto-select calls setActiveLayer before handlePointerDown", () =>
     // handlePointerDown should be called with "move"
     expect(handlePointerDownSpy).toHaveBeenCalled();
     expect(handlePointerDownSpy.mock.calls[0][0]).toBe("move");
+
+    disposeTools();
+    dispose();
+  });
+});
+
+describe("right-click and middle-click block routing", () => {
+  it.each([
+    ["move", "move"],
+    ["selection", "selection"],
+    ["brush", "brush"],
+  ] as const)("does NOT call handlePointerDown when button=2 (right-click) for %s", (label, toolId) => {
+    const { signals, dispose } = createMockEditorParams(toolId);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(signals as any);
+
+    const { tools, dispose: disposeTools } = createPointerTools({
+      getCanvasContainerRef: () => document.createElement("div"),
+      getCanvasRef: () => document.createElement("canvas"),
+      isSpacePressed: () => false,
+      isPanning: () => false,
+      isAltPressed: () => false,
+      stopMomentum: vi.fn(),
+      fitToScreenAndRender: vi.fn(),
+      commitBrushStroke: vi.fn(),
+    });
+
+    tools.onCanvasPointerDown(makePointerEvent({ button: 2 }));
+    expect(handlePointerDownSpy).not.toHaveBeenCalled();
+    disposeTools();
+    dispose();
+  });
+
+  it.each([
+    ["move", "move"],
+    ["selection", "selection"],
+    ["brush", "brush"],
+  ] as const)("does NOT call handlePointerDown when button=1 (middle-click) for %s", (label, toolId) => {
+    const { signals, dispose } = createMockEditorParams(toolId);
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(signals as any);
+
+    const { tools, dispose: disposeTools } = createPointerTools({
+      getCanvasContainerRef: () => document.createElement("div"),
+      getCanvasRef: () => document.createElement("canvas"),
+      isSpacePressed: () => false,
+      isPanning: () => false,
+      isAltPressed: () => false,
+      stopMomentum: vi.fn(),
+      fitToScreenAndRender: vi.fn(),
+      commitBrushStroke: vi.fn(),
+    });
+
+    tools.onCanvasPointerDown(makePointerEvent({ button: 1 }));
+    expect(handlePointerDownSpy).not.toHaveBeenCalled();
+    disposeTools();
+    dispose();
+  });
+});
+
+describe("brush/eraser locked layer blocks routing", () => {
+  it.each([
+    ["brush", "brush"],
+    ["eraser", "eraser"],
+  ] as const)("does NOT call handlePointerDown when target layer is locked for %s", (label, toolId) => {
+    const { signals, mockEngine, dispose } = createMockEditorParams(toolId);
+    // Override getLayer to return a locked layer
+    signals.workspace = {
+      getActiveEngine: () => ({
+        ...mockEngine,
+        getLayer: (id: string) => ({ id, locked: true, visible: true, width: 100, height: 100 }),
+      }),
+      getActiveHistory: () => ({
+        commit: vi.fn(),
+        getLastPaintCoords: () => null,
+        setLastPaintCoords: vi.fn(),
+      }),
+    };
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(signals as any);
+
+    const { tools, dispose: disposeTools } = createPointerTools({
+      getCanvasContainerRef: () => document.createElement("div"),
+      getCanvasRef: () => document.createElement("canvas"),
+      isSpacePressed: () => false,
+      isPanning: () => false,
+      isAltPressed: () => false,
+      stopMomentum: vi.fn(),
+      fitToScreenAndRender: vi.fn(),
+      commitBrushStroke: vi.fn(),
+    });
+
+    tools.onCanvasPointerDown(makePointerEvent());
+    expect(handlePointerDownSpy).not.toHaveBeenCalled();
+    disposeTools();
+    dispose();
+  });
+});
+
+describe("no active engine returns early (no crash)", () => {
+  it("does NOT crash when workspace has no active engine", () => {
+    const { signals, dispose } = createMockEditorParams("move");
+    // Override workspace to return null engine
+    signals.workspace = {
+      getActiveEngine: () => null,
+      getActiveHistory: () => null,
+      getActiveSession: () => null,
+    };
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(signals as any);
+
+    const { tools, dispose: disposeTools } = createPointerTools({
+      getCanvasContainerRef: () => document.createElement("div"),
+      getCanvasRef: () => document.createElement("canvas"),
+      isSpacePressed: () => false,
+      isPanning: () => false,
+      isAltPressed: () => false,
+      stopMomentum: vi.fn(),
+      fitToScreenAndRender: vi.fn(),
+      commitBrushStroke: vi.fn(),
+    });
+
+    // Must not throw or call handlePointerDown
+    expect(() => tools.onCanvasPointerDown(makePointerEvent())).not.toThrow();
+    expect(handlePointerDownSpy).not.toHaveBeenCalled();
+
+    disposeTools();
+    dispose();
+  });
+
+  it("does NOT crash when workspace has no active history", () => {
+    const { signals, mockEngine, dispose } = createMockEditorParams("brush");
+    signals.workspace = {
+      getActiveEngine: () => mockEngine,
+      getActiveHistory: () => null,
+    };
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(signals as any);
+
+    const { tools, dispose: disposeTools } = createPointerTools({
+      getCanvasContainerRef: () => document.createElement("div"),
+      getCanvasRef: () => document.createElement("canvas"),
+      isSpacePressed: () => false,
+      isPanning: () => false,
+      isAltPressed: () => false,
+      stopMomentum: vi.fn(),
+      fitToScreenAndRender: vi.fn(),
+      commitBrushStroke: vi.fn(),
+    });
+
+    expect(() => tools.onCanvasPointerDown(makePointerEvent())).not.toThrow();
+    expect(handlePointerDownSpy).not.toHaveBeenCalled();
 
     disposeTools();
     dispose();

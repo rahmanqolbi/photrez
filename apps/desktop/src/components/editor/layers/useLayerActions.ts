@@ -199,6 +199,7 @@ export function useLayerActions() {
       if (engine.getLayers().length <= 1) return;
       history.commit(engine.snapshot(), "Delete Layer");
       engine.deleteLayer(activeId);
+      renderer.destroyTexture(activeId);
       scheduler.requestRender();
     }
   };

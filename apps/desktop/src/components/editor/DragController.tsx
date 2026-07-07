@@ -145,8 +145,25 @@ export function DragGlobalGuard() {
         e.preventDefault();
       }
     };
+
+    // Clean up stuck drag state when OS file drag is aborted outside the
+    // window (dragleave fires when cursor leaves the document, drop fires
+    // on successful drop as safety net). Without these listeners, dragKind
+    // stays "file" forever, blocking all subsequent drag operations.
+    const onDragEnd = () => {
+      if (dragController.state().dragKind === "file") {
+        dragController.endDrag();
+      }
+    };
+
     document.addEventListener("dragover", onDragOver);
-    onCleanup(() => document.removeEventListener("dragover", onDragOver));
+    document.addEventListener("dragleave", onDragEnd);
+    document.addEventListener("drop", onDragEnd);
+    onCleanup(() => {
+      document.removeEventListener("dragover", onDragOver);
+      document.removeEventListener("dragleave", onDragEnd);
+      document.removeEventListener("drop", onDragEnd);
+    });
   });
   return null;
 }

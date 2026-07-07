@@ -1,11 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { tempDir } from "@tauri-apps/api/path";
 import { encodeComposite } from "./exportDocument";
-import { writeFileBytes } from "@/tauri/native";
+import { writeFileBytes, deleteFile } from "@/tauri/native";
 import { showToast } from "./Toast";
 import type { DocumentEngine } from "@/engine/document";
 
 export async function printDocument(engine: DocumentEngine): Promise<void> {
+  let filePath: string | null = null;
+
   try {
     // 1. Render composite image
     const bytes = await encodeComposite(engine, "png", 100);
@@ -13,7 +15,7 @@ export async function printDocument(engine: DocumentEngine): Promise<void> {
     // 2. Save to temp file as PNG (better print verb support than WebP)
     const tmpDir = await tempDir();
     const filename = `photrez-print-${Date.now()}.png`;
-    const filePath = `${tmpDir}${filename}`;
+    filePath = `${tmpDir}${filename}`;
     await writeFileBytes(filePath, bytes);
 
     // 3. Call Rust command: shows native Windows print dialog via
@@ -23,5 +25,15 @@ export async function printDocument(engine: DocumentEngine): Promise<void> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     showToast(`Print failed: ${msg}`, "error");
+  } finally {
+    // Clean up temp file — prevents disk space leak on repeated prints.
+    // This runs even if print_image throws, so temp files never accumulate.
+    if (filePath) {
+      try {
+        await deleteFile(filePath);
+      } catch (cleanupErr) {
+        console.error("Failed to clean up temp print file:", cleanupErr);
+      }
+    }
   }
 }

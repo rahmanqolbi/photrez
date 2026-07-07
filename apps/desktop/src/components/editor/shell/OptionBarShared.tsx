@@ -8,7 +8,7 @@ export function ToggleBtn(props: { active: boolean; onChange: (v: boolean) => vo
     <button
       onClick={() => props.onChange(!props.active)}
       class={clsx(
-        "flex h-[24px] shrink-0 items-center gap-1 rounded-[4px] border px-2 text-[11px] font-medium transition-all duration-75 focus:outline-none focus-visible:ring-1 focus-visible:ring-editor-accent/70",
+        "flex h-[24px] shrink-0 items-center gap-1 rounded-[4px] border px-2 text-[11px] font-medium transition-all duration-75 focus:outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-editor-accent/70",
         props.active
           ? "border-editor-accent/80 bg-editor-accent/15 text-editor-text shadow-sm"
           : "border-transparent bg-transparent text-editor-text-dim hover:border-editor-field-border hover:bg-editor-field/40 hover:text-editor-text",
@@ -34,7 +34,7 @@ export function OptionCheckbox(props: { checked: boolean; onChange: (v: boolean)
         "flex size-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors",
         props.checked 
           ? "border-editor-accent bg-editor-accent text-white" 
-          : "border-editor-field-border bg-editor-field/50 shadow-inner peer-focus-visible:ring-1 peer-focus-visible:ring-editor-accent/70"
+          : "border-editor-field-border bg-editor-field/50 shadow-inner peer-focus-visible:outline peer-focus-visible:outline-1 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-editor-accent/70"
       )}>
         <Show when={props.checked}>
           <Icon name="check" class="size-3" strokeWidth={3.5} />

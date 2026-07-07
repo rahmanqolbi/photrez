@@ -156,7 +156,7 @@ export function Tooltip(props: TooltipProps) {
             <div class="flex items-center gap-1.5 whitespace-nowrap">
               <span>{props.content}</span>
               <Show when={props.shortcut}>
-                <kbd class="ml-1 px-1 py-0.5 rounded bg-white/10 text-white/50 text-[9px] font-mono font-semibold border border-white/5 uppercase leading-none">
+                <kbd class="ml-1 px-1 py-0.5 rounded bg-white/10 text-white/50 text-[9px] font-sans font-semibold border border-white/5 uppercase leading-none">
                   {props.shortcut}
                 </kbd>
               </Show>

@@ -34,7 +34,7 @@ pub(crate) fn get_contract_info() -> Result<Value, Value> {
 /// Returns a file path passed via CLI argument, if any. Used once, then cleared.
 #[tauri::command]
 pub(crate) fn get_pending_open_path(state: tauri::State<'_, CliState>) -> Result<Value, Value> {
-    let mut path = state.0.lock().unwrap();
+    let mut path = state.0.lock().unwrap_or_else(|e| e.into_inner());
     match path.take() {
         Some(p) => ok_response(serde_json::json!({ "path": p })),
         None => ok_response(serde_json::json!({ "path": null })),
@@ -156,7 +156,8 @@ pub(crate) fn load_project(path: String) -> Result<Value, Value> {
         let name = file.name().to_string();
         if name == "document.json" {
             use std::io::Read;
-            file.read_to_string(&mut document_json)
+            let mut json_limit = file.take(1024 * 1024); // 1MB cukup untuk JSON
+            json_limit.read_to_string(&mut document_json)
                 .map_err(|e| error_value("E_IO", &format!("Failed to read document.json: {}", e)))?;
         } else if name.starts_with("layers/") && name.ends_with(".png") {
             let layer_id = name.strip_prefix("layers/")
@@ -166,7 +167,9 @@ pub(crate) fn load_project(path: String) -> Result<Value, Value> {
 
             use std::io::Read;
             let mut bytes = Vec::new();
-            file.read_to_end(&mut bytes)
+            // Zip bomb protection: limit decompressed size per entry
+            let mut limit_reader = file.take(MAX_FILE_IO_BYTES);
+            limit_reader.read_to_end(&mut bytes)
                 .map_err(|e| error_value("E_IO", &format!("Failed to read layer file {}: {}", name, e)))?;
 
             use base64::Engine;
@@ -185,6 +188,15 @@ pub(crate) fn load_project(path: String) -> Result<Value, Value> {
     }))
 }
 
+/// Delete a file from disk. Used for cleaning up temp files after print.
+#[tauri::command]
+pub(crate) fn delete_file(path: String) -> Result<Value, Value> {
+    match std::fs::remove_file(&path) {
+        Ok(_) => ok_response(serde_json::json!({ "deleted": path })),
+        Err(e) => err_response("E_IO", &format!("Failed to delete file: {}", e)),
+    }
+}
+
 /// Close the application. Called by the frontend after all dirty documents
 /// have been handled. Bypasses CloseRequested handler entirely by exiting
 /// the Tauri app process directly.
@@ -199,6 +211,8 @@ pub(crate) fn close_app(app: tauri::AppHandle) -> Result<Value, Value> {
 /// Windows print dialog (same one used by Paint, Photoshop, etc.)
 #[tauri::command]
 pub(crate) fn print_image(path: String) -> Result<Value, Value> {
+    validate_path_extension(&path, &["png", "jpg", "jpeg", "pdf"], "print")?;
+
     let p = std::path::PathBuf::from(&path);
     if !p.exists() {
         return err_response("E_IO", &format!("File not found: {}", path));

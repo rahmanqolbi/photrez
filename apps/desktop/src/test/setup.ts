@@ -46,6 +46,12 @@
 import { beforeEach, afterEach, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 
+// ── Global mocks ─────────────────────────────────────────────────
+// Mock lucide-solid to prevent SolidJS "Client-only API" error in jsdom.
+// lucide-solid's icon components call DOM APIs that SolidJS's SSR
+// detection throws on. The mock renders simple <svg data-lucide-mock>.
+vi.mock("lucide-solid");
+
 beforeEach(() => {
   document.body.innerHTML = '';
   // jsdom 29 does not implement elementFromPoint — useCanvasLayerDrag relies

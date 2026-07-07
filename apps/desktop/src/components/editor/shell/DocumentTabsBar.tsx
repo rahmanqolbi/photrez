@@ -10,21 +10,89 @@ import { useDragController } from "../DragController";
 import { addFilesAsLayers, addLayerFromCrossDoc, createNewDocsFromFiles, type WorkspaceFacade } from "../crossDocLayerOps";
 import { showToast } from "../Toast";
 import { useDialog } from "../dialogs/DialogProvider";
+import { ContextMenu, type ContextMenuEntry } from "../ContextMenu";
+import { exportActiveDocument } from "../exportDocument";
 
 function ExportButton() {
-  const { setShowExportDialog } = useEditor();
+  const { setShowExportDialog, workspace, activeDocumentId, documents } = useEditor();
+  const [menuOpen, setMenuOpen] = createSignal(false);
+  const [menuPos, setMenuPos] = createSignal({ x: 0, y: 0 });
+
+  const getDocInfo = () => {
+    const id = activeDocumentId();
+    if (!id) return null;
+    const engine = workspace.getEngine(id);
+    if (!engine) return null;
+    const doc = documents().find((d) => d.id === id);
+    return { engine, name: doc?.displayName || "Untitled" };
+  };
+
+  const handleQuickExport = async (format: "png" | "jpeg" | "webp", quality: number) => {
+    const info = getDocInfo();
+    if (!info) {
+      showToast("No active document", "error");
+      return;
+    }
+    try {
+      const path = await exportActiveDocument(info.engine, info.name, format, quality);
+      if (path) {
+        showToast(`Saved to ${path.split(/[/\\]/).pop()}`, "info");
+      }
+    } catch (e) {
+      showToast(`Export failed: ${e instanceof Error ? e.message : String(e)}`, "error");
+    }
+  };
+
+  const menuItems: ContextMenuEntry[] = [
+    {
+      kind: "item",
+      label: "Quick Export as PNG",
+      onSelect: () => handleQuickExport("png", 100),
+    },
+    {
+      kind: "item",
+      label: "Quick Export as JPG",
+      onSelect: () => handleQuickExport("jpeg", 90),
+    },
+    {
+      kind: "item",
+      label: "Quick Export as WebP",
+      onSelect: () => handleQuickExport("webp", 90),
+    },
+    { kind: "separator" },
+    {
+      kind: "item",
+      label: "Export As...",
+      onSelect: () => setShowExportDialog(true),
+    },
+  ];
+
   return (
-    <button
-      onClick={() => setShowExportDialog(true)}
-      class="flex h-[28px] shrink-0 items-center gap-2 rounded-[4px] border border-editor-field-border px-3 text-[12.5px] text-editor-text transition-colors hover:bg-white/[0.045] hover:text-editor-text"
-    >
-      Export
-      <Icon
-        name="chevron-down"
-        class="size-3.5 text-editor-text-dim"
-        strokeWidth={1.75}
+    <>
+      <button
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setMenuPos({ x: rect.right - 210, y: rect.bottom + 4 });
+          setMenuOpen(true);
+        }}
+        class="flex h-[28px] shrink-0 items-center gap-2 rounded-[4px] border border-editor-field-border px-3 text-[12.5px] text-editor-text transition-colors hover:bg-white/[0.045] hover:text-editor-text"
+      >
+        Export
+        <Icon
+          name="chevron-down"
+          class="size-3.5 text-editor-text-dim"
+          strokeWidth={1.75}
+        />
+      </button>
+      <ContextMenu
+        open={menuOpen()}
+        x={menuPos().x}
+        y={menuPos().y}
+        ariaLabel="Export menu"
+        items={menuItems}
+        onClose={() => setMenuOpen(false)}
       />
-    </button>
+    </>
   );
 }
 
@@ -100,6 +168,13 @@ export function DocumentTabsBar() {
         tone: "danger",
       });
       if (!confirmed) return;
+    }
+
+    // Clean up WebGL textures for all layers in this document before removing
+    if (session) {
+      for (const layer of session.engine.getLayers()) {
+        renderer.destroyTexture(layer.id);
+      }
     }
 
     workspace.removeDocument(id);

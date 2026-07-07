@@ -240,7 +240,7 @@ export function DialogProvider(props: ParentProps) {
         <div class="flex flex-col gap-4 p-2">
           <div class="flex items-center justify-between text-[11px] text-editor-text-dim">
             <label class="font-semibold uppercase tracking-wider">Quality</label>
-            <span class="font-mono text-editor-text font-bold">{sliderValue()}%</span>
+            <span class="font-sans tabular-nums text-editor-text font-bold">{sliderValue()}%</span>
           </div>
           <div class="relative flex items-center h-[14px]">
             <Slider percent={sliderValue()} type="zoom" />
