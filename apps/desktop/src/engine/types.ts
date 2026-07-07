@@ -26,6 +26,7 @@ export interface LayerNode {
   visible: boolean;
   opacity: number;   // 0.0 - 1.0
   locked: boolean;
+  isBackground?: boolean;   // true for the initial document Background layer
   lockTransparency?: boolean;
   lockPosition?: boolean;
   lockRotation?: boolean;

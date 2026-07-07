@@ -8,6 +8,7 @@ export function createLayerNode(name: string, width: number, height: number): La
     visible: true,
     opacity: 1.0,
     locked: false,
+    isBackground: undefined,
     blendMode: "normal",
     transform: {
       x: 0,
@@ -52,6 +53,7 @@ export function duplicateLayerNode(layer: LayerNode): LayerNode {
     visible: layer.visible,
     opacity: layer.opacity,
     locked: false,
+    isBackground: undefined,
     blendMode: layer.blendMode,
     transform: { ...layer.transform },
     width: layer.width,
@@ -78,6 +80,7 @@ export function createMergedLayerNode(
     visible: true,
     opacity: 1.0,
     locked,
+    isBackground: undefined,
     blendMode,
     transform: {
       x: 0,
