@@ -2,6 +2,7 @@ import { Show } from "solid-js";
 import { clsx } from "clsx";
 import { Icon } from "../icons";
 import { Tooltip } from "../Tooltip";
+import { showToast } from "../Toast";
 import { LayerNode, DocumentModel } from "@/engine/types";
 import { LayerThumb } from "./LayerThumb";
 import { LAYER_DRAG_MIME, LayerDragPayload } from "../dragTypes";
@@ -244,12 +245,25 @@ export function LayerItem(props: LayerItemProps) {
 
       {/* Lock Indicator */}
       <button
-        onClick={(e) => props.onToggleLock(e, props.layer.id)}
+        onClick={(e) => {
+          if (props.layer.isBackground) {
+            e.stopPropagation();
+            showToast("Rename the layer to unlock", "warn");
+            return;
+          }
+          props.onToggleLock(e, props.layer.id);
+        }}
         class="text-editor-icon hover:text-editor-text size-6 flex items-center justify-center"
-        aria-label={props.layer.locked ? "Unlock Layer" : "Lock Layer"}
+        aria-label={
+          props.layer.isBackground
+            ? "Background layer (rename to unlock)"
+            : props.layer.locked
+              ? "Unlock Layer"
+              : "Lock Layer"
+        }
       >
         <Icon
-          name={props.layer.locked ? "lock" : "unlock"}
+          name={props.layer.locked || props.layer.isBackground ? "lock" : "unlock"}
           class="size-3.5 shrink-0"
           strokeWidth={1.75}
         />
