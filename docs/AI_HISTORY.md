@@ -1,3 +1,20 @@
+## [2026-07-07] Edge Auto-Scroll — Task 3: 9 unit tests for edge-scroll math [COMPLETE]
+
+### Category: TEST / FRONTEND
+
+### Module: UI / FRONTEND
+
+### What was done
+- Created `useEdgeScroll.test.ts` with `computeEdgeScroll` — a local pure function duplicating the math from production `applyEdgeScroll`
+- 9 tests: center zone null return, left/right/up directional scroll, proximity speed gradient, corner simultaneous axes, deterministic (zoom-independent) output, max speed at exact edges, right-edge negative direction
+- Fixed 3 test assertions from `toBe(0)` to `toBeCloseTo(0, 6)` to handle JavaScript `-0` vs `0` (`Object.is` equality) when the pointer is exactly at the vertical/horizontal center of the viewport
+
+### Files Changed
+- `apps/desktop/src/components/editor/canvas/__tests__/useEdgeScroll.test.ts` — NEW (78 lines, 9 tests)
+
+### Verification
+- ✅ All 9 tests pass
+
 ## [2026-07-07] Edge Auto-Scroll — Refactor: extract shared applyEdgeScroll [COMPLETE]
 
 ### Category: REFACTOR / FRONTEND

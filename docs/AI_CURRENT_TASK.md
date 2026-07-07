@@ -1,15 +1,11 @@
-# Current Task: Edge Auto-Scroll — Refactor: extract shared applyEdgeScroll [COMPLETE]
+# Current Task: Edge Auto-Scroll — Task 3: Write 7 unit tests for edge-scroll math [COMPLETE]
 
 **Status**: COMPLETE
 
 ## Task Description
-Fix code review findings for Task 2:
-1. Extract duplicate edge math into shared `applyEdgeScroll(dt)` helper
-2. Remove stale container ref capture in RAF closure
-3. Rename `MAX_SCROLL_SPX` to `MAX_EDGE_SCROLL_PX_PER_SEC`
+Write 9 unit tests for `computeEdgeScroll` — a local pure function in the test file that duplicates the edge-scroll math from production `applyEdgeScroll`. Tests cover: center zone returns null, all 4 directional edges, proximity speed gradient, corner scroll, deterministic output, max speed at exact edge, and right-edge direction.
 
 ## Verification
-- ✅ Build green (`bun run build` completed successfully)
-- ✅ All 2286 frontend tests passed
+- ✅ All 9 tests pass (bun run --filter photrez-desktop test --run)
 
 
