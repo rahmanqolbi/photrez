@@ -219,4 +219,150 @@ describe("DialogProvider", () => {
     expect(root.querySelector("[data-dialog-result]")).toHaveTextContent("null");
     dispose();
   });
+
+  describe("newDocument dialog", () => {
+    function NewDocHarness() {
+      const dialog = useDialog();
+      const [result, setResult] = createSignal<any>("pending");
+      return (
+        <>
+          <button
+            data-open-new-doc
+            onClick={() => void dialog.newDocument({ title: "Create Document" })
+              .then((v) => setResult(v))}
+          >
+            Open
+          </button>
+          <output data-dialog-result>{result() === "pending" ? "pending" : JSON.stringify(result())}</output>
+        </>
+      );
+    }
+
+    it("renders with default state and categories", async () => {
+      const root = document.createElement("div");
+      document.body.appendChild(root);
+      const dispose = render(() => <DialogProvider><NewDocHarness /></DialogProvider>, root);
+      root.querySelector<HTMLButtonElement>("[data-open-new-doc]")!.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      const dialog = document.querySelector<HTMLElement>('[data-dialog-kind="new-document"]')!;
+      expect(dialog).toBeTruthy();
+      expect(dialog.textContent).toContain("Create Document");
+      expect(dialog.textContent).toContain("Social Media");
+      expect(dialog.textContent).toContain("Web & Video");
+
+      // Verify default values in inputs
+      const nameInput = dialog.querySelector<HTMLInputElement>('input[type="text"]');
+      expect(nameInput?.value).toBe("New Project");
+
+      const numInputs = dialog.querySelectorAll<HTMLInputElement>('input[type="number"]');
+      expect(numInputs[0].value).toBe("1080"); // Width
+      expect(numInputs[1].value).toBe("1080"); // Height
+
+      dispose();
+    });
+
+    it("updates form fields when a preset card is clicked", async () => {
+      const root = document.createElement("div");
+      document.body.appendChild(root);
+      const dispose = render(() => <DialogProvider><NewDocHarness /></DialogProvider>, root);
+      root.querySelector<HTMLButtonElement>("[data-open-new-doc]")!.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      // Click the "FB Page Cover" preset button
+      const fbCoverBtn = Array.from(document.querySelectorAll("button"))
+        .find((btn) => btn.textContent?.includes("FB Page Cover"));
+      expect(fbCoverBtn).toBeTruthy();
+      fbCoverBtn!.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      const dialog = document.querySelector<HTMLElement>('[data-dialog-kind="new-document"]')!;
+      const nameInput = dialog.querySelector<HTMLInputElement>('input[type="text"]');
+      const numInputs = dialog.querySelectorAll<HTMLInputElement>('input[type="number"]');
+
+      expect(nameInput?.value).toBe("FB Page Cover");
+      expect(numInputs[0].value).toBe("1640");
+      expect(numInputs[1].value).toBe("664");
+
+      dispose();
+    });
+
+    it("switches category tabs to display different presets", async () => {
+      const root = document.createElement("div");
+      document.body.appendChild(root);
+      const dispose = render(() => <DialogProvider><NewDocHarness /></DialogProvider>, root);
+      root.querySelector<HTMLButtonElement>("[data-open-new-doc]")!.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      // Click "Web & Video" category tab
+      const webVideoTab = Array.from(document.querySelectorAll("button"))
+        .find((btn) => btn.textContent?.trim() === "Web & Video");
+      expect(webVideoTab).toBeTruthy();
+      webVideoTab!.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      // Check that "HD" and "4K" are present
+      expect(document.body.textContent).toContain("HD");
+      expect(document.body.textContent).toContain("4K");
+      expect(document.body.textContent).not.toContain("FB Page Cover"); // Social Media tab should be inactive
+
+      dispose();
+    });
+
+    it("resolves with form values when Create is clicked", async () => {
+      const root = document.createElement("div");
+      document.body.appendChild(root);
+      const dispose = render(() => <DialogProvider><NewDocHarness /></DialogProvider>, root);
+      root.querySelector<HTMLButtonElement>("[data-open-new-doc]")!.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      // Click Create button
+      const createBtn = Array.from(document.querySelectorAll("button"))
+        .find((btn) => btn.textContent?.trim() === "Create");
+      expect(createBtn).toBeTruthy();
+      createBtn!.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      expect(root.querySelector("[data-dialog-result]")?.textContent).toContain('"name":"New Project"');
+      expect(root.querySelector("[data-dialog-result]")?.textContent).toContain('"width":1080');
+      expect(root.querySelector("[data-dialog-result]")?.textContent).toContain('"height":1080');
+      expect(root.querySelector("[data-dialog-result]")?.textContent).toContain('"backgroundColor":"transparent"');
+
+      dispose();
+    });
+
+    it("resolves null when Cancel is clicked", async () => {
+      const root = document.createElement("div");
+      document.body.appendChild(root);
+      const dispose = render(() => <DialogProvider><NewDocHarness /></DialogProvider>, root);
+      root.querySelector<HTMLButtonElement>("[data-open-new-doc]")!.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      // Click Cancel button
+      const cancelBtn = Array.from(document.querySelectorAll("button"))
+        .find((btn) => btn.textContent?.trim() === "Cancel");
+      expect(cancelBtn).toBeTruthy();
+      cancelBtn!.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      expect(root.querySelector("[data-dialog-result]")).toHaveTextContent("null");
+      dispose();
+    });
+
+    it("resolves null on Escape key press", async () => {
+      const root = document.createElement("div");
+      document.body.appendChild(root);
+      const dispose = render(() => <DialogProvider><NewDocHarness /></DialogProvider>, root);
+      root.querySelector<HTMLButtonElement>("[data-open-new-doc]")!.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      const dialog = document.querySelector<HTMLElement>('[data-dialog-kind="new-document"]')!;
+      dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      expect(document.querySelector('[data-dialog-kind="new-document"]')).toBeNull();
+      expect(root.querySelector("[data-dialog-result]")).toHaveTextContent("null");
+      dispose();
+    });
+  });
 });
