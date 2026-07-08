@@ -4,23 +4,23 @@ import { DesktopDialog, DesktopDialogButton, desktopDialogFieldClass } from "./D
 import type { DialogRequest } from "./DialogProvider";
 
 const PRESETS = {
-  Social: [
+  "Social Media": [
     { name: "FB Page Cover", width: 1640, height: 664 },
     { name: "Insta Story", width: 1080, height: 1920 },
     { name: "Insta Portrait", width: 1080, height: 1350 },
     { name: "YouTube Thumbnail", width: 1280, height: 720 },
   ],
-  Print: [
-    { name: "A4", width: 2480, height: 3508 },
-    { name: "A5", width: 1748, height: 2480 },
-    { name: "Letter", width: 2550, height: 3300 },
-  ],
-  Screen: [
+  "Web & Video": [
     { name: "HD", width: 1920, height: 1080 },
     { name: "4K", width: 3840, height: 2160 },
     { name: "QHD", width: 2560, height: 1440 },
   ],
-  Photo: [
+  "Paper": [
+    { name: "A4", width: 2480, height: 3508 },
+    { name: "A5", width: 1748, height: 2480 },
+    { name: "Letter", width: 2550, height: 3300 },
+  ],
+  "Photography": [
     { name: "4x6 Landscape", width: 1800, height: 1200 },
     { name: "4x6 Portrait", width: 1200, height: 1800 },
   ],
@@ -30,7 +30,7 @@ type Category = keyof typeof PRESETS;
 const CATEGORIES = Object.keys(PRESETS) as Category[];
 
 export function NewDocumentDialogContent(props: { request: Extract<DialogRequest, { kind: "new-document" }> }) {
-  const [activeTab, setActiveTab] = createSignal<Category>("Social");
+  const [activeTab, setActiveTab] = createSignal<Category>("Social Media");
   const [docName, setDocName] = createSignal("New Project");
   const [width, setWidth] = createSignal(1080);
   const [height, setHeight] = createSignal(1080);
@@ -98,17 +98,19 @@ export function NewDocumentDialogContent(props: { request: Extract<DialogRequest
               <For each={PRESETS[activeTab()]}>
                 {(preset) => (
                   <button
-                    class="flex flex-col items-center justify-center gap-3 rounded-lg border border-editor-divider bg-editor-field hover:border-editor-accent/50 hover:bg-white/[0.06] p-4 text-center transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-editor-accent/70 h-32"
+                    class="flex flex-col items-center p-3 rounded-lg border border-editor-divider bg-editor-field hover:border-editor-accent/50 hover:bg-white/[0.06] text-center transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-editor-accent/70 h-32"
                     onClick={() => applyPreset(preset)}
                   >
-                    <div class="flex h-16 w-16 items-center justify-center">
-                      <div
-                        class="bg-white/90 rounded-[2px] shadow-sm border border-black/20"
-                        style={getCanvasStyle(preset.width, preset.height)}
-                      />
+                    <div class="flex-1 flex items-center justify-center w-full min-h-0">
+                      <div class="flex h-16 w-16 items-center justify-center">
+                        <div
+                          class="bg-white/90 rounded-[2px] shadow-sm border border-black/20"
+                          style={getCanvasStyle(preset.width, preset.height)}
+                        />
+                      </div>
                     </div>
-                    <div class="flex flex-col gap-0.5 items-center">
-                      <span class="text-[12px] font-medium text-editor-text leading-tight">{preset.name}</span>
+                    <div class="flex flex-col gap-0.5 items-center shrink-0 w-full mt-2">
+                      <span class="text-[12px] font-medium text-editor-text leading-tight truncate w-full px-1">{preset.name}</span>
                       <span class="text-[11px] text-editor-text-dim leading-tight">{preset.width} × {preset.height}</span>
                     </div>
                   </button>
