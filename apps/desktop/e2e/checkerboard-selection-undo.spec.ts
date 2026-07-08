@@ -16,11 +16,15 @@ import { expect, test } from "@playwright/test";
  * 6. Verifies canvas size is consistent (no "stretching" effect)
  */
 
-async function createBlankCanvas(page: import("@playwright/test").Page) {
+async function createBlankCanvas(page: import("@playwright/test").Page, width = 1080, height = 1080) {
   // Click "New Document" on the welcome screen → opens custom new-document dialog
   await page.getByRole("button", { name: "New Document" }).click();
   await page.locator('[role="dialog"]').waitFor({ state: "visible", timeout: 5000 });
-  // Click Create (accepts default 1080×1080)
+  // Fill Width and Height (the two number inputs in the right panel)
+  const numInputs = page.locator('[role="dialog"] input[type="number"]');
+  await numInputs.nth(0).fill(String(width));
+  await numInputs.nth(1).fill(String(height));
+  // Click Create
   await page.locator('[data-dialog-confirm]').click();
   await page.waitForTimeout(300);
 }
@@ -46,7 +50,7 @@ test.describe("canvas checkerboard — selection tool undo/redo", () => {
     const hideBtn = page.getByRole("button", { name: "Hide side panels" });
     if (await hideBtn.isVisible()) await hideBtn.click();
 
-    await createBlankCanvas(page, "400", "300");
+    await createBlankCanvas(page, 400, 300);
     await page.waitForTimeout(500);
 
     // === Phase 1: Initial state ===
@@ -124,7 +128,7 @@ test.describe("canvas checkerboard — selection tool undo/redo", () => {
     const hideBtn = page.getByRole("button", { name: "Hide side panels" });
     if (await hideBtn.isVisible()) await hideBtn.click();
 
-    await createBlankCanvas(page, "200", "200");
+    await createBlankCanvas(page, 200, 200);
     await page.waitForTimeout(500);
 
     const container = page.locator("#canvas-container");

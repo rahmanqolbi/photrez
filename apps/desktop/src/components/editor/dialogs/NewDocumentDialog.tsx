@@ -1,7 +1,7 @@
 import { createSignal, For } from "solid-js";
 import { clsx } from "clsx";
 import { DesktopDialog, DesktopDialogButton, desktopDialogFieldClass } from "./DesktopDialog";
-import type { DialogRequest } from "./DialogProvider";
+import type { DialogRequest, NewDocumentResult } from "./DialogProvider";
 
 const PRESETS = {
   "Social Media": [
@@ -29,7 +29,12 @@ const PRESETS = {
 type Category = keyof typeof PRESETS;
 const CATEGORIES = Object.keys(PRESETS) as Category[];
 
-export function NewDocumentDialogContent(props: { request: Extract<DialogRequest, { kind: "new-document" }> }) {
+export function NewDocumentDialogContent(props: {
+  request: Extract<DialogRequest, { kind: "new-document" }>;
+  onClose: (result: NewDocumentResult | null) => void;
+  dialogRef?: (element: HTMLDivElement) => void;
+  onKeyDown?: JSX.EventHandler<HTMLDivElement, KeyboardEvent>;
+}) {
   const [activeTab, setActiveTab] = createSignal<Category>("Social Media");
   const [docName, setDocName] = createSignal("New Project");
   const [width, setWidth] = createSignal(1080);
@@ -43,16 +48,16 @@ export function NewDocumentDialogContent(props: { request: Extract<DialogRequest
   };
 
   const handleCreate = () => {
-    props.request.resolve({
+    props.onClose({
       name: docName(),
       width: width(),
       height: height(),
-      backgroundColor: background(),
+      backgroundColor: background() as "white" | "transparent",
     });
   };
 
   const handleCancel = () => {
-    props.request.resolve(null);
+    props.onClose(null);
   };
 
   const getCanvasStyle = (w: number, h: number) => {
@@ -71,6 +76,8 @@ export function NewDocumentDialogContent(props: { request: Extract<DialogRequest
       onBackdropPointerDown={handleCancel}
       widthClass="w-[680px]"
       bodyClass="!p-0 flex flex-col h-[460px] overflow-hidden"
+      dialogRef={props.dialogRef}
+      onKeyDown={props.onKeyDown}
     >
       {/* MAIN CONTENT */}
       <div class="flex flex-1 min-h-0">

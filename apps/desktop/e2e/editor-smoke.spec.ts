@@ -222,7 +222,7 @@ test.describe("editor browser smoke", () => {
   test("brush stroke appears on the active layer", async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 820 });
     await page.goto("/");
-    await createBlankCanvas(page, "120", "90");
+    await createBlankCanvas(page, 120, 90);
     await page.getByRole("button", { name: "Move Tool" }).click();
 
     const container = page.locator("#canvas-container");

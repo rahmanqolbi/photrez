@@ -106,8 +106,8 @@ test.describe("Cross-doc drag and drop (browser)", () => {
   });
 
   test("hover tab 500ms during layer drag switches to that doc", async ({ page }) => {
-    await createBlankCanvas(page, "800", "600");
-    await createBlankCanvas(page, "1000", "800");
+    await createBlankCanvas(page, 800, 600);
+    await createBlankCanvas(page, 1000, 800);
     // Should have 2 tabs, second is active
     const tabs = page.locator("[data-document-tab]");
     await expect(tabs).toHaveCount(2);

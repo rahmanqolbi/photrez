@@ -52,7 +52,7 @@ test.describe("selection tool — delete + undo + redo (regression: 2026-06-14)"
     const hideBtn = page.getByRole("button", { name: "Hide side panels" });
     if (await hideBtn.isVisible()) await hideBtn.click();
 
-    await createBlankCanvas(page, "400", "300");
+    await createBlankCanvas(page, 400, 300);
 
     const container = page.locator("#canvas-container");
     const containerBox = await container.boundingBox();

@@ -858,6 +858,17 @@ export function DialogProvider(props: ParentProps) {
               {r.kind === "new-document" && (
                 <NewDocumentDialogContent
                   request={r as Extract<DialogRequest, { kind: "new-document" }>}
+                  onClose={(result) => {
+                    r.resolve(result);
+                    setCurrent(null);
+                    queueMicrotask(() => {
+                      restoreFocusTo?.focus();
+                      restoreFocusTo = null;
+                      showNext();
+                    });
+                  }}
+                  dialogRef={(element) => { dialogRef = element; }}
+                  onKeyDown={handleKeyDown}
                 />
               )}
             </Portal>
