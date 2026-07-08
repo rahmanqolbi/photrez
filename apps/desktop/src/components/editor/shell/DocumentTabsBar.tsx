@@ -181,20 +181,27 @@ export function DocumentTabsBar() {
     scheduler.requestRender();
   };
 
-  const handleNewTab = () => {
+  const handleNewTab = async () => {
     if (layerTransformSession()) {
       cancelActiveTransformSession();
     }
-    // instead of letting workspace.addDocument throw silently.
     if (workspace.isFull()) {
       showToast(`Workspace full — close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
       return;
     }
-    const nextId = `doc-${crypto.randomUUID()}`;
-    const name = `Untitled-${workspace.getDocumentCount() + 1}`;
-    const session = WorkspaceManager.createBlankDocument(nextId, name, 800, 600);
-    workspace.addDocument(session);
-    scheduler.requestRender();
+    const result = await dialog.newDocument();
+    if (result) {
+      const id = `doc-${crypto.randomUUID()}`;
+      const session = WorkspaceManager.createBlankDocument(
+        id,
+        result.name,
+        result.width,
+        result.height,
+        { backgroundColor: result.backgroundColor }
+      );
+      workspace.addDocument(session);
+      scheduler.requestRender();
+    }
   };
 
   // Pointer-driven hover detection (separate from HTML5 drag handlers

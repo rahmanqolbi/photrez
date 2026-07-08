@@ -4,6 +4,21 @@ import { EditorProvider } from "../EditorContext";
 import { DocumentTabsBar } from "../DocumentTabsBar";
 import { WorkspaceManager } from "@/engine/workspace";
 
+vi.mock("../../dialogs/DialogProvider", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../dialogs/DialogProvider")>();
+  return {
+    ...actual,
+    useDialog: () => ({
+      newDocument: vi.fn().mockResolvedValue({
+        name: "Untitled-1",
+        width: 800,
+        height: 600,
+        backgroundColor: "transparent",
+      }),
+    }),
+  };
+});
+
 function qs<T extends HTMLElement>(root: HTMLElement, sel: string): T | null {
   return root.querySelector(sel) as T | null;
 }
