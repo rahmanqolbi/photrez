@@ -69,6 +69,10 @@ export function NewDocumentDialogContent(props: {
     };
   };
 
+  const isPresetSelected = (preset: { name: string, width: number, height: number }) => {
+    return docName() === preset.name && width() === preset.width && height() === preset.height;
+  };
+
   return (
     <DesktopDialog
       title={props.request.options.title ?? "New Document"}
@@ -105,13 +109,23 @@ export function NewDocumentDialogContent(props: {
               <For each={PRESETS[activeTab()]}>
                 {(preset) => (
                   <button
-                    class="flex flex-col items-center p-3 rounded-lg border border-editor-divider bg-editor-field hover:border-editor-accent/50 hover:bg-white/[0.06] text-center transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-editor-accent/70 h-32"
+                    class={clsx(
+                      "flex flex-col items-center p-3 rounded-lg border text-center transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-editor-accent/70 h-32",
+                      isPresetSelected(preset)
+                        ? "border-editor-accent bg-white/[0.08]"
+                        : "border-editor-divider bg-black/15 hover:border-editor-accent/50 hover:bg-white/[0.04]"
+                    )}
                     onClick={() => applyPreset(preset)}
                   >
                     <div class="flex-1 flex items-center justify-center w-full min-h-0">
                       <div class="flex h-16 w-16 items-center justify-center">
                         <div
-                          class="bg-white/90 rounded-[2px] shadow-sm border border-black/20"
+                          class={clsx(
+                            "rounded-[2px] shadow-sm border transition-colors",
+                            isPresetSelected(preset)
+                              ? "bg-white border-black/40"
+                              : "bg-white/90 border-black/20"
+                          )}
                           style={getCanvasStyle(preset.width, preset.height)}
                         />
                       </div>

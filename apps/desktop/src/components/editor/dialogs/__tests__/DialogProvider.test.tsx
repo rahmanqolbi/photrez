@@ -364,5 +364,106 @@ describe("DialogProvider", () => {
       expect(root.querySelector("[data-dialog-result]")).toHaveTextContent("null");
       dispose();
     });
+
+    it("resolves with custom values when inputs are manually changed", async () => {
+      const root = document.createElement("div");
+      document.body.appendChild(root);
+      const dispose = render(() => <DialogProvider><NewDocHarness /></DialogProvider>, root);
+      root.querySelector<HTMLButtonElement>("[data-open-new-doc]")!.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      const dialog = document.querySelector<HTMLElement>('[data-dialog-kind="new-document"]')!;
+      const nameInput = dialog.querySelector<HTMLInputElement>('input[type="text"]')!;
+      const numInputs = dialog.querySelectorAll<HTMLInputElement>('input[type="number"]');
+      const widthInput = numInputs[0];
+      const heightInput = numInputs[1];
+      const bgSelect = dialog.querySelector<HTMLSelectElement>('select')!;
+
+      // Change values
+      nameInput.value = "Custom Name";
+      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      widthInput.value = "800";
+      widthInput.dispatchEvent(new Event("input", { bubbles: true }));
+      heightInput.value = "600";
+      heightInput.dispatchEvent(new Event("input", { bubbles: true }));
+      bgSelect.value = "white";
+      bgSelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      // Click Create button
+      const createBtn = Array.from(document.querySelectorAll("button"))
+        .find((btn) => btn.textContent?.trim() === "Create")!;
+      createBtn.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      expect(root.querySelector("[data-dialog-result]")?.textContent).toContain('"name":"Custom Name"');
+      expect(root.querySelector("[data-dialog-result]")?.textContent).toContain('"width":800');
+      expect(root.querySelector("[data-dialog-result]")?.textContent).toContain('"height":600');
+      expect(root.querySelector("[data-dialog-result]")?.textContent).toContain('"backgroundColor":"white"');
+
+      dispose();
+    });
+
+    it("sanitizes invalid or empty numeric inputs to 1", async () => {
+      const root = document.createElement("div");
+      document.body.appendChild(root);
+      const dispose = render(() => <DialogProvider><NewDocHarness /></DialogProvider>, root);
+      root.querySelector<HTMLButtonElement>("[data-open-new-doc]")!.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      const dialog = document.querySelector<HTMLElement>('[data-dialog-kind="new-document"]')!;
+      const numInputs = dialog.querySelectorAll<HTMLInputElement>('input[type="number"]');
+      const widthInput = numInputs[0];
+
+      // Enter empty values (which parse to NaN)
+      widthInput.value = "";
+      widthInput.dispatchEvent(new Event("input"));
+
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      // Click Create button
+      const createBtn = Array.from(document.querySelectorAll("button"))
+        .find((btn) => btn.textContent?.trim() === "Create")!;
+      createBtn.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      // Empty input resolves to fallback value 1.
+      expect(root.querySelector("[data-dialog-result]")?.textContent).toContain('"width":1');
+
+      dispose();
+    });
+
+    it("applies active CSS classes when a preset matches the current state", async () => {
+      const root = document.createElement("div");
+      document.body.appendChild(root);
+      const dispose = render(() => <DialogProvider><NewDocHarness /></DialogProvider>, root);
+      root.querySelector<HTMLButtonElement>("[data-open-new-doc]")!.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      const fbCoverBtn = Array.from(document.querySelectorAll("button"))
+        .find((btn) => btn.textContent?.includes("FB Page Cover"))!;
+      
+      // Initially, it should not have the active border style
+      expect(fbCoverBtn.className.split(" ")).not.toContain("border-editor-accent");
+
+      // Click to select it
+      fbCoverBtn.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      // Should now have active border class
+      expect(fbCoverBtn.className.split(" ")).toContain("border-editor-accent");
+
+      // Modify the text input to make the state custom
+      const nameInput = document.querySelector<HTMLInputElement>('input[type="text"]')!;
+      nameInput.value = "Custom Name Override";
+      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      // It should revert to the default border style
+      expect(fbCoverBtn.className.split(" ")).not.toContain("border-editor-accent");
+
+      dispose();
+    });
   });
 });
