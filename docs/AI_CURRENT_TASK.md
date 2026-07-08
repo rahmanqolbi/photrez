@@ -1,11 +1,12 @@
-# Current Task: Edge Auto-Scroll — Task 3: Write 7 unit tests for edge-scroll math [COMPLETE]
+# Current Task: Documentation Polish — Update README screenshots references and captions [COMPLETE]
 
 **Status**: COMPLETE
 
 ## Task Description
-Write 9 unit tests for `computeEdgeScroll` — a local pure function in the test file that duplicates the edge-scroll math from production `applyEdgeScroll`. Tests cover: center zone returns null, all 4 directional edges, proximity speed gradient, corner scroll, deterministic output, max speed at exact edge, and right-edge direction.
+Update the README.md to swap the screenshots order and fix their descriptive captions, ensuring the full editor workspace is highlighted first as the primary screenshot.
 
 ## Verification
-- ✅ All 9 tests pass (bun run --filter photrez-desktop test --run)
+- ✅ README.md updated with correct image swaps and descriptive captions
+- ✅ Verified git diff encoding and formatting are clean and valid
 
 

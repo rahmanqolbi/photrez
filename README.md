@@ -35,11 +35,11 @@ Photrez is currently **pre-release software**. The editor is usable in developme
 
 ## Screenshots
 
-![Photrez Editor](docs/screenshots/hero.png)
-*Main editor workspace — canvas, toolbar, layers, and document tabs*
+![Photrez Editor](docs/screenshots/layers.png)
+*Main editor workspace showing an open document with the transform options, layers list, and navigator*
 
-![Layers & History](docs/screenshots/layers.png)
-*Layers panel and history*
+![Start Screen](docs/screenshots/hero.png)
+*Start screen showing the document creation dialog and empty workspace*
 
 ## Current Capabilities
 

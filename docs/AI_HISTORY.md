@@ -1,3 +1,19 @@
+## [2026-07-08] Documentation — Update README screenshots [COMPLETE]
+
+### Category: DOCUMENTATION
+
+### Module: Documentation
+
+### What was done
+- Swapped references to `hero.png` and `layers.png` in README.md
+- Updated captions to match actual visual content (`layers.png` represents the active workspace and `hero.png` represents the start screen)
+
+### Files Changed
+- `README.md` — Swapped image URLs and updated captions
+
+### Verification
+- Checked git diff to ensure clean UTF-8 markdown file changes
+
 ## [2026-07-07] Edge Auto-Scroll — Task 3: 9 unit tests for edge-scroll math [COMPLETE]
 
 ### Category: TEST / FRONTEND

@@ -1,4 +1,5 @@
 import { createSignal, For } from "solid-js";
+import { clsx } from "clsx";
 import { DesktopDialog, DesktopDialogButton, desktopDialogFieldClass } from "./DesktopDialog";
 import type { DialogRequest } from "./DialogProvider";
 
@@ -54,112 +55,132 @@ export function NewDocumentDialogContent(props: { request: Extract<DialogRequest
     props.request.resolve(null);
   };
 
+  const getCanvasStyle = (w: number, h: number) => {
+    const maxDim = 64; // Max size for the preview
+    const scale = maxDim / Math.max(w, h);
+    return {
+      width: `${Math.max(20, Math.round(w * scale))}px`,
+      height: `${Math.max(20, Math.round(h * scale))}px`,
+    };
+  };
+
   return (
     <DesktopDialog
       title={props.request.options.title ?? "New Document"}
       kind="new-document"
       onBackdropPointerDown={handleCancel}
-      widthClass="w-[720px]"
-      bodyClass="p-0 flex h-[480px] overflow-hidden"
+      widthClass="w-[680px]"
+      bodyClass="!p-0 flex flex-col h-[460px] overflow-hidden"
     >
-      {/* LEFT PANEL */}
-      <div class="flex-1 border-r border-editor-divider bg-editor-panel flex flex-col min-w-0">
-        <div class="flex h-10 border-b border-editor-divider px-2 items-center gap-1 shrink-0">
-          <For each={CATEGORIES}>
-            {(cat) => (
-              <button
-                class={`px-3 py-1.5 text-[12px] font-medium rounded-md transition-colors ${
-                  activeTab() === cat
-                    ? "bg-white/[0.08] text-editor-text"
-                    : "text-editor-text-dim hover:text-editor-text hover:bg-white/[0.04]"
-                }`}
-                onClick={() => setActiveTab(cat)}
-              >
-                {cat}
-              </button>
-            )}
-          </For>
-        </div>
-        <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
-          <div class="grid grid-cols-3 gap-3">
-            <For each={PRESETS[activeTab()]}>
-              {(preset) => (
+      {/* MAIN CONTENT */}
+      <div class="flex flex-1 min-h-0">
+        {/* LEFT PANEL */}
+        <div class="flex-1 border-r border-editor-divider bg-editor-panel flex flex-col min-w-0">
+          <div class="flex h-[44px] shrink-0 items-center border-b border-editor-divider">
+            <For each={CATEGORIES}>
+              {(cat) => (
                 <button
-                  class="flex flex-col items-center justify-center gap-2 rounded-lg border border-editor-divider bg-editor-field hover:border-editor-accent/50 hover:bg-white/[0.06] p-4 text-center transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-editor-accent/70"
-                  onClick={() => applyPreset(preset)}
+                  class={clsx(
+                    "relative flex h-full items-center px-5 text-[12px] font-medium transition-colors",
+                    activeTab() === cat
+                      ? "text-editor-text after:absolute after:bottom-0 after:inset-x-0 after:h-[2px] after:bg-editor-accent"
+                      : "text-editor-text-dim hover:bg-white/[0.02] hover:text-editor-text"
+                  )}
+                  onClick={() => setActiveTab(cat)}
                 >
-                  <div class="flex h-16 w-16 items-center justify-center rounded border border-editor-field-border bg-black/40">
-                    <span class="text-[10px] text-editor-text-dim">{preset.width} × {preset.height}</span>
-                  </div>
-                  <span class="text-[11px] font-medium text-editor-text">{preset.name}</span>
+                  {cat}
                 </button>
               )}
             </For>
           </div>
+          <div class="flex-1 overflow-y-auto p-5 custom-scrollbar">
+            <div class="grid grid-cols-3 gap-3">
+              <For each={PRESETS[activeTab()]}>
+                {(preset) => (
+                  <button
+                    class="flex flex-col items-center justify-center gap-3 rounded-lg border border-editor-divider bg-editor-field hover:border-editor-accent/50 hover:bg-white/[0.06] p-4 text-center transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-editor-accent/70 h-32"
+                    onClick={() => applyPreset(preset)}
+                  >
+                    <div class="flex h-16 w-16 items-center justify-center">
+                      <div
+                        class="bg-white/90 rounded-[2px] shadow-sm border border-black/20"
+                        style={getCanvasStyle(preset.width, preset.height)}
+                      />
+                    </div>
+                    <div class="flex flex-col gap-0.5 items-center">
+                      <span class="text-[12px] font-medium text-editor-text leading-tight">{preset.name}</span>
+                      <span class="text-[11px] text-editor-text-dim leading-tight">{preset.width} × {preset.height}</span>
+                    </div>
+                  </button>
+                )}
+              </For>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT PANEL (Form) */}
+        <div class="w-[240px] shrink-0 bg-editor-topbar/30 flex flex-col p-4 gap-4">
+          <div class="flex flex-col gap-4 flex-1">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-editor-text-dim">Name</label>
+              <input
+                type="text"
+                class={desktopDialogFieldClass}
+                value={docName()}
+                onInput={(e) => setDocName(e.currentTarget.value)}
+              />
+            </div>
+            <div class="flex gap-3">
+              <div class="flex flex-col gap-1.5 flex-1 min-w-0">
+                <label class="text-[12px] font-medium text-editor-text-dim">Width</label>
+                <div class="relative">
+                  <input
+                    type="number"
+                    class={desktopDialogFieldClass + " pr-6"}
+                    value={width()}
+                    onInput={(e) => setWidth(parseInt(e.currentTarget.value) || 1)}
+                    min="1"
+                  />
+                  <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-editor-text-dim pointer-events-none">px</span>
+                </div>
+              </div>
+              <div class="flex flex-col gap-1.5 flex-1 min-w-0">
+                <label class="text-[12px] font-medium text-editor-text-dim">Height</label>
+                <div class="relative">
+                  <input
+                    type="number"
+                    class={desktopDialogFieldClass + " pr-6"}
+                    value={height()}
+                    onInput={(e) => setHeight(parseInt(e.currentTarget.value) || 1)}
+                    min="1"
+                  />
+                  <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-editor-text-dim pointer-events-none">px</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[12px] font-medium text-editor-text-dim">Background</label>
+              <select
+                class={desktopDialogFieldClass}
+                value={background()}
+                onChange={(e) => setBackground(e.currentTarget.value as any)}
+              >
+                <option value="transparent">Transparent</option>
+                <option value="white">White</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* RIGHT PANEL */}
-      <div class="w-[240px] shrink-0 bg-editor-topbar/30 flex flex-col p-5 gap-5">
-        <div class="flex flex-col gap-4 flex-1">
-          <div class="flex flex-col gap-1.5">
-            <label class="text-[11px] font-medium text-editor-text-dim">Name</label>
-            <input
-              type="text"
-              class={desktopDialogFieldClass}
-              value={docName()}
-              onInput={(e) => setDocName(e.currentTarget.value)}
-            />
-          </div>
-          <div class="flex gap-3">
-            <div class="flex flex-col gap-1.5 flex-1 min-w-0">
-              <label class="text-[11px] font-medium text-editor-text-dim">Width</label>
-              <div class="relative">
-                <input
-                  type="number"
-                  class={desktopDialogFieldClass + " pr-6"}
-                  value={width()}
-                  onInput={(e) => setWidth(parseInt(e.currentTarget.value) || 1)}
-                  min="1"
-                />
-                <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-editor-text-dim pointer-events-none">px</span>
-              </div>
-            </div>
-            <div class="flex flex-col gap-1.5 flex-1 min-w-0">
-              <label class="text-[11px] font-medium text-editor-text-dim">Height</label>
-              <div class="relative">
-                <input
-                  type="number"
-                  class={desktopDialogFieldClass + " pr-6"}
-                  value={height()}
-                  onInput={(e) => setHeight(parseInt(e.currentTarget.value) || 1)}
-                  min="1"
-                />
-                <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-editor-text-dim pointer-events-none">px</span>
-              </div>
-            </div>
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <label class="text-[11px] font-medium text-editor-text-dim">Background</label>
-            <select
-              class={desktopDialogFieldClass}
-              value={background()}
-              onChange={(e) => setBackground(e.currentTarget.value as any)}
-            >
-              <option value="transparent">Transparent</option>
-              <option value="white">White</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="flex flex-col gap-2 pt-4 border-t border-editor-divider">
-          <DesktopDialogButton variant="primary" class="w-full h-8" onClick={handleCreate}>
-            Create
-          </DesktopDialogButton>
-          <DesktopDialogButton class="w-full h-8" onClick={handleCancel}>
-            Cancel
-          </DesktopDialogButton>
-        </div>
+      {/* FOOTER */}
+      <div class="h-14 border-t border-editor-divider bg-editor-panel flex items-center justify-end px-5 gap-3 shrink-0">
+        <DesktopDialogButton class="w-24 h-8" onClick={handleCancel}>
+          Cancel
+        </DesktopDialogButton>
+        <DesktopDialogButton variant="primary" class="w-24 h-8" onClick={handleCreate}>
+          Create
+        </DesktopDialogButton>
       </div>
     </DesktopDialog>
   );
