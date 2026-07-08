@@ -1,4 +1,4 @@
-import { createSignal, For } from "solid-js";
+import { createSignal, For, type JSX } from "solid-js";
 import { clsx } from "clsx";
 import { DesktopDialog, DesktopDialogButton, desktopDialogFieldClass } from "./DesktopDialog";
 import type { DialogRequest, NewDocumentResult } from "./DialogProvider";

@@ -13,7 +13,7 @@
 
 import { expect, test, Page } from "@playwright/test";
 
-async function createBlankCanvas(page: Page) {
+async function createBlankCanvas(page: Page, width = 1080, height = 1080) {
   // Check if the welcome screen's "New Document" button is visible
   const welcomeBtn = page.getByRole("button", { name: "New Document" });
   if (await welcomeBtn.isVisible().catch(() => false)) {
@@ -24,6 +24,11 @@ async function createBlankCanvas(page: Page) {
     await page.getByRole("button", { name: "New document" }).click();
   }
   await page.locator('[role="dialog"]').waitFor({ state: "visible", timeout: 5000 });
+  // Fill Width and Height (the two number inputs in the right panel)
+  const numInputs = page.locator('[role="dialog"] input[type="number"]');
+  await numInputs.nth(0).fill(String(width));
+  await numInputs.nth(1).fill(String(height));
+  // Click Create
   await page.locator('[data-dialog-confirm]').click();
   await page.waitForTimeout(300);
 }
