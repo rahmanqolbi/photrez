@@ -345,7 +345,7 @@ describe("LayerItem wiring (in-app layer drag)", () => {
     return dt;
   }
 
-  it("onDragStart calls dragController.beginLayerDrag with the layer payload", () => {
+  it("onDragStart calls dragController.beginLayerDrag with the layer payload", { timeout: 15000 }, () => {
     renderLayer();
     const layerEl = container.querySelector("[data-layer-idx='0']") as HTMLElement;
     expect(layerEl).not.toBeNull();

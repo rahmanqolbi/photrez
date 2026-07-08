@@ -1,3 +1,46 @@
+## [2026-07-08] CI — Fix E2E button label mismatch + jsdom timeout [COMPLETE]
+
+### Category: TEST / CI
+
+### Module: Test
+
+### Root Cause 1: jsdom test timeout
+Cross-doc drag wiring test flaky in CI — `onDragStart calls dragController.beginLayerDrag` timed out at default 5000ms.
+
+### Root Cause 2: E2E all-red
+Commit `72dec1b` ("new document dialog") renamed the welcome screen button from "New Canvas" to "New Document" AND changed the document creation flow from browser `prompt()` to a custom modal dialog. All 7 E2E test files still referenced the old button name and used `page.on("dialog")` handlers that no longer fire.
+
+### What was done
+**jsdom fix:**
+- Added `{ timeout: 15000 }` to the flaky cross-doc drag wiring test in `crossDocDragDropWiring.test.tsx`
+
+**E2E fixes across 7 files:**
+- Changed all `getByRole("button", { name: "New Canvas" })` → `"New Document"`
+- Replaced `page.on("dialog")` prompt-based creation with custom dialog interaction: click welcome screen "New Document" → wait for dialog → fill Width/Height inputs (where needed) → click `[data-dialog-confirm]` ("Create")
+- `dialog-accessibility.spec.ts`: fixed "Close" button selector from `getByRole("button", { name: "Close" })` (matched 2 elements: X close + confirm "Close") to `locator('[data-dialog-confirm]')`
+- `cross-doc-drag-drop.spec.ts`: simplified 2-document creation — checks welcome screen visibility first, falls back to tabs bar button; both paths handle the custom dialog
+- `editor-smoke.spec.ts`: fixed assertion + 2 export test creation flows
+- `checkerboard.spec.ts`, `checkerboard-selection-undo.spec.ts`, `selection-undo-redo.spec.ts`, `native-e2e-smoke.spec.ts`: replaced `page.evaluate(__photrezEditor)` with dialog flow (works in production)
+- Removed unused `Dialog` import from `cross-doc-drag-drop.spec.ts`
+
+### Files Changed
+| File | Change |
+|------|--------|
+| `apps/desktop/src/components/editor/__tests__/crossDocDragDropWiring.test.tsx` | Added `{ timeout: 15000 }` |
+| `apps/desktop/e2e/checkerboard.spec.ts` | Replaced prompt-based creation with dialog flow |
+| `apps/desktop/e2e/checkerboard-selection-undo.spec.ts` | Same |
+| `apps/desktop/e2e/cross-doc-drag-drop.spec.ts` | Reworked 2-doc creation + removed unused Dialog import |
+| `apps/desktop/e2e/dialog-accessibility.spec.ts` | Replaced `page.evaluate` + fixed Close selector |
+| `apps/desktop/e2e/editor-smoke.spec.ts` | Fixed assertion + 2 export dialog creation flows |
+| `apps/desktop/e2e/native-e2e-smoke.spec.ts` | Replaced `page.evaluate` with dialog flow |
+| `apps/desktop/e2e/selection-undo-redo.spec.ts` | Replaced prompt with dialog flow + fill width/height |
+
+### Verification
+- ✅ No `page.on("dialog")` patterns remaining in E2E tests
+- ✅ No `getByRole(..., "New Canvas")` references remaining in E2E tests
+- ✅ All 7 E2E test files use consistent custom-dialog creation pattern
+- ✅ dialog-accessibility Close selector uses `[data-dialog-confirm]` (single match)
+
 ## [2026-07-08] Documentation — Update README screenshots [COMPLETE]
 
 ### Category: DOCUMENTATION

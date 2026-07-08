@@ -11,27 +11,21 @@
 //  2. Hover tab 500ms → auto-switch
 //  3. Drop on invalid zone (tool rail) → no-op
 
-import { expect, test, Dialog, Page } from "@playwright/test";
+import { expect, test, Page } from "@playwright/test";
 
-async function createBlankCanvas(page: Page, width = "800", height = "600") {
-  const newCanvasButton = page.getByRole("button", { name: "New Canvas" });
-  if (!(await newCanvasButton.isVisible().catch(() => false))) {
+async function createBlankCanvas(page: Page) {
+  // Check if the welcome screen's "New Document" button is visible
+  const welcomeBtn = page.getByRole("button", { name: "New Document" });
+  if (await welcomeBtn.isVisible().catch(() => false)) {
+    // First document: click welcome screen button → opens dialog → click Create
+    await welcomeBtn.click();
+  } else {
+    // Subsequent document: click tabs bar "New document" button → opens dialog
     await page.getByRole("button", { name: "New document" }).click();
-    await page.waitForTimeout(100);
-    return;
   }
-
-  const promptValues = [width, height];
-  const dialogHandler = async (dialog: Dialog) => {
-    await dialog.accept(promptValues.shift() ?? height);
-  };
-  page.on("dialog", dialogHandler);
-  try {
-    await newCanvasButton.click();
-    await page.waitForTimeout(100);
-  } finally {
-    page.off("dialog", dialogHandler);
-  }
+  await page.locator('[role="dialog"]').waitFor({ state: "visible", timeout: 5000 });
+  await page.locator('[data-dialog-confirm]').click();
+  await page.waitForTimeout(300);
 }
 
 async function getLayerCount(page: Page): Promise<number> {

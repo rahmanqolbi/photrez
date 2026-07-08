@@ -8,13 +8,13 @@ import { readRenderedPixelAtRatio } from "./helpers/screenshotPixels";
  * 2. NOT cover the pasteboard (midnight color outside artboard)
  */
 
-async function createBlankCanvas(page: import("@playwright/test").Page, width = "200", height = "200") {
-  const promptValues = [width, height];
-  page.on("dialog", async (dialog) => {
-    const next = promptValues.shift() ?? height;
-    await dialog.accept(next);
-  });
-  await page.getByRole("button", { name: "New Canvas" }).click();
+async function createBlankCanvas(page: import("@playwright/test").Page) {
+  // Click "New Document" on the welcome screen → opens custom new-document dialog
+  await page.getByRole("button", { name: "New Document" }).click();
+  await page.locator('[role="dialog"]').waitFor({ state: "visible", timeout: 5000 });
+  // Click Create (accepts default 1080×1080)
+  await page.locator('[data-dialog-confirm]').click();
+  await page.waitForTimeout(300);
 }
 
 async function samplePixels(page: import("@playwright/test").Page) {
@@ -41,7 +41,7 @@ test.describe("canvas checkerboard visibility", () => {
     await page.setViewportSize({ width: 1100, height: 760 });
     await page.goto("/");
 
-    // Hide right side panel so New Canvas is clickable
+    // Hide right side panel so New Document is clickable
     const hideBtn = page.getByRole("button", { name: "Hide side panels" });
     if (await hideBtn.isVisible()) await hideBtn.click();
 

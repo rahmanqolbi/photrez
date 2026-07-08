@@ -16,13 +16,13 @@ import { expect, test } from "@playwright/test";
  * 6. Verifies canvas size is consistent (no "stretching" effect)
  */
 
-async function createBlankCanvas(page: import("@playwright/test").Page, width = "400", height = "300") {
-  const promptValues = [width, height];
-  page.on("dialog", async (dialog) => {
-    const next = promptValues.shift() ?? height;
-    await dialog.accept(next);
-  });
-  await page.getByRole("button", { name: "New Canvas" }).click();
+async function createBlankCanvas(page: import("@playwright/test").Page) {
+  // Click "New Document" on the welcome screen → opens custom new-document dialog
+  await page.getByRole("button", { name: "New Document" }).click();
+  await page.locator('[role="dialog"]').waitFor({ state: "visible", timeout: 5000 });
+  // Click Create (accepts default 1080×1080)
+  await page.locator('[data-dialog-confirm]').click();
+  await page.waitForTimeout(300);
 }
 
 function sampleCanvasSize(page: import("@playwright/test").Page) {

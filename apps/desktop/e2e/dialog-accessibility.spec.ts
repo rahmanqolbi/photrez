@@ -1,21 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 async function createBlankCanvas(page: import("@playwright/test").Page) {
-  await page.evaluate(async () => {
-    const editor = (window as unknown as {
-      __photrezEditor?: {
-        workspace: { addDocument: (doc: unknown) => void };
-        scheduler: { requestRender: () => void };
-      };
-    }).__photrezEditor;
-    if (!editor) throw new Error("Editor context handle not found on window");
-    const { WorkspaceManager } = await import("/src/engine/workspace");
-    const id = `doc-${crypto.randomUUID()}`;
-    const name = "Untitled Canvas";
-    const session = WorkspaceManager.createBlankDocument(id, name, 320, 240);
-    editor.workspace.addDocument(session);
-    editor.scheduler.requestRender();
-  });
+  // Click "New Document" on the welcome screen → opens custom new-document dialog
+  await page.getByRole("button", { name: "New Document" }).click();
+  await page.locator('[role="dialog"]').waitFor({ state: "visible", timeout: 5000 });
+  // Click Create (accepts default 1080×1080)
+  await page.locator('[data-dialog-confirm]').click();
+  await page.waitForTimeout(300);
 }
 
 test.describe("Precision Workbench dialogs", () => {
@@ -27,7 +18,7 @@ test.describe("Precision Workbench dialogs", () => {
     const dialog = page.getByRole("dialog", { name: "About Photrez" });
     await expect(dialog).toBeVisible();
     await expect(dialog).toHaveAttribute("data-dialog-kind", "alert");
-    await expect(dialog.getByRole("button", { name: "Close", exact: true })).toBeFocused();
+    await expect(dialog.locator('[data-dialog-confirm]')).toBeFocused();
 
     const geometry = await dialog.evaluate((element) => {
       const rect = element.getBoundingClientRect();

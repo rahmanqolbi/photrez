@@ -27,13 +27,16 @@ import { readRenderedPixel } from "./helpers/screenshotPixels";
  *  - redo → pixel color MUST match the post-delete color
  */
 
-async function createBlankCanvas(page: import("@playwright/test").Page, width = "400", height = "300") {
-  const promptValues = [width, height];
-  page.on("dialog", async (dialog) => {
-    const next = promptValues.shift() ?? height;
-    await dialog.accept(next);
-  });
-  await page.getByRole("button", { name: "New Canvas" }).click();
+async function createBlankCanvas(page: import("@playwright/test").Page, width = 400, height = 300) {
+  // Click "New Document" on the welcome screen → opens custom new-document dialog
+  await page.getByRole("button", { name: "New Document" }).click();
+  await page.locator('[role="dialog"]').waitFor({ state: "visible", timeout: 5000 });
+  // Fill Width and Height (the two number inputs in the right panel)
+  const numInputs = page.locator('[role="dialog"] input[type="number"]');
+  await numInputs.nth(0).fill(String(width));
+  await numInputs.nth(1).fill(String(height));
+  // Click Create
+  await page.locator('[data-dialog-confirm]').click();
   await page.waitForTimeout(300);
 }
 

@@ -13,22 +13,13 @@ import { readRenderedPixelAtRatio } from "./helpers/screenshotPixels";
  * critical OS-integration path that no individual unit test covers alone.
  */
 
-async function createBlankCanvas(page: import("@playwright/test").Page, width = "120", height = "90") {
-  await page.evaluate(async ({ w, h }) => {
-    const editor = (window as unknown as {
-      __photrezEditor?: {
-        workspace: { addDocument: (doc: unknown) => void };
-        scheduler: { requestRender: () => void };
-      };
-    }).__photrezEditor;
-    if (!editor) throw new Error("Editor context handle not found on window");
-    const { WorkspaceManager } = await import("/src/engine/workspace");
-    const id = `doc-${crypto.randomUUID()}`;
-    const name = "E2E Smoke";
-    const session = WorkspaceManager.createBlankDocument(id, name, Number(w), Number(h));
-    editor.workspace.addDocument(session);
-    editor.scheduler.requestRender();
-  }, { w: Number(width), h: Number(height) });
+async function createBlankCanvas(page: import("@playwright/test").Page) {
+  // Click "New Document" on the welcome screen → opens custom new-document dialog
+  await page.getByRole("button", { name: "New Document" }).click();
+  await page.locator('[role="dialog"]').waitFor({ state: "visible", timeout: 5000 });
+  // Click Create (accepts default 1080×1080)
+  await page.locator('[data-dialog-confirm]').click();
+  await page.waitForTimeout(300);
 }
 
 test.describe("native e2e smoke — grand tour", () => {
@@ -43,7 +34,7 @@ test.describe("native e2e smoke — grand tour", () => {
     if (await hideBtn.isVisible()) await hideBtn.click();
 
     // ── 2. Create a blank canvas ──
-    await createBlankCanvas(page, "160", "120");
+    await createBlankCanvas(page);
     const container = page.locator("#canvas-container");
     await expect(container).toBeVisible();
     await page.waitForTimeout(300);

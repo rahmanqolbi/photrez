@@ -27,7 +27,7 @@ export function EmptyWorkspace() {
     <div class="flex flex-1 items-center justify-center bg-editor-canvas p-6">
       <section
         aria-label="Start workspace"
-        class="flex w-full max-w-[520px] flex-col rounded-[6px] border border-editor-divider bg-editor-panel text-editor-text shadow-[0_8px_40px_rgba(0,0,0,0.45)]"
+        class="flex w-full max-w-[520px] flex-col rounded-[6px] border border-editor-divider bg-editor-panel text-editor-text shadow-[0_12px_32px_rgba(0,0,0,0.8)]"
       >
         <div class="border-b border-editor-divider px-5 py-4">
           <div class="flex items-center gap-3">

@@ -1,22 +1,17 @@
 import { expect, test } from "@playwright/test";
 import { readRenderedPixelAtRatio } from "./helpers/screenshotPixels";
 
-async function createBlankCanvas(page: import("@playwright/test").Page, width = "800", height = "600") {
-  await page.evaluate(async ({ w, h }) => {
-    const editor = (window as unknown as {
-      __photrezEditor?: {
-        workspace: { addDocument: (doc: unknown) => void };
-        scheduler: { requestRender: () => void };
-      };
-    }).__photrezEditor;
-    if (!editor) throw new Error("Editor context handle not found on window");
-    const { WorkspaceManager } = await import("/src/engine/workspace");
-    const id = `doc-${crypto.randomUUID()}`;
-    const name = "Untitled Canvas";
-    const session = WorkspaceManager.createBlankDocument(id, name, w, h);
-    editor.workspace.addDocument(session);
-    editor.scheduler.requestRender();
-  }, { w: Number(width), h: Number(height) });
+async function createBlankCanvas(page: import("@playwright/test").Page, width = 800, height = 600) {
+  // Click "New Document" on the welcome screen → opens custom new-document dialog
+  await page.getByRole("button", { name: "New Document" }).click();
+  await page.locator('[role="dialog"]').waitFor({ state: "visible", timeout: 5000 });
+  // Fill Width and Height (the two number inputs in the right panel)
+  const numInputs = page.locator('[role="dialog"] input[type="number"]');
+  await numInputs.nth(0).fill(String(width));
+  await numInputs.nth(1).fill(String(height));
+  // Click Create
+  await page.locator('[data-dialog-confirm]').click();
+  await page.waitForTimeout(300);
 }
 
 async function getTransformBox(page: import("@playwright/test").Page) {
@@ -48,7 +43,7 @@ test.describe("editor browser smoke", () => {
     await expect(page.getByRole("heading", { name: "Start a Photrez document" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Move Tool" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Crop Tool" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "New Canvas" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "New Document" })).toBeVisible();
     await expect(page.getByRole("button", { name: "New document" })).toHaveCount(0);
   });
 
@@ -278,10 +273,11 @@ test.describe("editor browser smoke", () => {
 test.describe("export dialog", () => {
   test("opens export dialog, switches format, shows quality slider for JPEG/WebP", async ({ page }) => {
     await page.goto("/");
-    page.on("dialog", async (dialog) => {
-      await dialog.accept(dialog.message().includes("width") ? "800" : "600");
-    });
-    await page.getByRole("button", { name: "New Canvas" }).click();
+    // Create a canvas via the welcome screen New Document → custom dialog → Create
+    await page.getByRole("button", { name: "New Document" }).click();
+    await page.locator('[role="dialog"]').waitFor({ state: "visible", timeout: 5000 });
+    await page.locator('[data-dialog-confirm]').click();
+    await page.waitForTimeout(300);
 
     await page.getByRole("button", { name: "Export" }).click();
 
@@ -314,10 +310,11 @@ test.describe("export dialog", () => {
 
   test("Ctrl+Alt+E opens export dialog when document is open", async ({ page }) => {
     await page.goto("/");
-    page.on("dialog", async (dialog) => {
-      await dialog.accept(dialog.message().includes("width") ? "800" : "600");
-    });
-    await page.getByRole("button", { name: "New Canvas" }).click();
+    // Create a canvas via the welcome screen New Document → custom dialog → Create
+    await page.getByRole("button", { name: "New Document" }).click();
+    await page.locator('[role="dialog"]').waitFor({ state: "visible", timeout: 5000 });
+    await page.locator('[data-dialog-confirm]').click();
+    await page.waitForTimeout(300);
 
     await page.keyboard.press("Control+Alt+e");
     await expect(page.getByRole("dialog", { name: "Export Image" })).toBeVisible();
