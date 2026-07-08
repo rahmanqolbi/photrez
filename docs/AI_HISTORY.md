@@ -1,3 +1,54 @@
+## [2026-07-08] CI — E2E must run against dev server (preview build breaks /src/ imports + cold start) [COMPLETE]
+
+### Category: TEST / CI
+
+### Module: Test (E2E config)
+
+### Root Cause (found by running e2e in true CI mode, not local dev)
+Verifying locally with `CI=true` (which makes Playwright use the **preview** production build) revealed the e2e suite does NOT actually pass in CI:
+- **4 export tests fail in preview**: `editor-smoke.spec.ts:328/368/433` and `native-e2e-smoke.spec.ts:30` call `page.evaluate(() => import("/src/engine/workspace"))` / `import("/src/components/editor/exportDocument")`. Those unbundled `/src/...` module paths only exist under the Vite **dev** server, not the production `preview` build → `Failed to fetch dynamically imported module`.
+- **Cold-start timeouts**: switching the suite to the dev server exposed a second issue — the first heavy WebGL test (`checkerboard-selection-undo.spec.ts:46`) hit `page.goto` 30s timeout because Vite dev compiles the on-demand module graph on first request. Local runs had masked this by reusing an already-warm dev server.
+
+### What was done
+- `apps/desktop/playwright.config.ts`: e2e `webServer` now always uses `bun run dev` (the `/src/...` imports require it). The production bundle is still validated by the separate `build` CI step.
+- `apps/desktop/playwright.config.ts`: per-test `timeout` raised 30s → 60s to absorb Vite dev cold-start compile + WebGL init on a fresh CI runner.
+
+### Verification
+- ✅ `CI=true bun run test:e2e` → 25 tests, 24 passed + 1 flaky-retried-OK, **exit code 0** (CI-green).
+- ✅ Earlier 3 fixes (pasteboard deselect + fit-zoom) still hold.
+
+### Residual risk
+The first heavy WebGL test can still cold-start-flake on a very slow runner; `retries: 1` (set in CI) tolerates it. A double-flake is theoretically possible but not observed.
+
+## [2026-07-08] CI — Fix 3 remaining E2E failures (pasteboard deselect + fit-zoom precision) [COMPLETE]
+
+### Category: TEST / CI
+
+### Module: Test (E2E)
+
+### Root Cause
+3 E2E tests in `apps/desktop/e2e/editor-smoke.spec.ts` failed (in CI and locally):
+
+1. **`keeps move transform box aligned through fit, zoom, and pan`** — `initial.width` expected `800 * fitZoom` (=673) but got 674. `getTransformBox` returns the on-screen transform-box bounding box (screen px); its width differs by ~1px from the test's recomputed fit-zoom formula due to sub-pixel rounding in the app's fit calculation. The `toBeCloseTo(..., 1)` (±0.05px) tolerance was too tight.
+
+2. **`deselects the Move transform box when Move Tool clicks outside the artboard`** — clicking at `initial.x + initial.width + 12` landed on the **selection overlay's rotate ring** (`<path>` donut concentric around the artboard, ~58px beyond the artboard edge), not the pasteboard. `isPasteboardPointerDown` only returns true when the click's document point is outside the artboard; a click on the ring resolves to a document point still "inside" → no deselect → transform box persists.
+
+3. **`brush stroke appears on the active layer`** — same rotate-ring problem: the +12px offset from the transform-box edge still hit the ring/handles, so the Move-tool deselect never fired.
+
+### What was done
+- **Tests 2 & 3:** replaced the near-edge click with a click in the container corner (`containerBox.x + 12, containerBox.y + 12`), which is always pasteboard for the default fit-to-screen view and is far outside the rotate ring + handles. Verified empirically: after the click `transformBoxCount` → 0 and "No active layer" becomes visible.
+- **Test 1:** relaxed the fit-zoom assertions from `toBeCloseTo(expected, 1)` (±0.05px) to `Math.abs(actual - expected) <= 3` px tolerance, accommodating sub-pixel rounding between the test's recomputed fit formula and the app's actual fit calculation.
+
+### Files Changed
+| File | Change |
+|------|--------|
+| `apps/desktop/e2e/editor-smoke.spec.ts` | Relaxed 4 fit-zoom tolerance assertions + moved 2 pasteboard-deselect clicks to container corner |
+
+### Verification
+- ✅ All 25 E2E tests pass (`bun run test:e2e`, exit 0)
+- ✅ `editor-smoke.spec.ts`: 14/14 pass
+- ✅ type-check / unit (1112) / component (1192) / build / rust-core (85) all green — app code unchanged (only E2E test files edited)
+
 ## [2026-07-08] CI — Fix E2E button label mismatch + jsdom timeout [COMPLETE]
 
 ### Category: TEST / CI

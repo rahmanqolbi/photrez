@@ -2,7 +2,11 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 30_000,
+  // 60s: the e2e suite runs against the Vite dev server (required so
+  // page.evaluate(() => import("/src/...")) resolves). The first heavy test's
+  // cold load must wait for Vite to compile the on-demand module graph, which
+  // can exceed 30s on a fresh CI runner.
+  timeout: 60_000,
   expect: {
     timeout: 5_000,
   },
@@ -19,9 +23,12 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: process.env.CI
-      ? "bun run preview -- --port 1420 --host 127.0.0.1"
-      : "bun run dev -- --host 127.0.0.1",
+    // Always use the Vite dev server. The e2e suite drives the app through
+    // page.evaluate(() => import("/src/...")) to unit-test engine/export
+    // helpers in-browser; those unbundled module paths only resolve under the
+    // dev server, not the production `preview` build. The production bundle is
+    // still validated by the separate `build` CI step.
+    command: "bun run dev -- --host 127.0.0.1",
     url: "http://127.0.0.1:1420",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

@@ -201,7 +201,7 @@ export function NewDocumentDialogContent(props: {
         <DesktopDialogButton class="w-24 h-8" onClick={handleCancel}>
           Cancel
         </DesktopDialogButton>
-        <DesktopDialogButton variant="primary" class="w-24 h-8" onClick={handleCreate}>
+        <DesktopDialogButton variant="primary" class="w-24 h-8" data-dialog-confirm onClick={handleCreate}>
           Create
         </DesktopDialogButton>
       </div>

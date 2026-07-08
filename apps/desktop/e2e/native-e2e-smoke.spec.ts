@@ -13,11 +13,15 @@ import { readRenderedPixelAtRatio } from "./helpers/screenshotPixels";
  * critical OS-integration path that no individual unit test covers alone.
  */
 
-async function createBlankCanvas(page: import("@playwright/test").Page) {
+async function createBlankCanvas(page: import("@playwright/test").Page, width = 160, height = 120) {
   // Click "New Document" on the welcome screen → opens custom new-document dialog
   await page.getByRole("button", { name: "New Document" }).click();
   await page.locator('[role="dialog"]').waitFor({ state: "visible", timeout: 5000 });
-  // Click Create (accepts default 1080×1080)
+  // Fill Width and Height (the two number inputs in the right panel)
+  const numInputs = page.locator('[role="dialog"] input[type="number"]');
+  await numInputs.nth(0).fill(String(width));
+  await numInputs.nth(1).fill(String(height));
+  // Click Create
   await page.locator('[data-dialog-confirm]').click();
   await page.waitForTimeout(300);
 }
@@ -34,7 +38,7 @@ test.describe("native e2e smoke — grand tour", () => {
     if (await hideBtn.isVisible()) await hideBtn.click();
 
     // ── 2. Create a blank canvas ──
-    await createBlankCanvas(page);
+    await createBlankCanvas(page, 160, 120);
     const container = page.locator("#canvas-container");
     await expect(container).toBeVisible();
     await page.waitForTimeout(300);

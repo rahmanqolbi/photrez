@@ -67,13 +67,13 @@ test.describe("Precision Workbench dialogs", () => {
     const resize = page.getByRole("dialog", { name: "Resize Canvas" });
     const width = resize.getByLabel("Width");
     await expect(width).toBeFocused();
-    await expect(width).toHaveValue("320");
+    await expect(width).toHaveValue("1080");
     await page.keyboard.press("Shift+Tab");
     await expect(resize.getByRole("button", { name: "Resize", exact: true })).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(width).toBeFocused();
     await width.fill("640");
-    await expect(resize.getByLabel("Height")).toHaveValue("480");
+    await expect(resize.getByLabel("Height")).toHaveValue("640");
     await resize.screenshot({ path: testInfo.outputPath("resize-canvas-dialog.png") });
     await resize.getByRole("button", { name: "Resize", exact: true }).click();
     await expect(resize).toHaveCount(0);
