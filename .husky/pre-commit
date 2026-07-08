@@ -17,41 +17,30 @@ if [ -f ".git/COMMIT_EDITMSG" ] && grep -q 'ponytail:' .git/COMMIT_EDITMSG 2>/de
   exit 1
 fi
 
-# Background: warm up Rust compilation while frontend builds
-cargo check -p photrez-core &>/dev/null &
-RUST_WARM=$!
-
-# 1. TypeScript type-check & Vite build
+# 1. TypeScript type-check only (faster than full build)
 echo ""
-echo "[1/3] Running TypeScript Type Check & Vite Build..."
-bun run --filter photrez-desktop build || {
+echo "[1/3] Running TypeScript Type Check..."
+bun run type-check || {
   echo ""
-  echo "ERROR: TypeScript compilation or Vite build failed!"
+  echo "ERROR: TypeScript type check failed!"
   exit 1
 }
 
-# 2. Frontend unit tests
+# 2. Frontend unit tests (node-only — fast, ~10s)
 echo ""
 echo "[2/3] Running Frontend Unit Tests..."
-bun run --filter photrez-desktop test || {
+bun run --filter photrez-desktop test:unit || {
   echo ""
   echo "ERROR: Frontend unit tests failed!"
   exit 1
 }
 
-# 3. Rust compilation check & core unit tests
+# 3. Rust core unit tests
 echo ""
-echo "[3/3] Running Rust Compilation Check & Core Tests..."
-wait $RUST_WARM 2>/dev/null
-cargo check -p photrez-core || {
-  echo ""
-  echo "ERROR: Rust compilation check failed!"
-  exit 1
-}
-
+echo "[3/3] Running Rust Core Tests..."
 cargo test -p photrez-core || {
   echo ""
-  echo "ERROR: Rust core unit tests failed!"
+  echo "ERROR: Rust core tests failed!"
   exit 1
 }
 
