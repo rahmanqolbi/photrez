@@ -91,7 +91,7 @@ export default defineConfig({
           exclude: [...defaultTestExcludes, ...nodeTestFiles],
           setupFiles: ["./src/test/setup.ts"],
           css: false,
-          pool: "threads",
+          pool: "forks",
         },
       },
     ],
