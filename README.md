@@ -86,9 +86,10 @@ flowchart TD
 
 ### Requirements
 
-- **Bun** (from [bun.com](https://bun.com))
-- Rust stable toolchain
-- Tauri platform prerequisites for your OS
+- **Bun 1.3.14** (from [bun.com](https://bun.com)) — the repo pins it via `packageManager`, so `bun install` uses the matching version
+- **Rust** stable toolchain (via [rustup](https://rustup.rs))
+- **Tauri 2 prerequisites** for your OS: <https://v2.tauri.app/start/prerequisites/>
+- **System WebView** (Windows: WebView2; macOS: Cocoa; Linux: webkit2gtk) — required by the Tauri shell
 
 ### Install
 
