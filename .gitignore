@@ -121,3 +121,16 @@ worktrees/
 nul
 
 docs/archive/logo-design-history/
+
+# Internal dev / AI-agent docs — NOT for public repository
+# (untracked via `git rm --cached`; kept on disk for local dev only)
+docs/archive/
+docs/decisions/
+docs/risk-registers/
+docs/AUDIT_REPORT.md
+docs/DEEP_AUDIT_REPORT.md
+docs/PERF_UX_AUDIT_REPORT.md
+docs/UNWIRED_LOGIC_AUDIT_REPORT.md
+
+# Playwright test artifacts (root, in addition to apps/desktop/test-results/)
+test-results/
