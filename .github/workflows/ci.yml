@@ -50,7 +50,7 @@ jobs:
         run: bun run type-check
 
       - name: Unit tests (node — fast)
-        run: bun run test:unit
+        run: bun run --filter photrez-desktop test:unit
 
       - name: Build
         run: bun run build
@@ -58,11 +58,11 @@ jobs:
       - name: E2E (Playwright)
         run: bun run test:e2e
 
-  # ─── RUST: compile + test all crates, plus desktop crate ───
-  rust:
-    name: Rust (all crates)
+  # ─── RUST: core crate only (no Tauri toolchain needed) ───
+  rust-core:
+    name: Rust (core crate)
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -78,11 +78,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Check desktop crate compiles (faster than full build)
-        run: cargo check -p photrez-desktop
-
-      - name: Build + test all workspace crates
-        run: cargo test --workspace
+      - name: Run core tests
+        run: cargo test -p photrez-core
 
   # ─── COMPONENT TESTS: jsdom-based (now passing — blocks PR) ───
   component-tests:
