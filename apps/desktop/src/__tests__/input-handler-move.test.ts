@@ -269,21 +269,21 @@ describe("input-handler: move tool — deferred history commit (regression 2026-
     expect(context.pendingOriginalLayerPos).toBeNull();
   });
 
-  it("lockPosition layer: pointerDown stashes nothing (engine.moveLayer guard)", () => {
-    // lockPosition layers: engine.moveLayer checks !lockPosition internally.
-    // The input handler checks !layer.locked but NOT lockPosition, so it
-    // processes the pointerDown normally. The guard is in the engine, not here.
-    // This test verifies the engine mock's lockPosition behavior works.
+  it("lockPosition layer: pointerDown stashes nothing, no move, no snap (input-handler guard)", () => {
+    // lockPosition layers cannot be repositioned. The input handler now guards
+    // pointerDown AND pointerMove with !layer.lockPosition, so for a lockPosition
+    // (or background) layer it neither stashes a pending snapshot nor calls
+    // moveLayer nor emits snap lines — preventing ghost snap guides, since the
+    // layer never actually moves (engine.moveLayer discards position changes for
+    // lockPosition layers). Regression: previously the handler ran the move branch
+    // for lockPosition layers and emitted snap guides with no real move.
     const { engine, history, context } = setupMoveDragSequence(100, 50, false, true);
     handlePointerDown("move", 150, 80, engine, history, vi.fn(), context);
-    // Input handler should still stash for a non-locked layer even if lockPosition
-    expect(context.pendingHistorySnapshot).not.toBeNull();
-    // But pointerUp with move tool clears pending without commit (owned by overlay)
+    expect(context.pendingHistorySnapshot).toBeNull();
     handlePointerMove("move", 200, 130, engine, vi.fn(), context);
+    expect(engine.moveLayer).not.toHaveBeenCalled();
     handlePointerUp("move", 200, 130, engine, history, vi.fn(), context);
     expect(context.pendingHistorySnapshot).toBeNull();
-    // The engine.moveLayer mock should still have been called (input handler calls it)
-    expect(engine.moveLayer).toHaveBeenCalled();
   });
 
   it("pending state defensively cleared at next pointerDown even after stale leak", () => {

@@ -123,8 +123,8 @@ export function handlePointerDown(
     const hex = rgbToHex(color[0], color[1], color[2]);
     context.setFgColor?.(hex);
   } else if (tool === "move" && context.selectedLayerId) {
-    const layer = engine.getLayer(context.selectedLayerId);
-    if (layer && !layer.locked) {
+      const layer = engine.getLayer(context.selectedLayerId);
+      if (layer && !layer.locked && !layer.lockPosition && !layer.isBackground) {
       // Stash pre-move snapshot for pointerUp. Do NOT commit here — a click
       // that never drags should not produce an undo entry. (history param is
       // intentionally not used in this branch; pointerUp commits if moved.)
@@ -247,8 +247,8 @@ export function handlePointerMove(
     const hex = rgbToHex(color[0], color[1], color[2]);
     context.setFgColor?.(hex);
   } else if (tool === "move" && context.selectedLayerId) {
-    const layer = engine.getLayer(context.selectedLayerId);
-    if (layer && !layer.locked) {
+      const layer = engine.getLayer(context.selectedLayerId);
+      if (layer && !layer.locked && !layer.lockPosition && !layer.isBackground) {
       const newX = docX - context.dragStart.x;
       const newY = docY - context.dragStart.y;
       let nextX = newX;
