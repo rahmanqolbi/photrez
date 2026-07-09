@@ -1224,6 +1224,17 @@ describe("Phase 4 Deep Tool State Cleanup (per-signal assertions)", () => {
     const session = WorkspaceManager.createBlankDocument("deep", "Deep", 800, 600);
     ws.addDocument(session);
 
+    // The transform box is suppressed for the Background layer
+    // (useSelectionTransformDrag.getLayer guard). Convert it to a normal,
+    // transformable layer so the overlay renders for this doc's layer.
+    const bg = session.engine.getLayers()[0];
+    if (bg) {
+      bg.isBackground = false;
+      bg.lockPosition = false;
+      bg.lockRotation = false;
+      session.engine.transformLayer(bg.id, {});
+    }
+
     dispose = render(
       () => (
         <EditorProvider workspace={ws} renderer={renderer} scheduler={scheduler}>

@@ -5,12 +5,39 @@ import { SelectionTransformOverlay } from "../SelectionTransformOverlay";
 import { WorkspaceManager } from "@/engine/workspace";
 import { WebGL2Backend } from "@/renderer/webgl2";
 import { RenderScheduler } from "@/renderer/scheduler";
+import type { LayerNode } from "@/engine/types";
 
 function h(tag: any, props: Record<string, unknown> | null, ...children: any[]): any {
   return () => {
     const el = tag({ ...(props || {}), children: children.length === 1 ? children[0] : children.length > 1 ? children : undefined });
     return el;
   };
+}
+
+// The transform box is intentionally suppressed for the Background layer
+// (useSelectionTransformDrag.getLayer guard). These overlay-mechanics tests
+// open a blank doc whose only layer is the Background, so convert it to a
+// normal, transformable layer to exercise the box — geometry/coordinate
+// assertions already assume a doc-sized layer at the origin, which the
+// Background is, so they remain valid.
+// Note: the hook reads layers from the EditorContext `layers()` signal, which
+// is a *copy* of the engine layers (workspaceSync.ts). Mutating the engine
+// object alone is invisible to the signal, so we trigger a re-sync by calling
+// transformLayer (which fires engine.onChange -> workspace notifyChange ->
+// syncState re-copies the layers).
+function activateBackgroundAsNormal(session: {
+  engine: {
+    getLayers: () => readonly LayerNode[];
+    transformLayer: (id: string, t: Partial<{ scaleX: number; scaleY: number }>) => void;
+  };
+}) {
+  const bg = session.engine.getLayers()[0];
+  if (bg) {
+    bg.isBackground = false;
+    bg.lockPosition = false;
+    bg.lockRotation = false;
+    session.engine.transformLayer(bg.id, {});
+  }
 }
 
 describe("Resize pointer-capture fix", () => {
@@ -35,6 +62,7 @@ describe("Resize pointer-capture fix", () => {
     );
 
     ws.addDocument(session);
+    activateBackgroundAsNormal(session);
     await Promise.resolve();
 
     const moveRect = container.querySelector("rect[data-move]") as SVGElement;
@@ -73,6 +101,7 @@ describe("Resize pointer-capture fix", () => {
     );
 
     ws.addDocument(session);
+    activateBackgroundAsNormal(session);
     await Promise.resolve();
 
     editor.setHoverHandle("rotate-nw");
@@ -110,6 +139,7 @@ describe("Resize pointer-capture fix", () => {
       container,
     );
     ws.addDocument(session);
+    activateBackgroundAsNormal(session);
     await Promise.resolve();
 
     const svg = container.querySelector("svg[data-overlay-svg]") as SVGSVGElement;
@@ -164,6 +194,7 @@ describe("Resize pointer-capture fix", () => {
       container,
     );
     ws.addDocument(session);
+    activateBackgroundAsNormal(session);
     await Promise.resolve();
 
     const svg = container.querySelector("svg[data-overlay-svg]") as SVGSVGElement;
@@ -238,6 +269,7 @@ describe("Resize pointer-capture fix", () => {
 
     // Add document after EditorProvider mounts so onChange fires syncState
     ws.addDocument(session);
+    activateBackgroundAsNormal(session);
 
     const svg = container.querySelector("svg[data-overlay-svg]");
     expect(svg).not.toBeNull();
@@ -296,6 +328,7 @@ describe("Resize pointer-capture fix", () => {
       container,
     );
     ws.addDocument(session);
+    activateBackgroundAsNormal(session);
 
     const svg = container.querySelector("svg[data-overlay-svg]") as SVGElement;
     const handle = container.querySelector("[data-handle]") as SVGElement;
@@ -358,6 +391,7 @@ describe("Resize pointer-capture fix", () => {
       container,
     );
     ws.addDocument(session);
+    activateBackgroundAsNormal(session);
 
     const svg = container.querySelector("svg[data-overlay-svg]") as SVGElement;
     const handle = container.querySelector("[data-handle]") as SVGElement;
@@ -440,6 +474,7 @@ describe("Snap line cleanup", () => {
       container,
     );
     ws.addDocument(session);
+    activateBackgroundAsNormal(session);
 
     const svg = container.querySelector("svg[data-overlay-svg]") as SVGElement;
     const handle = container.querySelector("[data-handle]") as SVGElement;
@@ -569,6 +604,7 @@ describe("Snap line cleanup", () => {
       container,
     );
     ws.addDocument(sessionDoc);
+    activateBackgroundAsNormal(sessionDoc);
 
     const handle = container.querySelector("[data-handle]") as SVGElement;
     const moveRect = container.querySelector("rect[data-move]") as SVGElement;
@@ -639,6 +675,7 @@ describe("Snap line cleanup", () => {
       container,
     );
     ws.addDocument(sessionDoc);
+    activateBackgroundAsNormal(sessionDoc);
 
     const handle = container.querySelector("[data-handle]") as SVGElement;
 
@@ -693,6 +730,7 @@ describe("Space+pan navigation mode", () => {
       container,
     );
     ws.addDocument(session);
+    activateBackgroundAsNormal(session);
 
     const svg = container.querySelector("svg[data-overlay-svg]") as SVGElement;
     const moveRect = container.querySelector("rect[data-move]") as SVGElement;
@@ -824,6 +862,7 @@ describe("Donut rotate ring path", () => {
       container,
     );
     ws.addDocument(session);
+    activateBackgroundAsNormal(session);
     await Promise.resolve();
 
     const donutPath = container.querySelector('path[fill-rule="evenodd"]') as SVGPathElement;
@@ -861,6 +900,7 @@ describe("Donut rotate ring path", () => {
       container,
     );
     ws.addDocument(session);
+    activateBackgroundAsNormal(session);
     await Promise.resolve();
 
     const donutPath = container.querySelector('path[fill-rule="evenodd"]') as SVGPathElement;
@@ -912,6 +952,7 @@ describe("Donut rotate ring path", () => {
     );
 
     ws.addDocument(session);
+    activateBackgroundAsNormal(session);
     await Promise.resolve();
 
     const donutPath = container.querySelector('path[fill-rule="evenodd"]') as SVGPathElement;
@@ -998,6 +1039,7 @@ describe("Donut rotate ring path", () => {
     );
 
     ws.addDocument(session);
+    activateBackgroundAsNormal(session);
     await Promise.resolve();
 
     const currentSession = {

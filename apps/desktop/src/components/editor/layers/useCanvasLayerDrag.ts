@@ -61,7 +61,11 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     const ls = engine.getLayers();
     for (let i = 0; i < ls.length; i++) {
       const layer = ls[i];
-      if (layer.locked || !layer.visible) continue;
+      // Skip layers that cannot be repositioned: fully locked, position-locked
+      // (e.g. Background), or background layers. Dragging one would only emit
+      // ghost snap guides because transformLayer discards position changes
+      // when lockPosition is set (document.ts).
+      if (layer.locked || layer.lockPosition || layer.isBackground || !layer.visible) continue;
       const w = layer.width * Math.abs(layer.transform.scaleX);
       const h = layer.height * Math.abs(layer.transform.scaleY);
       if (
@@ -361,7 +365,13 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
       const engine = workspace.getActiveEngine();
       const activeId = selectedLayerId();
       const activeLayer = activeId ? engine?.getLayer(activeId) : null;
-      if (activeLayer && !activeLayer.locked && activeLayer.id !== layer.id) {
+      if (
+        activeLayer &&
+        !activeLayer.locked &&
+        !activeLayer.lockPosition &&
+        !activeLayer.isBackground &&
+        activeLayer.id !== layer.id
+      ) {
         // Use the active layer instead of the layer under cursor
         const activeLayerNode = {
           id: activeLayer.id,

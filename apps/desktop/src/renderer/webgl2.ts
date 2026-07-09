@@ -203,9 +203,9 @@ export class WebGL2Backend implements RenderBackend {
     // Setup empty VAO
     this.vao = gl.createVertexArray();
 
-    // Enable Blend
+    // Enable Blend — premultiplied alpha so transparent edges don't darken.
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
     // Update capabilities
     this.capabilities.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
@@ -257,7 +257,9 @@ export class WebGL2Backend implements RenderBackend {
 
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
-    // Upload
+    // Upload premultiplied so LINEAR filtering at transparency edges blends in
+    // premultiplied space (no black pull-in from (0,0,0,0) neighbors).
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
 
     // Filtering: LINEAR for both min/mag — no mipmap blur, no NEAREST blockiness

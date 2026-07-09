@@ -124,6 +124,10 @@ void main() {
   vec4 src = texture(u_texture, texCoord);
   src.a *= u_opacity;
 
+  // src and dst are PREMULTIPLIED: layer textures are uploaded premultiplied and
+  // the FBO stores premultiplied alpha. This removes the dark fringe at
+  // transparency edges that LINEAR filtering causes on straight-alpha textures
+  // (transparent texels are (0,0,0,0), so interpolation pulls in black).
   if (!u_useBackdrop) {
     fragColor = src;
     return;
@@ -141,9 +145,13 @@ void main() {
     return;
   }
 
-  vec3 blended = blendColors(u_blendMode, dst.rgb, src.rgb);
+  // Blend modes are defined on straight (unpremultiplied) colors.
+  vec3 srcStraight = src.rgb / src.a;
+  vec3 dstStraight = dst.rgb / dst.a;
+  vec3 blended = blendColors(u_blendMode, dstStraight, srcStraight);
+  vec3 blendedPremult = blended * src.a;
   float outAlpha = src.a + dst.a * (1.0 - src.a);
-  vec3 outColor = (src.a * blended + dst.a * (1.0 - src.a) * dst.rgb) / outAlpha;
+  vec3 outColor = blendedPremult + dst.rgb * (1.0 - src.a);
 
   fragColor = vec4(outColor, outAlpha);
 }`;

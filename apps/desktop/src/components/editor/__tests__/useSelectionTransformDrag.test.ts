@@ -1116,4 +1116,37 @@ describe("useSelectionTransformDrag", () => {
       dispose();
     });
   });
+
+  describe("getLayer transformability guards", () => {
+    it("returns null for a Background layer (suppresses transform box on document open)", () => {
+      const { result, editorSignals, dispose } = setupHook();
+      editorSignals.setLayers([
+        { ...DEFAULT_LAYER, id: "bg", isBackground: true, lockPosition: true, lockRotation: true } as any,
+      ]);
+      editorSignals.setSelectedLayerId("bg");
+      expect(result.getLayer()).toBeNull();
+      dispose();
+    });
+
+    it("returns null when both position and rotation are locked", () => {
+      const { result, editorSignals, dispose } = setupHook();
+      editorSignals.setLayers([
+        { ...DEFAULT_LAYER, id: "locked", lockPosition: true, lockRotation: true } as any,
+      ]);
+      editorSignals.setSelectedLayerId("locked");
+      expect(result.getLayer()).toBeNull();
+      dispose();
+    });
+
+    it("still returns the layer when only rotation is locked (position remains transformable)", () => {
+      const { result, editorSignals, dispose } = setupHook();
+      editorSignals.setLayers([
+        { ...DEFAULT_LAYER, id: "partial", lockPosition: false, lockRotation: true } as any,
+      ]);
+      editorSignals.setSelectedLayerId("partial");
+      expect(result.getLayer()).not.toBeNull();
+      expect(result.getLayer()!.id).toBe("partial");
+      dispose();
+    });
+  });
 });

@@ -25,12 +25,20 @@ export interface PaintEditableLayer {
   locked?: boolean;
   visible?: boolean;
   lockTransparency?: boolean;
+  isBackground?: boolean;
 }
 
 export const MIN_PAINT_SIZE = 1;
 export const MAX_PAINT_SIZE = 2000;
-export const PAINT_SIZE_STEP = 5;
+export const PAINT_SIZE_STEP_FACTOR = 0.1;
+export const MIN_PAINT_SIZE_STEP = 1;
 export const PAINT_SIZE_STEP_HARDNESS = 0.1;
+
+// Proportional brush/eraser size step (~10% of current size) so the perceived
+// change stays constant across the range, like other raster editors.
+export function paintSizeStep(size: number): number {
+  return Math.max(MIN_PAINT_SIZE_STEP, Math.round(size * PAINT_SIZE_STEP_FACTOR));
+}
 
 export const MIN_SMOOTHING = 0;
 export const MAX_SMOOTHING = 100;
@@ -170,4 +178,25 @@ export function getPaintToolBlockReason(
   if (!layer.visible) return "Layer hidden";
   if (isEraser && layer.lockTransparency) return "Transparent pixels protected";
   return null;
+}
+
+export interface ResolvedEraseMode {
+  isEraser: boolean;
+  color: string;
+}
+
+/**
+ * Eraser behavior for the locked Background layer: instead of erasing to
+ * transparent, it paints the background swatch (source-over). Matches
+ * Photoshop's Background layer. All other layers erase to transparent.
+ */
+export function resolveEraserFill(
+  layer: PaintEditableLayer | null | undefined,
+  isEraser: boolean,
+  bgColor: string,
+): ResolvedEraseMode {
+  if (isEraser && layer?.isBackground) {
+    return { isEraser: false, color: bgColor };
+  }
+  return { isEraser, color: "rgba(0,0,0,1)" };
 }

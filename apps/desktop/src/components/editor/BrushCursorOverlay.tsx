@@ -26,6 +26,7 @@ export function BrushCursorOverlay(props?: {
   const [cursorPos, setCursorPos] = createSignal({ x: 0, y: 0 });
   const [visible, setVisible] = createSignal(false);
   const isBrushTool = () => activeTool() === "brush" || activeTool() === "eraser";
+  const isEraser = () => activeTool() === "eraser";
 
   const settings = () => getActivePaintToolSettings(activeTool(), {
     brushSize: brushSize(),
@@ -133,8 +134,10 @@ export function BrushCursorOverlay(props?: {
           stroke="white"
           stroke-width={1}
         />
-        <line x1={-4} y1={0} x2={4} y2={0} stroke="white" stroke-width={1} />
-        <line x1={0} y1={-4} x2={0} y2={4} stroke="white" stroke-width={1} />
+        <Show when={!isEraser()}>
+          <line data-paint-cursor-crosshair x1={-4} y1={0} x2={4} y2={0} stroke="white" stroke-width={1} />
+          <line data-paint-cursor-crosshair x1={0} y1={-4} x2={0} y2={4} stroke="white" stroke-width={1} />
+        </Show>
       </g>
     </Show>
   );

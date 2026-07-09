@@ -6,7 +6,7 @@ import { useEditor } from "../shell/EditorContext";
 import { flattenAllLayers, mergeActiveLayerDown, stampVisibleLayers } from "../layers/layerOperations";
 import { cancelLayerTransformSession, commitLayerTransformSession } from "../transformSession";
 import { discardCropSession, applyCropPreview } from "../cropToolActions";
-import { PAINT_SIZE_STEP, PAINT_SIZE_STEP_HARDNESS, adjustPaintSize, adjustPaintHardness } from "../brushToolState";
+import { PAINT_SIZE_STEP_HARDNESS, paintSizeStep, adjustPaintSize, adjustPaintHardness } from "../brushToolState";
 import { SelectionOperations } from "@/features/selection/SelectionOperations";
 import { showToast } from "../Toast";
 import { registerShortcut } from "../keyboardRegistry";
@@ -786,7 +786,9 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
           setBrushHardness(next.brushHardness);
           setEraserHardness(next.eraserHardness);
         } else {
-          const delta = e.key === "[" ? -PAINT_SIZE_STEP : PAINT_SIZE_STEP;
+          const currentSize = activeTool() === "eraser" ? eraserSize() : brushSize();
+          const step = paintSizeStep(currentSize);
+          const delta = e.key === "[" ? -step : step;
           const next = adjustPaintSize(activeTool(), {
             brushSize: brushSize(),
             brushHardness: brushHardness(),

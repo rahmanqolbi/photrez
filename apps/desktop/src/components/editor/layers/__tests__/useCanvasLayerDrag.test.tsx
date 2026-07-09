@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, type Mock } from "vitest";
 import { render } from "solid-js/web";
 import { EditorProvider, useEditor } from "../../shell/EditorContext";
 import { useCanvasLayerDrag } from "../useCanvasLayerDrag";
@@ -7,6 +7,7 @@ import { ViewportCamera } from "../../../../viewport/viewportCamera";
 import { useDragController, type DragState } from "../../DragController";
 import type { LayerNode } from "@/engine/types";
 import type { ToolId } from "../../tools/toolTypes";
+import type { SnapLine } from "@/viewport/smartGuides";
 
 function makeLayer(name: string, x: number, y: number, w = 100, h = 100): LayerNode {
   return {
@@ -31,6 +32,7 @@ interface TestApi {
   setMoveSnapEnabled: (v: boolean) => void;
   setMoveAutoSelect: (v: boolean) => void;
   setSelectedLayerId: (id: string | null) => void;
+  onSnapLinesChange: Mock<(lines: SnapLine[]) => void>;
 }
 
 describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => {
@@ -70,7 +72,8 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
     function Probe() {
       const ed = useEditor();
       const dc = useDragController();
-      testApi.dragApi = useCanvasLayerDrag();
+      testApi.onSnapLinesChange = vi.fn<(lines: SnapLine[]) => void>();
+      testApi.dragApi = useCanvasLayerDrag({ onSnapLinesChange: testApi.onSnapLinesChange });
       testApi.dcState = () => dc.state();
       testApi.setTool = (t: ToolId) => ed.setActiveTool(t);
       testApi.setMoveSnapEnabled = (v: boolean) => ed.setMoveSnapEnabled(v);
@@ -129,7 +132,8 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
     function Probe() {
       const ed = useEditor();
       const dc = useDragController();
-      testApi.dragApi = useCanvasLayerDrag();
+      testApi.onSnapLinesChange = vi.fn<(lines: SnapLine[]) => void>();
+      testApi.dragApi = useCanvasLayerDrag({ onSnapLinesChange: testApi.onSnapLinesChange });
       testApi.dcState = () => dc.state();
       testApi.setTool = (t: ToolId) => ed.setActiveTool(t);
       testApi.setMoveSnapEnabled = (v: boolean) => ed.setMoveSnapEnabled(v);
@@ -493,7 +497,7 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       const layer = engine.getLayers().find((l) => l.name === "Draggable")!;
       layer.locked = true;
       // Lock semua layer agar findLayerAt tidak menemukan apa pun
-      // (Background tidak terkunci dan bisa memulai drag)
+      // (Background / position-lock juga di-skip sejak guard diperkuat)
       engine.getLayers().forEach((l) => { l.locked = true; });
       const startX = layer.transform.x;
       addSpy.mockClear();
@@ -854,6 +858,121 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       expect(draggable.transform.x).toBe(150);
       // Invisible tidak bergerak
       expect(invisibleLayer.transform.x).toBe(140);
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Implementation Contract: position-locked / Background layers cannot be moved
+  // (regression: ghost snap guides appeared because transformLayer silently
+  // discarded the position change while the drag still emitted snap lines)
+  // ════════════════════════════════════════════════════════════════════════════
+
+  it("findLayerAt skips position-locked (lockPosition) layers — no drag, no snap guides", () => {
+    const ctx = setupWithLayer();
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      const layer = engine.getLayers().find((l) => l.name === "Draggable")!;
+      layer.lockPosition = true;
+      const startX = layer.transform.x;
+      const startY = layer.transform.y;
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 250, clientY: 200,
+      }));
+
+      // No drag started, layer unmoved, and crucially no snap-line callback
+      // fired (otherwise ghost guides would render with no actual move).
+      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
+      expect(layer.transform.x).toBe(startX);
+      expect(layer.transform.y).toBe(startY);
+      expect(ctx.testApi.onSnapLinesChange).not.toHaveBeenCalled();
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  it("findLayerAt skips Background (isBackground) layers — no drag, no snap guides", () => {
+    const ctx = setupWithLayer();
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      const layer = engine.getLayers().find((l) => l.name === "Draggable")!;
+      layer.isBackground = true;
+      layer.lockPosition = true;
+      layer.lockRotation = true;
+      const startX = layer.transform.x;
+      const startY = layer.transform.y;
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 250, clientY: 200,
+      }));
+
+      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
+      expect(layer.transform.x).toBe(startX);
+      expect(layer.transform.y).toBe(startY);
+      expect(ctx.testApi.onSnapLinesChange).not.toHaveBeenCalled();
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  it("auto-select OFF + position-locked selected layer: falls through to hit layer", () => {
+    const ctx = setupWithLayer();
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      const underCursor = engine.addLayer("UnderCursor") as LayerNode;
+      underCursor.transform.x = 140;
+      underCursor.transform.y = 140;
+      underCursor.width = 50;
+      underCursor.height = 50;
+
+      const selected = engine.getLayers().find((l) => l.name === "Draggable")!;
+      selected.lockPosition = true; // position-locked, but NOT fully locked
+      ctx.testApi.setSelectedLayerId(selected.id);
+      ctx.testApi.setMoveAutoSelect(false);
+
+      // Klik di (150,150) — kena UnderCursor yang tidak terkunci.
+      // findLayerAt skip Draggable (lockPosition) → hit UnderCursor.
+      // Auto-select OFF block skip karena selected lockPosition.
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 200, clientY: 150,
+      }));
+
+      expect(ctx.testApi.dragApi.isDragging()).toBe(true);
+      // UnderCursor bergerak (delta 50,0), Draggable (lockPosition) diam
+      expect(underCursor.transform.x).toBe(190);
+      expect(selected.transform.x).toBe(100);
+    } finally {
+      teardown(ctx);
+    }
+  });
+
+  it("normal layer drag still invokes onSnapLinesChange (contrast / harness sanity)", () => {
+    const ctx = setupWithLayer();
+    try {
+      const engine = ctx.ws.getEngine("wiring-canvas")!;
+      const layer = engine.getLayers().find((l) => l.name === "Draggable")!;
+      ctx.testApi.setMoveSnapEnabled(true);
+
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 250, clientY: 200,
+      }));
+
+      expect(ctx.testApi.dragApi.isDragging()).toBe(true);
+      expect(ctx.testApi.onSnapLinesChange).toHaveBeenCalled();
     } finally {
       teardown(ctx);
     }

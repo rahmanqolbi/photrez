@@ -1,7 +1,7 @@
 import { useEditor } from "./shell/EditorContext";
 import type { DocumentEngine } from "@/engine/document";
 import type { CommandHistory } from "@/engine/history";
-import { getPaintToolBlockReason, type PaintToolSettings } from "./brushToolState";
+import { getPaintToolBlockReason, resolveEraserFill, type PaintToolSettings } from "./brushToolState";
 import { commitPaintBitmap } from "./paintCommitCommand";
 import { mapPaintPointToLayerLocal, mapPaintStrokeToLayerLocal } from "./paintStrokeCoordinates";
 import { showToast } from "./Toast";
@@ -31,7 +31,7 @@ interface PaintStrokeSession {
 }
 
 export function useBrushOverlay() {
-  const { workspace, renderer, scheduler, fgColor, docWidth, docHeight } = useEditor();
+  const { workspace, renderer, scheduler, fgColor, bgColor, docWidth, docHeight } = useEditor();
 
   let overlayCanvasRef: HTMLCanvasElement | null = null;
   let overlayCtx: CanvasRenderingContext2D | null = null;
@@ -164,7 +164,8 @@ export function useBrushOverlay() {
         if (layer.imageBitmap) {
           eraserPreviewCtx.drawImage(layer.imageBitmap, 0, 0);
         }
-        paintMaskToContext(eraserPreviewCtx, paintSession.maskData, layer.width, layer.height, "rgba(0,0,0,1)", true);
+        const erase = resolveEraserFill(layer, true, bgColor());
+        paintMaskToContext(eraserPreviewCtx, paintSession.maskData, layer.width, layer.height, erase.color, erase.isEraser);
         if (!isFinal && paintSession.lastPoint) {
           paintTransientBrushTipToContext(
             eraserPreviewCtx,
@@ -172,8 +173,8 @@ export function useBrushOverlay() {
             paintSession.lastPoint,
             paintSession.lastDab,
             alphaScale,
-            "rgba(0,0,0,1)",
-            true,
+            erase.color,
+            erase.isEraser,
           );
         }
         uploadEraserPreview(activeEngine, activeId, layer.width, layer.height);

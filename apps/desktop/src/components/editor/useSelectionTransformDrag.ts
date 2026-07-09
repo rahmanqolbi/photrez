@@ -64,6 +64,11 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
   const getLayer = () => {
     const layer = activeLayer();
     if (!layer || !layer.visible || layer.locked) return null;
+    // Background layers (and layers with both position + rotation locked) cannot
+    // be transformed. Suppress the transform box and its interactions for them so
+    // the overlay does not render (e.g. on document open with the Background selected).
+    if (layer.isBackground) return null;
+    if (layer.lockPosition && layer.lockRotation) return null;
     return layer;
   };
 

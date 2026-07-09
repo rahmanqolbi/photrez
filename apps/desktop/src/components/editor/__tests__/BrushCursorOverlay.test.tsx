@@ -145,4 +145,63 @@ describe("BrushCursorOverlay", () => {
     vpContainer.remove();
     vi.restoreAllMocks();
   });
+
+  it("hides the center crosshair for the eraser tool", () => {
+    const [activeTool] = createSignal("eraser");
+    const [zoom] = createSignal(1);
+    const [eraserSize] = createSignal(40);
+
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue({
+      activeTool,
+      setActiveTool: () => {},
+      zoom,
+      camera: new ViewportCamera(),
+      brushSize: () => 24,
+      brushHardness: () => 0.5,
+      brushOpacity: () => 1,
+      eraserSize,
+      eraserHardness: () => 0,
+      eraserOpacity: () => 1,
+    } as any);
+
+    const root = document.createElement("svg");
+    document.body.appendChild(root);
+    const dispose = render(() => <BrushCursorOverlay forceVisibleForTest cursorPosForTest={{ x: 10, y: 10 }} />, root);
+
+    expect(root.querySelector("[data-paint-cursor-outer]")).not.toBeNull();
+    expect(root.querySelector("[data-paint-cursor-crosshair]")).toBeNull();
+
+    dispose();
+    root.remove();
+    vi.restoreAllMocks();
+  });
+
+  it("shows the center crosshair for the brush tool", () => {
+    const [activeTool] = createSignal("brush");
+    const [zoom] = createSignal(1);
+    const [brushSize] = createSignal(24);
+
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue({
+      activeTool,
+      setActiveTool: () => {},
+      zoom,
+      camera: new ViewportCamera(),
+      brushSize,
+      brushHardness: () => 0.97,
+      brushOpacity: () => 1,
+      eraserSize: () => 40,
+      eraserHardness: () => 1,
+      eraserOpacity: () => 1,
+    } as any);
+
+    const root = document.createElement("svg");
+    document.body.appendChild(root);
+    const dispose = render(() => <BrushCursorOverlay forceVisibleForTest cursorPosForTest={{ x: 10, y: 10 }} />, root);
+
+    expect(root.querySelector("[data-paint-cursor-crosshair]")).not.toBeNull();
+
+    dispose();
+    root.remove();
+    vi.restoreAllMocks();
+  });
 });

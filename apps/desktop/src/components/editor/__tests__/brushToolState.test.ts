@@ -8,6 +8,8 @@ import {
   adjustPaintSize,
   adjustPaintHardness,
   getPaintToolBlockReason,
+  resolveEraserFill,
+  paintSizeStep,
   sizeSliderToPaintSize,
   paintSizeToSizeSlider,
   BRUSH_PRESETS,
@@ -119,6 +121,51 @@ describe("brushToolState", () => {
     expect(getPaintToolBlockReason({ locked: false, visible: true, lockTransparency: true }, false)).toBeNull();
   });
 
+  it("fills Background layer erase with the background swatch (not transparent)", () => {
+    const bg = resolveEraserFill({ isBackground: true }, true, "#224466");
+    expect(bg.isEraser).toBe(false);
+    expect(bg.color).toBe("#224466");
+  });
+
+  it("keeps erase-to-transparent for non-background layers", () => {
+    const normal = resolveEraserFill({ isBackground: false }, true, "#224466");
+    expect(normal.isEraser).toBe(true);
+    expect(normal.color).toBe("rgba(0,0,0,1)");
+  });
+
+  it("keeps erase-to-transparent when layer is undefined", () => {
+    const none = resolveEraserFill(undefined, true, "#224466");
+    expect(none.isEraser).toBe(true);
+    expect(none.color).toBe("rgba(0,0,0,1)");
+  });
+
+  it("passes brush strokes through untouched", () => {
+    const brush = resolveEraserFill({ isBackground: true }, false, "#224466");
+    expect(brush.isEraser).toBe(false);
+    expect(brush.color).toBe("rgba(0,0,0,1)");
+  });
+});
+
+describe("paintSizeStep (proportional brush/eraser size step)", () => {
+  it("scales with current size (~10%)", () => {
+    expect(paintSizeStep(20)).toBe(2);
+    expect(paintSizeStep(100)).toBe(10);
+    expect(paintSizeStep(300)).toBe(30);
+  });
+
+  it("never drops below 1px", () => {
+    expect(paintSizeStep(5)).toBe(1);
+    expect(paintSizeStep(1)).toBe(1);
+    expect(paintSizeStep(0)).toBe(1);
+  });
+
+  it("rounds to the nearest pixel", () => {
+    expect(paintSizeStep(55)).toBe(6); // 5.5 -> 6
+    expect(paintSizeStep(45)).toBe(5); // 4.5 -> 5 (round half up)
+  });
+});
+
+describe("brush presets and clamping", () => {
   it("uses editor-like preset defaults for soft round versus large soft", () => {
     const softRound = BRUSH_PRESETS.find((preset) => preset.id === "soft-round");
     const largeSoft = BRUSH_PRESETS.find((preset) => preset.id === "large-soft");
