@@ -1,5 +1,5 @@
 import type { RenderBackend, RenderCapabilities, TextureRef } from "./types";
-import type { RenderState } from "../engine/types";
+import type { RenderState, BlendMode } from "../engine/types";
 import { setDeviceMaxTextureSize } from "../engine/types";
 import {
   VERTEX_SHADER_SOURCE,
@@ -8,6 +8,7 @@ import {
   CHECKERBOARD_VERTEX_SOURCE,
 } from "./shaders";
 import { getCheckerboardColors } from "./checkerboard";
+import { blendModeToShaderId } from "../engine/blendModes";
 
 export function projectDocumentScissor(
   viewProj: Float32Array,
@@ -533,21 +534,11 @@ export class WebGL2Backend implements RenderBackend {
   }
 
   private getBlendModeId(mode: string): number {
-    switch (mode) {
-      case "normal": return 0;
-      case "multiply": return 1;
-      case "screen": return 2;
-      case "overlay": return 3;
-      case "darken": return 4;
-      case "lighten": return 5;
-      case "color-dodge": return 6;
-      case "color-burn": return 7;
-      case "hard-light": return 8;
-      case "soft-light": return 9;
-      case "difference": return 10;
-      case "exclusion": return 11;
-      default: return 0;
-    }
+    // Delegates to the single source of truth in engine/blendModes so the
+    // WebGL preview and the Canvas2D export path can never diverge. The
+    // shader's 4-11 modes (darken..exclusion) are intentionally not part of
+    // the BlendMode contract and are unreachable here.
+    return blendModeToShaderId(mode as BlendMode);
   }
 
   resize(docWidth: number, docHeight: number, zoom: number, dpr: number): void {
