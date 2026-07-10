@@ -14,11 +14,18 @@ import {
   compositeMaskToImageData,
   paintMaskToContext,
   paintTransientBrushTipToContext,
+  paintMaskToContextDirty,
+  compositeMaskToImageDataDirty,
+  emptyDirtyRect,
+  expandDirtyRect,
+  clampDirtyRect,
+  unionDirtyRect,
   getEffectiveFlowMultiplier,
   clamp01,
   brushPointsEqual,
   parsePaintColor,
   type BrushTip,
+  type DirtyRect,
 } from "../brushTipMask";
 
 describe("brushTipMask falloff", () => {
@@ -102,10 +109,10 @@ describe("reference-calibrated soft round raster", () => {
 });
 
 describe("brushTipMask dabs", () => {
-  it("uses fixed 25% size spacing (reference spacing) regardless of hardness", () => {
-    expect(getBrushDabSpacing(100, 0, 1)).toBe(25);
-    expect(getBrushDabSpacing(100, 1, 1)).toBe(25);
-    expect(getBrushDabSpacing(100, 0.5, 1)).toBe(25);
+  it("uses fixed 10% size spacing regardless of hardness", () => {
+    expect(getBrushDabSpacing(100, 0, 1)).toBe(10);
+    expect(getBrushDabSpacing(100, 1, 1)).toBe(10);
+    expect(getBrushDabSpacing(100, 0.5, 1)).toBe(10);
   });
 
   it("never returns less than 1 even for tiny brushes", () => {
@@ -114,10 +121,10 @@ describe("brushTipMask dabs", () => {
   });
 
   it("scales linearly with size (no per-harness floor)", () => {
-    expect(getBrushDabSpacing(20, 0, 1)).toBe(5);
-    expect(getBrushDabSpacing(40, 0, 1)).toBe(10);
-    expect(getBrushDabSpacing(80, 0, 1)).toBe(20);
-    expect(getBrushDabSpacing(400, 0, 1)).toBe(100);
+    expect(getBrushDabSpacing(20, 0, 1)).toBe(2);
+    expect(getBrushDabSpacing(40, 0, 1)).toBe(4);
+    expect(getBrushDabSpacing(80, 0, 1)).toBe(8);
+    expect(getBrushDabSpacing(400, 0, 1)).toBe(40);
   });
 
   it("does not depend on flow", () => {
@@ -542,5 +549,195 @@ describe("getBrushTipOuterRadius edge cases", () => {
 
   it("returns radius for hard edge soft curve", () => {
     expect(getBrushTipOuterRadius(50, 1, "soft")).toBe(50);
+  });
+});
+
+describe("DirtyRect utilities", () => {
+  it("emptyDirtyRect returns sentinel values", () => {
+    const r = emptyDirtyRect();
+    expect(r.x0).toBe(Number.MAX_SAFE_INTEGER);
+    expect(r.y0).toBe(Number.MAX_SAFE_INTEGER);
+    expect(r.x1).toBe(-1);
+    expect(r.y1).toBe(-1);
+  });
+
+  it("expandDirtyRect expands from empty to include a point with radius", () => {
+    let r = emptyDirtyRect();
+    r = expandDirtyRect(r, 50, 60, 10);
+    expect(r.x0).toBe(40);
+    expect(r.y0).toBe(50);
+    expect(r.x1).toBe(61);
+    expect(r.y1).toBe(71);
+  });
+
+  it("expandDirtyRect expands existing bounds outward", () => {
+    const r: DirtyRect = { x0: 10, y0: 10, x1: 30, y1: 30 };
+    const expanded = expandDirtyRect(r, 100, 200, 5);
+    expect(expanded.x0).toBe(10);  // Math.min(10, 95) = 10
+    expect(expanded.y0).toBe(10);  // Math.min(10, 195) = 10
+    expect(expanded.x1).toBe(106); // Math.max(30, 106) = 106
+    expect(expanded.y1).toBe(206); // Math.max(30, 206) = 206
+  });
+
+  it("clampDirtyRect clamps negative coords to 0", () => {
+    const r: DirtyRect = { x0: -10, y0: -5, x1: 110, y1: 105 };
+    const clamped = clampDirtyRect(r, 100, 100);
+    expect(clamped.x0).toBe(0);
+    expect(clamped.y0).toBe(0);
+    expect(clamped.x1).toBe(100);
+    expect(clamped.y1).toBe(100);
+  });
+
+  it("clampDirtyRect keeps valid rect unchanged", () => {
+    const r: DirtyRect = { x0: 10, y0: 10, x1: 50, y1: 50 };
+    const clamped = clampDirtyRect(r, 100, 100);
+    expect(clamped).toEqual(r);
+  });
+
+  it("clampDirtyRect clamps oversized coords to boundary", () => {
+    const r: DirtyRect = { x0: 0, y0: 0, x1: 200, y1: 300 };
+    const clamped = clampDirtyRect(r, 100, 100);
+    expect(clamped.x1).toBe(100);
+    expect(clamped.y1).toBe(100);
+  });
+
+  it("unionDirtyRect returns the union of two rects", () => {
+    const a: DirtyRect = { x0: 10, y0: 10, x1: 30, y1: 30 };
+    const b: DirtyRect = { x0: 20, y0: 40, x1: 50, y1: 60 };
+    const u = unionDirtyRect(a, b);
+    expect(u.x0).toBe(10);
+    expect(u.y0).toBe(10);
+    expect(u.x1).toBe(50);
+    expect(u.y1).toBe(60);
+  });
+
+  it("unionDirtyRect with empty rect returns the non-empty rect", () => {
+    const empty = emptyDirtyRect();
+    const r: DirtyRect = { x0: 10, y0: 10, x1: 20, y1: 20 };
+    const u = unionDirtyRect(empty, r);
+    expect(u).toEqual(r);
+  });
+});
+
+describe("compositeMaskToImageDataDirty", () => {
+  it("composites brush mask only within the dirty rect", () => {
+    const imgData: ImageData = {
+      width: 4,
+      height: 4,
+      data: new Uint8ClampedArray(4 * 4 * 4),
+      colorSpace: "srgb",
+    };
+    // 4x4 mask: top-left 2x2 has alpha=255, rest 0
+    const mask = new Uint8ClampedArray([
+      255, 255, 0, 0,
+      255, 255, 0, 0,
+      0, 0, 0, 0,
+      0, 0, 0, 0,
+    ]);
+    const rect: DirtyRect = { x0: 0, y0: 0, x1: 2, y1: 2 };
+    compositeMaskToImageDataDirty(imgData, 0, 0, mask, 4, rect, "#ff0000", false);
+
+    // Pixels inside rect: painted red opaque
+    expect(imgData.data[0]).toBe(255);  // R at (0,0)
+    expect(imgData.data[3]).toBe(255);  // A at (0,0)
+    // Pixels outside rect: untouched (alpha 0)
+    expect(imgData.data[2 * 4 + 0]).toBe(0);  // R at (2,0)
+    expect(imgData.data[3 * 4 + 3]).toBe(0);  // A at (3,0)
+  });
+
+  it("composites eraser mask only within the dirty rect", () => {
+    const imgData: ImageData = {
+      width: 2,
+      height: 2,
+      data: new Uint8ClampedArray([
+        0, 0, 0, 200,
+        0, 0, 0, 200,
+        0, 0, 0, 200,
+        0, 0, 0, 200,
+      ]),
+      colorSpace: "srgb",
+    };
+    // 2x2 mask: top-left pixel alpha=255, rest 0
+    const mask = new Uint8ClampedArray([
+      255, 0,
+      0, 0,
+    ]);
+    const rect: DirtyRect = { x0: 0, y0: 0, x1: 1, y1: 1 };
+    compositeMaskToImageDataDirty(imgData, 0, 0, mask, 2, rect, "#000000", true);
+
+    expect(imgData.data[3]).toBe(0);    // Erased (mask 255)
+    expect(imgData.data[7]).toBe(200);  // Unchanged (outside rect)
+  });
+
+  it("handles imageData origin offset correctly", () => {
+    // ImageData is a 2x2 sub-region of a larger composition, starting at (1,1)
+    const imgData: ImageData = {
+      width: 2,
+      height: 2,
+      data: new Uint8ClampedArray(2 * 2 * 4),
+      colorSpace: "srgb",
+    };
+    // Full 4x4 mask: only pixel (2,2) has alpha=255
+    const mask = new Uint8ClampedArray([
+      0, 0, 0, 0,
+      0, 0, 0, 0,
+      0, 0, 255, 0,
+      0, 0, 0, 0,
+    ]);
+    // Dirty rect in full-image coords: rows 1..2, cols 1..2
+    const rect: DirtyRect = { x0: 1, y0: 1, x1: 3, y1: 3 };
+    compositeMaskToImageDataDirty(imgData, 1, 1, mask, 4, rect, "#ff0000", false);
+
+    // Pixel (2,2) in full image → (1,1) in ImageData → data[12..15]
+    expect(imgData.data[12]).toBe(255); // painted red
+    expect(imgData.data[15]).toBe(255); // opaque
+  });
+});
+
+describe("paintMaskToContextDirty", () => {
+  it("composites brush into the dirty rect region", () => {
+    // Full canvas is 4x4
+    const fullData = new Uint8ClampedArray(4 * 4 * 4);
+    const ctx = {
+      canvas: { width: 4, height: 4 } as HTMLCanvasElement,
+      getImageData: vi.fn((x: number, y: number, w: number, h: number) => ({
+        width: w,
+        height: h,
+        data: fullData.subarray((y * 4 + x) * 4, ((y + h) * 4 + x + w) * 4),
+        colorSpace: "srgb",
+      } as unknown as ImageData)),
+      putImageData: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+
+    // 4x4 mask: only (0,0) and (1,0) have paint
+    const mask = new Uint8ClampedArray([
+      128, 128, 0, 0,
+      0, 0, 0, 0,
+      0, 0, 0, 0,
+      0, 0, 0, 0,
+    ]);
+    const rect: DirtyRect = { x0: 0, y0: 0, x1: 2, y1: 1 };
+
+    paintMaskToContextDirty(ctx, mask, 4, 4, rect, "#ff0000", false);
+
+    // getImageData called with the dirty rect bounds
+    expect(ctx.getImageData).toHaveBeenCalledWith(0, 0, 2, 1);
+    // putImageData called with the same rect origin
+    expect(ctx.putImageData).toHaveBeenCalled();
+  });
+
+  it("skips composite when dirty rect is empty", () => {
+    const ctx = {
+      canvas: { width: 4, height: 4 } as HTMLCanvasElement,
+      getImageData: vi.fn(),
+      putImageData: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+
+    // Rect with zero area (x1 <= x0)
+    const rect: DirtyRect = { x0: 2, y0: 0, x1: 2, y1: 4 };
+    paintMaskToContextDirty(ctx, new Uint8ClampedArray(16), 4, 4, rect, "#ff0000", false);
+
+    expect(ctx.getImageData).not.toHaveBeenCalled();
+    expect(ctx.putImageData).not.toHaveBeenCalled();
   });
 });
