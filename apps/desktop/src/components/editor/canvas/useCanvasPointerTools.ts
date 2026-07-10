@@ -144,10 +144,30 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   let edgeLastClientY = 0;
   let edgeLastTime = 0;
 
-  function applyEdgeScroll(dt: number) {
+  // ── Cached container rect ──────────────────────────────────────
+  // Avoid getBoundingClientRect() on every pointermove. The rect is
+  // lazily populated and invalidated when zoom or pan changes (via
+  // createEffect below).
+  let cachedContainerRect: DOMRect | null = null;
+
+  function getCachedContainerRect(): DOMRect | null {
+    if (cachedContainerRect) return cachedContainerRect;
     const container = params.getCanvasContainerRef();
-    if (!container) return { scrolled: false };
-    const rect = container.getBoundingClientRect();
+    if (!container) return null;
+    cachedContainerRect = container.getBoundingClientRect();
+    return cachedContainerRect;
+  }
+
+  // Invalidate cached rect when camera state changes
+  createEffect(() => {
+    zoom();
+    if (typeof pan === "function") pan();
+    cachedContainerRect = null;
+  });
+
+  function applyEdgeScroll(dt: number) {
+    const rect = getCachedContainerRect();
+    if (!rect) return { scrolled: false };
     const cx = edgeLastClientX - rect.left;
     const cy = edgeLastClientY - rect.top;
     const midX = rect.width / 2;
@@ -439,9 +459,8 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
    * updated via direct setZoom/setPan calls.
    */
   const getDocCoords = (e: PointerEvent) => {
-    const container = params.getCanvasContainerRef();
-    if (!container) return { x: 0, y: 0 };
-    const rect = container.getBoundingClientRect();
+    const rect = getCachedContainerRect();
+    if (!rect) return { x: 0, y: 0 };
     const p = pan();
     const z = zoom();
     if (!Number.isFinite(z) || z <= 0) return { x: 0, y: 0 };
