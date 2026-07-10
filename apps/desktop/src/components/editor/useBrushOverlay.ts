@@ -366,18 +366,19 @@ export function useBrushOverlay() {
     compositeAlpha = alphaScale;
 
     // ── Composite ──
-    // Brush: composite SYNCHRONOUSLY (incremental drawImage is fast, ~5ms per dab).
-    // RAF throttle is unnecessary — it only adds ~16ms visual delay to the last dab,
-    // making the stroke feel like it "doesn't reach" until release.
-    // Eraser: still uses RAF because it redraws all dabs (can be slow).
+    // RAF-throttled for both brush AND eraser. For large brushes (2000px),
+    // drawImage of the 2000×2000 tip canvas onto the layer-res overlay blocks
+    // the main thread for 20-50ms per dab. Synchronous composite inside the
+    // pointer event handler prevents the cursor overlay from updating
+    // (BrushCursorOverlay.handleMove runs AFTER onCanvasPointerMove in the
+    // bubble phase), causing the cursor to appear choppy ("patah patah")
+    // during fast drag. RAF throttle bounds composite to 1× per frame,
+    // keeping the cursor smooth at the cost of ~1 frame preview lag.
     if (isFinal) {
       stopHoldTimer();
       compositeNow(activeEngine, activeId, layer);
-    } else if (effectiveIsEraser) {
-      scheduleComposite();
     } else {
-      // Brush: composite immediately so the user sees every dab in real-time
-      performComposite(activeEngine, activeId, layer, false);
+      scheduleComposite();
     }
 
     prevStrokePointCount = points.length;
