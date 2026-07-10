@@ -154,6 +154,11 @@ export function useBrushOverlay() {
 
   function getTipCanvas(tip: import("./brushTipMask").BrushTip, color: string): OffscreenCanvas | HTMLCanvasElement {
     const _t0 = performance.now();
+    // Canvas size matches the data array resolution. For large brushes
+    // (diameter > 256), the data is downsampled and the browser upscales
+    // via drawImage destination dimensions — visually identical since
+    // the brush alpha profile is smooth.
+    const sz = tip.dataSize;
     const key = `tip:${tip.diameter}:${color}`;
     const cached = tipCanvasCache.get(key);
     if (cached) {
@@ -164,16 +169,16 @@ export function useBrushOverlay() {
 
     let canvas: OffscreenCanvas | HTMLCanvasElement;
     try {
-      canvas = new OffscreenCanvas(tip.diameter, tip.diameter);
+      canvas = new OffscreenCanvas(sz, sz);
     } catch {
       // Fallback for environments without OffscreenCanvas (jsdom tests)
       canvas = document.createElement("canvas");
-      canvas.width = tip.diameter;
-      canvas.height = tip.diameter;
+      canvas.width = sz;
+      canvas.height = sz;
     }
     const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
     const paint = parsePaintColor(color);
-    const imgData = ctx.createImageData(tip.diameter, tip.diameter);
+    const imgData = ctx.createImageData(sz, sz);
     const d = imgData.data;
     for (let i = 0; i < tip.data.length; i++) {
       const a = Math.round(tip.data[i] * 255);
@@ -191,7 +196,7 @@ export function useBrushOverlay() {
     }
     tipCanvasCache.set(key, canvas);
     const _dt = performance.now() - _t0;
-    if (_dt > 1) console.warn(`[perf] getTipCanvas: ${_dt.toFixed(1)}ms (d=${tip.diameter}, cache=${cached ? "HIT" : "MISS"})`);
+    if (_dt > 1) console.warn(`[perf] getTipCanvas: ${_dt.toFixed(1)}ms (sz=${sz}, d=${tip.diameter}, cache=${cached ? "HIT" : "MISS"})`);
     return canvas;
   }
 
@@ -612,9 +617,19 @@ export function useBrushOverlay() {
         const tipCanvas = getTipCanvas(tip, dabSession.color);
         const tipRadius = tip.diameter / 2;
         sCtx.globalCompositeOperation = "destination-out";
+        const cw = tipCanvas.width;
+        const ch = tipCanvas.height;
         for (const dab of dabSession.dabPositions) {
           sCtx.globalAlpha = dab.alpha;
-          sCtx.drawImage(tipCanvas, Math.round(dab.x - tipRadius), Math.round(dab.y - tipRadius));
+          // 9-arg drawImage: canvas is at data resolution (e.g. 256×256),
+          // destination dimensions use tip.diameter so the browser upscales
+          // to the correct brush extent.
+          sCtx.drawImage(
+            tipCanvas,
+            0, 0, cw, ch,
+            Math.round(dab.x - tipRadius), Math.round(dab.y - tipRadius),
+            tip.diameter, tip.diameter,
+          );
         }
         sCtx.globalAlpha = 1;
         sCtx.globalCompositeOperation = "source-over";

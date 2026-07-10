@@ -108,10 +108,15 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
 
   onMount(() => {
     // ── Register keyboard shortcuts (conflict detection) ──
-    // Intentional overlap with useEditorCommands (chain-of-responsibility):
-    registerShortcut("Ctrl+Z", "useCanvasKeyboard");     // transform undo → fallthrough
-    registerShortcut("Ctrl+Y", "useCanvasKeyboard");     // transform redo → fallthrough
-    registerShortcut("Ctrl+Shift+Z", "useCanvasKeyboard");
+    // Chain-of-responsibility with useEditorCommands: canvas captures keydown
+    // FIRST (capture phase) so it can intercept Ctrl+Z/Y for transform mini-
+    // undo/redo. When the mini stack is empty, it falls through by NOT calling
+    // stopPropagation → useEditorCommands receives the event in bubble phase.
+    // This ordering prevents useEditorCommands from eating the event before
+    // canvas can decide (which happened when both used bubble-only).
+    registerShortcut("Ctrl+Z", "useCanvasKeyboard", { intentional: true });     // transform undo → fallthrough
+    registerShortcut("Ctrl+Y", "useCanvasKeyboard", { intentional: true });     // transform redo → fallthrough
+    registerShortcut("Ctrl+Shift+Z", "useCanvasKeyboard", { intentional: true });
     // Canvas-only shortcuts:
     registerShortcut("Ctrl+Shift+T", "useCanvasKeyboard");
     registerShortcut("Ctrl+Shift+Alt+E", "useCanvasKeyboard");
@@ -940,12 +945,16 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
       options.setIsAltPressed(false);
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    // Capture phase: fires BEFORE bubble-phase handlers (useEditorCommands,
+    // which also listens on window). This ensures canvas gets first dibs on
+    // Ctrl+Z/Y for transform mini-undo. When canvas falls through (no mini
+    // undo), it doesn't stopPropagation → editor commands handles it in bubble.
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
     window.addEventListener("keyup", handleKeyUp);
     window.addEventListener("blur", handleWindowBlur);
 
     onCleanup(() => {
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("blur", handleWindowBlur);
     });

@@ -20,7 +20,17 @@ export interface BrushTip {
   diameter: number;
   R_nominal: number;
   data: Float32Array;
+  /** Size of one side of the square data array (max MAX_BRUSH_TIP_DATA_SIZE).
+   *  For tips with diameter > MAX_BRUSH_TIP_DATA_SIZE, this is smaller than `diameter`
+   *  and the browser upscales via drawImage destination dimensions. */
+  dataSize: number;
 }
+
+/** Maximum pixel dimension of the brush tip Float32Array backing store.
+ *  Values above this are downsampled: the data array stores a smaller grid
+ *  and drawImage with destination dimensions lets the browser upscale.
+ *  256×256 = 65K elements (~2ms rasterize) vs 2126×2126 = 4.5M elements (~485ms). */
+export const MAX_BRUSH_TIP_DATA_SIZE = 256;
 
 export interface BrushPoint {
   x: number;
@@ -112,15 +122,24 @@ function rasterizeBrushTipWithCurve(
     ? 1
     : curve === "soft" ? getBrushProfileSupportNorm(h) : 1;
   const diameter = Math.ceil(R_nominal * supportNorm) * 2 + 2;
-  const data = new Float32Array(diameter * diameter);
+  // Cap data array to MAX_BRUSH_TIP_DATA_SIZE for performance.
+  // The alpha profile is smooth (super-gaussian), so downsampled data
+  // produces visually identical output when upscaled via drawImage.
+  const dataSize = Math.min(diameter, MAX_BRUSH_TIP_DATA_SIZE);
+  const data = new Float32Array(dataSize * dataSize);
   const center = diameter / 2;
+  // Scale factor: maps data-space pixel to spatial pixel coordinate
+  const scale = diameter / dataSize;
 
-  for (let y = 0; y < diameter; y += 1) {
-    const dy = y + 0.5 - center;
-    for (let x = 0; x < diameter; x += 1) {
-      const dx = x + 0.5 - center;
-      const distance = Math.hypot(dx, dy);
-      data[y * diameter + x] = diameterNominal < MIN_RELIABLE_BRUSH_DIAMETER_PX
+  for (let dy = 0; dy < dataSize; dy += 1) {
+    // Spatial pixel-center position mapped from data-coordinate dy.
+    // When scale=1 (no downsampling): (dy + 0.5) * 1 = dy + 0.5,
+    // matching the original (y + 0.5) pixel-center convention.
+    const yPos = (dy + 0.5) * scale;
+    for (let dx = 0; dx < dataSize; dx += 1) {
+      const xPos = (dx + 0.5) * scale;
+      const distance = Math.hypot(xPos - center, yPos - center);
+      data[dy * dataSize + dx] = diameterNominal < MIN_RELIABLE_BRUSH_DIAMETER_PX
         || (curve === "soft" && h >= BRUSH_HARD_EDGE_THRESHOLD)
         ? smallRoundAlpha(distance, R_nominal)
         : curve === "soft"
@@ -129,15 +148,16 @@ function rasterizeBrushTipWithCurve(
     }
   }
   const _dt = performance.now() - _t0;
-  if (_dt > 1) console.warn(`[perf] rasterizeBrushTipWithCurve: ${_dt.toFixed(1)}ms (d=${diameter}, pixel=${data.length})`);
+  if (_dt > 1) console.warn(`[perf] rasterizeBrushTipWithCurve: ${_dt.toFixed(1)}ms (d=${diameter}, pixel=${dataSize}x${dataSize} → ${data.length}, scale=${scale.toFixed(2)})`);
 
   return {
-    width: diameter,
-    height: diameter,
+    width: dataSize,
+    height: dataSize,
     radius: R_nominal,
     diameter,
     R_nominal,
     data,
+    dataSize,
   };
 }
 
@@ -253,9 +273,13 @@ export function stampBrushTip(
   // per-dab alpha cap, so flow=50% + ~10 passes reaches ~99% at the mask
   // center. Replaces the previous max-within-stroke semantics which made
   // brush strokes stop accumulating after the first pass.
-  const scale = clamp01(alphaScale);
+  const aScale = clamp01(alphaScale);
   const halfExtent = tip.diameter / 2;
   const centerIndex = halfExtent - 0.5;
+  const dataSize = tip.dataSize;
+  // Scale factor: maps spatial coordinate to data coordinate.
+  // When dataSize === diameter this is 1.0 (identity, no scaling).
+  const dataScale = dataSize / tip.diameter;
 
   const minX = Math.max(0, Math.floor(centerX - halfExtent));
   const maxX = Math.min(maskWidth - 1, Math.ceil(centerX + halfExtent) - 1);
@@ -263,26 +287,26 @@ export function stampBrushTip(
   const maxY = Math.min(maskHeight - 1, Math.ceil(centerY + halfExtent) - 1);
 
   for (let y = minY; y <= maxY; y += 1) {
-    const ty = y - centerY + centerIndex;
+    const ty = (y - centerY + centerIndex) * dataScale;
     const y0 = Math.floor(ty);
     const y1 = y0 + 1;
     const wy = ty - y0;
 
-    const y0In = y0 >= 0 && y0 < tip.height;
-    const y1In = y1 >= 0 && y1 < tip.height;
-    const y0Offset = y0 * tip.width;
-    const y1Offset = y1 * tip.width;
+    const y0In = y0 >= 0 && y0 < dataSize;
+    const y1In = y1 >= 0 && y1 < dataSize;
+    const y0Offset = y0 * dataSize;
+    const y1Offset = y1 * dataSize;
 
     const rowIdx = y * maskWidth;
 
     for (let x = minX; x <= maxX; x += 1) {
-      const tx = x - centerX + centerIndex;
+      const tx = (x - centerX + centerIndex) * dataScale;
       const x0 = Math.floor(tx);
       const x1 = x0 + 1;
       const wx = tx - x0;
 
-      const x0In = x0 >= 0 && x0 < tip.width;
-      const x1In = x1 >= 0 && x1 < tip.width;
+      const x0In = x0 >= 0 && x0 < dataSize;
+      const x1In = x1 >= 0 && x1 < dataSize;
 
       const a00 = (y0In && x0In) ? tip.data[y0Offset + x0] : 0;
       const a10 = (y0In && x1In) ? tip.data[y0Offset + x1] : 0;
@@ -295,7 +319,7 @@ export function stampBrushTip(
 
       if (interpolatedAlpha <= 0) continue;
 
-      const scaled = interpolatedAlpha * scale;
+      const scaled = interpolatedAlpha * aScale;
       if (scaled <= 0) continue;
 
       const idx = rowIdx + x;
