@@ -195,6 +195,52 @@ export function useBrushOverlay() {
     return canvas;
   }
 
+  // ── Preview tip canvas (downscaled for smooth overlay composite) ──
+  // For large brushes (diameter > 256px), the full-resolution tip canvas
+  // is 4+ million pixels (e.g., 2000×2000). drawImage of this canvas
+  // blocks the main thread for 5-15ms per dab, causing frame drops in
+  // the RAF-throttled composite. The preview tip canvas is scaled down
+  // to at most PREVIEW_MAX_SIZE px so drawImage is ~0.1ms.
+  // The browser upscales the preview to the correct visual size when
+  // drawn with destination dimensions — slightly blurry preview during
+  // drag, crisp final composite on pointerUp.
+  const PREVIEW_MAX_SIZE = 256;
+
+  function getPreviewTipCanvas(tip: import("./brushTipMask").BrushTip, color: string): OffscreenCanvas | HTMLCanvasElement {
+    const scale = Math.min(1, PREVIEW_MAX_SIZE / tip.diameter);
+    if (scale >= 1) return getTipCanvas(tip, color); // no downscale needed
+
+    const key = `preview:${tip.diameter}:${color}`;
+    const cached = tipCanvasCache.get(key);
+    if (cached) {
+      tipCanvasCache.delete(key);
+      tipCanvasCache.set(key, cached);
+      return cached;
+    }
+
+    const fullCanvas = getTipCanvas(tip, color);
+    const pw = Math.round(tip.diameter * scale);
+
+    let preview: OffscreenCanvas | HTMLCanvasElement;
+    try {
+      preview = new OffscreenCanvas(pw, pw);
+    } catch {
+      preview = document.createElement("canvas");
+      preview.width = pw;
+      preview.height = pw;
+    }
+    const pCtx = preview.getContext("2d") as OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
+    pCtx.drawImage(fullCanvas, 0, 0, pw, pw);
+
+    // LRU: same cache as getTipCanvas — preview entries are small (~256KB vs 16MB)
+    if (tipCanvasCache.size >= 16) {
+      const firstKey = tipCanvasCache.keys().next().value;
+      if (firstKey !== undefined) tipCanvasCache.delete(firstKey);
+    }
+    tipCanvasCache.set(key, preview);
+    return preview;
+  }
+
   // ── RAF throttle state ───────────────────────────────────────────
   // Stamping (mask accumulation) is always synchronous.
   // Composite runs at most once per RAF frame.
@@ -410,8 +456,26 @@ export function useBrushOverlay() {
     const hasDirty = dirty.x1 > dirty.x0 && dirty.y1 > dirty.y0 && session.dabPositions.length > 0;
     if (!hasDirty) return;
 
-    const tipCanvas = getTipCanvas(tip, session.color);
+    // ── Preview tip canvas ──
+    // Non-final strokes: use downscaled preview tip so drawImage of
+    // 2000×2000 tip canvas doesn't block main thread for 5-15ms per dab.
+    // The browser upscales the preview to the correct visual size via
+    // destination dimensions in drawImage (slightly blurry drag preview,
+    // crisp final composite on pointerUp).
+    const compositeTipCanvas = !final ? getPreviewTipCanvas(tip, session.color) : getTipCanvas(tip, session.color);
+    const cw = compositeTipCanvas.width;
+    const ch = compositeTipCanvas.height;
     const tipRadius = tip.diameter / 2;
+
+    const drawDab = (dab: Dab) => {
+      overlayCtx!.globalAlpha = dab.alpha;
+      overlayCtx!.drawImage(
+        compositeTipCanvas,
+        0, 0, cw, ch,
+        Math.round(dab.x - tipRadius), Math.round(dab.y - tipRadius),
+        tip.diameter, tip.diameter,
+      );
+    };
 
     if (session.isEraser) {
       // ── Eraser: live preview via destination-out ──
@@ -421,12 +485,9 @@ export function useBrushOverlay() {
       // behind the active layer). This gives a correct "real transparency"
       // preview that matches the final commit.
       const startFrom = session.dabsRendered;
-      const eraserTipCanvas = getTipCanvas(tip, session.color);
       overlayCtx!.globalCompositeOperation = "destination-out";
       for (let i = startFrom; i < session.dabPositions.length; i++) {
-        const dab = session.dabPositions[i];
-        overlayCtx!.globalAlpha = dab.alpha;
-        overlayCtx!.drawImage(eraserTipCanvas, Math.round(dab.x - tipRadius), Math.round(dab.y - tipRadius));
+        drawDab(session.dabPositions[i]);
       }
       overlayCtx!.globalAlpha = 1;
       overlayCtx!.globalCompositeOperation = "source-over";
@@ -455,9 +516,7 @@ export function useBrushOverlay() {
         overlayCtx!.clearRect(dirty.x0, dirty.y0, subW, subH);
       }
       for (let i = startFrom; i < session.dabPositions.length; i++) {
-        const dab = session.dabPositions[i];
-        overlayCtx!.globalAlpha = dab.alpha;
-        overlayCtx!.drawImage(tipCanvas, Math.round(dab.x - tipRadius), Math.round(dab.y - tipRadius));
+        drawDab(session.dabPositions[i]);
       }
       overlayCtx!.globalAlpha = 1;
       session.dabsRendered = session.dabPositions.length;
