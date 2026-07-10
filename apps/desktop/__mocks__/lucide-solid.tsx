@@ -9,6 +9,11 @@
  *
  * IMPORTANT: Keep the export list in sync with apps/desktop/src/components/editor/icons.tsx
  * whenever new icons are added.
+ *
+ * NOTE: As of bun migration, vi.mock("lucide-solid") does not intercept bun's
+ * native module loader (bun resolves via symlinks to .bun cache, bypassing
+ * Vitest's mock system). This file is kept as reference — if vi.mock ever
+ * works with bun, this mock will be used automatically.
  */
 
 import { type Component, type JSX } from "solid-js";

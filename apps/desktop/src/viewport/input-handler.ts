@@ -117,7 +117,7 @@ export function handlePointerDown(
     if (!context.strokePoints || context.strokePoints.length === 0) {
       context.strokePoints = [{ x: docX, y: docY }];
     }
-    context.onPaintStroke?.([...context.strokePoints], tool === "eraser", context.paintSettings);
+    context.onPaintStroke?.(context.strokePoints, tool === "eraser", context.paintSettings);
   } else if (tool === "eyedropper") {
     const color = engine.samplePixel(docX, docY);
     const hex = rgbToHex(color[0], color[1], color[2]);
@@ -241,7 +241,7 @@ export function handlePointerMove(
     context.onCropCreated?.(x, y, w, h);
   } else if (tool === "brush" || tool === "eraser") {
     context.strokePoints.push({ x: docX, y: docY });
-    context.onPaintStroke?.([...context.strokePoints], tool === "eraser", context.paintSettings);
+    context.onPaintStroke?.(context.strokePoints, tool === "eraser", context.paintSettings);
   } else if (tool === "eyedropper") {
     const color = engine.samplePixel(docX, docY);
     const hex = rgbToHex(color[0], color[1], color[2]);
@@ -386,7 +386,7 @@ export function handlePointerUp(
       if (!lastPoint || lastPoint.x !== docX || lastPoint.y !== docY) {
         context.strokePoints.push({ x: docX, y: docY });
       }
-      context.onPaintStroke?.([...context.strokePoints], tool === "eraser", context.paintSettings, true);
+      context.onPaintStroke?.(context.strokePoints, tool === "eraser", context.paintSettings, true);
     }
     context.strokePoints = [];
   } else if (tool === "crop") {

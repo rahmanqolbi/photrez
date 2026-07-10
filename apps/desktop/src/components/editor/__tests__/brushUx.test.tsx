@@ -340,6 +340,58 @@ describe("Brush & Eraser UX modifiers (Alt / Shift)", () => {
     vi.restoreAllMocks();
   });
 
+  it("clears stale brushAdjustStart on pointerDown so eraser works after leaked Alt+RightClick", () => {
+    const { signals, dispose } = createMockEditor({ activeTool: "eraser" });
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(signals as any);
+
+    const canvas = document.createElement("canvas");
+    canvas.setPointerCapture = vi.fn();
+    canvas.releasePointerCapture = vi.fn();
+    const onPaintStroke = vi.fn();
+    const commitBrushStroke = vi.fn();
+    const params = {
+      getCanvasContainerRef: () => document.createElement("div"),
+      getCanvasRef: () => canvas,
+      isSpacePressed: () => false,
+      isPanning: () => false,
+      isAltPressed: () => false,
+      stopMomentum: vi.fn(),
+      fitToScreenAndRender: vi.fn(),
+      commitBrushStroke,
+      onPaintStroke,
+    };
+
+    const { tools, dispose: disposeTools } = createPointerTools(params);
+
+    // Step 1: Alt+RightClick → brushAdjustStart is set (state leak)
+    tools.onCanvasPointerDown({
+      button: 2, altKey: true, clientX: 50, clientY: 50, pointerId: 1,
+      preventDefault: vi.fn(),
+    } as any);
+    // No onCanvasPointerUp or onCanvasPointerCancel is called — simulates
+    // releasing the right button outside the window (stale state leak)
+
+    // Step 2: Left-click eraser → brushAdjustStart cleared at top of
+    // onCanvasPointerDown → eraser stroke proceeds normally
+    tools.onCanvasPointerDown({ button: 0, clientX: 10, clientY: 10, pointerId: 2 } as any);
+    expect(onPaintStroke).toHaveBeenCalledWith(
+      expect.arrayContaining([{ x: 10, y: 10 }]),
+      true, // isEraser
+      expect.any(Object),
+    );
+
+    tools.onCanvasPointerMove({ clientX: 20, clientY: 10, buttons: 1, pointerId: 2 } as any);
+    tools.onCanvasPointerUp({ clientX: 20, clientY: 10, pointerId: 2 } as any);
+
+    // commitBrushStroke should have been called for the eraser
+    expect(commitBrushStroke).toHaveBeenCalled();
+    expect(commitBrushStroke.mock.calls[0][3]).toBe(true); // isEraser=true
+
+    disposeTools();
+    dispose();
+    vi.restoreAllMocks();
+  });
+
   it("synchronizes lastPaintCoords with active history on undo/redo actions", () => {
     let mockCoords: { x: number; y: number } | null = null;
     const mockHistory = {

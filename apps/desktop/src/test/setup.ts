@@ -36,21 +36,18 @@
 //     within a single worker thread, causing state pollution with
 //     vite-plugin-solid. 67 tests regressed. Keep sequence default.
 //
-// ── Final working config (vite.config.ts) ──────────────────────
-//   test: {
-//     setupFiles: ['./src/test/setup.ts'],
-//     pool: 'threads',  // ~1.89× speedup, no regressions
-//     // NO sequence.concurrent: true — breaks 67 tests
-//   }
+// ── lucide-solid mock ──────────────────────────────────────────
+// WARNING: vi.mock("lucide-solid") does NOT work with bun — bun's native
+// module loader bypasses Vitest's mock system by resolving modules directly
+// from the .bun cache (~/node_modules/.bun/lucide-solid@...). Neither
+// vi.mock, Vite resolve.alias, nor Vite resolveId plugins can intercept this.
+// This affects ALL component-jsdom tests, not just specific test files.
+// Fix pending: either bun fixes module resolution integration with Vitest,
+// or we restructure test dependencies to avoid lucide-solid in the module
+// graph of test files (e.g., extract icons into a test-safe wrapper).
 
 import { beforeEach, afterEach, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
-
-// ── Global mocks ─────────────────────────────────────────────────
-// Mock lucide-solid to prevent SolidJS "Client-only API" error in jsdom.
-// lucide-solid's icon components call DOM APIs that SolidJS's SSR
-// detection throws on. The mock renders simple <svg data-lucide-mock>.
-vi.mock("lucide-solid");
 
 beforeEach(() => {
   document.body.innerHTML = '';

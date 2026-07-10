@@ -1,5 +1,19 @@
 import type { LayerNode } from "./types";
 
+// Reusable 1x1 scratch canvas — avoids allocating a new OffscreenCanvas
+// per layer per sample during Alt+drag eyedropper (was ~50-200µs each).
+// Lazily created on first use so module import does not fail in envs
+// without OffscreenCanvas (e.g. jsdom test runner).
+let sampleCanvas: OffscreenCanvas | null = null;
+let sampleCtx: OffscreenCanvasRenderingContext2D | null = null;
+
+function getSampleCtx(): OffscreenCanvasRenderingContext2D | null {
+  if (sampleCtx) return sampleCtx;
+  sampleCanvas = new OffscreenCanvas(1, 1);
+  sampleCtx = sampleCanvas.getContext("2d");
+  return sampleCtx;
+}
+
 export function performPixelSampling(
   layers: readonly LayerNode[],
   docWidth: number,
@@ -24,11 +38,11 @@ export function performPixelSampling(
     const rx = Math.floor(x - layer.transform.x);
     const ry = Math.floor(y - layer.transform.y);
 
-    if (rx >= 0 && rx < layer.width && ry >= 0 && ry < layer.height) {
-      try {
-        const offscreen = new OffscreenCanvas(1, 1);
-        const ctx = offscreen.getContext("2d");
+     if (rx >= 0 && rx < layer.width && ry >= 0 && ry < layer.height) {
+       try {
+        const ctx = getSampleCtx();
         if (ctx) {
+          ctx.clearRect(0, 0, 1, 1);
           ctx.drawImage(layer.imageBitmap, rx, ry, 1, 1, 0, 0, 1, 1);
           const imgData = ctx.getImageData(0, 0, 1, 1);
           const r = imgData.data[0];

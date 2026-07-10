@@ -60,11 +60,11 @@ describe("audit: measured reference super-Gaussian profile", () => {
   });
 });
 
-describe("audit: editor-standard 25% dab spacing", () => {
-  it("25% × size matches reference spacing across sizes", () => {
+describe("audit: editor-standard 10% dab spacing", () => {
+  it("10% × size matches reference spacing across sizes", () => {
     for (const size of [10, 30, 75, 200, 800]) {
-      expect(getBrushDabSpacing(size, 0, 1)).toBe(Math.max(1, Math.round(size * 0.25)));
-      expect(getBrushDabSpacing(size, 1, 1)).toBe(Math.max(1, Math.round(size * 0.25)));
+      expect(getBrushDabSpacing(size, 0, 1)).toBe(Math.max(1, Math.round(size * 0.10)));
+      expect(getBrushDabSpacing(size, 1, 1)).toBe(Math.max(1, Math.round(size * 0.10)));
     }
   });
 
@@ -170,15 +170,15 @@ describe("audit: calibrated soft round single-dab profile", () => {
 });
 
 describe("audit: spacing across a stroked segment matches reference spacing", () => {
-  // a 25%-spacing reference and a 40px brush places dabs every 10px along
-  // the stroke. For a 30px segment at that spacing, we expect ~3-4 dabs.
-  it("a 30px segment at size 40 produces 3-4 dabs (excluding the first point stamp)", () => {
-    // Size 40 → spacing 10. For a 30px segment, expected non-first dabs: floor(30/10) = 3.
-    // Plus the always-stamped first point: 4 total.
+  // a 10%-spacing reference and a 40px brush places dabs every 4px along
+  // the stroke. For a 30px segment at that spacing, we expect ~7-8 dabs.
+  it("a 30px segment at size 40 produces 7-8 dabs (excluding the first point stamp)", () => {
+    // Size 40 → spacing 4. For a 30px segment, expected non-first dabs: floor(30/4) = 7.
+    // Plus the always-stamped first point: 8 total.
     const tip = createBrushTip({ size: 40, hardness: 1, curve: "cosine" });
     const mask = new Uint8ClampedArray(60 * 60);
     const spacing = getBrushDabSpacing(40, 1, 1);
-    expect(spacing).toBe(10);
+    expect(spacing).toBe(4);
 
     // Stamp first point at (10, 30)
     stampBrushTip(mask, 60, 60, tip, 10, 30, 1);
@@ -198,6 +198,6 @@ describe("audit: spacing across a stroked segment matches reference spacing", ()
       return dabs;
     })();
 
-    expect(result.length).toBe(3);
+    expect(result.length).toBe(7);
   });
 });

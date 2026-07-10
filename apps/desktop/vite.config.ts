@@ -60,15 +60,17 @@ const nodeTestFiles = [
 const defaultTestExcludes = ["node_modules/**", "dist/**", "e2e/**"];
 
 export default defineConfig({
-  plugins: [solidPlugin(process.env.VITEST ? { hot: false } : undefined), tailwindcss()],
-
-  resolve: {
-    tsconfigPaths: true,
-  },
+  plugins: [
+    solidPlugin(process.env.VITEST ? { hot: false } : undefined),
+    tailwindcss(),
+  ],
 
   test: {
     projects: [
       {
+        // extends:true inherits the root plugin chain (solidPlugin + tailwind)
+        // and resolve/tsconfigPaths. Without it the projects lose solidPlugin,
+        // so Solid JSX is never transformed and component tests fail to parse.
         extends: true,
         test: {
           name: "unit-node",
@@ -80,9 +82,15 @@ export default defineConfig({
           pool: "threads",
           isolate: true,
         },
+        esbuild: {
+          jsx: "automatic",
+          jsxImportSource: "solid-js",
+        },
+        resolve: {
+          tsconfigPaths: true,
+        },
       },
       {
-        extends: true,
         test: {
           name: "component-jsdom",
           globals: true,
@@ -93,8 +101,26 @@ export default defineConfig({
           css: false,
           pool: "forks",
         },
+        extends: true,
+        esbuild: {
+          jsx: "automatic",
+          jsxImportSource: "solid-js",
+        },
+        resolve: {
+          tsconfigPaths: true,
+        },
       },
     ],
+  },
+
+  // Root-level Vite config (shared by projects where not overridden)
+  esbuild: {
+    jsx: "automatic",
+    jsxImportSource: "solid-js",
+  },
+
+  resolve: {
+    tsconfigPaths: true,
   },
 
   // Prevent vite from obscuring rust errors

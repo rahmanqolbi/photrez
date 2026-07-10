@@ -14,8 +14,11 @@ export class RenderScheduler {
     this.framePending = true;
 
     this.rafId = requestAnimationFrame(() => {
+      const _t0 = performance.now();
       this.framePending = false;
       this.renderCallback?.();
+      const _dt = performance.now() - _t0;
+      if (_dt > 5) console.warn(`[perf] scheduler.render: ${_dt.toFixed(1)}ms`);
     });
   }
 
@@ -31,7 +34,10 @@ export class RenderScheduler {
 
     const loop = () => {
       if (!this.continuousMode) return;
+      const _t0 = performance.now();
       this.renderCallback?.();
+      const _dt = performance.now() - _t0;
+      if (_dt > 5) console.warn(`[perf] scheduler.continuousRender: ${_dt.toFixed(1)}ms`);
       this.continuousRafId = requestAnimationFrame(loop);
     };
     this.continuousRafId = requestAnimationFrame(loop);

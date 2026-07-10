@@ -836,6 +836,13 @@ export function CanvasViewport() {
         handlePasteboardPointerCancel(e);
         onViewportPointerCancel(e);
       }}
+      onContextMenu={(e) => {
+        // Suppress browser context menu during Alt+RightButton brush adjustment
+        if (e.altKey && (activeTool() === "brush" || activeTool() === "eraser")) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
       onLostPointerCapture={onViewportLostPointerCapture}
     >
       {/* CSS Transform container →GPU-accelerated pan/zoom */}

@@ -25,6 +25,7 @@ import { startSelectionRotation as startSelectionRotationFn } from "./selectionR
 
 const DRAG_CREATE_THRESHOLD = 5;
 const MIN_CROP_SIZE = 100;
+const NOOP = () => {};
 
 interface UseCanvasPointerToolsParams {
   getCanvasContainerRef: () => HTMLDivElement | undefined;
@@ -102,10 +103,14 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     moveSnapEnabled,
     setHoverPos,
     brushSize,
+    setBrushSize,
     brushHardness,
+    setBrushHardness,
     brushOpacity,
     eraserSize,
+    setEraserSize,
     eraserHardness,
+    setEraserHardness,
     eraserOpacity,
     brushFlow,
     brushSmoothing,
@@ -118,6 +123,17 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   let modernDragExceededThreshold = false;
   let modernDragEnd: { x: number; y: number } | null = null;
   let modernDragSnappedPreview: { x: number; y: number; w: number; h: number } | null = null;
+
+  // ── On-canvas brush adjustment (Alt+RightButton+Drag) ──
+  // Hold Alt + right mouse button and drag horizontally to adjust brush size,
+  // vertically to adjust hardness. Shows a live HUD with current values.
+  // Mirrors Photoshop's Alt+RightClick drag for quick brush tuning.
+  let brushAdjustStart: {
+    size: number;
+    hardness: number;
+    screenX: number;
+    screenY: number;
+  } | null = null;
 
   // ── Edge auto-scroll ──────────────────────────────────────────
   const EDGE_ZONE_PX = 40;
@@ -445,6 +461,33 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   };
 
   const onCanvasPointerDown = (e: PointerEvent) => {
+    const _t0 = performance.now();
+
+    // ── Clear stale brush adjustment state ──
+    // If the user released the right button outside the window after a brush
+    // adjust session, onCanvasPointerUp didn't fire and brushAdjustStart leaks.
+    // This stale state would cause onCanvasPointerUp to return early for ANY
+    // subsequent pointer (including left-click eraser), preventing commit.
+    if (brushAdjustStart) {
+      brushAdjustStart = null;
+      setHudInfo(null);
+    }
+
+    // ── On-canvas brush adjustment (Alt+RightButton+Drag) ──
+    // Before the generic right-click guard, check if this is a brush
+    // adjustment gesture: right button + alt key while brush/eraser tool.
+    // Shows a live HUD and updates size/hardness in real-time.
+    if (e.button === 2 && e.altKey && (activeTool() === "brush" || activeTool() === "eraser")) {
+      e.preventDefault();
+      trySetPointerCapture(params.getCanvasRef(), e.pointerId);
+      brushAdjustStart = {
+        size: activeTool() === "eraser" ? eraserSize() : brushSize(),
+        hardness: activeTool() === "eraser" ? eraserHardness() : brushHardness(),
+        screenX: e.clientX,
+        screenY: e.clientY,
+      };
+      return;
+    }
     if (e.button === 2) return;
     if (params.isSpacePressed() || params.isPanning() || e.button === 1) return;
 
@@ -558,19 +601,64 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const smoothed = activeTool() === "brush" || activeTool() === "eraser"
       ? paintSmoother.addPoint(coords.x, coords.y)
       : coords;
-    handlePointerDown(
-      activeTool() as ToolType,
-      smoothed.x,
-      smoothed.y,
-      engine,
-      history,
-      () => scheduler.requestRender(),
-      interactiveState,
-    );
+    const isPaintTool = activeTool() === "brush" || activeTool() === "eraser";      handlePointerDown(
+        activeTool() as ToolType,
+        smoothed.x,
+        smoothed.y,
+        engine,
+        history,
+        // Brush/eraser: suppress requestRender — overlay canvas handles preview,
+        // layer data doesn't change until commit. Saves a full WebGL composite per event.
+        isPaintTool ? NOOP : () => scheduler.requestRender(),
+        interactiveState,
+      );
+    const _dt = performance.now() - _t0;
+    if (_dt > 5) console.warn(`[perf] onCanvasPointerDown: ${_dt.toFixed(1)}ms (tool=${activeTool()})`);
   };
 
   const onCanvasPointerMove = (e: PointerEvent) => {
+    const _t0 = performance.now();
     if (params.isPanning()) return;
+
+    // ── On-canvas brush adjustment ──
+    if (brushAdjustStart) {
+      const dx = e.clientX - brushAdjustStart.screenX;
+      const dy = brushAdjustStart.screenY - e.clientY; // invert: up = more
+
+      const isEraserTool = activeTool() === "eraser";
+      const maxSize = 2000;
+      const minSize = 1;
+
+      // Size: proportional change based on percentage of start size
+      const sizePct = 1 + dx * 0.005; // 200px drag = 2x size change
+      const newSize = Math.round(Math.max(minSize, Math.min(maxSize, brushAdjustStart.size * sizePct)));
+
+      // Hardness: linear change, 250px drag = 1.0 full range
+      const newHardness = Math.max(0, Math.min(1, brushAdjustStart.hardness + dy * 0.004));
+
+      if (isEraserTool) {
+        setEraserSize(newSize);
+        setEraserHardness(newHardness);
+      } else {
+        setBrushSize(newSize);
+        setBrushHardness(newHardness);
+      }
+
+      // Show live HUD
+      setHudInfo({
+        mode: "brush",
+        clientX: e.clientX,
+        clientY: e.clientY,
+        width: newSize,
+        height: Math.round(newHardness * 100),
+        deltaX: 0,
+        deltaY: 0,
+        scalePercent: 0,
+        angle: 0,
+        snapActive: false,
+      });
+      return;
+    }
 
     edgeLastClientX = e.clientX;
     edgeLastClientY = e.clientY;
@@ -710,18 +798,31 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const smoothed = (activeTool() === "brush" || activeTool() === "eraser")
       ? paintSmoother.addPoint(coords.x, coords.y)
       : coords;
+    const isPaintTool = activeTool() === "brush" || activeTool() === "eraser";
     handlePointerMove(
       activeTool() as ToolType,
       smoothed.x,
       smoothed.y,
       engine,
-      () => scheduler.requestRender(),
+      // Brush/eraser: suppress requestRender — overlay canvas handles preview,
+      // layer data doesn't change until commit. Saves a full WebGL composite per event.
+      isPaintTool ? NOOP : () => scheduler.requestRender(),
       interactiveState,
     );
+    const _dt = performance.now() - _t0;
+    if (_dt > 5) console.warn(`[perf] onCanvasPointerMove: ${_dt.toFixed(1)}ms (tool=${activeTool()}, dragging=${interactiveState.isDragging})`);
   };
 
   const onCanvasPointerUp = (e: PointerEvent) => {
     if (params.isPanning()) return;
+
+    // ── On-canvas brush adjustment ──
+    if (brushAdjustStart) {
+      tryReleasePointerCapture(params.getCanvasRef(), e.pointerId);
+      brushAdjustStart = null;
+      setHudInfo(null);
+      return;
+    }
 
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
@@ -753,13 +854,15 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       ? paintSmoother.addPoint(coords.x, coords.y)
       : coords;
 
+    const isPaintToolForUp = tool === "brush" || tool === "eraser";
     handlePointerUp(
       activeTool() as ToolType,
       smoothed.x,
       smoothed.y,
       engine,
       history,
-      () => scheduler.requestRender(),
+      // Brush/eraser: suppress requestRender — commitBrushStroke handles it after this call.
+      isPaintToolForUp ? NOOP : () => scheduler.requestRender(),
       interactiveState,
     );
 
@@ -952,6 +1055,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   }
 
   const onCanvasPointerCancel = (e: PointerEvent) => {
+    // ── Cleanup brush adjustment on cancel ──
+    if (brushAdjustStart) {
+      brushAdjustStart = null;
+      setHudInfo(null);
+      tryReleasePointerCapture(params.getCanvasRef(), e.pointerId);
+    }
+
     stopEdgeRaf();
     paintSmoother.reset();
     const engine = workspace.getActiveEngine();
@@ -965,7 +1075,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       const layerId = engine.getActiveLayerId();
       if (history && layerId && interactiveState.strokePoints.length > 0) {
         interactiveState.onPaintStroke?.(
-          [...interactiveState.strokePoints],
+          interactiveState.strokePoints,
           tool === "eraser",
           interactiveState.paintSettings,
           true,
@@ -997,9 +1107,14 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   };
 
   const onCanvasLostPointerCapture = (e: PointerEvent) => {
+    // ── Cleanup brush adjustment on lost capture ──
+    if (brushAdjustStart) {
+      brushAdjustStart = null;
+      setHudInfo(null);
+    }
+
     stopEdgeRaf();
     paintSmoother.reset();
-    // Capture already lost →no releasePointerCapture call needed
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (!engine) return;
@@ -1009,7 +1124,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       const layerId = engine.getActiveLayerId();
       if (history && layerId && interactiveState.strokePoints.length > 0) {
         interactiveState.onPaintStroke?.(
-          [...interactiveState.strokePoints],
+          interactiveState.strokePoints,
           tool === "eraser",
           interactiveState.paintSettings,
           true,

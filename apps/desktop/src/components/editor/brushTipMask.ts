@@ -96,6 +96,7 @@ export function getBrushTipCacheKey(options: BrushTipOptions): string {
   return `${size}:${hardness}:${options.curve ?? "soft"}`;
 }
 
+const BRUSH_TIP_CACHE_MAX = 32;
 const brushTipCache = new Map<string, BrushTip>();
 
 function rasterizeBrushTipWithCurve(
@@ -103,6 +104,7 @@ function rasterizeBrushTipWithCurve(
   hardness: number,
   curve: BrushFalloffCurve,
 ): BrushTip {
+  const _t0 = performance.now();
   const diameterNominal = Number.isFinite(brushDiameter) ? Math.max(1, brushDiameter) : 1;
   const R_nominal = diameterNominal / 2;
   const h = clamp01(hardness);
@@ -126,6 +128,8 @@ function rasterizeBrushTipWithCurve(
           : brushAlphaAtDistance(distance, R_nominal, h, curve);
     }
   }
+  const _dt = performance.now() - _t0;
+  if (_dt > 1) console.warn(`[perf] rasterizeBrushTipWithCurve: ${_dt.toFixed(1)}ms (d=${diameter}, pixel=${data.length})`);
 
   return {
     width: diameter,
@@ -147,13 +151,26 @@ export function createBrushTip(options: BrushTipOptions): BrushTip {
 }
 
 export function getCachedBrushTip(brushDiameter: number, hardness: number): BrushTip {
+  const _t0 = performance.now();
   const diameter = Number.isFinite(brushDiameter) ? Math.max(1, brushDiameter) : 1;
   const h = clamp01(hardness);
   const key = `soft:${diameter}:${h}`;
   const cached = brushTipCache.get(key);
-  if (cached) return cached;
+  if (cached) {
+    // Move to end (most-recently-used)
+    brushTipCache.delete(key);
+    brushTipCache.set(key, cached);
+    return cached;
+  }
   const tip = rasterizeBrushTip(diameter, h);
+  // LRU eviction: if at capacity, remove the oldest entry
+  if (brushTipCache.size >= BRUSH_TIP_CACHE_MAX) {
+    const oldestKey = brushTipCache.keys().next().value;
+    if (oldestKey !== undefined) brushTipCache.delete(oldestKey);
+  }
   brushTipCache.set(key, tip);
+  const _dt = performance.now() - _t0;
+  if (_dt > 1) console.warn(`[perf] getCachedBrushTip: ${_dt.toFixed(1)}ms (d=${diameter}, h=${h.toFixed(2)}, cache=${cached ? "HIT" : "MISS"})`);
   return tip;
 }
 
@@ -164,8 +181,18 @@ export function getBrushTip(options: BrushTipOptions): BrushTip {
   }
   const key = `${options.curve}:${options.size}:${clamp01(options.hardness)}`;
   const cached = brushTipCache.get(key);
-  if (cached) return cached;
+  if (cached) {
+    // Move to end (MRU)
+    brushTipCache.delete(key);
+    brushTipCache.set(key, cached);
+    return cached;
+  }
   const tip = createBrushTip(options);
+  // LRU eviction
+  if (brushTipCache.size >= BRUSH_TIP_CACHE_MAX) {
+    const oldestKey = brushTipCache.keys().next().value;
+    if (oldestKey !== undefined) brushTipCache.delete(oldestKey);
+  }
   brushTipCache.set(key, tip);
   return tip;
 }
@@ -179,11 +206,12 @@ export function getEffectiveFlowMultiplier(_hardness: number): number {
 }
 
 export function getBrushDabSpacing(size: number, hardness: number, flow: number): number {
-  // visible individual dabs (brush-stroke character) instead of a smooth blob.
-  // Hardness already controls the soft profile inside the mask, so spacing
-  // stays geometry-agnostic across the hardness range. Flow remains a stroke
-  // alpha multiplier and does not change geometric spacing.
-  const spacing = size * 0.25;
+  // 10% of brush size — matches Krita default and approaches Photoshop soft brush
+  // spacing (1-10%). Produces significantly smoother strokes with minimal visible
+  // gap between dabs. Hardness already controls the soft profile inside the mask,
+  // so spacing stays geometry-agnostic across the hardness range. Flow remains a
+  // stroke alpha multiplier and does not change geometric spacing.
+  const spacing = size * 0.10;
   return Math.max(1, Math.round(spacing));
 }
 
@@ -218,6 +246,7 @@ export function stampBrushTip(
   centerY: number,
   alphaScale: number,
 ): void {
+  const _t0 = performance.now();
   // dabs on the same pixel accumulate toward saturation as
   //   1 - (1 - alpha)^N
   // matching established image editors. Opacity and flow act as the
@@ -275,6 +304,8 @@ export function stampBrushTip(
       mask[idx] = cur + Math.round((255 - cur) * scaled);
     }
   }
+  const _dt = performance.now() - _t0;
+  if (_dt > 1) console.warn(`[perf] stampBrushTip: ${_dt.toFixed(2)}ms (tip=${tip.diameter}px, α=${alphaScale.toFixed(2)})`);
 }
 
 export function brushPointsEqual(
@@ -304,6 +335,49 @@ export function stampTerminalBrushTip(
 
   stampBrushTip(mask, maskWidth, maskHeight, tip, endpoint.x, endpoint.y, alphaScale);
   return true;
+}
+
+export interface DirtyRect {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+export function emptyDirtyRect(): DirtyRect {
+  return { x0: Number.MAX_SAFE_INTEGER, y0: Number.MAX_SAFE_INTEGER, x1: -1, y1: -1 };
+}
+
+export function expandDirtyRect(
+  rect: DirtyRect,
+  x: number,
+  y: number,
+  radius: number,
+): DirtyRect {
+  return {
+    x0: Math.min(rect.x0, Math.floor(x - radius)),
+    y0: Math.min(rect.y0, Math.floor(y - radius)),
+    x1: Math.max(rect.x1, Math.ceil(x + radius) + 1),
+    y1: Math.max(rect.y1, Math.ceil(y + radius) + 1),
+  };
+}
+
+export function clampDirtyRect(rect: DirtyRect, w: number, h: number): DirtyRect {
+  return {
+    x0: Math.max(0, rect.x0),
+    y0: Math.max(0, rect.y0),
+    x1: Math.min(w, rect.x1),
+    y1: Math.min(h, rect.y1),
+  };
+}
+
+export function unionDirtyRect(a: DirtyRect, b: DirtyRect): DirtyRect {
+  return {
+    x0: Math.min(a.x0, b.x0),
+    y0: Math.min(a.y0, b.y0),
+    x1: Math.max(a.x1, b.x1),
+    y1: Math.max(a.y1, b.y1),
+  };
 }
 
 export interface RgbaColor {
@@ -393,6 +467,80 @@ export function paintMaskToContext(
   const imageData = ctx.getImageData(0, 0, width, height);
   compositeMaskToImageData(imageData, mask, color, isEraser);
   ctx.putImageData(imageData, 0, 0);
+}
+
+/**
+ * Composite mask into ImageData, iterating only over the dirty region.
+ * `imageDataOriginX/Y` is the document-space origin of the ImageData
+ * sub-region (so we can correctly index into both the full mask array
+ * and the sub-region ImageData).
+ */
+export function compositeMaskToImageDataDirty(
+  imageData: ImageData,
+  imageDataOriginX: number,
+  imageDataOriginY: number,
+  mask: Uint8ClampedArray,
+  maskWidth: number,
+  rect: DirtyRect,
+  color: string,
+  isEraser: boolean,
+): void {
+  const data = imageData.data;
+  const imgW = imageData.width;
+  const paint = parsePaintColor(color);
+  const strokeAlpha = Math.max(0, Math.min(1, paint.a));
+
+  for (let y = rect.y0; y < rect.y1; y++) {
+    const rowInMask = y * maskWidth;
+    const rowInImage = (y - imageDataOriginY) * imgW;
+    for (let x = rect.x0; x < rect.x1; x++) {
+      const maskIdx = rowInMask + x;
+      const maskAlpha = mask[maskIdx] / 255;
+      if (maskAlpha <= 0) continue;
+
+      const i = (rowInImage + (x - imageDataOriginX)) << 2;
+      const alpha = maskAlpha * strokeAlpha;
+
+      if (isEraser) {
+        data[i + 3] = Math.round(data[i + 3] * (1 - alpha));
+        continue;
+      }
+
+      const dstA = data[i + 3] / 255;
+      const outA = alpha + dstA * (1 - alpha);
+      if (outA <= 0) {
+        data[i] = data[i + 1] = data[i + 2] = data[i + 3] = 0;
+        continue;
+      }
+      data[i]     = Math.round((paint.r * alpha + data[i]     * dstA * (1 - alpha)) / outA);
+      data[i + 1] = Math.round((paint.g * alpha + data[i + 1] * dstA * (1 - alpha)) / outA);
+      data[i + 2] = Math.round((paint.b * alpha + data[i + 2] * dstA * (1 - alpha)) / outA);
+      data[i + 3] = Math.round(outA * 255);
+    }
+  }
+}
+
+/**
+ * Paint mask to canvas context using only the dirty region — avoids
+ * full-canvas getImageData/putImageData per event.
+ */
+export function paintMaskToContextDirty(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  mask: Uint8ClampedArray,
+  maskWidth: number,
+  maskHeight: number,
+  rect: DirtyRect,
+  color: string,
+  isEraser: boolean,
+): void {
+  const r = clampDirtyRect(rect, maskWidth, maskHeight);
+  if (r.x1 <= r.x0 || r.y1 <= r.y0) return;
+
+  const subWidth = r.x1 - r.x0;
+  const subHeight = r.y1 - r.y0;
+  const imageData = ctx.getImageData(r.x0, r.y0, subWidth, subHeight);
+  compositeMaskToImageDataDirty(imageData, r.x0, r.y0, mask, maskWidth, r, color, isEraser);
+  ctx.putImageData(imageData, r.x0, r.y0);
 }
 
 export function paintTransientBrushTipToContext(

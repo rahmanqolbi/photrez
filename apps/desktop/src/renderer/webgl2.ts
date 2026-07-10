@@ -289,6 +289,7 @@ export class WebGL2Backend implements RenderBackend {
   }
 
   render(state: RenderState, viewProjectionMatrix?: Float32Array): void {
+    const _t0 = performance.now();
     const gl = this.gl;
     const canvas = this.canvas;
     if (!gl || !canvas) return;
@@ -531,6 +532,8 @@ export class WebGL2Backend implements RenderBackend {
     }
 
     gl.bindVertexArray(null);
+    const _dt = performance.now() - _t0;
+    if (_dt > 5) console.warn(`[perf] WebGL2Backend.render: ${_dt.toFixed(1)}ms (layers=${state.layers.length})`);
   }
 
   private getBlendModeId(mode: string): number {

@@ -1,6 +1,6 @@
 import { Show, createMemo } from "solid-js";
 
-export type HudMode = "move" | "resize" | "rotate";
+export type HudMode = "move" | "resize" | "rotate" | "brush";
 
 interface TransformHudProps {
   mode: HudMode;
@@ -34,12 +34,16 @@ export function TransformHud(props: TransformHudProps) {
         if (props.snapActive) s += "  snap";
         return s;
       }
+      case "brush": {
+        return `Size ${Math.round(props.width ?? 0)}px  Hard ${Math.round(props.height ?? 0)}%`;
+      }
       default:
         return "";
     }
   });
 
   const padX = 16;
+const isBrushMode = () => props.mode === "brush";
   const padY = 24;
 
   return (
@@ -51,14 +55,14 @@ export function TransformHud(props: TransformHudProps) {
           width={label().length * 7 + 16}
           height={20}
           rx={4}
-          fill="rgba(20,20,20,0.85)"
-          stroke="rgba(255,255,255,0.08)"
+          fill={isBrushMode() ? "rgba(225, 90, 23, 0.2)" : "rgba(20,20,20,0.85)"}
+          stroke={isBrushMode() ? "rgba(225, 90, 23, 0.4)" : "rgba(255,255,255,0.08)"}
           stroke-width={1}
         />
         <text
           x={8}
           y={14}
-          fill="#E15A17"
+          fill={isBrushMode() ? "#fff" : "#E15A17"}
           font-size="12"
           font-weight="bold"
           text-anchor="start"
