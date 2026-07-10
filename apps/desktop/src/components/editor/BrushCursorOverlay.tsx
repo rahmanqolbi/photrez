@@ -52,6 +52,7 @@ export function BrushCursorOverlay(props?: {
   let lastClientY = 0;
   let hasValidPosition = false;
   let containerEl: HTMLElement | null = null;
+  let cachedRect: DOMRect | null = null;
 
   const updatePosition = () => {
     if (!isBrushTool() && !props?.forceVisibleForTest) {
@@ -63,18 +64,24 @@ export function BrushCursorOverlay(props?: {
     if (!containerEl) {
       containerEl = document.querySelector("[data-viewport-container]");
       if (!containerEl) return;
+      cachedRect = containerEl.getBoundingClientRect();
     }
-    const rect = containerEl.getBoundingClientRect();
+    // Use cached rect to avoid forced layout (getBoundingClientRect) on every
+    // pointermove. The rect is refreshed via createEffect when zoom/pan changes.
+    const rect = cachedRect ?? containerEl.getBoundingClientRect();
     const doc = camera.screenToDocument(lastClientX - rect.left, lastClientY - rect.top);
     setCursorPos({ x: doc.x, y: doc.y });
     setVisible(true);
   };
 
-  // React to zoom and pan changes automatically to update document-space mouse coordinate
+  // React to zoom and pan changes — also refresh cached viewport rect
   createEffect(() => {
     zoom();
     if (typeof pan === "function") {
       pan();
+    }
+    if (containerEl) {
+      cachedRect = containerEl.getBoundingClientRect();
     }
     updatePosition();
   });
