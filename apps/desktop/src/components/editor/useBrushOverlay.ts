@@ -41,6 +41,10 @@ interface PaintStrokeSession {
   isEraser: boolean;
   settingsKey: string;
   color: string;
+  /** Tip size (brush/eraser diameter) — stored directly to avoid parsing from settingsKey. */
+  tipSize: number;
+  /** Tip hardness 0..1 — stored directly to avoid parsing from settingsKey. */
+  tipHardness: number;
   /** Positions of all dabs rendered so far (for GPU-accelerated drawImage composite). */
   dabPositions: Dab[];
   /** How many dabs have already been rendered to the overlay (incremental drawing). */
@@ -64,6 +68,12 @@ export function useBrushOverlay() {
   let strokeGen = 0;
 
   let paintSession: PaintStrokeSession | null = null;
+
+  // ── Cached commit buffer ──
+  // Reuses OffscreenCanvas across commits to avoid 107MB allocation per stroke end.
+  // Cleared between strokes via clearRect. Reallocated only when layer dimensions change.
+  let cachedCommitCanvas: OffscreenCanvas | null = null;
+  let cachedCommitCtx: OffscreenCanvasRenderingContext2D | null = null;
 
   function startHoldTimer() {
     if (holdRaf !== null) return;
@@ -322,6 +332,8 @@ export function useBrushOverlay() {
         isEraser: effectiveIsEraser,
         settingsKey,
         color: effectiveColor,
+        tipSize: settings.size,
+        tipHardness: settings.hardness,
         dabPositions: [],
         dabsRendered: 0,
         lastPoint: null,
@@ -452,8 +464,8 @@ export function useBrushOverlay() {
     const alpha = compositeAlpha;
 
     const tip = getBrushTip({
-      size: parseFloat(session.settingsKey.split(":")[0] || "20"),
-      hardness: parseInt(session.settingsKey.split(":")[1] || "80") / 100,
+      size: session.tipSize,
+      hardness: session.tipHardness,
       curve: "soft",
     });
 
@@ -501,13 +513,18 @@ export function useBrushOverlay() {
       // Draw a thin circle outline at the current (last) dab position as
       // explicit visual feedback for the eraser position, so the user
       // always sees SOMETHING even when the layer has no content to erase.
-      const lastDab = session.dabPositions[session.dabPositions.length - 1];
-      if (lastDab) {
-        overlayCtx!.strokeStyle = "rgba(0,0,0,0.25)";
-        overlayCtx!.lineWidth = 1;
-        overlayCtx!.beginPath();
-        overlayCtx!.arc(Math.round(lastDab.x), Math.round(lastDab.y), tipRadius - 0.5, 0, Math.PI * 2);
-        overlayCtx!.stroke();
+      // SKIP on final composite: the outline would pollute the overlay
+      // and force commitBrushStroke to reconstruct from scratch instead
+      // of reading the clean overlay directly.
+      if (!final) {
+        const lastDab = session.dabPositions[session.dabPositions.length - 1];
+        if (lastDab) {
+          overlayCtx!.strokeStyle = "rgba(0,0,0,0.25)";
+          overlayCtx!.lineWidth = 1;
+          overlayCtx!.beginPath();
+          overlayCtx!.arc(Math.round(lastDab.x), Math.round(lastDab.y), tipRadius - 0.5, 0, Math.PI * 2);
+          overlayCtx!.stroke();
+        }
       }
     } else {
       // ── Brush: incremental drawImage (skip already-rendered dabs) ──
@@ -596,44 +613,23 @@ export function useBrushOverlay() {
     const eraserFill = isEraser ? resolveEraserFill(layer, true, bgColor()) : null;
     const effectiveIsEraser = eraserFill ? eraserFill.isEraser : false;
 
-    const snapshot = new OffscreenCanvas(w, h);
-    const sCtx = snapshot.getContext("2d")!;
+    // Reuse cached commit buffer to avoid 107MB allocation per commit.
+    // Only reallocate when layer dimensions change.
+    if (!cachedCommitCanvas || cachedCommitCanvas.width !== w || cachedCommitCanvas.height !== h) {
+      cachedCommitCanvas = new OffscreenCanvas(w, h);
+      cachedCommitCtx = cachedCommitCanvas.getContext("2d")!;
+    }
+    const sCtx = cachedCommitCtx!;
+    sCtx.clearRect(0, 0, w, h);
     if (effectiveIsEraser) {
-      // ── Eraser commit: draw layer, then apply destination-out with tip ──
-      // The overlay stays transparent during the stroke (no black circles).
-      // Instead of reading the overlay for the mask, reconstruct the eraser
-      // effect directly from the stored paintSession dab positions using
-      // the same tip canvas pipeline. This avoids ugly visual artifacts.
-      if (layer.imageBitmap) {
-        sCtx.drawImage(layer.imageBitmap, 0, 0);
-      }
-      const dabSession = paintSession;
-      if (dabSession && dabSession.dabPositions.length > 0) {
-        const tip = getBrushTip({
-          size: parseFloat(dabSession.settingsKey.split(":")[0] || "20"),
-          hardness: parseInt(dabSession.settingsKey.split(":")[1] || "80") / 100,
-          curve: "soft",
-        });
-        const tipCanvas = getTipCanvas(tip, dabSession.color);
-        const tipRadius = tip.diameter / 2;
-        sCtx.globalCompositeOperation = "destination-out";
-        const cw = tipCanvas.width;
-        const ch = tipCanvas.height;
-        for (const dab of dabSession.dabPositions) {
-          sCtx.globalAlpha = dab.alpha;
-          // 9-arg drawImage: canvas is at data resolution (e.g. 256×256),
-          // destination dimensions use tip.diameter so the browser upscales
-          // to the correct brush extent.
-          sCtx.drawImage(
-            tipCanvas,
-            0, 0, cw, ch,
-            Math.round(dab.x - tipRadius), Math.round(dab.y - tipRadius),
-            tip.diameter, tip.diameter,
-          );
-        }
-        sCtx.globalAlpha = 1;
-        sCtx.globalCompositeOperation = "source-over";
-      }
+      // ── Eraser commit: overlay already has the correct eraser result ──
+      // The overlay was seeded with layer content at stroke start, and
+      // destination-out dabs were cut incrementally during the stroke.
+      // The final composite skips the circle outline guard, so the overlay
+      // is clean. Read it directly instead of reconstructing from scratch.
+      // This eliminates the 27MP GPU→CPU readback (drawImage(imageBitmap))
+      // and the dab loop (~5ms savings).
+      sCtx.drawImage(overlayCanvasRef, 0, 0);
     } else {
       // ── Brush commit: draw layer, then draw overlay on top (source-over) ──
       // The overlay has brush strokes painted with source-over accumulation.
@@ -645,7 +641,7 @@ export function useBrushOverlay() {
 
     try {
       const gen = ++strokeGen;
-      const newBitmap = await createImageBitmap(snapshot);
+      const newBitmap = await createImageBitmap(cachedCommitCanvas);
       if (gen !== strokeGen) {
         newBitmap.close();
         return;
