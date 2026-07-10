@@ -177,10 +177,10 @@ export function Slider(props: {
         </Show>
       </div>
 
-      {/* Unified Thumb */}
+      {/* Unified Thumb — left uses parent-relative %, translate centers the 12px dot */}
       <div
-        class="absolute top-1/2 size-[12px] -translate-y-1/2 rounded-full border border-black/55 bg-[#d8dce2] shadow-[0_1px_2px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.18)] transition-transform hover:scale-110 pointer-events-none"
-        style={{ left: `calc(${props.percent}% - 6px)` }}
+        class="absolute top-1/2 size-[12px] rounded-full border border-black/55 bg-[#d8dce2] shadow-[0_1px_2px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.18)] hover:scale-110 pointer-events-none"
+        style={{ left: `${props.percent}%`, transform: `translate(-50%, -50%)` }}
       />
     </div>
   );

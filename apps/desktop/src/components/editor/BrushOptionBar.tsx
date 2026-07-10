@@ -74,6 +74,10 @@ export function BrushOptionBar() {
     else setBrushSmoothing(next);
   };
 
+  const handleSizeSliderInput = (event: Event) => {
+    setSize(sizeSliderToPaintSize(Number((event.target as HTMLInputElement).value)));
+  };
+
   const applyPreset = (preset: typeof BRUSH_PRESETS[number]) => {
     const tool = isEraser() ? "eraser" : "brush";
     const changes = applyPaintPreset(preset, tool, {
@@ -128,7 +132,7 @@ export function BrushOptionBar() {
             min="1"
             max="2000"
             value={size()}
-            onInput={(event) => setSize(Number(event.currentTarget.value))}
+            onInput={(e) => setSize(Number(e.currentTarget.value))}
             class="w-12 bg-transparent text-[11px] text-editor-text outline-none"
           />
           <span class="text-[10px] text-editor-text-dim">px</span>
@@ -145,7 +149,7 @@ export function BrushOptionBar() {
             min="0"
             max="100"
             value={paintSizeToSizeSlider(size())}
-            onInput={(event) => setSize(sizeSliderToPaintSize(Number(event.currentTarget.value)))}
+            onInput={handleSizeSliderInput}
             class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer"
           />
         </div>
@@ -163,7 +167,7 @@ export function BrushOptionBar() {
             min="0"
             max="100"
             value={formatPercent(hardness())}
-            onInput={(event) => setHardness(Number(event.currentTarget.value))}
+            onInput={(e) => setHardness(Number(e.currentTarget.value))}
             class="w-11 bg-transparent text-[11px] text-editor-text outline-none"
           />
           <span class="text-[10px] text-editor-text-dim">%</span>
@@ -177,7 +181,7 @@ export function BrushOptionBar() {
             min="0"
             max="100"
             value={formatPercent(opacity())}
-            onInput={(event) => setOpacity(Number(event.currentTarget.value))}
+            onInput={(e) => setOpacity(Number(e.currentTarget.value))}
             class="w-11 bg-transparent text-[11px] text-editor-text outline-none"
           />
           <span class="text-[10px] text-editor-text-dim">%</span>
@@ -191,7 +195,7 @@ export function BrushOptionBar() {
             min="0"
             max="100"
             value={formatPercent(flow())}
-            onInput={(event) => setFlowValue(Number(event.currentTarget.value))}
+            onInput={(e) => setFlowValue(Number(e.currentTarget.value))}
             class="w-11 bg-transparent text-[11px] text-editor-text outline-none"
           />
           <span class="text-[10px] text-editor-text-dim">%</span>
@@ -269,55 +273,55 @@ export function BrushOptionBar() {
               min="0"
               max="100"
               value={formatPercent(hardness())}
-              onInput={(event) => setHardness(Number(event.currentTarget.value))}
-              class="w-full bg-transparent text-[11px] text-editor-text outline-none"
-            />
-            <span class="text-[10px] text-editor-text-dim">%</span>
-          </label>
-        </div>
+               onInput={(e) => setHardness(Number(e.currentTarget.value))}
+               class="w-full bg-transparent text-[11px] text-editor-text outline-none"
+             />
+             <span class="text-[10px] text-editor-text-dim">%</span>
+           </label>
+         </div>
 
-        {/* Opacity */}
-        <div class="flex flex-col gap-1">
-          <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Strength</span>
-          <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={formatPercent(opacity())}
-              onInput={(event) => setOpacity(Number(event.currentTarget.value))}
-              class="w-full bg-transparent text-[11px] text-editor-text outline-none"
-            />
-            <span class="text-[10px] text-editor-text-dim">%</span>
-          </label>
-        </div>
+         {/* Opacity */}
+         <div class="flex flex-col gap-1">
+           <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Strength</span>
+           <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
+             <input
+               type="number"
+               min="0"
+               max="100"
+               value={formatPercent(opacity())}
+               onInput={(e) => setOpacity(Number(e.currentTarget.value))}
+               class="w-full bg-transparent text-[11px] text-editor-text outline-none"
+             />
+             <span class="text-[10px] text-editor-text-dim">%</span>
+           </label>
+         </div>
 
-        {/* Flow */}
-        <div class="flex flex-col gap-1">
-          <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Flow</span>
-          <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={formatPercent(flow())}
-              onInput={(event) => setFlowValue(Number(event.currentTarget.value))}
-              class="w-full bg-transparent text-[11px] text-editor-text outline-none"
-            />
-            <span class="text-[10px] text-editor-text-dim">%</span>
-          </label>
-        </div>
+         {/* Flow */}
+         <div class="flex flex-col gap-1">
+           <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Flow</span>
+           <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
+             <input
+               type="number"
+               min="0"
+               max="100"
+               value={formatPercent(flow())}
+               onInput={(e) => setFlowValue(Number(e.currentTarget.value))}
+               class="w-full bg-transparent text-[11px] text-editor-text outline-none"
+             />
+             <span class="text-[10px] text-editor-text-dim">%</span>
+           </label>
+         </div>
 
-        {/* Smoothing */}
-        <div class="flex flex-col gap-1">
-          <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Smoothing</span>
-          <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={smoothing()}
-              onInput={(event) => setSmoothingValue(Number(event.currentTarget.value))}
+         {/* Smoothing */}
+         <div class="flex flex-col gap-1">
+           <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Smoothing</span>
+           <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
+             <input
+               type="number"
+               min="0"
+               max="100"
+               value={smoothing()}
+               onInput={(e) => setSmoothingValue(Number(e.currentTarget.value))}
               class="w-full bg-transparent text-[11px] text-editor-text outline-none"
             />
           </label>

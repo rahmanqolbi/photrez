@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render } from "solid-js/web";
-import { EditableNumField } from "../primitives";
+import { createSignal } from "solid-js";
+import { EditableNumField, Slider } from "../primitives";
 
 describe("EditableNumField", () => {
   it("renders with initial value and suffix", () => {
@@ -71,5 +72,52 @@ describe("EditableNumField", () => {
 
     dispose();
     container.parentNode?.removeChild(container);
+  });
+});
+
+describe("Slider CSS positioning", () => {
+  it("renders thumb with left: X% and translate(-50%, -50%) for centering", () => {
+    const container = document.createElement("div");
+    const dispose = render(() => (
+      <Slider percent={65} />
+    ), container);
+
+    const sliderDiv = container.firstElementChild as HTMLElement;
+    expect(sliderDiv).not.toBeNull();
+
+    // Find the thumb div (the one with size-[12px])
+    const thumb = sliderDiv.querySelector("div.absolute.size-\\[12px\\]");
+    // Alternatively locate by attribute
+    const allChildren = sliderDiv.querySelectorAll("div");
+    const thumbFound = Array.from(allChildren).find(
+      (el) => el.className.includes("size-[12px]") && el.className.includes("rounded-full")
+    );
+    expect(thumbFound).not.toBeNull();
+    const style = thumbFound?.getAttribute("style") || "";
+    expect(style).toContain("left: 65%");
+    expect(style).toContain("translate(-50%, -50%)");
+
+    dispose();
+  });
+
+  it("updates left position when percent changes", () => {
+    const container = document.createElement("div");
+    const [pct, setPct] = createSignal(25);
+    const dispose = render(() => (
+      <Slider percent={pct()} />
+    ), container);
+
+    const sliderDiv = container.firstElementChild as HTMLElement;
+    const allChildren = sliderDiv.querySelectorAll("div");
+    const thumb = Array.from(allChildren).find(
+      (el) => el.className.includes("size-[12px]") && el.className.includes("rounded-full")
+    );
+    expect(thumb?.getAttribute("style")).toContain("left: 25%");
+
+    setPct(75);
+    // SolidJS batches signal writes; flush by reading the style
+    expect(thumb?.getAttribute("style")).toContain("left: 75%");
+
+    dispose();
   });
 });

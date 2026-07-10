@@ -103,7 +103,7 @@ describe("BrushContextMenu", () => {
     dispose();
   });
 
-  it("size slider updates brush size signal via non-linear mapping", () => {
+  it("size slider updates brush size signal via non-linear mapping", async () => {
     const mock = createMockEditor({ activeTool: "brush", brushSize: 30 });
     vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mock as any);
 
@@ -134,6 +134,62 @@ describe("BrushContextMenu", () => {
     sizeSlider.value = "50";
     sizeSlider.dispatchEvent(new Event("input", { bubbles: true }));
     expect(mock.brushSize()).toBe(334);
+
+    dispose();
+  });
+
+  it("hardness slider updates brush hardness signal synchronously", () => {
+    const mock = createMockEditor({ activeTool: "brush", brushHardness: 0.5 });
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mock as any);
+
+    container = document.createElement("div");
+    container.id = "canvas-container";
+    document.body.appendChild(container);
+
+    root = document.createElement("div");
+    document.body.appendChild(root);
+    const dispose = render(() => <BrushContextMenu />, root);
+
+    container.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, clientX: 200, clientY: 150 }),
+    );
+
+    const hardSlider = root.querySelector<HTMLInputElement>("[data-context-hardness]")!;
+    expect(hardSlider).toBeTruthy();
+    // hardness=0.5 → slider ~50
+    expect(hardSlider.value).toBe("50");
+
+    hardSlider.value = "80";
+    hardSlider.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(mock.brushHardness()).toBe(0.8);
+
+    dispose();
+  });
+
+  it("strength slider updates brush opacity signal synchronously", () => {
+    const mock = createMockEditor({ activeTool: "brush", brushOpacity: 0.7 });
+    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mock as any);
+
+    container = document.createElement("div");
+    container.id = "canvas-container";
+    document.body.appendChild(container);
+
+    root = document.createElement("div");
+    document.body.appendChild(root);
+    const dispose = render(() => <BrushContextMenu />, root);
+
+    container.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, clientX: 200, clientY: 150 }),
+    );
+
+    const strengthSlider = root.querySelector<HTMLInputElement>("[data-context-strength]")!;
+    expect(strengthSlider).toBeTruthy();
+    // opacity=0.7 → slider 70
+    expect(strengthSlider.value).toBe("70");
+
+    strengthSlider.value = "45";
+    strengthSlider.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(mock.brushOpacity()).toBe(0.45);
 
     dispose();
   });

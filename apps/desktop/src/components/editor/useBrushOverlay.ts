@@ -127,8 +127,8 @@ export function useBrushOverlay() {
   // ── Pre-warm tip cache on settings change ──
   // Rasterizes the brush tip AND generates the tip canvas BEFORE the user
   // clicks (during pointerdown). Eliminates the 400+ms first-stroke delay.
-  // Uses setTimeout(0) to defer heavy rasterization off the render cycle
-  // — prevents UI freeze during rapid slider drag (intermediate sizes).
+  // Uses setTimeout(300) debounce so heavy rasterization (e.g. 2000px brush =
+  // 4M Float32Array elements) never fires mid-drag and blocks the main thread.
   createEffect(() => {
     const tool = activeTool();
     if (tool !== "brush" && tool !== "eraser") return;
@@ -138,8 +138,7 @@ export function useBrushOverlay() {
     const hardness = tool === "eraser" ? eraserHardness() : brushHardness();
     const color = fgColor();
 
-    // Defer to next microtask/macrotask so SolidJS render cycle completes
-    // before we block the thread with 400+ms rasterization.
+    // Debounce: only pre-warm after user stops dragging for 300ms.
     const id = setTimeout(() => {
       // Step 1: pre-warm Float32Array mask cache (getCachedBrushTip internally)
       const tip = getBrushTip({ size, hardness, curve: "soft" });
@@ -147,7 +146,7 @@ export function useBrushOverlay() {
 
       // Step 2: pre-warm tip canvas cache (getTipCanvas internally)
       getTipCanvas(tip, color);
-    }, 0);
+    }, 300);
 
     // Cleanup: cancel pending timeout if settings change again before it fires
     onCleanup(() => clearTimeout(id));

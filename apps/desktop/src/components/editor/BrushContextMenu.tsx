@@ -78,6 +78,18 @@ export function BrushContextMenu() {
     else setBrushOpacity(next);
   };
 
+  const handleSizeInput = (e: Event) => {
+    setSizeValue(sizeSliderToPaintSize(Number((e.target as HTMLInputElement).value)));
+  };
+
+  const handleHardnessInput = (e: Event) => {
+    setHardnessValue(Number((e.target as HTMLInputElement).value));
+  };
+
+  const handleStrengthInput = (e: Event) => {
+    setOpacityValue(Number((e.target as HTMLInputElement).value));
+  };
+
   const applyPreset = (preset: (typeof BRUSH_PRESETS)[number]) => {
     const tool = isEraser() ? "eraser" : "brush";
     const changes = applyPaintPreset(preset, tool, {
@@ -175,9 +187,7 @@ export function BrushContextMenu() {
               min="0"
               max="100"
               value={paintSizeToSizeSlider(size())}
-              onInput={(e) =>
-                setSizeValue(sizeSliderToPaintSize(Number(e.currentTarget.value)))
-              }
+              onInput={handleSizeInput}
               class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer"
             />
           </div>
@@ -198,7 +208,7 @@ export function BrushContextMenu() {
               min="0"
               max="100"
               value={Math.round(hardness() * 100)}
-              onInput={(e) => setHardnessValue(Number(e.currentTarget.value))}
+              onInput={handleHardnessInput}
               class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer"
             />
           </div>
@@ -219,7 +229,7 @@ export function BrushContextMenu() {
               min="0"
               max="100"
               value={Math.round(opacity() * 100)}
-              onInput={(e) => setOpacityValue(Number(e.currentTarget.value))}
+              onInput={handleStrengthInput}
               class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer"
             />
           </div>

@@ -124,6 +124,7 @@ export function BrushCursorOverlay(props?: {
           fill="none"
           stroke="rgba(0,0,0,0.5)"
           stroke-width={1.5}
+          class="transition-[r] duration-75 ease-out"
         />
         <circle
           data-paint-cursor-outer
@@ -133,6 +134,7 @@ export function BrushCursorOverlay(props?: {
           fill="none"
           stroke="white"
           stroke-width={1}
+          class="transition-[r] duration-75 ease-out"
         />
         <Show when={!isEraser()}>
           <line data-paint-cursor-crosshair x1={-4} y1={0} x2={4} y2={0} stroke="white" stroke-width={1} />
