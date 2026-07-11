@@ -516,8 +516,10 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const history = workspace.getActiveHistory();
     if (!engine || !history) return;
 
-    // Eyedropper is not a canvas pointer tool — handled via menu/keyboard.
-    if (activeTool() === "eyedropper") return;
+    // Eyedropper tool now routes through the shared dispatcher below. Sampling
+    // is handled in viewport/input-handler (handlePointerDown L121 / handlePointerMove
+    // L245). Previously this early-returned and the tool silently no-op'd on canvas
+    // click — useCanvasPointerTools forgot to wire the new tool (AGENTS.md pattern).
 
     if ((activeTool() === "brush" || activeTool() === "eraser") && params.isAltPressed()) {
       const coords = getDocCoords(e);
