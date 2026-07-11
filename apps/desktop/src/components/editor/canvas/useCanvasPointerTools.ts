@@ -22,6 +22,7 @@ import { getDefaultModernCropFrame, getProjectedCanvasSize, clampFrameToProjecte
 import { resetCropPreviewToCanvas, restoreHiddenCropPreview, createCropRectFromDocumentPoints } from "../cropToolActions";
 import { rgbToHex, interpolateLinePoints } from "./pointerUtils";
 import { startSelectionRotation as startSelectionRotationFn } from "./selectionRotation";
+import { computeEdgeScroll } from "./edgeScroll";
 
 const DRAG_CREATE_THRESHOLD = 5;
 const MIN_CROP_SIZE = 100;
@@ -137,13 +138,12 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
 
   // ── Edge auto-scroll ──────────────────────────────────────────
   const EDGE_ZONE_PX = 40;
-  const MAX_EDGE_SCROLL_PX_PER_SEC = 200;
+  // Speed is viewport-relative (see EDGE_SCROLL_SPEED_FACTOR in edgeScroll.ts),
+  // so no absolute px/s const is needed here.
 
   let edgeRafId = 0;
   let edgeLastClientX = 0;
   let edgeLastClientY = 0;
-  let edgeLastTime = 0;
-
   // ── Cached container rect ──────────────────────────────────────
   // Avoid getBoundingClientRect() on every pointermove. The rect is
   // lazily populated and invalidated when zoom or pan changes (via
@@ -166,27 +166,12 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   });
 
   function applyEdgeScroll(dt: number) {
-    const rect = getCachedContainerRect();
-    if (!rect) return { scrolled: false };
-    const cx = edgeLastClientX - rect.left;
-    const cy = edgeLastClientY - rect.top;
-    const midX = rect.width / 2;
-    const midY = rect.height / 2;
-    const dirX = cx < midX ? 1 : -1;
-    const dirY = cy < midY ? 1 : -1;
-    const distX = cx < midX ? cx : (rect.width - cx);
-    const distY = cy < midY ? cy : (rect.height - cy);
-    if (distX >= EDGE_ZONE_PX && distY >= EDGE_ZONE_PX) {
-      return { scrolled: false };
-    }
-    const tX = Math.min(1, Math.max(0, (EDGE_ZONE_PX - distX) / EDGE_ZONE_PX));
-    const tY = Math.min(1, Math.max(0, (EDGE_ZONE_PX - distY) / EDGE_ZONE_PX));
-    const sX = dirX * tX * MAX_EDGE_SCROLL_PX_PER_SEC * dt;
-    const sY = dirY * tY * MAX_EDGE_SCROLL_PX_PER_SEC * dt;
-    camera.pan(sX, sY);
-    const ms = camera.getState();
-    setPan({ x: ms.x, y: ms.y });
-    return { scrolled: true };
+    return computeEdgeScroll(edgeLastClientX, edgeLastClientY, dt, {
+      camera,
+      setPan,
+      scheduler,
+      getContainerRect: getCachedContainerRect,
+    }, EDGE_ZONE_PX);
   }
 
   function stopEdgeRaf() {
@@ -194,14 +179,14 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       cancelAnimationFrame(edgeRafId);
       edgeRafId = 0;
     }
-    edgeLastTime = 0;
   }
 
   function startEdgeRaf() {
     if (edgeRafId) return;
+    let lastRafTime = performance.now();
     const tick = (time: number) => {
-      const dt = edgeLastTime > 0 ? (time - edgeLastTime) / 1000 : 0;
-      edgeLastTime = time;
+      const dt = lastRafTime > 0 ? (time - lastRafTime) / 1000 : 0;
+      lastRafTime = time;
       if (!applyEdgeScroll(dt).scrolled) {
         edgeRafId = 0;
         return;
@@ -212,7 +197,23 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   }
   // ── end edge auto-scroll ──
 
-  onCleanup(() => { stopEdgeRaf(); });
+  // Safety net: if the tab/window loses focus mid-drag, the RAF must not
+  // keep panning on stale cursor coords. (pointerleave is unnecessary — during
+  // an active drag the pointer is captured, so it won't fire.)
+  const onWindowBlur = () => stopEdgeRaf();
+  const onVisibilityChange = () => { if (document.hidden) stopEdgeRaf(); };
+  if (typeof window !== "undefined") {
+    window.addEventListener("blur", onWindowBlur);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+  }
+
+  onCleanup(() => {
+    stopEdgeRaf();
+    if (typeof window !== "undefined") {
+      window.removeEventListener("blur", onWindowBlur);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    }
+  });
 
   function resetModernDragState() {
     modernDragStart = null;
@@ -778,11 +779,11 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     // Edge auto-scroll: pan camera when dragging near viewport edge
     if (interactiveState.isDragging) {
       const tool = activeTool();
-      if (tool === "brush" || tool === "eraser" || tool === "selection" || tool === "crop") {
-        const now = performance.now();
-        const dt = edgeLastTime > 0 ? (now - edgeLastTime) / 1000 : 0;
-        edgeLastTime = now;
-        if (applyEdgeScroll(dt).scrolled) {
+      if (tool === "brush" || tool === "eraser" || tool === "move" || tool === "selection" || tool === "crop") {
+        edgeLastClientX = e.clientX;
+        edgeLastClientY = e.clientY;
+        // Check zone with dt=0 — no actual scroll, only detection
+        if (applyEdgeScroll(0).scrolled) {
           startEdgeRaf();
         } else {
           stopEdgeRaf();

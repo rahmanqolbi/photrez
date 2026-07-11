@@ -22,6 +22,25 @@ export class RenderScheduler {
     });
   }
 
+  /**
+   * Render synchronously on the calling frame. Cancels any pending deferred
+   * frame so we never double-render. Use when a pan/zoom must be visible on
+   * the SAME frame as a reactive overlay update (avoids a 1-frame seam
+   * between the WebGL content and CSS-transformed overlays).
+   */
+  renderNow(): void {
+    if (this.continuousMode) return; // continuous loop already renders every frame
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+      this.framePending = false;
+    }
+    const _t0 = performance.now();
+    this.renderCallback?.();
+    const _dt = performance.now() - _t0;
+    if (_dt > 5) console.warn(`[perf] scheduler.renderNow: ${_dt.toFixed(1)}ms`);
+  }
+
   startContinuousRender(): void {
     if (this.continuousMode) return;
     this.continuousMode = true;
