@@ -290,7 +290,7 @@ export function useBrushOverlay() {
     if (!layer) return;
 
     // ── Resolve eraser behavior for background layers ──
-    // Photoshop-compatible: eraser on a Background layer paints with the
+    // Eraser on a Background layer paints with the
     // background color (source-over) instead of erasing to transparent.
     // Non-background layers still erase to transparent (destination-out).
     // NOTE: resolveEraserFill is ONLY called for isEraser=true. For brush

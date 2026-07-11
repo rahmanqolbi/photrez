@@ -967,3 +967,166 @@ function KeyUpHarness(props: {
   });
   return null;
 }
+
+// ─── Fill layer keyboard shortcuts (Alt+Del / Ctrl+Del) ─────────────────────
+
+/** OffscreenCanvas mock that records the fill color passed to `fillStyle`. */
+function installFillCaptureMock(fillRef: { color: string | null }) {
+  vi.stubGlobal("OffscreenCanvas", class {
+    width: number;
+    height: number;
+    constructor(width: number, height: number) {
+      this.width = width;
+      this.height = height;
+    }
+    getContext() {
+      return {
+        _fs: "" as string,
+        set fillStyle(v: string) { fillRef.color = v; },
+        get fillStyle() { return fillRef.color ?? ""; },
+        fillRect: vi.fn(),
+        drawImage: vi.fn(),
+        save: vi.fn(),
+        restore: vi.fn(),
+        translate: vi.fn(),
+        rotate: vi.fn(),
+        scale: vi.fn(),
+        globalAlpha: 1,
+        globalCompositeOperation: "source-over",
+      };
+    }
+    transferToImageBitmap() {
+      return { width: this.width, height: this.height, close: () => {} } as ImageBitmap;
+    }
+  });
+}
+
+function FillKeyboardHarness(props: {
+  captureEditor: (e: ReturnType<typeof useEditor>) => void;
+}) {
+  const editor = useEditor();
+  props.captureEditor(editor);
+  useCanvasKeyboard({
+    isSpacePressed: () => false,
+    setIsSpacePressed: vi.fn(),
+    isAltPressed: () => false,
+    setIsAltPressed: vi.fn(),
+    isPanning: () => false,
+    setIsPanning: vi.fn(),
+    stopMomentum: vi.fn(),
+    fitToScreenAndRender: vi.fn(),
+    syncViewport: vi.fn(),
+    getCanvasContainerRef: () => undefined,
+  });
+  return null;
+}
+
+function setupFill(renderer: { uploadImage: ReturnType<typeof vi.fn>; destroyTexture: ReturnType<typeof vi.fn> }, fillRef: { color: string | null }) {
+  installFillCaptureMock(fillRef);
+  const ws = new WorkspaceManager();
+  const session = WorkspaceManager.createBlankDocument("fill-doc", "Fill", 800, 600);
+  ws.addDocument(session);
+  const scheduler = { requestRender: vi.fn() };
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  let captured: ReturnType<typeof useEditor> | undefined;
+
+  const dispose = render(
+    () => (
+      <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+        <FillKeyboardHarness captureEditor={(e) => { captured = e; }} />
+      </EditorProvider>
+    ),
+    container,
+  );
+
+  return {
+    ws,
+    scheduler,
+    container,
+    getEditor: () => captured!,
+    dispose: () => {
+      dispose();
+      container.parentNode?.removeChild(container);
+    },
+  };
+}
+
+describe("fill layer keyboard shortcuts (Alt+Del / Ctrl+Del)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    clearRegistry();
+  });
+
+  it("Alt+Delete fills the active layer with the foreground color", () => {
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const fillRef = { color: null as string | null };
+    const { getEditor, scheduler, dispose } = setupFill(renderer, fillRef);
+
+    const editor = getEditor();
+    editor.setFgColor("#ff0000");
+    const engine = editor.workspace.getActiveEngine()!;
+    const activeId = engine.getActiveLayerId();
+    const commitSpy = vi.spyOn(editor.workspace.getActiveHistory()!, "commit");
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", altKey: true, bubbles: true }));
+
+    // Fill used the foreground color through real production code.
+    expect(fillRef.color).toBe("#ff0000");
+    expect(renderer.uploadImage).toHaveBeenCalledWith(activeId, expect.anything());
+    expect(scheduler.requestRender).toHaveBeenCalled();
+    // History committed BEFORE the layer bitmap was mutated/uploaded.
+    expect(commitSpy).toHaveBeenCalled();
+    expect(commitSpy.mock.invocationCallOrder[0]).toBeLessThan(
+      (renderer.uploadImage as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0],
+    );
+    expect(engine.getLayer(activeId!)?.imageBitmap).toBeTruthy();
+    dispose();
+  });
+
+  it("Ctrl+Delete fills the active layer with the background color", () => {
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const fillRef = { color: null as string | null };
+    const { getEditor, dispose } = setupFill(renderer, fillRef);
+
+    const editor = getEditor();
+    editor.setBgColor("#00ff00");
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", ctrlKey: true, bubbles: true }));
+
+    expect(fillRef.color).toBe("#00ff00");
+    expect(renderer.uploadImage).toHaveBeenCalled();
+    dispose();
+  });
+
+  it("Alt+Backspace also fills with the foreground color", () => {
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const fillRef = { color: null as string | null };
+    const { getEditor, dispose } = setupFill(renderer, fillRef);
+
+    const editor = getEditor();
+    editor.setFgColor("#123456");
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace", altKey: true, bubbles: true }));
+
+    expect(fillRef.color).toBe("#123456");
+    expect(renderer.uploadImage).toHaveBeenCalled();
+    dispose();
+  });
+
+  it("plain Delete/Backspace does NOT fill the layer (falls through to delete behavior)", () => {
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const fillRef = { color: null as string | null };
+    const { dispose } = setupFill(renderer, fillRef);
+
+    // Single-layer (Background) document: plain Delete has nothing to delete
+    // and must NOT trigger a fill (which would be a wrong/accidental mutation).
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace", bubbles: true }));
+
+    expect(fillRef.color).toBeNull();
+    expect(renderer.uploadImage).not.toHaveBeenCalled();
+    dispose();
+  });
+});

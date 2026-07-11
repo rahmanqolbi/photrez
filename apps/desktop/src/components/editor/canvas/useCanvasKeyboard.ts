@@ -3,7 +3,7 @@ import { constrainCropRectToDocument } from "@/viewport/cropGeometry";
 import { docFrameToScreenFrame, getModernCropApplyRotation, modernFrameToCropRect } from "@/viewport/modernCropGeometry";
 import type { ToolType } from "@/viewport/input-handler";
 import { useEditor } from "../shell/EditorContext";
-import { flattenAllLayers, mergeActiveLayerDown, stampVisibleLayers } from "../layers/layerOperations";
+import { flattenAllLayers, mergeActiveLayerDown, stampVisibleLayers, fillActiveLayerWithColor } from "../layers/layerOperations";
 import { cancelLayerTransformSession, commitLayerTransformSession } from "../transformSession";
 import { discardCropSession, applyCropPreview } from "../cropToolActions";
 import { PAINT_SIZE_STEP_HARDNESS, paintSizeStep, adjustPaintSize, adjustPaintHardness } from "../brushToolState";
@@ -35,6 +35,7 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     zoom,
     docWidth,
     docHeight,
+    fgColor,
     bgColor,
     activeLayerId,
     cropRect,
@@ -145,6 +146,10 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
     registerShortcut("0-9", "useCanvasKeyboard");
     registerShortcut("Delete", "useCanvasKeyboard");
     registerShortcut("Backspace", "useCanvasKeyboard");
+    registerShortcut("Alt+Delete", "useCanvasKeyboard");
+    registerShortcut("Ctrl+Delete", "useCanvasKeyboard");
+    registerShortcut("Alt+Backspace", "useCanvasKeyboard");
+    registerShortcut("Ctrl+Backspace", "useCanvasKeyboard");
     registerShortcut("F2", "useCanvasKeyboard");
     registerShortcut("Escape", "useCanvasKeyboard");
     registerShortcut("Enter", "useCanvasKeyboard");
@@ -186,6 +191,32 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
 
       const history = workspace.getActiveHistory();
       if (!history) return;
+
+      // Alt+Delete / Alt+Backspace → fill active layer with foreground color.
+      // Ctrl+Delete / Ctrl+Backspace → fill active layer with background color.
+      // (Solid fill of the whole layer.) Plain Delete/Backspace
+      // has no modifier here, so it falls through to the existing
+      // delete-layer / delete-selection behavior further below.
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const resolveColor = (c: string | (() => string)) =>
+          typeof c === "function" ? c() : c;
+        if (e.altKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (fillActiveLayerWithColor(engine, history, renderer, resolveColor(fgColor))) {
+            scheduler.requestRender();
+          }
+          return;
+        }
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (fillActiveLayerWithColor(engine, history, renderer, resolveColor(bgColor))) {
+            scheduler.requestRender();
+          }
+          return;
+        }
+      }
 
       // F2: Rename active layer
       if (e.key === "F2") {

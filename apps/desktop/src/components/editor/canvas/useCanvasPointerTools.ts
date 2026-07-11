@@ -130,7 +130,7 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   // ── On-canvas brush adjustment (Alt+RightButton+Drag) ──
   // Hold Alt + right mouse button and drag horizontally to adjust brush size,
   // vertically to adjust hardness. Shows a live HUD with current values.
-  // Mirrors Photoshop's Alt+RightClick drag for quick brush tuning.
+  // Mirrors the Alt+RightClick drag gesture for quick brush tuning.
   let brushAdjustStart: {
     size: number;
     hardness: number;

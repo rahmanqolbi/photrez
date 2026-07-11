@@ -11,7 +11,7 @@ export interface EdgeScrollDeps {
 // Smoothstep ease-in/out: 0 at the zone boundary, 1 at the exact edge,
 // with zero derivative at both ends. Gives a gentle ramp-in (no sudden jump
 // to a constant speed when the cursor crosses into the zone) — the feel
-// pro editors (Figma/Krita) use for edge auto-scroll.
+// used for edge auto-scroll.
 export const smoothstep = (t: number): number => {
   const c = Math.min(1, Math.max(0, t));
   return c * c * (3 - 2 * c);
@@ -20,7 +20,7 @@ export const smoothstep = (t: number): number => {
 // viewport-relative max speed — `factor` × the axis length per
 // second at the very edge. Per-axis so width/height cross in the same time,
 // and it stays comfortable on any screen size (no sluggish 4K, no twitchy
-// laptop). 0.7× is calm enough for a precision image editor (a 1× Figma
+// laptop). 0.7× is calm enough for a precision image editor (a 1×
 // feel would overshoot); tune freely.
 export const EDGE_SCROLL_SPEED_FACTOR = 0.45;
 

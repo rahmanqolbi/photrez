@@ -188,7 +188,7 @@ export interface ResolvedEraseMode {
 /**
  * Eraser behavior for the locked Background layer: instead of erasing to
  * transparent, it paints the background swatch (source-over). Matches
- * Photoshop's Background layer. All other layers erase to transparent.
+ * the Background layer behavior. All other layers erase to transparent.
  */
 export function resolveEraserFill(
   layer: PaintEditableLayer | null | undefined,

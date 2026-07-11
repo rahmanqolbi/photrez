@@ -376,7 +376,7 @@ export class DocumentEngine {
   setLayerName(id: LayerId, name: string): void {
     const layer = this.getLayer(id);
     if (layer) {
-      // Renaming Background → normal layer (Photoshop behavior)
+      // Renaming Background → normal layer
       if (layer.isBackground) {
         layer.isBackground = undefined;
         layer.lockPosition = false;

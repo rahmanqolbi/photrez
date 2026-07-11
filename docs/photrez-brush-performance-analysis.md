@@ -919,7 +919,7 @@ export function performPixelSampling(
 - **5-20× lebih cepat** untuk brush besar pada layer besar.
 - Membutuhkan rewrite WebGL2 backend + paint session API — ** effort tinggi**.
 
-**Catatan:** Ini adalah solusi yang digunakan editor foto profesional (Photoshop, Krita, GIMP dengan GEGL GPU). Cocok sebagai roadmap Q3/Q4 setelah Tier 1 & 2 di-landed.
+**Catatan:** Ini adalah pendekatan akselerasi GPU yang umum pada editor foto profesional. Cocok sebagai roadmap Q3/Q4 setelah Tier 1 & 2 di-landed.
 
 ---
 

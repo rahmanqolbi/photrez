@@ -12,7 +12,7 @@ interface CloseDialog {
 
 /**
  * Handles Tauri window close requests with sequential save-confirm dialogs
- * for each dirty document (Photoshop/VS Code style).
+ * for each dirty document.
  *
  * When the user tries to close the window via the OS button or custom
  * titlebar close, Rust's CloseRequested handler prevents the default

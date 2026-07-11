@@ -124,7 +124,7 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
 
   // Proportional donut ring width: adjusts to the image size.
   // - Idle: Proportional to image size (10% of smallest dimension, clamped [20px, 60px])
-  // - Active: Infinite (10000px) to allow viewport-wide rotation clicks, matching Photoshop/Photopea.
+  // - Active: Infinite (10000px) to allow viewport-wide rotation clicks.
   const ringWidth = () => {
     const sw = screenW();
     const sh = screenH();

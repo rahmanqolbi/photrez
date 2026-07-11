@@ -226,8 +226,8 @@ export function getEffectiveFlowMultiplier(_hardness: number): number {
 }
 
 export function getBrushDabSpacing(size: number, hardness: number, flow: number): number {
-  // 10% of brush size — matches Krita default and approaches Photoshop soft brush
-  // spacing (1-10%). Produces significantly smoother strokes with minimal visible
+  // 10% of brush size — a standard soft-brush spacing (1-10%). Produces
+  // significantly smoother strokes with minimal visible
   // gap between dabs. Hardness already controls the soft profile inside the mask,
   // so spacing stays geometry-agnostic across the hardness range. Flow remains a
   // stroke alpha multiplier and does not change geometric spacing.

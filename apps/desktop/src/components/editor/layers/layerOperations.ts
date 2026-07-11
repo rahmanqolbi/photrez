@@ -79,3 +79,48 @@ export function stampVisibleLayers(
 
   return true;
 }
+
+/**
+ * Fill the active layer with a solid color (Alt+Del / Ctrl+Del).
+ * Replaces the entire layer content with an opaque `color` bitmap. Skips
+ * locked layers and layers with no active id. Commits history BEFORE mutation
+ * so the fill is undoable/redoable, then uploads the new bitmap to the renderer.
+ */
+export function fillActiveLayerWithColor(
+  engine: DocumentEngine,
+  history: CommandHistory,
+  renderer: WebGL2Backend,
+  color: string,
+): boolean {
+  const activeId = engine.getActiveLayerId();
+  if (!activeId) return false;
+
+  const layer = engine.getLayer(activeId);
+  if (!layer || layer.locked) return false;
+
+  const w = layer.width;
+  const h = layer.height;
+
+  let bitmap: ImageBitmap | null = null;
+  try {
+    if (typeof OffscreenCanvas !== "undefined") {
+      const offscreen = new OffscreenCanvas(w, h);
+      const ctx = offscreen.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, w, h);
+        bitmap = offscreen.transferToImageBitmap();
+      }
+    }
+  } catch (err) {
+    console.error("Failed to fill layer with color:", err);
+    return false;
+  }
+  if (!bitmap) return false;
+
+  // Commit pre-action snapshot BEFORE mutating so the fill is undoable/redoable.
+  history.commit(engine.snapshot(), "Fill Layer");
+  engine.setLayerImageBitmap(activeId, bitmap);
+  renderer.uploadImage(activeId, bitmap);
+  return true;
+}

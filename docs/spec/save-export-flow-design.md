@@ -2,7 +2,7 @@
 
 > **Date**: 2026-07-02
 > **Status**: Draft for review
-> **Based on**: Research across Photoshop, GIMP, Krita, Inkscape, UX StackExchange & community forums
+> **Based on**: Research across industry save/export UX, UX StackExchange & community forums
 
 ---
 
@@ -31,7 +31,7 @@ Photrez currently has:
 2. **Predictable**: Save As changes the working document; Export does not
 3. **Fast path for simple workflows**: Single-layer → quick overwrite
 4. **Guardrails, not walls**: Warning + optional `.ptz` backup instead of blocking
-5. **Industry familiar**: Follow Photoshop/Krita conventions where they work
+5. **Industry familiar**: Follow established save/export conventions where they work
 
 ---
 
@@ -275,10 +275,10 @@ case "file.save-as": {
 
 ## 8. References
 
-- [Adobe Photoshop — Save your work](https://helpx.adobe.com/photoshop/desktop/save-and-export/save-files/save-your-work.html)
-- [GIMP GUI Redesign — Save + export specification](https://gui.gimp.org/index.php?title=Save_+_export_specification)
-- [Krita Artists — Export vs Save As discussion](https://krita-artists.org/t/export-vs-save-as/42406)
+- [Vendor save/export documentation](https://helpx.adobe.com/photoshop/desktop/save-and-export/save-files/save-your-work.html)
+- [Open-source editor — Save + export specification](https://gui.gimp.org/index.php?title=Save_+_export_specification)
+- [Community — Export vs Save As discussion](https://krita-artists.org/t/export-vs-save-as/42406)
 - [UX StackExchange — Distinction between saving and exporting](https://ux.stackexchange.com/questions/72779/distinction-between-saving-and-exporting)
 - [StackOverflow — Is File Export always redundant when you have Save As](https://stackoverflow.com/questions/764879/is-file-export-always-redundant-when-you-have-file-save-as)
-- [GIMP docs — Getting Images out of GIMP](https://docs.gimp.org/2.10/en/gimp-images-out.html)
-- [Inkscape Wiki — Save as vs export](https://wiki.inkscape.org/wiki/Save_as_vs_export)
+- [Open-source editor docs — Getting images out](https://docs.gimp.org/2.10/en/gimp-images-out.html)
+- [Vector editor wiki — Save as vs export](https://wiki.inkscape.org/wiki/Save_as_vs_export)

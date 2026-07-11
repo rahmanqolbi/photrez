@@ -31,8 +31,8 @@ export function applyBasicAdjustmentToPixels(
 ): Uint8ClampedArray {
   const next = new Uint8ClampedArray(pixels);
   const normalized = normalizeBasicAdjustment(adjustment);
-  // (brightness * 2.55) shifted all pixel values equally — equivalent to
-  // Photoshop's "Use Legacy" mode which clips highlights/shadows. This
+  // (brightness * 2.55) shifted all pixel values equally — equivalent to a
+  // legacy brightness curve which clips highlights/shadows. This
   // curve lifts shadows more than highlights (brighten) or pulls
   // highlights more than shadows (darken), preserving detail at extremes.
   const t = normalized.brightness / 100; // -1 to 1
