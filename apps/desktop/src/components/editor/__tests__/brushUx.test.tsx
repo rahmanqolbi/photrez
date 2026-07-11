@@ -29,6 +29,8 @@ function createMockEditor(overrides: Record<string, any> = {}) {
     activeTool: "brush",
     fgColor: "#000000",
     bgColor: "#ffffff",
+    colorPickerOpen: false,
+    colorPickerTarget: "foreground",
     zoom: 1,
     pan: { x: 0, y: 0 },
     camera: { pan: vi.fn(), getState: () => ({ x: 0, y: 0 }) },

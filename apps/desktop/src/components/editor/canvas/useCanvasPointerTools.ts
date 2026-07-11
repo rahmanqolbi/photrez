@@ -69,6 +69,8 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     bgColor,
     setFgColor,
     setBgColor,
+    colorPickerOpen,
+    colorPickerTarget,
     zoom,
     pan,
     camera,
@@ -465,10 +467,24 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     const p = pan();
     const z = zoom();
     if (!Number.isFinite(z) || z <= 0) return { x: 0, y: 0 };
-    return {
-      x: (e.clientX - rect.left - p.x) / z,
-      y: (e.clientY - rect.top - p.y) / z,
-    };
+      return {
+        x: (e.clientX - rect.left - p.x) / z,
+        y: (e.clientY - rect.top - p.y) / z,
+      };
+  };
+
+  // Sample the pixel under the cursor into the color-picker's active target
+  // (foreground/background) while a non-modal color picker is open. A click
+  // on the canvas outside the floating dialog commits the picked color.
+  const sampleToColorPicker = (e: PointerEvent) => {
+    const engine = workspace.getActiveEngine();
+    if (!engine) return;
+    const coords = getDocCoords(e);
+    const color = engine.samplePixel(coords.x, coords.y);
+    const hex = rgbToHex(color[0], color[1], color[2]);
+    if (colorPickerTarget() === "foreground") setFgColor(hex);
+    else setBgColor(hex);
+    scheduler.requestRender();
   };
 
   const handleDoubleClick = (e: MouseEvent) => {
@@ -512,6 +528,13 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     if (params.isSpacePressed() || params.isPanning() || e.button === 1) return;
 
     params.stopMomentum();
+
+    // Color picker open → any canvas click samples into the active target.
+    if (colorPickerOpen()) {
+      sampleToColorPicker(e);
+      return;
+    }
+
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     if (!engine || !history) return;
@@ -641,6 +664,12 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
   const onCanvasPointerMove = (e: PointerEvent) => {
     const _t0 = performance.now();
     if (params.isPanning()) return;
+
+    // Drag-sampling while the color picker is open (press + move across canvas).
+    if (colorPickerOpen() && e.buttons === 1) {
+      sampleToColorPicker(e);
+      return;
+    }
 
     // ── On-canvas brush adjustment ──
     if (brushAdjustStart) {

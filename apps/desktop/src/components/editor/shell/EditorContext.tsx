@@ -45,6 +45,11 @@ export interface EditorContextValue {
   
   bgColor: Accessor<string>;
   setBgColor: Setter<string>;
+
+  colorPickerOpen: Accessor<boolean>;
+  setColorPickerOpen: Setter<boolean>;
+  colorPickerTarget: Accessor<"foreground" | "background">;
+  setColorPickerTarget: Setter<"foreground" | "background">;
   
   zoom: Accessor<number>;
   setZoom: Setter<number>;

@@ -34,6 +34,7 @@ export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
     clearTransformStacks,
     cropInteractionMode,
     modernCropFrame,
+    colorPickerOpen,
   } = useEditor();
 
   const isLayerLocked = createMemo(() => {
@@ -95,6 +96,7 @@ export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
     hoverHandle: hoverHandle(),
     isLayerLocked: isLayerLocked(),
     eyedropperTarget: null,
+    colorPickerOpen: colorPickerOpen(),
     layerRotation: layerRotation(),
     layerScaleX: layerScaleX(),
     layerScaleY: layerScaleY(),

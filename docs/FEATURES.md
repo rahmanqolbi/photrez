@@ -316,7 +316,7 @@
 | Status  | Fitur                                     |
 | ------- | ----------------------------------------- |
 | ✅ DONE | Foreground & background color swatches UI |
-| ✅ DONE | Color picker dialog                       |
+| ✅ DONE | Color picker dialog (pick from canvas, non-modal) |
 | ✅ DONE | Eyedropper tool                           |
 | ✅ DONE | Swap fg/bg color (interaktif, hotkey X/D) |
 

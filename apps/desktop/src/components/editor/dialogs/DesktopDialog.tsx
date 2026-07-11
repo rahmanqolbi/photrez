@@ -11,10 +11,14 @@ interface DesktopDialogProps extends ParentProps {
   bodyClass?: string;
   manageFocus?: boolean;
   dismissible?: boolean;
+  /** When false, the dialog is non-modal: the backdrop is click-through
+   *  (pointer-events:none) and does NOT cancel on outside click. Used by
+   *  the color picker so the canvas behind it stays interactive. */
+  modal?: boolean;
   onDismiss?: () => void;
   dialogRef?: (element: HTMLDivElement) => void;
   onKeyDown?: JSX.EventHandler<HTMLDivElement, KeyboardEvent>;
-  onBackdropPointerDown: JSX.EventHandler<HTMLDivElement, PointerEvent>;
+  onBackdropPointerDown?: JSX.EventHandler<HTMLDivElement, PointerEvent>;
 }
 
 export function DesktopDialog(props: DesktopDialogProps) {
@@ -65,9 +69,9 @@ export function DesktopDialog(props: DesktopDialogProps) {
   return (
     <>
       <div
-        class="fixed inset-0 z-[89] bg-transparent"
+        class={clsx("fixed inset-0 z-[89]", props.modal === false ? "pointer-events-none" : "bg-transparent")}
         data-dialog-backdrop
-        onPointerDown={props.onBackdropPointerDown}
+        onPointerDown={props.modal === false ? undefined : props.onBackdropPointerDown}
       />
       <div
         ref={(element) => {
@@ -75,7 +79,7 @@ export function DesktopDialog(props: DesktopDialogProps) {
           props.dialogRef?.(element);
         }}
         role={props.role ?? "dialog"}
-        aria-modal="true"
+        aria-modal={props.modal === false ? "false" : "true"}
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         data-dialog-kind={props.kind}
@@ -121,7 +125,7 @@ export function DesktopDialog(props: DesktopDialogProps) {
             </h2>
           </div>
           <button
-            onClick={(e) => props.onBackdropPointerDown(e as any)}
+            onClick={(e) => (props.onDismiss ?? props.onBackdropPointerDown)?.(e as any)}
             class="flex size-5 items-center justify-center rounded-[4px] text-editor-icon hover:bg-white/[0.08] hover:text-editor-text transition-colors cursor-pointer"
             aria-label="Close"
             tabindex="-1"

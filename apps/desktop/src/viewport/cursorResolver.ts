@@ -12,6 +12,8 @@ export interface CursorContext {
   hoverHandle: string | null;
   isLayerLocked: boolean;
   eyedropperTarget: string | null;
+  /** When a non-modal color picker is open, canvas clicks sample color. */
+  colorPickerOpen?: boolean;
   /** For rotation-aware cursor: the selected layer's current rotation */
   layerRotation?: number;
   /** For rotation-aware cursor: the selected layer's current scaleX */
@@ -26,6 +28,7 @@ export interface CursorContext {
 
 export function resolveCursor(ctx: CursorContext): string {
   if (ctx.eyedropperTarget) return "crosshair";
+  if (ctx.colorPickerOpen) return "crosshair";
   if (ctx.isSpacePressed) return ctx.isPanning ? "grabbing" : "grab";
   if (ctx.isAltPressed && (ctx.activeTool === "brush" || ctx.activeTool === "eraser")) return "copy";
   if (ctx.activeTool === "move" && ctx.isLayerLocked) return "default";

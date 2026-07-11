@@ -39,6 +39,8 @@ export function createMockEditorParams(toolId: string) {
     activeTool: toolId,
     fgColor: "#000000",
     bgColor: "#ffffff",
+    colorPickerOpen: false,
+    colorPickerTarget: "foreground",
     zoom: 1,
     pan: { x: 0, y: 0 },
     docWidth: 100,

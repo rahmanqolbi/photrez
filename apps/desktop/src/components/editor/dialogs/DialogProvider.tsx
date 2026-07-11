@@ -12,6 +12,7 @@ import {
 import { Portal } from "solid-js/web";
 import { DesktopDialog, DesktopDialogButton, desktopDialogFieldClass } from "./DesktopDialog";
 import { Slider } from "../primitives";
+import { useEditor } from "../shell/EditorContext";
 import { NewDocumentDialogContent } from "./NewDocumentDialog";
 
 export interface ConfirmDialogOptions {
@@ -62,6 +63,8 @@ export type ConfirmSaveResult = "save" | "discard" | "cancel";
 export interface ColorPickerDialogOptions {
   title: string;
   initialColor: string;
+  /** Which swatch the canvas pick writes into. */
+  target?: "foreground" | "background";
   onChange?: (color: string) => void;
 }
 
@@ -320,6 +323,10 @@ export function DialogProvider(props: ParentProps) {
     const [s, setS] = createSignal(initialHsv.s);
     const [v, setV] = createSignal(initialHsv.v);
 
+    const { fgColor, bgColor, colorPickerOpen, colorPickerTarget, setColorPickerOpen } = useEditor();
+    const target = () => props.request.options.target ?? "foreground";
+    onCleanup(() => setColorPickerOpen(false));
+
     const rgb = createMemo(() => hsvToRgb(h(), s(), v()));
     const currentHex = createMemo(() => rgbToHex(rgb().r, rgb().g, rgb().b));
 
@@ -329,6 +336,23 @@ export function DialogProvider(props: ParentProps) {
       setS(hsv.s);
       setV(hsv.v);
     };
+
+    const updateRgbFromHex = (hex: string) => {
+      const rgb = hexToRgb(hex);
+      const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+      setH(hsv.h);
+      setS(hsv.s);
+      setV(hsv.v);
+    };
+
+    // While the picker is open (non-modal), the canvas writes the sampled
+    // color into fg/bg. Mirror it into the dialog's internal HSV so the
+    // swatch + HSB/RGB/hex fields show the live picked color.
+    createEffect(() => {
+      if (!colorPickerOpen() || colorPickerTarget() !== target()) return;
+      const hex = target() === "foreground" ? fgColor() : bgColor();
+      updateRgbFromHex(hex);
+    });
 
     const handleCancel = () => {
       complete(false);
@@ -408,7 +432,8 @@ export function DialogProvider(props: ParentProps) {
         tone="default"
         widthClass="w-fit max-w-[calc(100vw-24px)]"
         bodyClass="py-4 px-5 min-h-[220px]"
-        onBackdropPointerDown={handleCancel}
+        modal={false}
+        onDismiss={handleCancel}
         onKeyDown={handleKeyDown}
       >
         <div class="flex gap-4 select-none">

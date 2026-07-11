@@ -18,7 +18,7 @@ const TOOL_SHORTCUTS: Record<ToolId, string> = {
 };
 
 export function LeftToolRail(props: { disabled?: boolean }) {
-  const { activeTool, setActiveTool, fgColor, setFgColor, bgColor, setBgColor, scheduler, workspace, layerTransformSession, setLayerTransformSession } = useEditor();
+  const { activeTool, setActiveTool, fgColor, setFgColor, bgColor, setBgColor, scheduler, workspace, layerTransformSession, setLayerTransformSession, colorPickerOpen, setColorPickerOpen, colorPickerTarget, setColorPickerTarget } = useEditor();
   const dialogs = useDialog();
 
   const cancelActiveTransformSession = () => {
@@ -58,9 +58,12 @@ export function LeftToolRail(props: { disabled?: boolean }) {
     if (props.disabled) return;
     const initialColor = type === "foreground" ? fgColor() : bgColor();
     const title = type === "foreground" ? "Foreground Color" : "Background Color";
+    setColorPickerOpen(true);
+    setColorPickerTarget(type);
     const selectedColor = await dialogs.colorPicker({
       title,
       initialColor,
+      target: type,
       onChange: (color) => {
         if (type === "foreground") {
           setFgColor(color);
@@ -70,6 +73,7 @@ export function LeftToolRail(props: { disabled?: boolean }) {
         scheduler.requestRender();
       }
     });
+    setColorPickerOpen(false);
     if (selectedColor === null) {
       // Revert back to the initial color if cancelled
       if (type === "foreground") {

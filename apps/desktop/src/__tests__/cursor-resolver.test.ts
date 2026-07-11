@@ -21,6 +21,14 @@ describe('resolveCursor', () => {
     expect(resolveCursor(ctx)).toBe('crosshair');
   });
 
+  it('returns crosshair when a color picker is open (canvas pick mode)', () => {
+    const ctx: CursorContext = {
+      ...base,
+      colorPickerOpen: true,
+    };
+    expect(resolveCursor(ctx)).toBe('crosshair');
+  });
+
   it('returns grab when space is pressed', () => {
     const ctx: CursorContext = {
       ...base,

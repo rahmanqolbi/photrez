@@ -16,6 +16,10 @@ export function createEditorState() {
   const [activeTool, setActiveTool] = createSignal<ToolId>("move");
   const [fgColor, setFgColor] = createSignal("#E15A17");
   const [bgColor, setBgColor] = createSignal("#FFFFFF");
+  // Color-picker "pick from canvas" mode: when a color-picker dialog is
+  // open (non-modal), a click on the canvas samples into the active target.
+  const [colorPickerOpen, setColorPickerOpen] = createSignal(false);
+  const [colorPickerTarget, setColorPickerTarget] = createSignal<"foreground" | "background">("foreground");
   const [zoom, setZoom] = createSignal(1.0);
   const [pan, setPan] = createSignal({ x: 0, y: 0 });
 
@@ -128,6 +132,8 @@ export function createEditorState() {
     selectionSizeH, setSelectionSizeH,
     fgColor, setFgColor,
     bgColor, setBgColor,
+    colorPickerOpen, setColorPickerOpen,
+    colorPickerTarget, setColorPickerTarget,
     zoom, setZoom,
     pan, setPan,
     documents, setDocuments,
