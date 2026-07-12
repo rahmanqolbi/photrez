@@ -126,14 +126,14 @@ export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
   });
 
   // ── Cursor sync (imperative, bypasses JSX style:cursor) ─────────────
-  // Layer drag active → CSS `cursor: copy`/`cursor: move` with !important
-  // on <body> is the PRIMARY mechanism. WebView2 manages its own cursor
-  // from CSS; Tauri's setCursorIcon only affects the window chrome, NOT
-  // the webview content. The body !important covers elements without
-  // their own cursor; elements with explicit cursor (e.g. tabs with
-  // cursor:pointer) are handled by DocumentTabsBar's pointer-enter
-  // override. Tauri setDragNativeCursor is called as a bonus (harmless
-  // if it works; no harm if it doesn't).
+  // Layer drag active:
+  //   1. Custom Rust command `setDragNativeCursor` → Win32 SetCursor →
+  //      OS native drag-drop cursor (primary mechanism).
+  //   2. CSS `cursor: copy`/`cursor: move` as fallback on <body> for
+  //      platforms where Rust command is a no-op (macOS/Linux).
+  //      The body !important covers elements without their own cursor;
+  //      tabs with explicit cursor are handled by DocumentTabsBar
+  //      pointer-enter override.
   // No drag → restore tool / viewport cursor via CSS.
   createEffect(() => {
     const dragCursor = layerDragCursor();

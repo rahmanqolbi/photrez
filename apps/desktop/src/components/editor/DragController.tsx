@@ -15,70 +15,12 @@ export function dragDropEffect(payload: LayerDragPayload | null, isCrossDoc: boo
   return "move";
 }
 
-// Custom 32×32 PNG cursor that mimics the OS drag-drop copy cursor
-// (arrow + dashed document box + folded corner + plus at bottom-right).
-// CSS `cursor: copy` renders a browser-synthesized plus at top-right
-// instead; this matches the HTML5 drag-drop cursor exactly.
-let _copyCursorUrl: string | null = null;
-
-function generateCopyCursorUrl(): string {
-  const c = document.createElement("canvas");
-  c.width = 32; c.height = 32;
-  const ctx = c.getContext("2d");
-  if (!ctx) return "copy"; // canvas unavailable (tests)
-
-  // Arrow pointer (white outline + black interior)
-  ctx.beginPath();
-  ctx.moveTo(0, 0); ctx.lineTo(0, 16); ctx.lineTo(5, 11);
-  ctx.lineTo(11, 19); ctx.lineTo(14, 17); ctx.lineTo(8, 9);
-  ctx.lineTo(14, 9); ctx.lineTo(14, 7); ctx.lineTo(5, 7);
-  ctx.lineTo(5, 0); ctx.closePath();
-  ctx.fillStyle = "white"; ctx.fill();
-  ctx.strokeStyle = "#000"; ctx.lineWidth = 1; ctx.lineJoin = "round"; ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(1, 1); ctx.lineTo(1, 14); ctx.lineTo(5, 10);
-  ctx.lineTo(10, 17); ctx.lineTo(12, 16); ctx.lineTo(7, 9);
-  ctx.lineTo(12, 9); ctx.lineTo(12, 8); ctx.lineTo(5, 8);
-  ctx.lineTo(5, 1); ctx.closePath();
-  ctx.fillStyle = "#000"; ctx.fill();
-
-  // Dashed document box at bottom-right
-  const bx = 14, by = 16, bw = 10, bh = 9;
-  ctx.save();
-  ctx.beginPath(); ctx.rect(bx, by, bw, bh);
-  ctx.fillStyle = "rgba(255,255,255,0.95)"; ctx.fill();
-  ctx.strokeStyle = "#000"; ctx.lineWidth = 1;
-  ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
-  ctx.restore();
-
-  // Folded corner
-  ctx.beginPath(); ctx.moveTo(bx + bw - 2, by);
-  ctx.lineTo(bx + bw, by + 2); ctx.lineTo(bx + bw, by); ctx.closePath();
-  ctx.fillStyle = "#fff"; ctx.fill();
-  ctx.strokeStyle = "#000"; ctx.lineWidth = 0.5; ctx.stroke();
-
-  // Plus sign to the right of the box
-  const px = bx + bw + 1.5, py = by + bh / 2;
-  ctx.beginPath();
-  ctx.moveTo(px, py - 2.5); ctx.lineTo(px, py + 2.5);
-  ctx.moveTo(px - 2.5, py); ctx.lineTo(px + 2.5, py);
-  ctx.strokeStyle = "#000"; ctx.lineWidth = 1.5; ctx.lineCap = "round"; ctx.stroke();
-
-  return c.toDataURL("image/png");
-}
-
 /** Convert a drag effect to a CSS cursor value.
- *  For `"copy"`, renders a 32×32 PNG cursor matching the OS drag-drop
- *  copy cursor (arrow + dashed box + plus at bottom-right), falling
- *  back to standard CSS `cursor: copy` if Canvas is unavailable (tests).
- *  For `"move"`, uses the standard CSS `cursor: move`. */
+ *  CSS `"copy"` shows the browser-synthesized copy cursor; the Rust
+ *  `setDragNativeCursor` command overrides it with the OS native cursor
+ *  via Win32 SetCursor. */
 export function dragEffectToCssCursor(effect: "copy" | "move"): string {
-  if (effect === "copy") {
-    if (!_copyCursorUrl) _copyCursorUrl = generateCopyCursorUrl();
-    return `url('${_copyCursorUrl}') 0 0, copy`;
-  }
-  return "move";
+  return effect;
 }
 
 export interface DragState {
