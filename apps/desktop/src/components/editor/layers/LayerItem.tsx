@@ -80,11 +80,11 @@ export function LayerItem(props: LayerItemProps) {
       isAltPressed: e.altKey,
     };
     dt.setData(LAYER_DRAG_MIME, JSON.stringify(payload));
-    // Cross-doc drop creates a copy + (optionally with Alt) deletes
-    // the source; same-doc drop reorders. Both are semantically
-    // moves of the layer to a new position, not user-visible copies,
-    // so the cursor should match the user's mental model.
-    dt.effectAllowed = "move";
+    // Allow copy + move so the drop target chooses the cursor via
+    // `dataTransfer.dropEffect` (cross-doc = copy, Alt = move, same-doc = move).
+    // Note: on Windows/WebView2 combined `effectAllowed` may be ignored; the
+    // canvas pointer-drag path uses a CSS cursor instead (see useCanvasDerivedState).
+    dt.effectAllowed = "copyMove";
     dragController.beginLayerDrag(payload, null);
   };
 

@@ -192,12 +192,12 @@ describe('resolveCursor', () => {
     expect(resolveCursor(ctx)).toBe('none');
   });
 
-  it('returns copy for eyedropper tool', () => {
+  it('returns crosshair for eyedropper tool', () => {
     const ctx: CursorContext = {
       ...base,
       activeTool: 'eyedropper',
     };
-    expect(resolveCursor(ctx)).toBe('copy');
+    expect(resolveCursor(ctx)).toBe('crosshair');
   });
 
   it('returns default for unknown tool', () => {

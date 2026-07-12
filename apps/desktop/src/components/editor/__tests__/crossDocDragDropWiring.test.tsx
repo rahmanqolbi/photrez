@@ -349,9 +349,10 @@ describe("LayerItem wiring (in-app layer drag)", () => {
     renderLayer();
     const layerEl = container.querySelector("[data-layer-idx='0']") as HTMLElement;
     expect(layerEl).not.toBeNull();
-    fireDragStart(layerEl);
+    const dt = fireDragStart(layerEl);
     const state = probeRef.current!.state();
     expect(state.dragKind).toBe("layer");
+    expect(dt.effectAllowed).toBe("copyMove");
     expect(state.payload).toEqual({
       version: 1,
       sourceDocId: "doc-source",
@@ -364,8 +365,9 @@ describe("LayerItem wiring (in-app layer drag)", () => {
   it("onDragStart with Alt pressed sets isAltPressed=true (for Move vs Copy)", () => {
     renderLayer();
     const layerEl = container.querySelector("[data-layer-idx='0']") as HTMLElement;
-    fireDragStart(layerEl, true);
+    const dt = fireDragStart(layerEl, true);
     expect(probeRef.current!.state().payload?.isAltPressed).toBe(true);
+    expect(dt.effectAllowed).toBe("copyMove");
   });
 
   it("onDragEnd clears dragController state (prevent orphan state)", () => {

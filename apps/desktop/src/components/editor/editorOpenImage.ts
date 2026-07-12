@@ -2,7 +2,7 @@ import { showOpenImageDialog, readFileBytes, loadProject } from "@/tauri/native"
 import { WorkspaceManager, DocumentSession } from "@/engine/workspace";
 import { DocumentEngine } from "@/engine/document";
 import { CommandHistory } from "@/engine/history";
-import { DocumentModel } from "@/engine/types";
+import { DocumentModel, MAX_OPEN_DOCUMENTS } from "@/engine/types";
 import type { WebGL2Backend } from "@/renderer/webgl2";
 import type { RenderScheduler } from "@/renderer/scheduler";
 import { isTauriRuntime } from "@/lib/desktop/tauriWindow";
@@ -32,27 +32,11 @@ export async function openImage(params: OpenImageParams) {
     input.type = "file";
     input.accept = "image/*";
     input.multiple = true;
-    input.onchange = async (e: Event) => {
-      const files = (e.target as HTMLInputElement).files;
-      if (!files) return;
-
-      for (const file of Array.from(files)) {
-        if (params.workspace.isFull()) break;
-        try {
-          const bitmap = await createImageBitmap(file);
-          const id = `doc-${crypto.randomUUID()}`;
-          const session = WorkspaceManager.createDocumentFromImage(id, file.name, bitmap);
-
-          params.workspace.addDocument(session);
-
-          const bgLayerId = session.engine.getLayers()[0].id;
-          params.renderer.uploadImage(bgLayerId, bitmap);
-          params.scheduler.requestRender();
-        } catch (err) {
-          reportError(`Failed to load image in browser fallback: ${err}`);
-        }
-      }
-    };
+      input.onchange = async (e: Event) => {
+        const files = (e.target as HTMLInputElement).files;
+        if (!files) return;
+        await openImageFilesAsDocuments(Array.from(files), params);
+      };
     input.click();
     return;
   }
@@ -78,6 +62,30 @@ export async function openImage(params: OpenImageParams) {
     }
   } catch (e) {
     reportError(`Failed to open image: ${e}`);
+  }
+}
+
+/** Open one or more dropped/selected image Files as brand-new documents. */
+export async function openImageFilesAsDocuments(
+  files: File[],
+  params: OpenImageParams,
+): Promise<void> {
+  for (const file of files) {
+    if (params.workspace.isFull()) {
+      showToast(`Workspace full: close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
+      break;
+    }
+    try {
+      const bitmap = await createImageBitmap(file);
+      const id = `doc-${crypto.randomUUID()}`;
+      const session = WorkspaceManager.createDocumentFromImage(id, file.name, bitmap);
+      params.workspace.addDocument(session);
+      const bgLayerId = session.engine.getLayers()[0].id;
+      params.renderer.uploadImage(bgLayerId, bitmap);
+      params.scheduler.requestRender();
+    } catch (err) {
+      params.onError?.(`Failed to load ${file.name}: ${err}`);
+    }
   }
 }
 

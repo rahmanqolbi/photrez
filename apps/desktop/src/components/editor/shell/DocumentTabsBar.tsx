@@ -6,7 +6,7 @@ import { useEditor } from "./EditorContext";
 import { WorkspaceManager } from "@/engine/workspace";
 import { MAX_OPEN_DOCUMENTS } from "@/engine/types";
 import { cancelLayerTransformSession } from "../transformSession";
-import { useDragController } from "../DragController";
+import { useDragController, dragDropEffect } from "../DragController";
 import { addFilesAsLayers, addLayerFromCrossDoc, createNewDocsFromFiles, type WorkspaceFacade } from "../crossDocLayerOps";
 import { showToast } from "../Toast";
 import { useDialog } from "../dialogs/DialogProvider";
@@ -186,7 +186,7 @@ export function DocumentTabsBar() {
       cancelActiveTransformSession();
     }
     if (workspace.isFull()) {
-      showToast(`Workspace full — close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
+      showToast(`Workspace full: close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
       return;
     }
     const result = await dialog.newDocument();
@@ -211,6 +211,22 @@ export function DocumentTabsBar() {
   // cancel the 500ms hover-to-switch timer.
   const handleTabPointerEnter = (e: PointerEvent, tabId: string) => {
     if (drag.state().dragKind === null) return;
+    // Override the tab's CSS cursor:pointer with the drag cursor so
+    // the copy/move cursor follows the pointer over tabs too.
+    // We compute the drag cursor from the payload directly because
+    // layerDragCursor lives in useCanvasDerivedState and is out of
+    // scope here.
+    const state = drag.state();
+    if (state.payload) {
+      const isCrossDoc = state.payload.sourceDocId !== tabId;
+      const effect = dragDropEffect(state.payload, isCrossDoc);
+      (e.currentTarget as HTMLElement).style.cursor = effect;
+    }
+    // Track the drop target so the canvas drag cursor (layerDragCursor in
+    // useCanvasDerivedState) can detect cross-doc vs same-doc and show the
+    // correct "copy" or "move" cursor — matching the HTML5 drag path which
+    // sets dropTarget in handleTabDragOver.
+    drag.setDropTarget({ type: "tab", docId: tabId });
     if (activeDocumentId() === tabId) {
       drag.cancelTabHover();
       return;
@@ -218,7 +234,16 @@ export function DocumentTabsBar() {
     drag.startTabHover(tabId);
   };
 
-  const handleTabPointerLeave = (_e: PointerEvent, tabId: string) => {
+  const handleTabPointerLeave = (e: PointerEvent, tabId: string) => {
+    // Restore the tab's CSS cursor (remove inline override so cursor:pointer
+    // from the CSS class takes back over).
+    (e.currentTarget as HTMLElement | null)?.style.removeProperty("cursor");
+    // Clear drop target if this tab was the target — mirrors the cleanup
+    // in handleTabDragLeave for the HTML5 drag path.
+    const current = drag.state().dropTarget;
+    if (current && current.type === "tab" && current.docId === tabId) {
+      drag.setDropTarget(null);
+    }
     // Only cancel if the timer was for THIS tab. Otherwise we cancel
     // a timer started by another tab.
     if (drag.state().hoverTabId === tabId) {
@@ -228,6 +253,10 @@ export function DocumentTabsBar() {
 
   const handleTabDragOver = (e: DragEvent, tabId: string) => {
     e.preventDefault();
+    const state = drag.state();
+    if (state.payload && e.dataTransfer) {
+      e.dataTransfer.dropEffect = dragDropEffect(state.payload, state.payload.sourceDocId !== tabId);
+    }
     drag.setDropTarget({ type: "tab", docId: tabId });
     if (activeDocumentId() !== tabId) {
       drag.startTabHover(tabId);
@@ -352,6 +381,15 @@ export function DocumentTabsBar() {
               return dt !== null && dt.type === "tab" && dt.docId === tab.id;
             };
             const isHovering = () => drag.state().hoverTabId === tab.id;
+            // During a cross-doc layer drag, focus the user on the destination:
+            // dim every tab that is neither the active doc nor the hovered target.
+            const isDimmed = () => {
+              const st = drag.state();
+              if (st.dragKind !== "layer") return false;
+              if (activeDocumentId() === tab.id) return false;
+              if (isDragOver()) return false;
+              return true;
+            };
             return (
               <div
                 role="tab"
@@ -369,7 +407,8 @@ export function DocumentTabsBar() {
                 class={clsx(
                   "group relative flex shrink-0 items-center gap-3 border-r border-editor-divider pl-4 pr-3 cursor-pointer",
                   activeDocumentId() === tab.id ? "bg-editor-bg" : "bg-editor-topbar hover:bg-editor-topbar-hover",
-                  isDragOver() && "outline outline-2 outline-editor-accent"
+                  isDragOver() && "outline outline-2 outline-editor-accent",
+                  isDimmed() && "opacity-30"
                 )}
               >
                 <span

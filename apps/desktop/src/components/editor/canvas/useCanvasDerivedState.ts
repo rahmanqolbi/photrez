@@ -1,6 +1,8 @@
-import { createMemo, createEffect, untrack } from "solid-js";
+import { createMemo, createEffect, untrack, onCleanup } from "solid-js";
 import { useEditor } from "../shell/EditorContext";
 import { resolveCursor } from "@/viewport/cursorResolver";
+import { useDragController, dragDropEffect, dragEffectToCssCursor } from "../DragController";
+import { setDragNativeCursor } from "../nativeCursor";
 import { getLayerAabb } from "@/viewport/transformGeometry";
 import { buildCropSnapTargets } from "@/viewport/cropSnap";
 import type { ToolType } from "@/viewport/input-handler";
@@ -16,6 +18,7 @@ interface UseCanvasDerivedStateParams {
 export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
   const {
     workspace,
+    activeDocumentId,
     activeTool,
     activeLayerId,
     layers,
@@ -36,6 +39,7 @@ export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
     modernCropFrame,
     colorPickerOpen,
   } = useEditor();
+  const dragController = useDragController();
 
   const isLayerLocked = createMemo(() => {
     const id = activeLayerId();
@@ -104,21 +108,56 @@ export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
     layerBoundingBox: layerBoundingBox(),
   }));
 
+  // Layer drag cursor (canvas pointer-drag path): copy for cross-doc, move for
+  // same-doc / Alt. This is the authoritative source — the JSX `style.cursor`
+  // on the viewport is overridden by the imperative sync below.
+  const layerDragCursor = createMemo(() => {
+    const s = dragController.state();
+    if (s.dragKind !== "layer" || !s.payload) return undefined;
+    const isCrossDoc =
+      (s.dropTarget?.type === "tab" && s.dropTarget.docId !== s.payload.sourceDocId) ||
+      (s.dropTarget?.type === "canvas" && activeDocumentId() !== s.payload.sourceDocId);
+    return dragDropEffect(s.payload, isCrossDoc);
+  });
+
   const viewportCursorClass = createMemo(() => {
     if (params.isSpacePressed()) return params.isPanning() ? "grabbing" : "grab";
     return "default";
   });
 
-  // Imperative cursor sync →bypass JSX style:cursor binding for guaranteed reactivity
+  // ── Cursor sync (imperative, bypasses JSX style:cursor) ─────────────
+  // Layer drag active → CSS `cursor: copy`/`cursor: move` with !important
+  // on <body> is the PRIMARY mechanism. WebView2 manages its own cursor
+  // from CSS; Tauri's setCursorIcon only affects the window chrome, NOT
+  // the webview content. The body !important covers elements without
+  // their own cursor; elements with explicit cursor (e.g. tabs with
+  // cursor:pointer) are handled by DocumentTabsBar's pointer-enter
+  // override. Tauri setDragNativeCursor is called as a bonus (harmless
+  // if it works; no harm if it doesn't).
+  // No drag → restore tool / viewport cursor via CSS.
   createEffect(() => {
-    const c = viewportCursorClass();
+    const dragCursor = layerDragCursor();
     const container = params.getCanvasContainerRef();
-    if (container) container.style.cursor = c;
-  });
-  createEffect(() => {
-    const c = cursorClass();
     const canvas = params.getCanvasRef();
-    if (canvas) canvas.style.cursor = c;
+
+    if (dragCursor) {
+      setDragNativeCursor(dragCursor);
+      const css = dragEffectToCssCursor(dragCursor);
+      if (container) container.style.cursor = css;
+      if (canvas) canvas.style.cursor = css;
+      document.body.style.setProperty("cursor", css, "important");
+    } else {
+      setDragNativeCursor(null);
+      if (container) container.style.cursor = viewportCursorClass();
+      if (canvas) canvas.style.cursor = cursorClass();
+      document.body.style.removeProperty("cursor");
+    }
+  });
+
+  // Clean up global cursor on unmount
+  onCleanup(() => {
+    setDragNativeCursor(null);
+    document.body.style.removeProperty("cursor");
   });
 
   // Clear hover state when tool is not move

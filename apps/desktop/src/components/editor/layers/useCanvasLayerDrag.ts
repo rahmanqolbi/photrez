@@ -106,7 +106,22 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     const engine = workspace.getActiveEngine();
     if (!engine) return;
     const layer = engine.getLayer(d.layerId);
-    if (!layer) return;
+    if (!layer) {
+      // Cross-doc: the active document was switched to the target via
+      // tab hover-to-switch, so the dragged source layer no longer lives
+      // in this engine. Don't mutate it — mark the canvas as a cross-doc
+      // drop target so pointerup adds the layer at the cursor
+      // (plan: "drag A → canvas B → added at cursor"). Only when the
+      // active doc actually differs from the drag's captured source doc.
+      if (d.sourceDocId !== activeDocumentId()) {
+        dragController.setDropTarget({ type: "canvas" });
+        dragController.cancelTabHover();
+        opts.onSnapLinesChange?.([]);
+        scheduler.requestRender();
+        return;
+      }
+      return;
+    }
 
     // Same-doc (or no tab): mutate the source layer with snap.
     const docPos = camera.screenToDocument(
@@ -188,39 +203,46 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     const currentActive = activeDocumentId();
 
     let crossDocAdded = false;
-    if (
-      dropTarget &&
-      dropTarget.type === "tab" &&
-      dropTarget.docId !== src
-    ) {
+    const isCrossDocTab =
+      dropTarget?.type === "tab" && dropTarget.docId !== src;
+    const isCrossDocCanvas =
+      dropTarget?.type === "canvas" && currentActive !== src;
+
+    if (isCrossDocTab || isCrossDocCanvas) {
+      const targetDocId = (isCrossDocTab
+        ? (dropTarget as { type: "tab"; docId: string }).docId
+        : currentActive) as string;
       const sourceEngine = workspace.getEngine(src);
       const sourceLayer = sourceEngine?.getLayer(d.layerId);
       if (sourceLayer && sourceEngine) {
-        // Cancel any pending hover-to-switch timer →we're committing
-        // the drop now, no need for the auto-switch anymore.
         dragController.cancelTabHover();
 
-        // Switch the active doc FIRST so the camera is in the target's
-        // coordinate system before we map the cursor to a doc position.
-        // Otherwise we'd use the source's camera, place the layer at a
-        // wrong point in the target, and the user would see the layer
-        // off-screen (or at a wrong position) when the visual updates.
-        if (currentActive !== dropTarget.docId) {
-          workspace.switchDocument(dropTarget.docId);
+        // Switch the active doc FIRST so the camera/active engine are in
+        // the target's coordinate system before we map the cursor.
+        if (currentActive !== targetDocId) {
+          workspace.switchDocument(targetDocId);
         }
-        // Camera is now at the target's state. Map cursor →target doc
-        // coords so the new layer lands exactly under the cursor.
-        const layerAabb = getLayerAabb(sourceLayer.transform, sourceLayer.width, sourceLayer.height);
-        const cursorInCanvas = {
-          x: e.clientX - d.rect.left,
-          y: e.clientY - d.rect.top,
-        };
-        const targetDocPos = camera.screenToDocument(cursorInCanvas.x, cursorInCanvas.y);
-        // Center the layer on the cursor (top-left = cursor - half-size).
-        const targetPos = {
-          x: targetDocPos.x - layerAabb.width / 2,
-          y: targetDocPos.y - layerAabb.height / 2,
-        };
+
+        // Position: canvas drop → layer centered under the cursor
+        // (plan: "drag A → canvas B → added at cursor"); tab drop → tab
+        // has no canvas cursor, so addLayerFromCrossDoc centers the layer
+        // in the target doc and ignores the cursorPos arg below.
+        let targetPos: { x: number; y: number };
+        if (isCrossDocCanvas) {
+          const layerAabb = getLayerAabb(sourceLayer.transform, sourceLayer.width, sourceLayer.height);
+          const cursorInCanvas = {
+            x: e.clientX - d.rect.left,
+            y: e.clientY - d.rect.top,
+          };
+          const targetDocPos = camera.screenToDocument(cursorInCanvas.x, cursorInCanvas.y);
+          targetPos = {
+            x: targetDocPos.x - layerAabb.width / 2,
+            y: targetDocPos.y - layerAabb.height / 2,
+          };
+        } else {
+          targetPos = { x: 0, y: 0 };
+        }
+
         const { newLayerId } = addLayerFromCrossDoc(
           {
             version: 1,
@@ -229,24 +251,18 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
             sourceName: sourceLayer.name,
             isAltPressed: e.altKey,
           },
-          { type: "tab", docId: dropTarget.docId },
+          isCrossDocTab ? { type: "tab", docId: targetDocId } : { type: "canvas" },
           targetPos,
           workspace,
         );
         crossDocAdded = true;
         if (!e.altKey) {
+          // Copy (default) leaves the source untouched in place.
           sourceEngine.transformLayer(d.layerId, {
             x: d.startTransformX,
             y: d.startTransformY,
           });
         }
-        // Explicitly upload the new layer's bitmap to the renderer.
-        // The createEffect on activeDocumentId change handles first-time
-        // docs, but for already-seen docs the effect doesn't re-run
-        // and the new layer's GPU texture is never created →so the
-        // new layer would render as blank/empty even though it's in
-        // the engine. Source layer's bitmap is the same reference
-        // already set on the new layer by addLayerFromCrossDoc.
         if (newLayerId) {
           const targetEngine = workspace.getActiveEngine();
           const newLayer = targetEngine?.getLayer(newLayerId);

@@ -115,7 +115,7 @@ export function AppTitleBar(props: AppTitleBarProps) {
           <span class="text-[12px] font-medium tracking-wide text-editor-text">
             {activeDocName()}
           </span>
-          <span class="text-[12px] text-editor-text-dim">—</span>
+          <span class="text-[12px] text-editor-text-dim">·</span>
           <span class="text-[12px] tracking-wide text-editor-text-dim">photrez</span>
         </div>
       </div>

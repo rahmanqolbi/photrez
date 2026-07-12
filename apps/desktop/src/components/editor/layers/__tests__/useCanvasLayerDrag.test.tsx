@@ -793,7 +793,74 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
     }
   });
 
-  // ════════════════════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
+  // Implementation Contract: cross-doc canvas drop (plan acceptance:
+  // "drag A → canvas B → added at cursor")
+  // ════════════════════════════════════════════════════════════════
+
+  it("cross-doc canvas drop: hover tab B then drop on B canvas adds layer, restores source", () => {
+    vi.useFakeTimers();
+    const ctx = setupWithTwoDocs();
+    const tabEl = document.createElement("div");
+    const originalElementFromPoint = (document as any).elementFromPoint;
+    try {
+      const sourceEngine = ctx.ws.getEngine("doc-a")!;
+      const targetEngine = ctx.ws.getEngine("doc-b")!;
+      const sourceLayer = sourceEngine.getLayers().find((l) => l.name === "Draggable")!;
+      const targetStartCount = targetEngine.getLayers().length;
+      tabEl.setAttribute("data-document-tab", "doc-b");
+      document.body.appendChild(tabEl);
+      (document as any).elementFromPoint = vi.fn().mockReturnValue(tabEl);
+
+      // Step 1: pointerDown starts drag on the source layer
+      ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true, cancelable: true, button: 0, clientX: 150, clientY: 150,
+      }));
+      expect(ctx.testApi.dragApi.isDragging()).toBe(true);
+
+      // Step 2: move over the tab → starts 500ms hover-to-switch
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 20, clientY: 20,
+      }));
+      expect(ctx.testApi.dcState().dropTarget).toEqual({ type: "tab", docId: "doc-b" });
+
+      // Step 3: hover fires → active doc becomes doc-b
+      vi.advanceTimersByTime(500);
+      expect(ctx.ws.getActiveDocumentId()).toBe("doc-b");
+
+      // Step 4: move over the (now target) canvas → cross-doc canvas drop target
+      (document as any).elementFromPoint = vi.fn().mockReturnValue(null);
+      document.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true, button: 0, clientX: 300, clientY: 300,
+      }));
+      expect(ctx.testApi.dcState().dropTarget).toEqual({ type: "canvas" });
+
+      // Step 5: drop on the target canvas → cross-doc add
+      document.dispatchEvent(new PointerEvent("pointerup", {
+        bubbles: true, button: 0, clientX: 300, clientY: 300,
+      }));
+
+      // Target doc gained exactly one layer (the copied source layer)
+      expect(targetEngine.getLayers().length).toBe(targetStartCount + 1);
+      // Source layer in doc-a was restored to its pre-drag position
+      expect(sourceLayer.transform.x).toBe(100);
+      expect(sourceLayer.transform.y).toBe(100);
+      // Drop target cleared after the drop
+      expect(ctx.testApi.dcState().dropTarget).toBeNull();
+      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
+    } finally {
+      if (originalElementFromPoint) {
+        (document as any).elementFromPoint = originalElementFromPoint;
+      } else {
+        delete (document as any).elementFromPoint;
+      }
+      tabEl.parentNode?.removeChild(tabEl);
+      vi.useRealTimers();
+      teardown(ctx);
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════
   // Implementation Contract: layer detection order
   // ════════════════════════════════════════════════════════════════════════════
 

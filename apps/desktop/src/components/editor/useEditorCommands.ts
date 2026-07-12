@@ -269,7 +269,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
       case "file.new": {
         console.log("[TEST DEBUG] file.new command received", !!dialog.newDocument);
         if (editor.workspace.isFull()) {
-          showToast(`Workspace full — close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
+          showToast(`Workspace full: close a document first (max ${MAX_OPEN_DOCUMENTS})`, "error");
           break;
         }
         void (async () => {

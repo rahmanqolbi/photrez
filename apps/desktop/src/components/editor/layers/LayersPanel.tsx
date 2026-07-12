@@ -3,7 +3,7 @@ import { clsx } from "clsx";
 import { Icon } from "../icons";
 import { Tooltip } from "../Tooltip";
 import { useEditor } from "../shell/EditorContext";
-import { useDragController } from "../DragController";
+import { useDragController, dragDropEffect } from "../DragController";
 import { addLayerFromCrossDoc, addFilesAsLayers, addFilesAsLayersFromFileDrop } from "../crossDocLayerOps";
 import { LayerNode } from "@/engine/types";
 import type { DocumentModel } from "@/engine/types";
@@ -359,12 +359,18 @@ export function LayersPanel() {
         data-layers-panel-drop-zone
         data-drag-over={dragController.state().dropTarget?.type === "layers-panel" ? "layers-panel" : null}
         onDragOver={(e) => {
-          // (matching LayerItem's effectAllowed="copy"), even when
+          // preventDefault keeps the drag alive and shows the move cursor
+          // (matching LayerItem's effectAllowed="copyMove"), even when
           // dragKind is null (e.g. dragstart hasn't fired yet because
           // the user hasn't moved past the native threshold). Without
           // this the browser falls back to the "forbidden" cursor
           // because it can't confirm a drop target accepts the drag.
           e.preventDefault();
+          const payload = dragController.state().payload;
+          if (payload && e.dataTransfer) {
+            // Same-document reorder → move cursor.
+            e.dataTransfer.dropEffect = dragDropEffect(payload, false);
+          }
           if (dragController.state().dragKind === null) return;
           // Track insertion position so the drop handler can land
           // the layer exactly where the user aimed.

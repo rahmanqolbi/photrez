@@ -292,24 +292,26 @@ describe("addLayerFromCrossDoc â€” position", () => {
     resetToasts();
   });
 
-  it("uses cursor pos when target is canvas", () => {
+  it("centers the dropped layer on the cursor for a canvas drop", () => {
     const sourceEngine = makeEngine({ id: "doc-A" });
     const targetEngine = makeEngine({ id: "doc-B" });
     const ws = makeWorkspace({ "doc-A": sourceEngine, "doc-B": targetEngine });
+    // makeEngine default layer is 200x150; canvas drop centers on cursor.
     addLayerFromCrossDoc(basePayload, { type: "canvas" }, { x: 333, y: 444 }, ws);
     const transform = targetEngine.transformLayer.mock.calls[0][1];
-    expect(transform.x).toBe(333);
-    expect(transform.y).toBe(444);
+    expect(transform.x).toBe(333 - 100); // 200 / 2
+    expect(transform.y).toBe(444 - 75); // 150 / 2
   });
 
-  it("uses cursor pos when target is tab (editor-standard: user aims the landing position)", () => {
+  it("uses doc center when target is tab (plan: tab/layers-panel → center)", () => {
     const sourceEngine = makeEngine({ id: "doc-A" });
     const targetEngine = makeEngine({ id: "doc-B", width: 800, height: 600 });
     const ws = makeWorkspace({ "doc-A": sourceEngine, "doc-B": targetEngine });
     addLayerFromCrossDoc(basePayload, { type: "tab", docId: "doc-B" }, { x: 123, y: 456 }, ws);
     const transform = targetEngine.transformLayer.mock.calls[0][1];
-    expect(transform.x).toBe(123);
-    expect(transform.y).toBe(456);
+    // (targetW - layerW)/2, (targetH - layerH)/2 = (300, 225)
+    expect(transform.x).toBe(300);
+    expect(transform.y).toBe(225);
   });
 
   it("uses doc center when target is layers-panel", () => {

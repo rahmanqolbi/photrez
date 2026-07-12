@@ -152,18 +152,19 @@ describe("addLayerFromCrossDoc — real engine integration", () => {
     expect(cloned.height).toBe(600);
   });
 
-  it("places layer at cursor pos for tab drop (editor-standard: user aims the landing position)", () => {
+  it("places layer at doc center for a tab drop (plan: tab → doc center)", () => {
     addLayerFromCrossDoc(
       basePayload,
       { type: "tab", docId: targetDocId },
       { x: 333, y: 444 },
-      ws as unknown as WorkspaceFacade
+      ws as unknown as WorkspaceFacade,
     );
 
-    const targetEngine = ws.getEngine(targetDocId)!;
-    const cloned = targetEngine.getLayers().find((l) => l.name === "MyLogo")!;
-    expect(cloned.transform.x).toBe(333);
-    expect(cloned.transform.y).toBe(444);
+    const targetEngine = ws.getEngine(targetDocId)!; // docB = 1000x800
+    const cloned = targetEngine.getLayers().find((l) => l.name === "MyLogo")!; // source 800x600
+    // (targetW - layerW)/2, (targetH - layerH)/2 = (100, 100)
+    expect(cloned.transform.x).toBe(100);
+    expect(cloned.transform.y).toBe(100);
   });
 
   it("transfers source layer's bitmap to the cloned layer (regression: empty-layer bug)", () => {
@@ -204,6 +205,26 @@ describe("addLayerFromCrossDoc — real engine integration", () => {
     expect(result.newLayerId).toBeNull();
     expect(sourceEngine.getLayers()).toHaveLength(1);
     expect(targetEngine.getLayers()).toHaveLength(targetLayerCount);
+  });
+
+  it("centers the dropped layer on the cursor for a canvas drop", () => {
+    // A canvas drop targets the active document's canvas. Switch to the
+    // target doc so this is a true cross-doc drop (otherwise it resolves to
+    // the source doc and reorders in place instead of cloning).
+    ws.switchDocument(targetDocId);
+    const created = addLayerFromCrossDoc(
+      basePayload,
+      { type: "canvas" },
+      { x: 500, y: 400 },
+      ws as unknown as WorkspaceFacade,
+    );
+
+    const targetEngine = ws.getEngine(targetDocId)!;
+    const cloned = targetEngine.getLayers().find((l) => l.name === "MyLogo")!;
+    // cursor (500,400) is the layer CENTER → top-left = cursor - half size.
+    // "MyLogo" is doc-sized 800x600 → (500-400, 400-300) = (100, 100).
+    expect(cloned.transform.x).toBe(100);
+    expect(cloned.transform.y).toBe(100);
   });
 });
 
@@ -340,6 +361,23 @@ describe("addFilesAsLayersFromFileDrop — real engine integration (HTML5 file d
 
     expect(created).toHaveLength(1);
     expect(engine.getLayer(created[0].layerId)).toBeDefined();
+  });
+
+  it("centers the image on the cursor when center=true", async () => {
+    const file = new File(["fake-png"], "photo.png", { type: "image/png" });
+    const created = await addFilesAsLayersFromFileDrop(
+      [file],
+      { type: "canvas" },
+      { x: 500, y: 400 },
+      ws,
+      true,
+    );
+
+    const layer = ws.getEngine("docA")!.getLayer(created[0].layerId)!;
+    // cursor (500,400) is the image CENTER → top-left = cursor - half size.
+    // bitmap is 200x150 in this suite's beforeEach → half = 100x75.
+    expect(layer.transform.x).toBe(400);
+    expect(layer.transform.y).toBe(325);
   });
 
   it("returns empty array and error toast when createImageBitmap fails", async () => {

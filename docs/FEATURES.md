@@ -203,6 +203,8 @@
 | Status  | Fitur                                                                                                                                                |
 | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ✅ DONE | Drag layer between documents (Copy default, Alt = Move)                                                                                              |
+| ✅ DONE | Cross-doc drag feedback shown via OS copy/move cursor (Layer Panel + Canvas drag, no floating badge); same-doc reorder shows move cursor only                |
+| ✅ DONE | Drag layer onto empty workspace (all docs closed) opens a new document containing only that layer (reuses cross-doc copy path)                        |
 | ✅ DONE | Hover-to-switch document tab (500ms with countdown)                                                                                                  |
 | ✅ DONE | Canvas layer drag to document tab freezes at the last dragged visual position while waiting for hover-to-switch, with cleanup restore on cancel/copy |
 | ✅ DONE | Drop image file from OS (Tauri 2 onDragDropEvent)                                                                                                    |
@@ -431,6 +433,7 @@
 | DONE       | FAANG review rejection Phase 0 execution: contract drift, production context fallback, shell response panics, file IO size guard, and root static-analysis scripts addressed with green build/test/type gates                                                 |
 | DONE       | Production risk register hardening executed: closed drag/drop, layer reorder, export, debug-surface, and verification-script gaps with green automated gates                                                                                                  |
 | DONE       | Cross-doc layer drag tab hover regression fixed: 500ms tab switch now works through real EditorProvider workspace and canvas pointer-drag tab detection                                                                                                       |
+| DONE       | Cross-doc drag drop position aligned to plan: tab/layers-panel drops land at doc center; canvas-on-target drop lands at cursor (was using garbage tab-screen coords). Covered by crossDocLayerOps.test.ts center assertion + new useCanvasLayerDrag.test.tsx canvas cross-doc wiring test
 | DONE       | Ponytail refactor-from-scratch doctrine: rules enforced via `AGENTS.md` + `opencode.json` ponytail plugin (no standalone directory created)                                                                                                                 |
 | DONE       | 6-month maintainability risk register created: `docs/risk-registers/maintainability/` with per-area ownership, refactor, and governance risks                                                                                                                 |
 | DONE       | FAANG-style review findings: per-PR review checklists; standalone `docs/faang-review-rejections/` directory not created (see decision log); archive at `docs/archive/audits/faang-review/`                                                                     |

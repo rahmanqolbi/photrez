@@ -58,6 +58,6 @@ export function resolveCursor(ctx: CursorContext): string {
   if (ctx.activeTool === "crop" && ctx.hoverHandle === "move") return "move";
   if (ctx.activeTool === "crop") return "crosshair";
   if (ctx.activeTool === "brush" || ctx.activeTool === "eraser") return "none";
-  if (ctx.activeTool === "eyedropper") return "copy";
+  if (ctx.activeTool === "eyedropper") return "crosshair";
   return "default";
 }

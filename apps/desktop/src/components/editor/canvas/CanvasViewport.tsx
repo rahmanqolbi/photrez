@@ -794,8 +794,8 @@ export function CanvasViewport() {
           activeTool() === "move"
             ? "grab"
             : activeTool() === "crop" &&
-          cropInteractionMode() === "modern" &&
-          !modernCropFrame()
+              cropInteractionMode() === "modern" &&
+              !modernCropFrame()
             ? "crosshair"
             : undefined,
       }}

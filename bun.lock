@@ -6,6 +6,7 @@
       "name": "photrez-workspace",
       "devDependencies": {
         "@tauri-apps/cli": "^2.0.0",
+        "@types/node": "^25.9.1",
         "@types/pngjs": "^6.0.5",
         "husky": "^9.1.7",
         "pngjs": "^7.0.0",

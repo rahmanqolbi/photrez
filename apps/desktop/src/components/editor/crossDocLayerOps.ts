@@ -148,12 +148,14 @@ export function addLayerFromCrossDoc(
     return { newLayerId: null };
   }
 
-  // Drop position: use cursor position for canvas + tab drops (the user
-  // explicitly aimed there). For other targets (e.g. layers-panel) where
-  // the cursor is outside the canvas, fall back to doc-center.
+  // Drop position: a canvas drop centers the layer on the cursor (the user
+  // aimed there) — parity with the file-drop path, which also centers.
+  // A tab or layers-panel drop has no meaningful canvas cursor, so center
+  // the new layer in the target document
+  // (plan: "uses doc center when target is tab or layers-panel").
   const targetPos: Point =
-    target && (target.type === "canvas" || target.type === "tab")
-      ? cursorPos
+    target && target.type === "canvas"
+      ? { x: cursorPos.x - sourceLayer.width / 2, y: cursorPos.y - sourceLayer.height / 2 }
       : (() => {
           const tw = targetEngine.getWidth();
           const th = targetEngine.getHeight();
@@ -206,7 +208,8 @@ export async function addFilesAsLayers(
   paths: string[],
   target: DropTarget,
   basePos: Point,
-  ws: WorkspaceFacade
+  ws: WorkspaceFacade,
+  center = false
 ): Promise<CreatedLayer[]> {
   const targetDocId = target && target.type === "tab" && target.docId
     ? target.docId
@@ -227,10 +230,16 @@ export async function addFilesAsLayers(
   };
   for (let i = 0; i < paths.length; i++) {
     const path = paths[i];
-    const pos = computeCascadePosition(basePos, i);
     const name = path.split(/[\\/]/).pop() ?? "Imported";
     try {
       const bitmap = await fileToBitmap(path);
+      const cascade = computeCascadePosition(basePos, i);
+      // center=true → the cursor marks the image CENTER (not its top-left),
+      // so shift by half the decoded size. The cascade offset still applies
+      // so multiple dropped files fan out from the cursor.
+      const pos: Point = center
+        ? { x: cascade.x - bitmap.width / 2, y: cascade.y - bitmap.height / 2 }
+        : cascade;
       decoded.push({ name, pos, bitmap });
     } catch (err) {
       freeDecoded();
@@ -283,7 +292,8 @@ export async function addFilesAsLayersFromFileDrop(
   files: File[],
   target: DropTarget,
   basePos: Point,
-  ws: WorkspaceFacade
+  ws: WorkspaceFacade,
+  center = false
 ): Promise<CreatedLayer[]> {
   const targetDocId = target && target.type === "tab" && target.docId
     ? target.docId
@@ -303,10 +313,15 @@ export async function addFilesAsLayersFromFileDrop(
   };
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    const pos = computeCascadePosition(basePos, i);
     try {
       // runtime decodes PNG/JPEG/WebP/etc. natively with no Tauri IPC.
       const bitmap = await createImageBitmap(file);
+      const cascade = computeCascadePosition(basePos, i);
+      // center=true → the cursor marks the image CENTER (not its top-left),
+      // so shift by half the decoded size. Cascade still fans multiple files.
+      const pos: Point = center
+        ? { x: cascade.x - bitmap.width / 2, y: cascade.y - bitmap.height / 2 }
+        : cascade;
       decoded.push({ name: file.name, pos, bitmap });
     } catch (err) {
       freeDecoded();
@@ -346,7 +361,7 @@ export async function createNewDocsFromFiles(
   ws: WorkspaceFacade
 ): Promise<CreatedDoc[]> {
   if (ws.isFull()) {
-    showToast("Workspace full — close a document first (max 16)", "error");
+    showToast("Workspace full: close a document first (max 16)", "error");
     return [];
   }
   const created: CreatedDoc[] = [];
@@ -359,7 +374,7 @@ export async function createNewDocsFromFiles(
   for (const path of paths) {
     if (ws.isFull()) {
       freeDecoded();
-      showToast("Workspace full — close a document first (max 16)", "error");
+      showToast("Workspace full: close a document first (max 16)", "error");
       return created;
     }
     const name = path.split(/[\\/]/).pop() || "Image";
@@ -384,4 +399,63 @@ export async function createNewDocsFromFiles(
     }
   }
   return created;
+}
+
+interface LayerDropRenderer {
+  uploadImage(layerId: string, source: ImageBitmap): void;
+}
+
+interface LayerDropScheduler {
+  requestRender(): void;
+}
+
+/**
+ * Drop a layer onto an empty workspace → open a brand-new document built from
+ * that layer. Reuses the cross-doc copy path (`addLayerFromCrossDoc`) so the
+ * bitmap, transform, opacity and blend mode all carry over, and the new layer
+ * lands centered in the freshly created doc.
+ *
+ * This is the "drag a layer to the empty canvas" affordance: the workspace has
+ * no active document to receive the drop, so instead of failing it seeds a new
+ * one. Same-doc reorder is naturally avoided because the new doc id differs
+ * from the source.
+ */
+export function createNewDocFromLayerDrag(
+  payload: LayerDragPayload,
+  ws: WorkspaceFacade,
+  renderer: LayerDropRenderer,
+  scheduler: LayerDropScheduler,
+): { docId: string | null } {
+  if (ws.isFull()) {
+    showToast("Workspace full: close a document first", "error");
+    return { docId: null };
+  }
+  const sourceEngine = ws.getEngine(payload.sourceDocId);
+  const sourceLayer = sourceEngine?.getLayer(payload.layerId);
+  if (!sourceEngine || !sourceLayer) {
+    showToast("Source layer was removed. Drop cancelled.", "error");
+    return { docId: null };
+  }
+  const w = sourceLayer.width || 800;
+  const h = sourceLayer.height || 600;
+  const id = `doc-${crypto.randomUUID()}`;
+  const session = WorkspaceManager.createBlankDocument(id, sourceLayer.name || "Image", w, h);
+  ws.addDocument(session);
+  // Drop the source layer into the new doc, targeting it explicitly by id
+  // (tab target centers the layer in the fresh doc). Reuses the cross-doc
+  // copy path so bitmap/transform/opacity/blend all carry over. Same-doc
+  // reorder is avoided because the new doc id differs from the source.
+  const { newLayerId } = addLayerFromCrossDoc(
+    payload,
+    { type: "tab", docId: id },
+    { x: w / 2, y: h / 2 },
+    ws,
+  );
+  if (newLayerId) {
+    const engine = ws.getEngine(id);
+    const newLayer = engine?.getLayer(newLayerId);
+    if (newLayer?.imageBitmap) renderer.uploadImage(newLayerId, newLayer.imageBitmap);
+  }
+  scheduler.requestRender();
+  return { docId: id };
 }
