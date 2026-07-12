@@ -16,6 +16,13 @@ base64 = "0.22"
 zip = { version = "2.2.0", default-features = false, features = ["deflate"] }
 open = "5"
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Graphics_Gdi",
+]}
+
 [build-dependencies]
 tauri-build = { version = "2.0.0", features = [] }
 

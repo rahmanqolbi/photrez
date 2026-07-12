@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod cursor;
 mod menu;
 mod response;
 mod window_state;
@@ -75,6 +76,7 @@ fn main() {
             commands::delete_file,
             commands::close_app,
             commands::close_splashscreen,
+            cursor::set_native_cursor,
         ])
         .run(tauri::generate_context!())
         .expect("Error while running Photrez");
