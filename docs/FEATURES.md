@@ -27,6 +27,7 @@
 | ✅ DONE | Option Bar label standardization ("Brush Options" -> "Brush", lowercase "move" -> "Move") and Eyedropper Option Bar (HEX readout, copy, auto-copy to clipboard) |
 | ✅ DONE | Shared constants consolidation — `HANDLE_SIZE`/`HANDLE_HIT`, `ROTATE_BAND_PX` moved to `rotateBand.ts` as single source of truth; `ModernCropOverlay` imports instead of local `RING_WIDTH`/`RING_PAD` |
 | ✅ DONE | UI Color Picker polish — fixed asymmetric padding by using responsive dialog width, removed fake non-functional radio buttons, and centered Hex input at the bottom of the right panel |
+| ✅ DONE | AdjustmentsPanel slider performance — split `setAdjustmentValue` into immediate commit + deferred pixel processing (`setTimeout(0)` with `clearTimeout` cancellation), preventing 50-200ms main thread blocks on high-res images |
 
 ---
 

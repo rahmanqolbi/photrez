@@ -122,7 +122,7 @@ void main() {
     texCoord.y = 1.0 - texCoord.y;
   }
   vec4 src = texture(u_texture, texCoord);
-  src.a *= u_opacity;
+  src *= u_opacity;
 
   // src and dst are PREMULTIPLIED: layer textures are uploaded premultiplied and
   // the FBO stores premultiplied alpha. This removes the dark fringe at

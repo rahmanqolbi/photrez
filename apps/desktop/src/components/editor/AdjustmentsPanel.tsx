@@ -1,4 +1,4 @@
-import { For, Show, createSignal, createEffect, batch } from "solid-js";
+import { For, Show, createSignal, createEffect, batch, onCleanup } from "solid-js";
 import { Icon, type IconName } from "./icons";
 import { useEditor } from "./shell/EditorContext";
 import { SectionHeader } from "./layers/SectionHeader";
@@ -32,6 +32,10 @@ const COMING_SOON_DESCRIPTIONS: Record<string, string> = {
 
 export function AdjustmentsPanel() {
   const { workspace, layers, selectedLayerId, scheduler, activeDocumentId, renderer } = useEditor();
+  // Deferred throttle: skips intermediate calls, fires the latest on next tick.
+  // Lives inside the component so onCleanup cancels it — no test cross-leak.
+  let adjTimeout: ReturnType<typeof setTimeout> | null = null;
+  onCleanup(() => { if (adjTimeout !== null) clearTimeout(adjTimeout); });
   const [basicAdjustment, setBasicAdjustment] = createSignal<BasicAdjustment>({
     brightness: 0,
     contrast: 0,
@@ -160,7 +164,12 @@ export function AdjustmentsPanel() {
     return layers().find(l => l.id === id) || null;
   };
 
-  const previewBasicAdjustment = (next: BasicAdjustment, propName: string) => {
+  // Immediate (cheap): commit an undo checkpoint when starting a new
+  // adjustment session or switching slider properties.
+  // Also sets the session lock (adjustmentBase with current pre-apply
+  // baseImageBitmap) so rapid dispatches within the same tick don't
+  // create extra checkpoints.
+  const commitAdjustmentSession = (propName: string) => {
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     const layer = activeLayer();
@@ -171,25 +180,33 @@ export function AdjustmentsPanel() {
       base !== null &&
       base.lastProperty !== null &&
       base.lastProperty !== propName;
-    // Commit when (a) no active session, (b) layer mismatch, or (c)
-    // switching to a different slider than the last preview call.
     if (base === null || base.layerId !== layer.id || switchingProp) {
       const label =
         propName === "brightness" ? "Adjust Brightness"
         : propName === "contrast" ? "Adjust Contrast"
         : "Adjust Saturation";
       history.commit(engine.snapshot(), label);
+      // Session lock: use pre-apply baseImageBitmap so the sync effect
+      // treats this as a valid session until applyAdjustmentPreview
+      // updates it with the post-apply bitmap.
+      setAdjustmentBase({
+        layerId: layer.id,
+        sourceBitmap: layer.baseImageBitmap ?? null,
+        lastProperty: propName,
+      });
     }
+  };
+
+  // Deferred (expensive): apply pixel adjustment, upload to GPU, render.
+  // Called via RAF throttle — no history commit (handled by commitAdjustmentSession).
+  const applyAdjustmentPreview = (next: BasicAdjustment, propName: string) => {
+    const engine = workspace.getActiveEngine();
+    const layer = activeLayer();
+    if (!engine || !layer) return;
 
     engine.applyBasicAdjustment(layer.id, next);
     const updated = engine.getLayer(layer.id);
 
-    // After applying, capture the layer's baseline bitmap.  This is
-    // the bitmap that `applyBasicAdjustment` seals on its first call
-    // for a given session AND preserves across subsequent ticks
-    // inside the same session.  The sync effect uses this identity
-    // to distinguish "still previewing" from "external mutation
-    // (undo/redo/layer reset)".
     const newBase = {
       layerId: layer.id,
       sourceBitmap: updated?.baseImageBitmap ?? null,
@@ -211,7 +228,16 @@ export function AdjustmentsPanel() {
   const setAdjustmentValue = (key: keyof BasicAdjustment, value: number) => {
     const next = { ...basicAdjustment(), [key]: value };
     setBasicAdjustment(next);
-    previewBasicAdjustment(next, key);
+    // Commit undo checkpoint immediately (cheap)
+    commitAdjustmentSession(key);
+    // Throttle expensive pixel processing + upload + render — defer to
+    // end of current event loop, cancel any pending run so only the
+    // latest value is applied.
+    if (adjTimeout !== null) clearTimeout(adjTimeout);
+    adjTimeout = setTimeout(() => {
+      adjTimeout = null;
+      applyAdjustmentPreview(next, key);
+    }, 0);
   };
 
   const hasPendingAdjustment = () => {

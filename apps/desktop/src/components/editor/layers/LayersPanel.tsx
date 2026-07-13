@@ -250,7 +250,7 @@ export function LayersPanel() {
                   {activeLayer() ? Math.round(activeLayer()!.opacity * 100) : 100}%
                 </span>
               </div>
-              <div class="relative flex items-center h-[14px]">
+              <div class="relative flex items-center h-[24px]">
                 <Slider
                   percent={activeLayer() ? Math.round(activeLayer()!.opacity * 100) : 100}
                   type="opacity"
@@ -284,7 +284,7 @@ export function LayersPanel() {
                       setOpacityHistorySnapshot(null);
                     }
                   }}
-                  class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer disabled:pointer-events-none"
+                  class="absolute inset-0 w-full h-[24px] opacity-0 cursor-pointer disabled:pointer-events-none"
                 />
               </div>
             </div>

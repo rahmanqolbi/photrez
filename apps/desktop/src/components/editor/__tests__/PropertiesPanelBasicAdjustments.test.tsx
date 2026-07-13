@@ -89,6 +89,8 @@ describe("PropertiesPanel basic adjustments", () => {
 
     expect(commitSpy).toHaveBeenCalledWith(expect.any(Object), "Adjust Brightness");
     expect(commitSpy).toHaveBeenCalledTimes(1);
+    // Flush deferred applyAdjustmentPreview (setTimeout(0))
+    await tick();
     expect(applySpy).toHaveBeenCalledWith(
       layer.id,
       {
@@ -97,7 +99,8 @@ describe("PropertiesPanel basic adjustments", () => {
         saturation: 0,
       },
     );
-    expect(applySpy).toHaveBeenCalledTimes(2);
+    // Only 1 call — clearTimeout cancels intermediate values, only final value is applied
+    expect(applySpy).toHaveBeenCalledTimes(1);
     expect(renderer.uploadImage).toHaveBeenCalledWith(layer.id, fakeBitmap);
     expect(scheduler.requestRender).toHaveBeenCalled();
 
@@ -314,6 +317,9 @@ describe("AdjustmentsPanel — production engine behavior (no applyBasicAdjustme
     // CRITICAL: only 1 checkpoint for the entire drag session, not 10
     expect(commitSpy).toHaveBeenCalledTimes(1);
     expect(commitSpy).toHaveBeenCalledWith(expect.any(Object), "Adjust Brightness");
+
+    // Flush deferred applyAdjustmentPreview (setTimeout(0))
+    await tick();
 
     // Engine received the FINAL adjustment value
     const adjusted = session.engine.getLayer(layer.id)!;

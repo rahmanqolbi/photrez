@@ -149,13 +149,7 @@ export function PropertiesPanel() {
             when={safeLayer()}
             fallback={<CanvasProperties />}
           >
-            {(_unused) => {
-              // Use safeLayer()! instead of _unused() because the render-prop getter
-              // throws "stale value" when accessed after <Show> begins unmounting
-              // (triggered by canvas events that call setSelectedLayerId(null)).
-              const l = safeLayer()!;
-              return (
-              <>
+            <>
                 <div class="border-b border-editor-divider px-4 py-3.5">
                   <SectionHeader
                     icon="layers"
@@ -163,13 +157,13 @@ export function PropertiesPanel() {
                     label="Selected Layer"
                   />
                   <div class="mt-3 flex items-center gap-3 rounded-[4px] border border-editor-divider bg-editor-field p-2.5">
-                    <LayerThumb layer={l} isActive={true} />
+                    <LayerThumb layer={safeLayer()!} isActive={true} />
                     <div class="min-w-0 flex-1">
-                      <p class="truncate text-[12.5px] font-medium text-editor-text leading-tight" title={l.name}>
-                        {l.name}
+                      <p class="truncate text-[12.5px] font-medium text-editor-text leading-tight" title={safeLayer()!.name}>
+                        {safeLayer()!.name}
                       </p>
                       <p class="truncate text-[11px] text-editor-text-dim leading-snug mt-0.5">
-                        {l.type === "raster" ? "Image layer" : `${l.type.charAt(0).toUpperCase()}${l.type.slice(1)} layer`} · {l.width} × {l.height} px
+                        {safeLayer()!.type === "raster" ? "Image layer" : `${safeLayer()!.type.charAt(0).toUpperCase()}${safeLayer()!.type.slice(1)} layer`} · {safeLayer()!.width} × {safeLayer()!.height} px
                       </p>
                     </div>
                   </div>
@@ -194,19 +188,19 @@ export function PropertiesPanel() {
                       {(message) => <StatusHint>{message()}</StatusHint>}
                     </Show>
                     <PropRow label="Position">
-                      <EditableNumField label="X" value={l.transform.x} suffix="px" onSubmit={handlePositionField("x")} disabled={l.lockPosition || l.locked} class="flex-1" />
-                      <EditableNumField label="Y" value={l.transform.y} suffix="px" onSubmit={handlePositionField("y")} disabled={l.lockPosition || l.locked} class="flex-1" />
+                      <EditableNumField label="X" value={safeLayer()!.transform.x} suffix="px" onSubmit={handlePositionField("x")} disabled={safeLayer()!.lockPosition || safeLayer()!.locked} class="flex-1" />
+                      <EditableNumField label="Y" value={safeLayer()!.transform.y} suffix="px" onSubmit={handlePositionField("y")} disabled={safeLayer()!.lockPosition || safeLayer()!.locked} class="flex-1" />
                     </PropRow>
                     <PropRow label="Size">
-                      <EditableNumField label="W" value={l.width * l.transform.scaleX} suffix="px" onSubmit={handleSizeField("w")} disabled={l.locked} class="flex-1" />
-                      <EditableNumField label="H" value={l.height * l.transform.scaleY} suffix="px" onSubmit={handleSizeField("h")} disabled={l.locked} class="flex-1" />
+                      <EditableNumField label="W" value={safeLayer()!.width * safeLayer()!.transform.scaleX} suffix="px" onSubmit={handleSizeField("w")} disabled={safeLayer()!.locked} class="flex-1" />
+                      <EditableNumField label="H" value={safeLayer()!.height * safeLayer()!.transform.scaleY} suffix="px" onSubmit={handleSizeField("h")} disabled={safeLayer()!.locked} class="flex-1" />
                     </PropRow>
                     <PropRow label="Rotation">
-                      <EditableNumField label="R" value={l.transform.rotation} suffix="deg" onSubmit={handleRotationField} disabled={l.lockRotation || l.locked} class="flex-1" />
+                      <EditableNumField label="R" value={safeLayer()!.transform.rotation} suffix="deg" onSubmit={handleRotationField} disabled={safeLayer()!.lockRotation || safeLayer()!.locked} class="flex-1" />
                     </PropRow>
                     <PropRow label="Scale">
-                      <EditableNumField label="X" value={l.transform.scaleX * 100} suffix="%" onSubmit={handleScaleField("x")} disabled={l.locked} class="flex-1" />
-                      <EditableNumField label="Y" value={l.transform.scaleY * 100} suffix="%" onSubmit={handleScaleField("y")} disabled={l.locked} class="flex-1" />
+                      <EditableNumField label="X" value={safeLayer()!.transform.scaleX * 100} suffix="%" onSubmit={handleScaleField("x")} disabled={safeLayer()!.locked} class="flex-1" />
+                      <EditableNumField label="Y" value={safeLayer()!.transform.scaleY * 100} suffix="%" onSubmit={handleScaleField("y")} disabled={safeLayer()!.locked} class="flex-1" />
                       <button
                         class={`flex size-[26px] shrink-0 items-center justify-center ${lockScale() ? "text-editor-accent" : "text-editor-text-dim"}`}
                         aria-label="Lock scale"
@@ -217,9 +211,9 @@ export function PropertiesPanel() {
                     </PropRow>
                     <PropRow label="Opacity">
                       <div class="flex-grow flex items-center gap-2.5">
-                        <div class="relative flex-grow flex items-center h-[14px]">
+                        <div class="relative flex-grow flex items-center h-[24px]">
                           <Slider
-                            percent={Math.round(l.opacity * 100)}
+                            percent={Math.round(safeLayer()!.opacity * 100)}
                             type="opacity"
                           />
                           <input
@@ -227,17 +221,17 @@ export function PropertiesPanel() {
                             type="range"
                             min="0"
                             max="100"
-                            value={Math.round(l.opacity * 100)}
-                            disabled={l.locked}
+                            value={Math.round(safeLayer()!.opacity * 100)}
+                            disabled={safeLayer()!.locked}
                             onInput={(e) => handleOpacityChange(parseInt(e.currentTarget.value))}
                             onPointerUp={finishOpacityEdit}
                             onBlur={finishOpacityEdit}
                             onChange={finishOpacityEdit}
-                            class="absolute inset-0 w-full h-[14px] opacity-0 cursor-pointer disabled:pointer-events-none"
+                            class="absolute inset-0 w-full h-[24px] opacity-0 cursor-pointer disabled:pointer-events-none"
                           />
                         </div>
                         <span class="w-[44px] shrink-0 text-right text-[12px] text-editor-text">
-                          {Math.round(l.opacity * 100)} %
+                          {Math.round(safeLayer()!.opacity * 100)} %
                         </span>
                       </div>
                     </PropRow>
@@ -255,9 +249,7 @@ export function PropertiesPanel() {
                   </div>
                 </div>
               </>
-              );
-            }}
-          </Show>
+            </Show>
         </Show>
       </div>
     </section>
