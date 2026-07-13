@@ -3,6 +3,7 @@ import type { DocumentEngine } from "@/engine/document";
 import { getEffectiveMaxDim } from "@/engine/types";
 import { writeFileBytes, showSaveDialog } from "@/tauri/native";
 import { drawLayerToContext } from "@/engine/layerComposite";
+import { applyBasicAdjustmentToPixels } from "@/engine/layerAdjustments";
 
 export type ExportFormat = "png" | "jpeg" | "webp";
 
@@ -20,6 +21,21 @@ function getExtension(format: ExportFormat): string {
     case "webp": return "webp";
     default: return "png";
   }
+}
+
+// Bakes a layer's basic adjustment (Brightness/Contrast/Saturation) into a
+// fresh bitmap for export. The live preview applies the same math on the GPU
+// (see renderer/shaders.ts :: applyAdjustment), so the exported file matches
+// what the user sees. Operates on straight-alpha RGBA (getImageData), which is
+// what applyBasicAdjustmentToPixels expects.
+function bakeAdjustment(layer: LayerNode): ImageBitmap {
+  const canvas = new OffscreenCanvas(layer.width, layer.height);
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(layer.imageBitmap!, 0, 0);
+  const imageData = ctx.getImageData(0, 0, layer.width, layer.height);
+  imageData.data.set(applyBasicAdjustmentToPixels(imageData.data, layer.basicAdjustment!));
+  ctx.putImageData(imageData, 0, 0);
+  return canvas.transferToImageBitmap();
 }
 
 export async function encodeComposite(
@@ -46,11 +62,19 @@ export async function encodeComposite(
   }
 
   // Composite layers bottom-to-top using the same drawLayerToContext
-  // that the frontend renderer uses — ensures blend mode parity
+  // that the frontend renderer uses — ensures blend mode parity.
+  // Adjustments are non-destructive (applied in the GPU shader live), so we
+  // bake them into a temporary bitmap here for the exported pixels.
   for (let i = layers.length - 1; i >= 0; i--) {
     const layer = layers[i];
     if (!layer.visible || !layer.imageBitmap) continue;
-    drawLayerToContext(ctx, layer);
+    if (layer.basicAdjustment) {
+      const adjusted = bakeAdjustment(layer);
+      drawLayerToContext(ctx, { ...layer, imageBitmap: adjusted });
+      adjusted.close();
+    } else {
+      drawLayerToContext(ctx, layer);
+    }
   }
 
   const mimeType = getMimeType(format);

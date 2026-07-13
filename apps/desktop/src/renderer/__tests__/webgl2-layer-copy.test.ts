@@ -179,6 +179,17 @@ function drawArraysCount(
   return calls.filter((c) => c.method === "drawArrays").length;
 }
 
+function adjustmentCalls(
+  calls: Array<{ method: string; args: any[] }>,
+): number[][] {
+  return calls
+    .filter(
+      (c) =>
+        c.method === "uniform3f" && c.args[0]?.name === "u_adjustment",
+    )
+    .map((c) => [c.args[1], c.args[2], c.args[3]]);
+}
+
 // ─── Pure helper edge cases ───
 
 describe("getInterLayerCopyQuad — edge cases", () => {
@@ -630,5 +641,77 @@ describe("WebGL2Backend.render — inter-layer COPY pass uniforms", () => {
 
     const rects = layerRectCalls(calls);
     expect(rects[1]).toEqual([0, 0, VP_W, VP_H]);
+  });
+});
+
+// ─── Basic adjustment uniform (u_adjustment) wiring ───
+// Regression suite for the non-destructive GPU adjustment shader. The
+// adjustment is passed as a vec3 uniform and applied during the layer
+// composite pass only — the copy pass and final screen blit must NOT re-apply
+// it (the adjustment is already baked into the composited FBO).
+
+describe("WebGL2Backend.render — basic adjustment uniform (u_adjustment)", () => {
+  const DOC_W = 800;
+  const DOC_H = 600;
+  const VP_W = 1000;
+  const VP_H = 700;
+  const BITMAP = { width: DOC_W, height: DOC_H, close: () => {} } as ImageBitmap;
+
+  let renderer: WebGL2Backend;
+  let calls: Array<{ method: string; args: any[] }>;
+
+  beforeEach(() => {
+    const mock = makeGLMock();
+    calls = mock.calls;
+    const canvas = makeCanvas(mock.gl);
+    renderer = new WebGL2Backend();
+    renderer.initialize(canvas);
+    renderer.resizeToViewport(VP_W, VP_H, 1);
+  });
+
+  it("applies the layer's adjustment uniform during the composite pass (single layer)", () => {
+    renderer.uploadImage("l1", BITMAP);
+    calls.length = 0;
+    renderer.render(
+      makeState(
+        [makeLayer("l1", { basicAdjustment: { brightness: 25, contrast: 10, saturation: -15 } })],
+        DOC_W,
+        DOC_H,
+      ),
+    );
+
+    const adjs = adjustmentCalls(calls);
+    // firstDraw into FBO applies the adjustment; final screen blit does not.
+    expect(adjs[0]).toEqual([25, 10, -15]);
+    expect(adjs[adjs.length - 1]).toEqual([0, 0, 0]);
+  });
+
+  it("renders adjustment=0 for a layer without basicAdjustment", () => {
+    renderer.uploadImage("l1", BITMAP);
+    calls.length = 0;
+    renderer.render(makeState([makeLayer("l1")], DOC_W, DOC_H));
+
+    const adjs = adjustmentCalls(calls);
+    expect(adjs.every((a) => a[0] === 0 && a[1] === 0 && a[2] === 0)).toBe(true);
+  });
+
+  it("applies adjustment only on the composited layer, not on copy/final passes (multi-layer)", () => {
+    renderer.uploadImage("top", BITMAP);
+    renderer.uploadImage("bot", BITMAP);
+    calls.length = 0;
+    renderer.render(
+      makeState(
+        [
+          makeLayer("top", { basicAdjustment: { brightness: 40, contrast: 0, saturation: 0 } }),
+          makeLayer("bot"),
+        ],
+        DOC_W,
+        DOC_H,
+      ),
+    );
+
+    const adjs = adjustmentCalls(calls);
+    // bottom firstDraw(0), copy(0), top composite(40,0,0), final(0)
+    expect(adjs).toEqual([[0, 0, 0], [0, 0, 0], [40, 0, 0], [0, 0, 0]]);
   });
 });

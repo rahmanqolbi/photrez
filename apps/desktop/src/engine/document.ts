@@ -10,7 +10,7 @@ import { drawLayerToContext, compositeTwoLayers, compositeAllLayers } from "./la
 import { performCropCanvas, performApplyCrop } from "./cropApply";
 import { createSnapshot, restoreSnapshot } from "./snapshot";
 import { performPixelSampling } from "./pixelSample";
-import { applyBasicAdjustmentToPixels, type BasicAdjustment } from "./layerAdjustments";
+import { normalizeBasicAdjustment, type BasicAdjustment } from "./layerAdjustments";
 
 export { drawLayerToContext };
 
@@ -645,40 +645,17 @@ export class DocumentEngine {
     const layer = this.getLayer(id);
     if (!layer || !layer.imageBitmap) return;
 
-    // Cache the unadjusted bitmap on first adjustment
-    if (!layer.baseImageBitmap) {
-      layer.baseImageBitmap = layer.imageBitmap;
-    }
-
-    const canvas = new OffscreenCanvas(layer.width, layer.height);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.drawImage(layer.baseImageBitmap, 0, 0);
-    const imageData = ctx.getImageData(0, 0, layer.width, layer.height);
-    imageData.data.set(applyBasicAdjustmentToPixels(imageData.data, adjustment));
-    ctx.putImageData(imageData, 0, 0);
-
-    // Save reference to the previous bitmap so we can close it after
-    // assigning the new one.  The old bitmap is an intermediate preview
-    // frame that is NOT referenced by any snapshot in the history stack
-    // (history is committed BEFORE the drag loop starts, not during).
-    // We must NOT close baseImageBitmap though — that IS referenced by
-    // the snapshot checkpoint taken when the slider was first engaged.
-    const previousBitmap = layer.imageBitmap;
-
-    layer.imageBitmap = canvas.transferToImageBitmap();
-
-    // Close the previous intermediate bitmap to prevent ImageBitmap
-    // leak during slider drag (regression: every drag tick created a
-    // new ImageBitmap that was never closed, leaking GPU memory).
-    // Skip close if previousBitmap is baseImageBitmap — that reference
-    // is preserved in the history snapshot for undo/redo.
-    if (previousBitmap && previousBitmap !== layer.baseImageBitmap) {
-      previousBitmap.close();
-    }
-    layer.basicAdjustment = adjustment;
-    layer.hasAdjustments = adjustment.brightness !== 0 || adjustment.contrast !== 0 || adjustment.saturation !== 0;
+    // Non-destructive: store the adjustment as a render param. The renderer
+    // applies it in the layer fragment shader (u_adjustment), so the live
+    // preview is instant regardless of image size. The layer bitmap stays the
+    // original (base) pixels — no CPU pixel loop, no texture re-upload during
+    // editing. Export bakes the adjustment via applyBasicAdjustmentToPixels.
+    const normalized = normalizeBasicAdjustment(adjustment);
+    layer.basicAdjustment = normalized;
+    layer.hasAdjustments =
+      normalized.brightness !== 0 ||
+      normalized.contrast !== 0 ||
+      normalized.saturation !== 0;
     this.model.dirty = true;
     this.markLayerDirty(id);
     this.notifyVisualChange();
@@ -687,12 +664,8 @@ export class DocumentEngine {
   clearBasicAdjustments(id: LayerId): void {
     const layer = this.getLayer(id);
     if (layer) {
-      if (layer.baseImageBitmap) {
-        // NOTE: we intentionally do NOT close the old imageBitmap here.
-        // Same reason as applyBasicAdjustment — snapshots hold a reference.
-        layer.imageBitmap = layer.baseImageBitmap;
-        layer.baseImageBitmap = null;
-      }
+      // With non-destructive adjustments the layer bitmap is already the
+      // original (base) pixels, so nothing to restore — just drop the param.
       layer.basicAdjustment = undefined;
       layer.hasAdjustments = false;
       this.model.dirty = true;
@@ -722,7 +695,8 @@ export class DocumentEngine {
         blendMode: l.blendMode,
         transform: l.transform,
         width: l.width,
-        height: l.height
+        height: l.height,
+        basicAdjustment: l.basicAdjustment
       };
     });
 

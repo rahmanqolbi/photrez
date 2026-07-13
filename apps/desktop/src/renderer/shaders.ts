@@ -58,6 +58,7 @@ uniform int u_blendMode;
 uniform bool u_useBackdrop;
 uniform bool u_flipTexY;
 uniform vec2 u_resolution;
+uniform vec3 u_adjustment; // (brightness, contrast, saturation) in [-100, 100]
 
 in vec2 v_texCoord;
 out vec4 fragColor;
@@ -116,6 +117,33 @@ vec3 blendColors(int mode, vec3 b, vec3 s) {
   return s;
 }
 
+// Applies Brightness / Contrast / Saturation to a straight (unpremultiplied)
+// color. Mirrors engine/layerAdjustments.ts::applyBasicAdjustmentToPixels so the
+// GPU preview matches the CPU export bake exactly.
+// u_adjustment = (brightness, contrast, saturation) in [-100, 100].
+vec3 applyAdjustment(vec3 color, vec3 adj) {
+  // Contrast around midtone 0.5 (CPU uses 128/255).
+  float contrastFactor = (259.0 * (adj.y + 255.0)) / (255.0 * (259.0 - adj.y));
+  vec3 c = contrastFactor * (color - 0.5) + 0.5;
+
+  // Nonlinear brightness: preserves highlights when brightening, shadows when
+  // darkening (CPU scale 0.5 keeps +/-100 from clipping to full white/black).
+  float t = adj.x / 100.0;
+  if (t >= 0.0) {
+    c = c + (1.0 - c) * t * 0.5;
+  } else {
+    float f = -t;
+    c = c - c * f * 0.5;
+  }
+
+  // Luminance-weighted saturation (ITU-R BT.709).
+  float lum = c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722;
+  float satFactor = 1.0 + adj.z / 100.0;
+  c = lum + (c - lum) * satFactor;
+
+  return c;
+}
+
 void main() {
   vec2 texCoord = v_texCoord;
   if (u_flipTexY) {
@@ -123,6 +151,15 @@ void main() {
   }
   vec4 src = texture(u_texture, texCoord);
   src *= u_opacity;
+
+  // Basic adjustments (Brightness/Contrast/Saturation) applied to the straight
+  // color so alpha never affects the tonal math. Re-premultiplied afterward so
+  // both the bottom-layer (return src) path and the blend path stay correct.
+  if (src.a > 0.0) {
+    vec3 straight = src.rgb / src.a;
+    straight = applyAdjustment(straight, u_adjustment);
+    src.rgb = straight * src.a;
+  }
 
   // src and dst are PREMULTIPLIED: layer textures are uploaded premultiplied and
   // the FBO stores premultiplied alpha. This removes the dark fringe at

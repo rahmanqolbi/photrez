@@ -7,8 +7,8 @@ import { useEditorCommands } from "../useEditorCommands";
 import { clearRegistry } from "../keyboardRegistry";
 import { WorkspaceManager } from "@/engine/workspace";
 
-function tick(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
+function tick(ms: number = 0): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function renderPropertiesPanel(workspace: WorkspaceManager) {
@@ -64,7 +64,7 @@ describe("PropertiesPanel basic adjustments", () => {
     clearRegistry();
   });
 
-  it("previews adjustment on the active bitmap layer as the slider changes", async () => {
+  it("applies adjustment to the active layer as the slider changes (non-destructive, no debounce)", async () => {
     const workspace = new WorkspaceManager();
     const session = WorkspaceManager.createBlankDocument("adjust-doc", "Adjust Doc", 2, 1);
     workspace.addDocument(session);
@@ -89,19 +89,13 @@ describe("PropertiesPanel basic adjustments", () => {
 
     expect(commitSpy).toHaveBeenCalledWith(expect.any(Object), "Adjust Brightness");
     expect(commitSpy).toHaveBeenCalledTimes(1);
-    // Flush deferred applyAdjustmentPreview (setTimeout(0))
-    await tick();
-    expect(applySpy).toHaveBeenCalledWith(
-      layer.id,
-      {
-        brightness: 40,
-        contrast: 0,
-        saturation: 0,
-      },
-    );
-    // Only 1 call — clearTimeout cancels intermediate values, only final value is applied
-    expect(applySpy).toHaveBeenCalledTimes(1);
-    expect(renderer.uploadImage).toHaveBeenCalledWith(layer.id, fakeBitmap);
+    // No debounce: every input event applies the current value directly to the
+    // engine as a render param (the GPU shader re-composites instantly).
+    expect(applySpy).toHaveBeenCalledWith(layer.id, { brightness: 25, contrast: 0, saturation: 0 });
+    expect(applySpy).toHaveBeenCalledWith(layer.id, { brightness: 40, contrast: 0, saturation: 0 });
+    expect(applySpy).toHaveBeenCalledTimes(2);
+    // Non-destructive: the panel no longer uploads a mutated bitmap.
+    expect(renderer.uploadImage).not.toHaveBeenCalled();
     expect(scheduler.requestRender).toHaveBeenCalled();
 
     dispose();
@@ -318,8 +312,8 @@ describe("AdjustmentsPanel — production engine behavior (no applyBasicAdjustme
     expect(commitSpy).toHaveBeenCalledTimes(1);
     expect(commitSpy).toHaveBeenCalledWith(expect.any(Object), "Adjust Brightness");
 
-    // Flush deferred applyAdjustmentPreview (setTimeout(0))
-    await tick();
+    // Let any pending microtasks settle
+    await tick(100);
 
     // Engine received the FINAL adjustment value
     const adjusted = session.engine.getLayer(layer.id)!;
@@ -349,7 +343,7 @@ describe("AdjustmentsPanel — production engine behavior (no applyBasicAdjustme
     // Drag brightness to 50
     brightness.value = "50";
     brightness.dispatchEvent(new InputEvent("input", { bubbles: true }));
-    await tick();
+    await tick(100);
 
     // Confirm engine applied the adjustment
     expect(session.engine.getLayer(layer.id)!.basicAdjustment?.brightness).toBe(50);
@@ -389,7 +383,7 @@ describe("AdjustmentsPanel — production engine behavior (no applyBasicAdjustme
     // Adjust to 60
     brightness.value = "60";
     brightness.dispatchEvent(new InputEvent("input", { bubbles: true }));
-    await tick();
+    await tick(100);
 
     // Undo
     simulateUndo(workspace, session);
@@ -481,19 +475,19 @@ describe("AdjustmentsPanel — production engine behavior (no applyBasicAdjustme
     // Adjust brightness
     brightness.value = "50";
     brightness.dispatchEvent(new InputEvent("input", { bubbles: true }));
-    await tick();
+    await tick(100);
     expect(commitSpy).toHaveBeenCalledTimes(1);
 
     // Switch to contrast — should create a NEW checkpoint
     contrast.value = "30";
     contrast.dispatchEvent(new InputEvent("input", { bubbles: true }));
-    await tick();
+    await tick(100);
     expect(commitSpy).toHaveBeenCalledTimes(2);
 
     // Switch to saturation — should create a NEW checkpoint
     saturation.value = "20";
     saturation.dispatchEvent(new InputEvent("input", { bubbles: true }));
-    await tick();
+    await tick(100);
     expect(commitSpy).toHaveBeenCalledTimes(3);
 
     // Engine has all three applied
@@ -577,7 +571,7 @@ describe("AdjustmentsPanel — production engine behavior (no applyBasicAdjustme
     // Drag brightness to 50
     brightness.value = "50";
     brightness.dispatchEvent(new InputEvent("input", { bubbles: true }));
-    await tick();
+    await tick(100);
 
     expect(session.engine.getLayer(layer.id)!.basicAdjustment?.brightness).toBe(50);
 

@@ -1,4 +1,4 @@
-import { For, Show, createSignal, createEffect, batch, onCleanup } from "solid-js";
+import { For, Show, createSignal, createEffect, batch } from "solid-js";
 import { Icon, type IconName } from "./icons";
 import { useEditor } from "./shell/EditorContext";
 import { SectionHeader } from "./layers/SectionHeader";
@@ -31,111 +31,39 @@ const COMING_SOON_DESCRIPTIONS: Record<string, string> = {
 };
 
 export function AdjustmentsPanel() {
-  const { workspace, layers, selectedLayerId, scheduler, activeDocumentId, renderer } = useEditor();
-  // Deferred throttle: skips intermediate calls, fires the latest on next tick.
-  // Lives inside the component so onCleanup cancels it — no test cross-leak.
-  let adjTimeout: ReturnType<typeof setTimeout> | null = null;
-  onCleanup(() => { if (adjTimeout !== null) clearTimeout(adjTimeout); });
+  const { workspace, layers, selectedLayerId, scheduler, activeDocumentId } = useEditor();
+  // Adjustment is applied non-destructively: the slider writes the adjustment
+  // param to the engine and the GPU shader re-composites instantly. No CPU
+  // pixel loop, no debounce needed for the live preview.
   const [basicAdjustment, setBasicAdjustment] = createSignal<BasicAdjustment>({
     brightness: 0,
     contrast: 0,
     saturation: 0,
   });
-  const [adjustmentBase, setAdjustmentBase] = createSignal<{
-    layerId: string;
-    sourceBitmap: ImageBitmap | null;
-    lastProperty: string | null;
-  } | null>(null);
+  // Tracks the current adjustment gesture so undo gets exactly one checkpoint
+  // per drag (or per property switch). Plain closure var — not reactive.
+  let sessionBase: { layerId: string; lastProperty: string } | null = null;
 
   // Reset slider values whenever the selected layer changes
   createEffect(() => {
     selectedLayerId();
     batch(() => {
       setBasicAdjustment({ brightness: 0, contrast: 0, saturation: 0 });
-      setAdjustmentBase(null);
+      sessionBase = null;
     });
   });
 
-  // Sync slider values from layer adjustments (for undo/redo).
-  //
-  // Design notes:
-  //
-  // 1. The active-session guard.  While `adjustmentBase` is set, we are
-  //    previewing slider values against an underlying base bitmap.  In
-  //    that mode, the sync effect MUST NOT pull `layer.basicAdjustment`
-  //    straight back into the slider signal â€” that would race with the
-  //    user's live drag and either re-commit history on every drag tick
-  //    (destroying Bug #3) or wipe an in-progress slider value out from
-  //    under the user.
-  //
-  // 2. Detecting undo vs. drag lag.  A naive `layerAdj !== sliderAdj`
-  //    comparison also fires during a single drag, where the engine
-  //    hasn't been updated yet for the latest tick but the slider has.
-  //    The distinguishing signal is `layer.baseImageBitmap` â€” the
-  //    engine only changes this on undo/redo/layer-switch, never on
-  //    a normal preview tick.  `applyBasicAdjustment` seals
-  //    `baseImageBitmap` on the FIRST preview call of a session and
-  //    leaves it untouched on every subsequent tick.  Therefore:
-  //
-  //    - Same `baseImageBitmap` + same basicAdjustment â†’ still our
-  //      preview session, no sync.
-  //    - Same `baseImageBitmap` + different basicAdjustment â†’ engine
-  //      was restored externally (undo/redo).  Sync slider values
-  //      WITHOUT clearing the session (session re-used for next drag).
-  //    - Different `baseImageBitmap` â†’ undo/redo/layer-switch.  Clear
-  //      `adjustmentBase`, sync sliders from the restored layer state.
-  //
-  // 3. Extension for per-slider undo.  When the user switches to a
-  //    different slider, we want a NEW undo checkpoint and a fresh
-  //    active session.  `previewBasicAdjustment` handles that by
-  //    passing the property name and committing again when it changes.
-  //    This sync effect only handles slider DAMAGE (external engine
-  //    changes) â€” it does not add new commits.
+  // Sync slider values from layer adjustments (for undo/redo). During an
+  // active drag the engine does NOT notify the layers signal, so this effect
+  // stays dormant and the slider keeps leading the engine.
 
   createEffect(() => {
     const layer = activeLayer();
-    if (!layer) {
-      return;
-    }
+    if (!layer) return;
 
-    const base = adjustmentBase();
-
-    if (base && base.layerId === layer.id) {
-      // Active preview session.  Determine whether the engine has
-      // diverged from us via `baseImageBitmap` identity (the only
-      // signal that survives across preview ticks without false
-      // positives).
-      if (base.sourceBitmap === layer.baseImageBitmap) {
-        // Engine still pointing at our captured baseline.  Check if
-        // adjustment values diverged (undo/redo can restore a snapshot
-        // with same baseImageBitmap ref but different adjustments).
-        const curAdj = basicAdjustment();
-        const layerAdj = layer.basicAdjustment;
-        if (layerAdj) {
-          const matches =
-            layerAdj.brightness === curAdj.brightness &&
-            layerAdj.contrast === curAdj.contrast &&
-            layerAdj.saturation === curAdj.saturation;
-          if (matches) {
-            return;
-          }
-          // Values diverged â€” engine was restored externally.  Sync
-          // slider values from the engine WITHOUT clearing the session
-          // (the session is still valid for the next drag tick).
-          setBasicAdjustment({ ...layerAdj });
-          return;
-        }
-        return;
-      }
-      // Engine diverged.  Engine mutation must have happened
-      // externally: undo, redo, or layer content reset.  Tear down
-      // the stale session so the next preview creates a fresh
-      // checkpoint.
-      setAdjustmentBase(null);
-      // Fall through to resync slider signal from layer state.
-    }
-
-    // No active session â€” sync from layer state.
+    // Sync slider from layer state on external changes (layer switch, undo).
+    // During an active drag the engine does NOT notify the layers signal, so
+    // this effect stays dormant and the slider keeps leading.
     if (layer.basicAdjustment) {
       const cur = basicAdjustment();
       const { brightness, contrast, saturation } = layer.basicAdjustment;
@@ -143,18 +71,13 @@ export function AdjustmentsPanel() {
         brightness === cur.brightness &&
         contrast === cur.contrast &&
         saturation === cur.saturation;
-      if (!same) {
-        setBasicAdjustment({ ...layer.basicAdjustment });
-      } else {
-      }
-    } else {
-      // Only reset to zeros if sliders are non-zero, to avoid an
-      // unnecessary signal write that would re-trigger this effect.
-      const cur = basicAdjustment();
-      if (cur.brightness !== 0 || cur.contrast !== 0 || cur.saturation !== 0) {
-        setBasicAdjustment({ brightness: 0, contrast: 0, saturation: 0 });
-      } else {
-      }
+      if (!same) setBasicAdjustment({ ...layer.basicAdjustment });
+    } else if (
+      basicAdjustment().brightness !== 0 ||
+      basicAdjustment().contrast !== 0 ||
+      basicAdjustment().saturation !== 0
+    ) {
+      setBasicAdjustment({ brightness: 0, contrast: 0, saturation: 0 });
     }
   });
 
@@ -164,80 +87,38 @@ export function AdjustmentsPanel() {
     return layers().find(l => l.id === id) || null;
   };
 
-  // Immediate (cheap): commit an undo checkpoint when starting a new
-  // adjustment session or switching slider properties.
-  // Also sets the session lock (adjustmentBase with current pre-apply
-  // baseImageBitmap) so rapid dispatches within the same tick don't
-  // create extra checkpoints.
+  // Commit an undo checkpoint when starting a new adjustment session or
+  // switching slider properties. Cheap (no pixel work).
   const commitAdjustmentSession = (propName: string) => {
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     const layer = activeLayer();
     if (!engine || !history || !layer?.imageBitmap || layer.locked) return;
 
-    const base = adjustmentBase();
-    const switchingProp =
-      base !== null &&
-      base.lastProperty !== null &&
-      base.lastProperty !== propName;
-    if (base === null || base.layerId !== layer.id || switchingProp) {
+    const switchingProp = sessionBase !== null && sessionBase.lastProperty !== propName;
+    if (sessionBase === null || sessionBase.layerId !== layer.id || switchingProp) {
       const label =
         propName === "brightness" ? "Adjust Brightness"
         : propName === "contrast" ? "Adjust Contrast"
         : "Adjust Saturation";
       history.commit(engine.snapshot(), label);
-      // Session lock: use pre-apply baseImageBitmap so the sync effect
-      // treats this as a valid session until applyAdjustmentPreview
-      // updates it with the post-apply bitmap.
-      setAdjustmentBase({
-        layerId: layer.id,
-        sourceBitmap: layer.baseImageBitmap ?? null,
-        lastProperty: propName,
-      });
+      sessionBase = { layerId: layer.id, lastProperty: propName };
     }
-  };
-
-  // Deferred (expensive): apply pixel adjustment, upload to GPU, render.
-  // Called via RAF throttle — no history commit (handled by commitAdjustmentSession).
-  const applyAdjustmentPreview = (next: BasicAdjustment, propName: string) => {
-    const engine = workspace.getActiveEngine();
-    const layer = activeLayer();
-    if (!engine || !layer) return;
-
-    engine.applyBasicAdjustment(layer.id, next);
-    const updated = engine.getLayer(layer.id);
-
-    const newBase = {
-      layerId: layer.id,
-      sourceBitmap: updated?.baseImageBitmap ?? null,
-      lastProperty: propName,
-    };
-    setAdjustmentBase(newBase);
-
-    if (updated?.imageBitmap) {
-      try {
-        renderer.uploadImage(layer.id, updated.imageBitmap);
-      } catch {
-        // non-fatal: renderer may not be ready
-      }
-    }
-    workspace.notifyVisualChange();
-    scheduler.requestRender();
   };
 
   const setAdjustmentValue = (key: keyof BasicAdjustment, value: number) => {
     const next = { ...basicAdjustment(), [key]: value };
     setBasicAdjustment(next);
-    // Commit undo checkpoint immediately (cheap)
+    // Commit undo checkpoint once per gesture/property switch (cheap).
     commitAdjustmentSession(key);
-    // Throttle expensive pixel processing + upload + render — defer to
-    // end of current event loop, cancel any pending run so only the
-    // latest value is applied.
-    if (adjTimeout !== null) clearTimeout(adjTimeout);
-    adjTimeout = setTimeout(() => {
-      adjTimeout = null;
-      applyAdjustmentPreview(next, key);
-    }, 0);
+    // Non-destructive: push the param to the engine; the GPU shader applies
+    // it instantly on the next render — no CPU pixel loop, no debounce.
+    const engine = workspace.getActiveEngine();
+    const layer = activeLayer();
+    if (engine && layer) {
+      engine.applyBasicAdjustment(layer.id, next);
+      scheduler.requestRender();
+    }
   };
 
   const hasPendingAdjustment = () => {
@@ -260,18 +141,9 @@ export function AdjustmentsPanel() {
     if (engine && history && layer) {
       history.commit(engine.snapshot(), "Reset Adjustments");
       engine.clearBasicAdjustments(layer.id);
-      const updated = engine.getLayer(layer.id);
-      if (updated?.imageBitmap) {
-        try {
-          renderer.uploadImage(layer.id, updated.imageBitmap);
-      } catch {
-        // non-fatal: renderer may not be ready
-      }
+      scheduler.requestRender();
     }
-    workspace.notifyVisualChange();
-    scheduler.requestRender();
-  }
-  setAdjustmentBase(null);
+    sessionBase = null;
     setBasicAdjustment({ brightness: 0, contrast: 0, saturation: 0 });
   };
 

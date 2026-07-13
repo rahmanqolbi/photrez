@@ -114,6 +114,7 @@ export class WebGL2Backend implements RenderBackend {
     useBackdrop: WebGLUniformLocation;
     flipTexY: WebGLUniformLocation;
     resolution: WebGLUniformLocation;
+    adjustment: WebGLUniformLocation;
   } | null = null;
 
   private checkerboardUniforms: {
@@ -191,7 +192,8 @@ export class WebGL2Backend implements RenderBackend {
       blendMode: getRequiredUniformLocation(gl, this.layerProgram, "u_blendMode"),
       useBackdrop: getRequiredUniformLocation(gl, this.layerProgram, "u_useBackdrop"),
       flipTexY: getRequiredUniformLocation(gl, this.layerProgram, "u_flipTexY"),
-      resolution: getRequiredUniformLocation(gl, this.layerProgram, "u_resolution")
+      resolution: getRequiredUniformLocation(gl, this.layerProgram, "u_resolution"),
+      adjustment: getRequiredUniformLocation(gl, this.layerProgram, "u_adjustment")
     };
 
     this.checkerboardUniforms = {
@@ -361,6 +363,15 @@ export class WebGL2Backend implements RenderBackend {
           gl.uniform1i(this.layerUniforms.useBackdrop, 0); // No backdrop
           gl.uniform1i(this.layerUniforms.flipTexY, 0); // Raw texture, no flip
 
+          // Basic adjustment (Brightness/Contrast/Saturation) as shader uniform.
+          const adj = renderLayer.basicAdjustment;
+          gl.uniform3f(
+            this.layerUniforms.adjustment,
+            adj ? adj.brightness : 0,
+            adj ? adj.contrast : 0,
+            adj ? adj.saturation : 0
+          );
+
           const t = renderLayer.transform;
           const effW = renderLayer.width * Math.abs(t.scaleX);
           const effH = renderLayer.height * Math.abs(t.scaleY);
@@ -404,6 +415,10 @@ export class WebGL2Backend implements RenderBackend {
           gl.uniform1i(this.layerUniforms.useBackdrop, 0);
           gl.uniform1i(this.layerUniforms.flipTexY, 1); // FBO texture, flip Y
 
+          // Copy pass must NOT apply adjustment — the source FBO already has
+          // the previous layer's adjustment baked in by the composite draw.
+          gl.uniform3f(this.layerUniforms.adjustment, 0, 0, 0);
+
           // Fullscreen quad in logical-viewport coords (matches copyProj)
           const copyQuad = getInterLayerCopyQuad(this.logicalWidth, this.logicalHeight);
           gl.uniform4f(this.layerUniforms.layerRect, ...copyQuad.rect);
@@ -430,6 +445,15 @@ export class WebGL2Backend implements RenderBackend {
           gl.uniform1i(this.layerUniforms.blendMode, modeId);
           gl.uniform1i(this.layerUniforms.useBackdrop, 1);
           gl.uniform1i(this.layerUniforms.flipTexY, 0); // Raw layer texture, no flip
+
+          // Basic adjustment for the layer being composited this pass.
+          const adj2 = renderLayer.basicAdjustment;
+          gl.uniform3f(
+            this.layerUniforms.adjustment,
+            adj2 ? adj2.brightness : 0,
+            adj2 ? adj2.contrast : 0,
+            adj2 ? adj2.saturation : 0
+          );
           gl.uniform2f(this.layerUniforms.resolution, canvas.width, canvas.height);
 
           const t = renderLayer.transform;
@@ -517,6 +541,10 @@ export class WebGL2Backend implements RenderBackend {
       gl.uniform1i(this.layerUniforms.blendMode, 0); // Normal
       gl.uniform1i(this.layerUniforms.useBackdrop, 0); // No backdrop
       gl.uniform1i(this.layerUniforms.flipTexY, 1); // FBO texture, flip Y
+
+      // Final screen pass renders the already-composited FBO — must NOT
+      // re-apply adjustment (it was applied during the layer composite draws).
+      gl.uniform3f(this.layerUniforms.adjustment, 0, 0, 0);
 
       // Fullscreen quad in viewport coords
       gl.uniform4f(this.layerUniforms.layerRect, 0, 0, this.logicalWidth, this.logicalHeight);

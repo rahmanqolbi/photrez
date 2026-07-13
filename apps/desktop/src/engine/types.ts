@@ -89,6 +89,7 @@ export interface RenderLayer {
   transform: Transform2D;
   width: number;
   height: number;
+  basicAdjustment?: BasicAdjustment;
 }
 
 export interface RenderState {
