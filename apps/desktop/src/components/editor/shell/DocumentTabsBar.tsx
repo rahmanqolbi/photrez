@@ -282,12 +282,16 @@ export function DocumentTabsBar() {
     if (state.dragKind === "layer" && state.payload) {
       const engine = workspace.getEngine(tabId);
       if (engine) {
-        addLayerFromCrossDoc(
+        const { newLayerId } = addLayerFromCrossDoc(
           state.payload,
           { type: "tab", docId: tabId },
           { x: engine.getWidth() / 2, y: engine.getHeight() / 2 },
           workspace
         );
+        if (newLayerId) {
+          const newLayer = engine.getLayer(newLayerId);
+          if (newLayer?.imageBitmap) renderer.uploadImage(newLayerId, newLayer.imageBitmap);
+        }
         scheduler.requestRender();
       }
     } else if (state.dragKind === "file" && state.filePaths) {

@@ -59,7 +59,16 @@ export function useCanvasDrop(options: UseCanvasDropOptions) {
       camera.screenToDocument(cx - (rect?.left ?? 0), cy - (rect?.top ?? 0));
     if (state.dragKind === "layer" && state.payload) {
       const docPos = toDoc(e.clientX, e.clientY);
-      addLayerFromCrossDoc(state.payload, { type: "canvas" }, docPos, workspace);
+      const { newLayerId } = addLayerFromCrossDoc(state.payload, { type: "canvas" }, docPos, workspace);
+      if (newLayerId) {
+        const activeDocId = workspace.getActiveDocumentId();
+        if (activeDocId) {
+          const targetEngine = workspace.getEngine(activeDocId);
+          const newLayer = targetEngine?.getLayer(newLayerId);
+          if (newLayer?.imageBitmap) renderer.uploadImage(newLayerId, newLayer.imageBitmap);
+        }
+      }
+      scheduler.requestRender();
     } else if (state.dragKind === "file") {
       if (state.filePaths && state.filePaths.length > 0) {
         // In-app file drag — pre-resolved file paths

@@ -399,7 +399,13 @@ export function LayersPanel() {
             const target = state.dropTarget?.type === "layers-panel"
               ? state.dropTarget
               : { type: "layers-panel" as const };
-            addLayerFromCrossDoc(state.payload, target, { x: 0, y: 0 }, workspace);
+            const { newLayerId } = addLayerFromCrossDoc(state.payload, target, { x: 0, y: 0 }, workspace);
+            if (newLayerId) {
+              const targetEngine = workspace.getActiveEngine();
+              const newLayer = targetEngine?.getLayer(newLayerId);
+              if (newLayer?.imageBitmap) renderer.uploadImage(newLayerId, newLayer.imageBitmap);
+            }
+            scheduler.requestRender();
           } else if (state.dragKind === "file") {
             if (state.filePaths && state.filePaths.length > 0) {
               // In-app file drag — pre-resolved file paths
