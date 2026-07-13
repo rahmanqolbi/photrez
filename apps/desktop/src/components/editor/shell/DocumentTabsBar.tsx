@@ -288,7 +288,8 @@ export function DocumentTabsBar() {
           { x: engine.getWidth() / 2, y: engine.getHeight() / 2 },
           workspace
         );
-        if (newLayerId) {
+        // Same-doc → reorder (same layer id, bitmap already uploaded).
+        if (newLayerId && newLayerId !== state.payload.layerId) {
           const newLayer = engine.getLayer(newLayerId);
           if (newLayer?.imageBitmap) renderer.uploadImage(newLayerId, newLayer.imageBitmap);
         }

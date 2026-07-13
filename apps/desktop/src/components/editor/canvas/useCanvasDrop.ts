@@ -60,7 +60,8 @@ export function useCanvasDrop(options: UseCanvasDropOptions) {
     if (state.dragKind === "layer" && state.payload) {
       const docPos = toDoc(e.clientX, e.clientY);
       const { newLayerId } = addLayerFromCrossDoc(state.payload, { type: "canvas" }, docPos, workspace);
-      if (newLayerId) {
+      // Same-doc → reorder (same layer id, bitmap already uploaded).
+      if (newLayerId && newLayerId !== state.payload.layerId) {
         const activeDocId = workspace.getActiveDocumentId();
         if (activeDocId) {
           const targetEngine = workspace.getEngine(activeDocId);

@@ -400,7 +400,9 @@ export function LayersPanel() {
               ? state.dropTarget
               : { type: "layers-panel" as const };
             const { newLayerId } = addLayerFromCrossDoc(state.payload, target, { x: 0, y: 0 }, workspace);
-            if (newLayerId) {
+            // Same-doc reorder reuses the same layer id — bitmap is already uploaded.
+            // Only upload for a genuinely new layer (cross-doc copy/move).
+            if (newLayerId && newLayerId !== state.payload.layerId) {
               const targetEngine = workspace.getActiveEngine();
               const newLayer = targetEngine?.getLayer(newLayerId);
               if (newLayer?.imageBitmap) renderer.uploadImage(newLayerId, newLayer.imageBitmap);
