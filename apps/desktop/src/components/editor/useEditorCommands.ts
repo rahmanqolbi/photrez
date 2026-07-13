@@ -631,14 +631,21 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
     let disposed = false;
     let unlisten: (() => void) | undefined;
     if (isTauriRuntime()) {
-      void listen<string>(NATIVE_MENU_EVENT, (event) => {
-        if (isEditorCommand(event.payload)) execute(event.payload);
-      }).then((disposeListener) => {
-        if (disposed) disposeListener();
-        else unlisten = disposeListener;
-      }).catch((error: unknown) => {
-        console.warn("Failed to register native menu listener:", error);
-      });
+      // Use async IIFE + try/catch instead of .catch() on the chained promise
+      // to prevent unhandledrejection on the original listen() promise.
+      // The .then().catch() chain only catches on the chained promise,
+      // not on the original Promise returned by listen().
+      void (async () => {
+        try {
+          const disposeListener = await listen<string>(NATIVE_MENU_EVENT, (event) => {
+            if (isEditorCommand(event.payload)) execute(event.payload);
+          });
+          if (disposed) disposeListener();
+          else unlisten = disposeListener;
+        } catch (error: unknown) {
+          console.warn("Failed to register native menu listener:", error);
+        }
+      })();
     }
 
     onCleanup(() => {

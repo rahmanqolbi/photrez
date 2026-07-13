@@ -10,25 +10,19 @@
 // affects the calling thread's message queue, so calling it from the
 // Tauri main thread (which owns the window) overrides the webview cursor.
 //
-// For "copy" / "move" the load chain is:
-//   LoadCursorW(NULL, MAKEINTRESOURCE(OCR_COPY))  — works on Win10+
+// Drag-drop cursors (copy/move) are NOT standard LoadCursor system cursors.
+// The authentic native ones are the OLE drag-drop cursors compiled into
+// ole32.dll as undocumented cursor resources:
+//   - resource #2 = MOVE  (arrow + document rectangle)
+//   - resource #3 = COPY  (arrow + document rectangle + plus sign)
+// These are exactly the cursors Windows Explorer shows during a file drag.
+// ole32.dll is always loaded in a GUI/WebView2 process (COM), so we load
+// them directly via LoadCursorW.  Their IDs are undocumented ("subject to
+// change"), so we keep the .cur files as a final fallback.
 
 #[cfg(not(windows))]
 use tauri::Manager;
 use tauri::{AppHandle, Runtime};
-
-/// System cursor IDs from Windows SDK (winuser.h → OCR_*).
-#[cfg(windows)]
-mod sys_id {
-    // Re-export from windows-sys
-    pub use windows_sys::Win32::UI::WindowsAndMessaging::{
-        IDC_ARROW, LoadCursorW, SetCursor,
-    };
-    // OCR_COPY = 32642, OCR_MOVE = 32641 — not in windows-sys as named
-    // constants, so we define them inline.
-    pub const OCR_COPY: u16 = 32642;
-    pub const OCR_MOVE: u16 = 32641;
-}
 
 /// Tauri IPC command: override the native cursor to the given OS icon.
 ///
@@ -41,35 +35,17 @@ pub(crate) fn set_native_cursor<R: Runtime>(
     icon: String,
 ) -> Result<(), String> {
     #[cfg(windows)]
-    {
-        let cursor_id = match icon.as_str() {
-            "copy" => sys_id::OCR_COPY,
-            "move" => sys_id::OCR_MOVE,
-            _ => sys_id::IDC_ARROW as u16,
-        };
+    unsafe {
+        use windows_sys::Win32::UI::WindowsAndMessaging::SetCursor;
+        use std::sync::Once;
 
-        unsafe {
-            // LoadCursorW with system OCR values works on modern Windows.
-            let hcursor = sys_id::LoadCursorW(std::ptr::null_mut(), cursor_id as *const u16);
-            if hcursor.is_null() {
-                // Fallback: use LoadImageW with LR_SHARED (more reliable
-                // for drag-drop cursors on some Windows builds).
-                let hcursor2 = windows_sys::Win32::UI::WindowsAndMessaging::LoadImageW(
-                    std::ptr::null_mut(),
-                    cursor_id as *const u16,
-                    windows_sys::Win32::UI::WindowsAndMessaging::IMAGE_CURSOR,
-                    0,
-                    0,
-                    windows_sys::Win32::UI::WindowsAndMessaging::LR_DEFAULTSIZE
-                        | windows_sys::Win32::UI::WindowsAndMessaging::LR_SHARED,
-                );
-                if !hcursor2.is_null() {
-                    sys_id::SetCursor(hcursor2);
-                }
-            } else {
-                sys_id::SetCursor(hcursor);
-            }
-        }
+        static SCAN_ONCE: Once = Once::new();
+        SCAN_ONCE.call_once(|| {
+            debug_scan_cursor_resources();
+        });
+
+        let hcursor = load_drag_cursor_win(&icon);
+        SetCursor(hcursor);
     }
 
     #[cfg(not(windows))]
@@ -87,4 +63,87 @@ pub(crate) fn set_native_cursor<R: Runtime>(
     }
 
     Ok(())
+}
+
+#[cfg(windows)]
+unsafe fn load_drag_cursor_win(icon: &str) -> *mut core::ffi::c_void {
+    use windows_sys::Win32::Foundation::HMODULE;
+    use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        LoadCursorFromFileW, LoadCursorW, IDC_ARROW,
+    };
+    use std::sync::OnceLock;
+
+    let res_id: u16 = match icon {
+        "copy" => 3, // OLE drag-drop COPY: arrow + document + plus
+        "move" => 2, // OLE drag-drop MOVE: arrow + document
+        _ => return LoadCursorW(std::ptr::null_mut(), IDC_ARROW),
+    };
+
+    // ole32.dll is always loaded in a GUI/WebView2 process (COM). Cache its
+    // handle once per process. The cursor IDs are undocumented, so a failure
+    // here falls through to the .cur files below instead of breaking.
+    // HMODULE is a raw pointer and not Sync, so cache it as usize.
+    static OLE32: OnceLock<usize> = OnceLock::new();
+    let hmod = *OLE32.get_or_init(|| {
+        let wide: Vec<u16> = "ole32.dll".encode_utf16().chain(std::iter::once(0)).collect();
+        GetModuleHandleW(wide.as_ptr()) as usize
+    }) as HMODULE;
+    if !hmod.is_null() {
+        let h = LoadCursorW(hmod, res_id as *const u16); // MAKEINTRESOURCE(res_id)
+        if !h.is_null() {
+            return h;
+        }
+    }
+
+    // Fallback: closest system .cur files (approximate drag cursors).
+    let filename = match icon {
+        "copy" => r"C:\Windows\Cursors\aero_link.cur",
+        "move" => r"C:\Windows\Cursors\aero_move.cur",
+        _ => return LoadCursorW(std::ptr::null_mut(), IDC_ARROW),
+    };
+    let wide: Vec<u16> = filename
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect();
+    let h = LoadCursorFromFileW(wide.as_ptr());
+    if h.is_null() {
+        LoadCursorW(std::ptr::null_mut(), IDC_ARROW)
+    } else {
+        h
+    }
+}
+
+/// Debug-only: scan system DLLs for cursor resources to find the
+/// real drag-drop cursor IDs (copy/move are composited by Explorer,
+/// but the raw cursors may live in imageres.dll / comctl32.dll).
+#[cfg(windows)]
+unsafe fn debug_scan_cursor_resources() {
+    use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        LoadImageW, IMAGE_CURSOR, LR_DEFAULTSIZE, LR_SHARED,
+    };
+
+    let dlls: &[&str] = &["imageres.dll", "shell32.dll", "comctl32.dll"];
+    for dll in dlls {
+        let wide: Vec<u16> = dll.encode_utf16().chain(std::iter::once(0)).collect();
+        let hmod = GetModuleHandleW(wide.as_ptr());
+        if hmod.is_null() {
+            println!("[cursor_rs] scan: {} not loaded", dll);
+            continue;
+        }
+        for id in 1..400u16 {
+            let h = LoadImageW(
+                hmod,
+                id as *const u16,
+                IMAGE_CURSOR,
+                0,
+                0,
+                LR_DEFAULTSIZE | LR_SHARED,
+            );
+            if !h.is_null() {
+                println!("[cursor_rs] scan: {}.{} is a CURSOR ({:p})", dll, id, h);
+            }
+        }
+    }
 }

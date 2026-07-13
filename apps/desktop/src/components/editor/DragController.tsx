@@ -19,7 +19,7 @@ export function dragDropEffect(payload: LayerDragPayload | null, isCrossDoc: boo
  *  CSS `"copy"` shows the browser-synthesized copy cursor; the Rust
  *  `setDragNativeCursor` command overrides it with the OS native cursor
  *  via Win32 SetCursor. */
-export function dragEffectToCssCursor(effect: "copy" | "move"): string {
+export function dragEffectToCssCursor(effect: "copy" | "move" | "default"): string {
   return effect;
 }
 

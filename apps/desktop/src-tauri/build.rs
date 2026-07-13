@@ -6,6 +6,16 @@ fn main() {
     let target = env::var("TARGET").unwrap_or_default();
     if target.contains("windows-gnu") {
         println!("cargo:warning=MinGW target detected. Using custom manifest compiler workaround.");
+        // tauri_build::build() generates ACL/capabilities (gen/ folder) but then
+        // panics on tauri-winres because windres preprocessing fails on MinGW.
+        // Use catch_unwind: the ACL cargo: directives are printed before the panic,
+        // so Cargo still processes them. Our custom windres code below handles resources.
+        let result = std::panic::catch_unwind(|| {
+            tauri_build::build();
+        });
+        if result.is_err() {
+            println!("cargo:warning=tauri_build::build() panicked on winres (expected on MinGW). ACL/capabilities already generated.");
+        }
     } else if target.contains("windows") {
         tauri_build::build();
     }

@@ -45,12 +45,22 @@ export function AppTitleBar(props: AppTitleBarProps) {
     let unlisten: (() => void) | undefined;
     (async () => {
       if (disposed) return;
-      const appWindow = getCurrentWindow();
-      setIsMaximized(await appWindow.isMaximized());
-      unlisten = await appWindow.onResized(async () => {
-        if (disposed) return;
+      try {
+        const appWindow = getCurrentWindow();
         setIsMaximized(await appWindow.isMaximized());
-      });
+        unlisten = await appWindow.onResized(async () => {
+          if (disposed) return;
+          try {
+            setIsMaximized(await appWindow.isMaximized());
+          } catch {
+            // Permission may not be granted; treat as non-maximized.
+            setIsMaximized(false);
+          }
+        });
+      } catch {
+        // Permission may not be granted; treat as non-maximized.
+        setIsMaximized(false);
+      }
     })();
     onCleanup(() => {
       disposed = true;

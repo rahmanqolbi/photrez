@@ -789,16 +789,7 @@ export function CanvasViewport() {
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      style={{
-        cursor:
-          activeTool() === "move"
-            ? "grab"
-            : activeTool() === "crop" &&
-              cropInteractionMode() === "modern" &&
-              !modernCropFrame()
-            ? "crosshair"
-            : undefined,
-      }}
+
       onWheel={handleWheel}
       onDblClick={handleDoubleClick}
       onPointerDown={(e) => {

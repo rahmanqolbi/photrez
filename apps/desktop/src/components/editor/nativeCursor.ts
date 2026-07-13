@@ -27,9 +27,12 @@ function isTauriRuntime(): boolean {
  *  browser-synthesized CSS `cursor: copy` (arrow + plain plus).
  *  Call with `null` to restore the default.
  *  No-op outside Tauri runtime. */
-export function setDragNativeCursor(effect: "copy" | "move" | null): void {
+export function setDragNativeCursor(effect: "copy" | "move" | "default" | null): void {
   if (!isTauriRuntime()) return;
-  invoke("set_native_cursor", { icon: effect ?? "default" }).catch(() => {});
+  console.log("[nativeCursor] calling set_native_cursor with:", effect);
+  invoke("set_native_cursor", { icon: effect ?? "default" }).catch(() => {
+    console.warn("[nativeCursor] set_native_cursor failed");
+  });
 }
 
 /** True when we're running in Tauri and the native cursor API is

@@ -1,7 +1,7 @@
 import { createMemo, createEffect, untrack, onCleanup } from "solid-js";
 import { useEditor } from "../shell/EditorContext";
 import { resolveCursor } from "@/viewport/cursorResolver";
-import { useDragController, dragDropEffect, dragEffectToCssCursor } from "../DragController";
+import { useDragController, dragEffectToCssCursor } from "../DragController";
 import { setDragNativeCursor } from "../nativeCursor";
 import { getLayerAabb } from "@/viewport/transformGeometry";
 import { buildCropSnapTargets } from "@/viewport/cropSnap";
@@ -108,44 +108,68 @@ export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
     layerBoundingBox: layerBoundingBox(),
   }));
 
-  // Layer drag cursor (canvas pointer-drag path): copy for cross-doc, move for
-  // same-doc / Alt. This is the authoritative source — the JSX `style.cursor`
-  // on the viewport is overridden by the imperative sync below.
-  const layerDragCursor = createMemo(() => {
+  // Layer drag cursor (canvas pointer-drag path):
+  //   - same-doc reorder   → plain arrow ("default")
+  //   - cross-doc, no Alt  → copy (arrow + document + plus)
+  //   - cross-doc, Alt     → move (arrow + document)
+  // The HTML5 Layers-panel drag keeps dragDropEffect()'s "move" for same-doc
+  // because HTML5 DnD cannot render a plain arrow (dropEffect is copy/move/link/none).
+  // This memo is the authoritative source — the JSX `style.cursor` on the
+  // viewport is overridden by the imperative sync below.
+  const layerDragCursor = createMemo<"copy" | "move" | "default" | undefined>(() => {
     const s = dragController.state();
     if (s.dragKind !== "layer" || !s.payload) return undefined;
     const isCrossDoc =
       (s.dropTarget?.type === "tab" && s.dropTarget.docId !== s.payload.sourceDocId) ||
       (s.dropTarget?.type === "canvas" && activeDocumentId() !== s.payload.sourceDocId);
-    return dragDropEffect(s.payload, isCrossDoc);
+    if (!isCrossDoc) return "default";
+    return s.payload.isAltPressed ? "move" : "copy";
   });
 
   const viewportCursorClass = createMemo(() => {
     if (params.isSpacePressed()) return params.isPanning() ? "grabbing" : "grab";
+    const tool = activeTool();
+    if (tool === "move") return "grab";
+    if (tool === "crop" && cropInteractionMode() === "modern" && !modernCropFrame()) return "crosshair";
     return "default";
   });
 
-  // ── Cursor sync (imperative, bypasses JSX style:cursor) ─────────────
+  // ── Cursor sync (imperative, replaces JSX style:cursor) ─────────────
+  // JSX style:cursor is intentionally removed from CanvasViewport to
+  // prevent Solid's reactive binding from overriding the drag cursor.
+  // ALL container cursor logic (drag, space-pan, grab, crosshair) lives
+  // in the effect below and the viewportCursorClass memo.
+  //
   // Layer drag active:
-  //   1. Custom Rust command `setDragNativeCursor` → Win32 SetCursor →
-  //      OS native drag-drop cursor (primary mechanism).
-  //   2. CSS `cursor: copy`/`cursor: move` as fallback on <body> for
-  //      platforms where Rust command is a no-op (macOS/Linux).
-  //      The body !important covers elements without their own cursor;
-  //      tabs with explicit cursor are handled by DocumentTabsBar
-  //      pointer-enter override.
-  // No drag → restore tool / viewport cursor via CSS.
+  //   1. CSS `cursor: copy`/`cursor: move` with `!important` on BOTH the
+  //      container and <body> to override hover-handle resize cursors.
+  //   2. Custom Rust command `setDragNativeCursor` → Win32 SetCursor →
+  //      OS native drag-drop cursor.
+  //      Re-armed on every pointermove during drag because WebView2
+  //      overrides SetCursor on each WM_SETCURSOR (mouse move).
+  // No drag → restore tool / viewport cursor via viewportCursorClass().
   createEffect(() => {
     const dragCursor = layerDragCursor();
     const container = params.getCanvasContainerRef();
     const canvas = params.getCanvasRef();
 
+    // console.log is intentional for debugging cursor state during drag.
+    // Remove once confirmed working.
+    console.log("[cursor] dragCursor:", dragCursor, "activeTool:", activeTool(), "hoverHandle:", hoverHandle());
+
     if (dragCursor) {
-      setDragNativeCursor(dragCursor);
       const css = dragEffectToCssCursor(dragCursor);
-      if (container) container.style.cursor = css;
+      console.log("[cursor] SET copy/move CSS:", css);
+      if (container) container.style.setProperty("cursor", css, "important");
       if (canvas) canvas.style.cursor = css;
       document.body.style.setProperty("cursor", css, "important");
+
+      // Set native cursor NOW (drag start) and on every pointermove
+      // during the drag to override WebView2's WM_SETCURSOR.
+      setDragNativeCursor(dragCursor);
+      const moveHandler = () => setDragNativeCursor(dragCursor);
+      document.addEventListener("pointermove", moveHandler, { passive: true });
+      onCleanup(() => document.removeEventListener("pointermove", moveHandler));
     } else {
       setDragNativeCursor(null);
       if (container) container.style.cursor = viewportCursorClass();
