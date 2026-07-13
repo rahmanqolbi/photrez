@@ -223,22 +223,16 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
           workspace.switchDocument(targetDocId);
         }
 
-        // Position: canvas drop → layer centered under the cursor
-        // (plan: "drag A → canvas B → added at cursor"); tab drop → tab
-        // has no canvas cursor, so addLayerFromCrossDoc centers the layer
-        // in the target doc and ignores the cursorPos arg below.
+        // Position: canvas drop → addLayerFromCrossDoc centers the layer
+        // under the cursor (raw document coords); tab drop → tab has no
+        // canvas cursor, so addLayerFromCrossDoc centers in the doc.
         let targetPos: { x: number; y: number };
         if (isCrossDocCanvas) {
-          const layerAabb = getLayerAabb(sourceLayer.transform, sourceLayer.width, sourceLayer.height);
           const cursorInCanvas = {
             x: e.clientX - d.rect.left,
             y: e.clientY - d.rect.top,
           };
-          const targetDocPos = camera.screenToDocument(cursorInCanvas.x, cursorInCanvas.y);
-          targetPos = {
-            x: targetDocPos.x - layerAabb.width / 2,
-            y: targetDocPos.y - layerAabb.height / 2,
-          };
+          targetPos = camera.screenToDocument(cursorInCanvas.x, cursorInCanvas.y);
         } else {
           targetPos = { x: 0, y: 0 };
         }
