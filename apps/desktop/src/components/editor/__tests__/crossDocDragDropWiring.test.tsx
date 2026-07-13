@@ -532,9 +532,15 @@ describe("DocumentTabsBar wiring (tab drop with layer drag)", () => {
     expect(ws.getEngine("doc-b")!.getLayers().some(l => l.name === "Drag Me")).toBe(true);
   });
 
-  it("drop on same-source tab is a no-op (same-doc drag prevented)", async () => {
+  it("same-doc tab drop is a reorder and does NOT call uploadImage (guard)", async () => {
     const { dragMeLayerId } = renderTabs();
     await tick();
+
+    // Set a bitmap so the guard (not bitmap absence) skips uploadImage
+    const engineA = ws.getEngine("doc-a")!;
+    const fakeBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
+    engineA.setLayerImageBitmap(dragMeLayerId, fakeBitmap);
+    vi.clearAllMocks();
 
     probeRef.current!.beginLayerDrag(
       {
@@ -551,9 +557,46 @@ describe("DocumentTabsBar wiring (tab drop with layer drag)", () => {
     fireDrop(sameTabEl);
     await tick();
 
-    // Both should be unchanged
+    // Both should be unchanged (same-doc reorder preserves layer count)
     expect(ws.getEngine("doc-a")!.getLayers().length).toBe(2);
     expect(ws.getEngine("doc-b")!.getLayers().length).toBe(1);
+    // Same-doc → same layer id → guard skips upload
+    expect(renderer.uploadImage).not.toHaveBeenCalled();
+  });
+
+  it("cross-doc tab drop with bitmap calls uploadImage and requestRender", async () => {
+    const { dragMeLayerId } = renderTabs();
+    await tick();
+
+    // Give the source layer a real bitmap so uploadImage is exercised
+    const engineA = ws.getEngine("doc-a")!;
+    const fakeBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
+    engineA.setLayerImageBitmap(dragMeLayerId, fakeBitmap);
+    vi.clearAllMocks();
+
+    probeRef.current!.beginLayerDrag(
+      {
+        version: 1,
+        sourceDocId: "doc-a",
+        layerId: dragMeLayerId,
+        sourceName: "Drag Me",
+        isAltPressed: false,
+      },
+      null,
+    );
+
+    const tabB = container.querySelector('[data-document-tab="doc-b"]') as HTMLElement;
+    fireDrop(tabB);
+    await tick();
+
+    // Target doc gained a new layer
+    const targetEngine = ws.getEngine("doc-b")!;
+    expect(targetEngine.getLayers().length).toBe(2);
+    const copied = targetEngine.getLayers().find(l => l.name === "Drag Me")!;
+    expect(copied).toBeDefined();
+    // uploadImage called for the new (different id) layer's bitmap
+    expect(renderer.uploadImage).toHaveBeenCalledWith(copied.id, copied.imageBitmap);
+    expect(scheduler.requestRender).toHaveBeenCalled();
   });
 });
 

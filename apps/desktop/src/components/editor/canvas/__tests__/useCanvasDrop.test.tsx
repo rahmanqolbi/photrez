@@ -170,6 +170,8 @@ describe("useCanvasDrop", () => {
 
     const engineA = ws.getEngine("docA")!;
     const src = engineA.addLayer("Logo");
+    const fakeBitmap = { width: 800, height: 600, close: vi.fn() } as unknown as ImageBitmap;
+    engineA.setLayerImageBitmap(src.id, fakeBitmap);
     const payload: LayerDragPayload = {
       version: 1,
       sourceDocId: "docA",
@@ -178,6 +180,8 @@ describe("useCanvasDrop", () => {
       isAltPressed: false,
     };
 
+    const uploadImage = vi.fn();
+    const requestRender = vi.fn();
     const dc = createDragController(
       fakeState({ dragKind: "layer", payload, dropTarget: { type: "canvas" } }),
     );
@@ -187,8 +191,8 @@ describe("useCanvasDrop", () => {
       dragController: dc,
       camera,
       workspace: ws as any,
-      renderer: {} as any,
-      scheduler: { requestRender: vi.fn() },
+      renderer: { uploadImage },
+      scheduler: { requestRender },
     });
 
     const targetEngine = ws.getEngine("docB")!;
@@ -214,6 +218,9 @@ describe("useCanvasDrop", () => {
     expect(added.transform.x).toBe(100);
     expect(added.transform.y).toBe(100);
     expect(dc.endDrag).toHaveBeenCalled();
+    // uploadImage was called for the NEW layer (cross-doc → new id ≠ payload's)
+    expect(uploadImage).toHaveBeenCalledWith(added.id, added.imageBitmap);
+    expect(requestRender).toHaveBeenCalled();
   });
 
   it("does not clear canvas drop target when dragLeave moves inside the element", () => {

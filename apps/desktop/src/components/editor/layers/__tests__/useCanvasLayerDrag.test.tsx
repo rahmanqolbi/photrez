@@ -150,7 +150,7 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       container,
     );
     canvasEl.addEventListener("pointerdown", (e) => testApi.dragApi?.handlePointerDown(e as PointerEvent));
-    return { ws, canvasEl, testApi, dispose, container };
+    return { ws, canvasEl, testApi, dispose, container, renderer, scheduler };
   }
 
   // ── Behavioral: full drag cycle ──
@@ -808,6 +808,10 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       const targetEngine = ctx.ws.getEngine("doc-b")!;
       const sourceLayer = sourceEngine.getLayers().find((l) => l.name === "Draggable")!;
       const targetStartCount = targetEngine.getLayers().length;
+      // Set a bitmap so uploadImage is exercised
+      const fakeBitmap = { width: 200, height: 200, close: vi.fn() } as unknown as ImageBitmap;
+      sourceEngine.setLayerImageBitmap(sourceLayer.id, fakeBitmap);
+      vi.clearAllMocks();
       tabEl.setAttribute("data-document-tab", "doc-b");
       document.body.appendChild(tabEl);
       (document as any).elementFromPoint = vi.fn().mockReturnValue(tabEl);
@@ -848,6 +852,10 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       // Drop target cleared after the drop
       expect(ctx.testApi.dcState().dropTarget).toBeNull();
       expect(ctx.testApi.dragApi.isDragging()).toBe(false);
+      // uploadImage was called for the NEW layer (cross-doc → new id)
+      const added = targetEngine.getLayers().find((l) => l.name === "Draggable" && l.id !== sourceLayer.id)!;
+      expect(ctx.renderer!.uploadImage).toHaveBeenCalledWith(added.id, added.imageBitmap);
+      expect(ctx.scheduler!.requestRender).toHaveBeenCalled();
     } finally {
       if (originalElementFromPoint) {
         (document as any).elementFromPoint = originalElementFromPoint;
