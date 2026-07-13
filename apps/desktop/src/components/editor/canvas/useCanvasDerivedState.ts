@@ -134,6 +134,19 @@ export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
     return "default";
   });
 
+  // ── Stale-hover cleanup on layer drag start ──────────────────────────
+  // When a layer drag starts, clear hoverHandle/hoverPos so the cursor
+  // resolver doesn't read stale handle state (e.g. "se") after the drag
+  // ends and fall back to a resize/rotate cursor instead of the tool
+  // default. This is a pre-existing bug made visible by the Background
+  // layer cross-doc copy change.
+  createEffect(() => {
+    if (dragController.state().dragKind === "layer") {
+      setHoverHandle(null);
+      setHoverPos(null);
+    }
+  });
+
   // ── Cursor sync (imperative, replaces JSX style:cursor) ─────────────
   // JSX style:cursor is intentionally removed from CanvasViewport to
   // prevent Solid's reactive binding from overriding the drag cursor.

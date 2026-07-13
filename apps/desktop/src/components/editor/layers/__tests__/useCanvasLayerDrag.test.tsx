@@ -944,7 +944,7 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
   // discarded the position change while the drag still emitted snap lines)
   // ════════════════════════════════════════════════════════════════════════════
 
-  it("findLayerAt skips position-locked (lockPosition) layers — no drag, no snap guides", () => {
+  it("findLayerAt picks up position-locked (lockPosition) layers — drag starts, no snap, no move", () => {
     const ctx = setupWithLayer();
     try {
       const engine = ctx.ws.getEngine("wiring-canvas")!;
@@ -956,22 +956,23 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
         bubbles: true, button: 0, clientX: 150, clientY: 150,
       }));
+      expect(ctx.testApi.dragApi.isDragging()).toBe(true);
+
       document.dispatchEvent(new PointerEvent("pointermove", {
         bubbles: true, button: 0, clientX: 250, clientY: 200,
       }));
 
-      // No drag started, layer unmoved, and crucially no snap-line callback
-      // fired (otherwise ghost guides would render with no actual move).
-      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
+      // Engine transformLayer blocks position change → layer unmoved
       expect(layer.transform.x).toBe(startX);
       expect(layer.transform.y).toBe(startY);
-      expect(ctx.testApi.onSnapLinesChange).not.toHaveBeenCalled();
+      // lockPosition guard clears snap lines immediately — no snap guides
+      expect(ctx.testApi.onSnapLinesChange).toHaveBeenCalledWith([]);
     } finally {
       teardown(ctx);
     }
   });
 
-  it("findLayerAt skips Background (isBackground) layers — no drag, no snap guides", () => {
+  it("findLayerAt picks up Background — drag starts, no snap, no move", () => {
     const ctx = setupWithLayer();
     try {
       const engine = ctx.ws.getEngine("wiring-canvas")!;
@@ -985,14 +986,17 @@ describe("useCanvasLayerDrag (wiring: click+drag in canvas moves layer)", () => 
       ctx.canvasEl.dispatchEvent(new PointerEvent("pointerdown", {
         bubbles: true, button: 0, clientX: 150, clientY: 150,
       }));
+      expect(ctx.testApi.dragApi.isDragging()).toBe(true);
+
       document.dispatchEvent(new PointerEvent("pointermove", {
         bubbles: true, button: 0, clientX: 250, clientY: 200,
       }));
 
-      expect(ctx.testApi.dragApi.isDragging()).toBe(false);
+      // LockPosition blocks engine.transformLayer → position unchanged
       expect(layer.transform.x).toBe(startX);
       expect(layer.transform.y).toBe(startY);
-      expect(ctx.testApi.onSnapLinesChange).not.toHaveBeenCalled();
+      // Same-doc guard clears snap lines — no snap guides during Background drag
+      expect(ctx.testApi.onSnapLinesChange).toHaveBeenCalledWith([]);
     } finally {
       teardown(ctx);
     }

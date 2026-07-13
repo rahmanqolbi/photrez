@@ -61,11 +61,11 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     const ls = engine.getLayers();
     for (let i = 0; i < ls.length; i++) {
       const layer = ls[i];
-      // Skip layers that cannot be repositioned: fully locked, position-locked
-      // (e.g. Background), or background layers. Dragging one would only emit
-      // ghost snap guides because transformLayer discards position changes
-      // when lockPosition is set (document.ts).
-      if (layer.locked || layer.lockPosition || layer.isBackground || !layer.visible) continue;
+      // Skip fully locked or invisible layers. Position-locked and Background
+      // layers ARE pickable — they can still be cross-doc copied even though
+      // same-doc movement is blocked by engine guards (transformLayer checks
+      // lockPosition, deleteLayer checks isBackground).
+      if (layer.locked || !layer.visible) continue;
       const w = layer.width * Math.abs(layer.transform.scaleX);
       const h = layer.height * Math.abs(layer.transform.scaleY);
       if (
@@ -130,6 +130,14 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     );
     const dx = docPos.x - d.startDocX;
     const dy = docPos.y - d.startDocY;
+
+    // Position-locked layers can only be cross-doc copied, not same-doc
+    // moved. Skip snap and transformLayer — engine blocks transformLayer
+    // (lockPosition) so snap guides would fire with no visible movement.
+    if (layer.lockPosition) {
+      opts.onSnapLinesChange?.([]);
+      return;
+    }
 
     let newX = d.startTransformX + dx;
     let newY = d.startTransformY + dy;
