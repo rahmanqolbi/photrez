@@ -121,6 +121,20 @@ describe("WebGL2Backend.bakeLayerToBitmap", () => {
     expect(methods).toContain("readPixels");
   });
 
+  it("emits straight-alpha top-down output so no JS post-pass is needed", () => {
+    renderer.bakeLayerToBitmap("l1", 8, 8, {
+      brightness: 5,
+      contrast: 0,
+      saturation: 0,
+    });
+    const setUniform = (name: string) =>
+      calls.find((c) => c.method === "uniform1i" && c.args[0]?.name === name)?.args?.[1];
+    // flipTexY=1 flips the sample so the readback is already top-down,
+    // u_outputStraight=1 un-premultiplies in-shader.
+    expect(setUniform("u_flipTexY")).toBe(1);
+    expect(setUniform("u_outputStraight")).toBe(1);
+  });
+
   it("returns null when the layer has no uploaded texture", () => {
     expect(
       renderer.bakeLayerToBitmap("missing", 8, 8, { brightness: 10, contrast: 0, saturation: 0 }),

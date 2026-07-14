@@ -114,6 +114,7 @@ export class WebGL2Backend implements RenderBackend {
     blendMode: WebGLUniformLocation;
     useBackdrop: WebGLUniformLocation;
     flipTexY: WebGLUniformLocation;
+    outputStraight: WebGLUniformLocation;
     resolution: WebGLUniformLocation;
     adjustment: WebGLUniformLocation;
   } | null = null;
@@ -193,6 +194,7 @@ export class WebGL2Backend implements RenderBackend {
       blendMode: getRequiredUniformLocation(gl, this.layerProgram, "u_blendMode"),
       useBackdrop: getRequiredUniformLocation(gl, this.layerProgram, "u_useBackdrop"),
       flipTexY: getRequiredUniformLocation(gl, this.layerProgram, "u_flipTexY"),
+      outputStraight: getRequiredUniformLocation(gl, this.layerProgram, "u_outputStraight"),
       resolution: getRequiredUniformLocation(gl, this.layerProgram, "u_resolution"),
       adjustment: getRequiredUniformLocation(gl, this.layerProgram, "u_adjustment")
     };
@@ -354,9 +356,9 @@ export class WebGL2Backend implements RenderBackend {
     const prevBlend = gl.isEnabled(gl.BLEND);
     gl.disable(gl.BLEND);
 
-    // Render the layer through the adjustment shader into the FBO. Mirror the
-    // first-draw compositing pass: sample the raw layer texture, no flip, full
-    // layer rect at the layer's own pixel dimensions.
+    // Render the layer through the adjustment shader into the FBO. Sample the
+    // raw layer texture but flip Y so the readback is already top-down, and
+    // request straight-alpha output so no JS post-pass is needed.
     gl.viewport(0, 0, width, height);
     gl.useProgram(this.layerProgram);
     gl.activeTexture(gl.TEXTURE0);
@@ -368,7 +370,8 @@ export class WebGL2Backend implements RenderBackend {
     gl.uniform1f(this.layerUniforms.opacity, 1.0);
     gl.uniform1i(this.layerUniforms.blendMode, 0); // Normal
     gl.uniform1i(this.layerUniforms.useBackdrop, 0);
-    gl.uniform1i(this.layerUniforms.flipTexY, 0); // Raw layer texture, sample as-is
+    gl.uniform1i(this.layerUniforms.flipTexY, 1); // flip Y so readback is top-down
+    gl.uniform1i(this.layerUniforms.outputStraight, 1); // straight-alpha output
     gl.uniform3f(
       this.layerUniforms.adjustment,
       adjustment.brightness,
@@ -392,33 +395,9 @@ export class WebGL2Backend implements RenderBackend {
     gl.deleteTexture(texture);
     if (prevBlend) gl.enable(gl.BLEND);
 
-    // FBO is bottom-left origin + premultiplied. Flip rows and un-premultiply
-    // to produce a top-left, straight-alpha bitmap (matching the CPU bake).
+    // buf is already top-down straight-alpha: flipTexY flips the sample and
+    // u_outputStraight un-premultiplies in-shader, so no JS post-pass is needed.
     try {
-      const out = new Uint8ClampedArray(buf.length);
-      const rowBytes = width * 4;
-      for (let y = 0; y < height; y++) {
-        const src = (height - 1 - y) * rowBytes;
-        const dst = y * rowBytes;
-        for (let i = 0; i < rowBytes; i += 4) {
-          const a = buf[src + i + 3];
-          const r = buf[src + i];
-          const g = buf[src + i + 1];
-          const b = buf[src + i + 2];
-          if (a > 0 && a < 255) {
-            out[dst + i] = Math.min(255, Math.round((r * 255) / a));
-            out[dst + i + 1] = Math.min(255, Math.round((g * 255) / a));
-            out[dst + i + 2] = Math.min(255, Math.round((b * 255) / a));
-            out[dst + i + 3] = a;
-          } else {
-            out[dst + i] = r;
-            out[dst + i + 1] = g;
-            out[dst + i + 2] = b;
-            out[dst + i + 3] = a;
-          }
-        }
-      }
-
       let canvas: OffscreenCanvas | HTMLCanvasElement;
       try {
         canvas = new OffscreenCanvas(width, height);
@@ -432,7 +411,7 @@ export class WebGL2Backend implements RenderBackend {
         | CanvasRenderingContext2D
         | null;
       if (!ctx) return null;
-      ctx.putImageData(new ImageData(out, width, height), 0, 0);
+      ctx.putImageData(new ImageData(buf, width, height), 0, 0);
       return (canvas as OffscreenCanvas).transferToImageBitmap();
     } catch {
       return null;

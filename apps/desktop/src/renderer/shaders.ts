@@ -57,6 +57,7 @@ uniform float u_opacity;
 uniform int u_blendMode;
 uniform bool u_useBackdrop;
 uniform bool u_flipTexY;
+uniform bool u_outputStraight;
 uniform vec2 u_resolution;
 uniform vec3 u_adjustment; // (brightness, contrast, saturation) in [-100, 100]
 
@@ -165,10 +166,14 @@ void main() {
   // the FBO stores premultiplied alpha. This removes the dark fringe at
   // transparency edges that LINEAR filtering causes on straight-alpha textures
   // (transparent texels are (0,0,0,0), so interpolation pulls in black).
-  if (!u_useBackdrop) {
-    fragColor = src;
-    return;
-  }
+    if (!u_useBackdrop) {
+      // Bake path: emit straight-alpha so the readback is a plain bitmap.
+      if (u_outputStraight) {
+        src.rgb = src.a > 0.0 ? src.rgb / src.a : vec3(0.0);
+      }
+      fragColor = src;
+      return;
+    }
 
   vec2 uv = gl_FragCoord.xy / u_resolution;
   vec4 dst = texture(u_backdrop, uv);
