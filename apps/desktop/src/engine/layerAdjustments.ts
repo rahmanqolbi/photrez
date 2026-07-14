@@ -90,6 +90,76 @@ export function applyBasicAdjustmentToColor(color: string, adj: BasicAdjustment)
   return rgbToHex(r2, g2, b2);
 }
 
+/**
+ * Inverse of `applyBasicAdjustmentToColor`. Given a color chosen in display
+ * space and the layer's adjustment, returns the raw (layer-space) color that,
+ * once the shader re-applies the adjustment, displays as the chosen color.
+ * Used so painting on an adjusted layer is WYSIWYG (picker color == stroke).
+ */
+export function inverseBasicAdjustmentToColor(color: string, adj: BasicAdjustment): string {
+  const normalized = normalizeBasicAdjustment(adj);
+  if (normalized.brightness === 0 && normalized.contrast === 0 && normalized.saturation === 0) return color;
+  const [r, g, b] = hexToRgb(color);
+  const [r2, g2, b2] = inverseAdjustmentToRgb(r, g, b, normalized);
+  return rgbToHex(r2, g2, b2);
+}
+
+// Saturation mixes channels through a luminance term, so the inverse is not
+// separable per channel. We invert the real `applyAdjustmentToRgb` with a few
+// Newton steps (numerical Jacobian). Cheap — runs once per stroke, not per pixel.
+function inverseAdjustmentToRgb(
+  r: number,
+  g: number,
+  b: number,
+  adj: BasicAdjustment,
+): [number, number, number] {
+  const target = [r, g, b];
+  let x: [number, number, number] = [r, g, b];
+  const h = 1e-4;
+  for (let iter = 0; iter < 16; iter++) {
+    const f = applyAdjustmentToRgb(x[0], x[1], x[2], adj);
+    const err = [f[0] - target[0], f[1] - target[1], f[2] - target[2]];
+    if (Math.abs(err[0]) < 1e-7 && Math.abs(err[1]) < 1e-7 && Math.abs(err[2]) < 1e-7) break;
+    // Numerical Jacobian.
+    const fp: [number, number, number][] = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (let j = 0; j < 3; j++) {
+      const xp: [number, number, number] = [...x];
+      xp[j] += h;
+      const out = applyAdjustmentToRgb(xp[0], xp[1], xp[2], adj);
+      fp[0][j] = (out[0] - f[0]) / h;
+      fp[1][j] = (out[1] - f[1]) / h;
+      fp[2][j] = (out[2] - f[2]) / h;
+    }
+    const dx = solve3x3(fp, [-err[0], -err[1], -err[2]]);
+    x = [clamp01(x[0] + dx[0]), clamp01(x[1] + dx[1]), clamp01(x[2] + dx[2])];
+  }
+  return x;
+}
+
+// Solve A * x = b for 3x3 A via Gaussian elimination with partial pivoting.
+function solve3x3(A: number[][], b: number[]): [number, number, number] {
+  const m = [
+    [A[0][0], A[0][1], A[0][2], b[0]],
+    [A[1][0], A[1][1], A[1][2], b[1]],
+    [A[2][0], A[2][1], A[2][2], b[2]],
+  ];
+  for (let col = 0; col < 3; col++) {
+    let pivot = col;
+    for (let row = col + 1; row < 3; row++) {
+      if (Math.abs(m[row][col]) > Math.abs(m[pivot][col])) pivot = row;
+    }
+    [m[col], m[pivot]] = [m[pivot], m[col]];
+    const d = m[col][col] || 1e-9;
+    for (let k = col; k < 4; k++) m[col][k] /= d;
+    for (let row = 0; row < 3; row++) {
+      if (row === col) continue;
+      const factor = m[row][col];
+      for (let k = col; k < 4; k++) m[row][k] -= factor * m[col][k];
+    }
+  }
+  return [m[0][3], m[1][3], m[2][3]];
+}
+
 export function applyBasicAdjustmentToPixels(
   pixels: Uint8ClampedArray,
   adjustment: BasicAdjustment,

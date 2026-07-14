@@ -65,6 +65,30 @@ export function useLayerActions() {
     }
   };
 
+  const handleApplyAdjustment = () => {
+    cancelActiveTransformSession();
+    const engine = workspace.getActiveEngine();
+    const history = workspace.getActiveHistory();
+    const activeId = activeLayerId();
+    if (engine && history && activeId) {
+      // Nothing to bake if the layer has no live adjustment.
+      if (!engine.getLayer(activeId)?.basicAdjustment) return;
+      history.commit(engine.snapshot(), "Apply Adjustment");
+      // GPU-preferred bake (falls back to CPU inside the engine); the result is
+      // re-uploaded so the composited layer reflects the now-baked pixels.
+      const result = engine.commitBasicAdjustment(activeId, renderer);
+      const bakedLayer = engine.getLayer(activeId);
+      if (bakedLayer?.imageBitmap) renderer.uploadImage(activeId, bakedLayer.imageBitmap);
+      if (result === "cpu" && typeof renderer?.bakeLayerToBitmap === "function") {
+        showToast(
+          "Layer adjustment bake fell back to CPU — painting may stutter on large layers.",
+          "warn",
+        );
+      }
+      scheduler.requestRender();
+    }
+  };
+
   const handleStampVisible = () => {
     cancelActiveTransformSession();
     const engine = workspace.getActiveEngine();
@@ -213,6 +237,7 @@ export function useLayerActions() {
     handleDuplicateActiveLayer,
     handleMergeActiveLayerDown,
     handleFlattenAllLayers,
+    handleApplyAdjustment,
     handleStampVisible,
     handleSelectLayer,
     handleToggleVisibility,

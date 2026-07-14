@@ -2,7 +2,7 @@ import type { DocumentEngine } from "@/engine/document";
 import type { CommandHistory } from "@/engine/history";
 import type { WebGL2Backend } from "@/renderer/webgl2";
 import { compositeAllLayers } from "@/engine/layerComposite";
-import { bakeAdjustmentToBitmap } from "@/engine/layerAdjustments";
+import { applyBasicAdjustmentToColor } from "@/engine/layerAdjustments";
 
 export function mergeActiveLayerDown(
   engine: DocumentEngine,
@@ -99,6 +99,13 @@ export function fillActiveLayerWithColor(
   const layer = engine.getLayer(activeId);
   if (!layer || layer.locked) return false;
 
+  // A solid fill is a uniform color — apply the layer adjustment to the color
+  // directly (O(1)) instead of baking every pixel on the CPU. This matches the
+  // shader's applyAdjustment on the fill and then drops the adjustment param.
+  const fillColor = layer.basicAdjustment
+    ? applyBasicAdjustmentToColor(color, layer.basicAdjustment)
+    : color;
+
   const w = layer.width;
   const h = layer.height;
 
@@ -108,7 +115,7 @@ export function fillActiveLayerWithColor(
       const offscreen = new OffscreenCanvas(w, h);
       const ctx = offscreen.getContext("2d");
       if (ctx) {
-        ctx.fillStyle = color;
+        ctx.fillStyle = fillColor;
         ctx.fillRect(0, 0, w, h);
         bitmap = offscreen.transferToImageBitmap();
       }
@@ -124,14 +131,7 @@ export function fillActiveLayerWithColor(
   // adjustment independently undoable from the fill.
   const preFillSnapshot = engine.snapshot();
 
-  // Fill is a destructive edit: bake the layer's basicAdjustment into the
-  // solid fill so the result matches the layer adjustment, then drop the param.
-  if (layer.basicAdjustment) {
-    const baked = bakeAdjustmentToBitmap(bitmap, w, h, layer.basicAdjustment);
-    bitmap.close();
-    bitmap = baked;
-    engine.clearBasicAdjustments(activeId);
-  }
+  if (layer.basicAdjustment) engine.clearBasicAdjustments(activeId);
 
   // Commit pre-action snapshot BEFORE mutating so the fill is undoable/redoable.
   history.commit(preFillSnapshot, "Fill Layer");

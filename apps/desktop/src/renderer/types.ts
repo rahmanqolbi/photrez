@@ -1,4 +1,5 @@
 import type { RenderState, ViewportState } from "../engine/types";
+import type { BasicAdjustment } from "../engine/layerAdjustments";
 
 export interface RenderCapabilities {
   backend: "webgl2" | "webgpu" | "cpu";
@@ -37,4 +38,18 @@ export interface RenderBackend {
   getCanvas(): HTMLCanvasElement | null;
   getLogicalWidth(): number;
   getLogicalHeight(): number;
+
+  /**
+   * Bake a layer's basic adjustment into pixels via the GPU and return an
+   * ImageBitmap, or null if baking is unsupported (no context / test env).
+   * Caller falls back to the CPU `bakeAdjustmentToBitmap` when this returns
+   * null. The returned bitmap is top-left origin, straight-alpha — matching
+   * `bakeAdjustmentToBitmap` so it can replace the layer's stored bitmap.
+   */
+  bakeLayerToBitmap(
+    layerId: string,
+    width: number,
+    height: number,
+    adjustment: BasicAdjustment,
+  ): ImageBitmap | null;
 }

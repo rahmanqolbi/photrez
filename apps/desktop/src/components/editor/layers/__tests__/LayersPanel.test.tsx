@@ -151,6 +151,99 @@ describe("LayersPanel interactions", () => {
     dispose();
   });
 
+  it("bakes the layer adjustment to pixels via the 'Apply Adjustment' context-menu action", async () => {
+    const bakedBitmap = { width: 800, height: 600, close: vi.fn() } as unknown as ImageBitmap;
+    installCanvasMocks(bakedBitmap);
+    const renderer = {
+      uploadImage: vi.fn(),
+      destroyTexture: vi.fn(),
+      bakeLayerToBitmap: vi.fn(() => bakedBitmap),
+    };
+    const scheduler = { requestRender: vi.fn() };
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("apply-test", "Apply Test", 800, 600);
+    ws.addDocument(session);
+    session.engine.addLayer("Adjusted");
+    // Resolve the adjusted layer by name (addLayer prepends when there is no
+    // active layer, and the panel may reverse display order — so array indexing
+    // is unreliable). A layer needs rasterized pixels to bake into; give it a
+    // placeholder bitmap and simulate the post-adjustment state a real session
+    // would hold.
+    const adjusted = session.engine.getLayers().find((l) => l.name === "Adjusted")!;
+    adjusted.imageBitmap = { width: 800, height: 600, close: vi.fn() } as unknown as ImageBitmap;
+    adjusted.basicAdjustment = { brightness: 20, contrast: 0, saturation: 0 };
+    adjusted.hasAdjustments = true;
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <LayersPanel />
+        </EditorProvider>
+      ),
+      container,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Right-click the Adjusted layer's row (found by name, since display order
+    // is not guaranteed to match the model array order).
+    const adjustedRow = Array.from(container.querySelectorAll<HTMLElement>("[data-layer-idx]"))
+      .find((row) => row.textContent?.includes("Adjusted"))!;
+    adjustedRow.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, clientX: 40, clientY: 50 }),
+    );
+    const applyItem = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+      .find((button) => button.textContent?.includes("Apply Adjustment"))!;
+    expect(applyItem).toBeTruthy();
+    expect(applyItem.disabled).toBe(false);
+
+    applyItem.click();
+
+    expect(renderer.bakeLayerToBitmap).toHaveBeenCalledWith(adjusted.id, 800, 600, {
+      brightness: 20,
+      contrast: 0,
+      saturation: 0,
+    });
+    expect(renderer.uploadImage).toHaveBeenCalledWith(adjusted.id, bakedBitmap);
+    expect(ws.getActiveHistory()?.canUndo()).toBe(true);
+    // The live adjustment param is cleared after baking.
+    expect(session.engine.getLayer(adjusted.id)?.basicAdjustment).toBeUndefined();
+
+    // Undo restores the pre-bake adjustment. `undo` returns the prior snapshot;
+    // the app applies it via `engine.restore` (mirrored here).
+    const restored = ws.getActiveHistory()?.undo(session.engine.snapshot());
+    const restoredLayer = restored?.layers.find((l) => l.name === "Adjusted");
+    expect(restoredLayer?.basicAdjustment).toEqual({ brightness: 20, contrast: 0, saturation: 0 });
+    session.engine.restore(restored!);
+    expect(
+      session.engine.getLayers().find((l) => l.name === "Adjusted")?.basicAdjustment,
+    ).toEqual({ brightness: 20, contrast: 0, saturation: 0 });
+
+    dispose();
+    container.parentNode?.removeChild(container);
+  });
+
+  it("disables 'Apply Adjustment' for a layer with no live adjustment", async () => {
+    const session = WorkspaceManager.createBlankDocument("apply-disabled", "Apply Disabled", 800, 600);
+    session.engine.addLayer("Plain"); // fresh layer: no bitmap, no adjustment
+    const plain = session.engine.getLayers()[1];
+    expect(plain.hasAdjustments).toBeFalsy();
+
+    const { container, dispose } = renderLayersPanel(session);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    container.querySelector<HTMLElement>('[data-layer-idx="1"]')!.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, clientX: 40, clientY: 50 }),
+    );
+    const applyItem = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+      .find((button) => button.textContent?.includes("Apply Adjustment"))!;
+    expect(applyItem).toBeTruthy();
+    expect(applyItem.disabled).toBe(true);
+
+    dispose();
+  });
+
   it("uploads the newly flattened bitmap after Flatten All Layers", async () => {
     const flattenedBitmap = { width: 800, height: 600, close: vi.fn() } as unknown as ImageBitmap;
     installCanvasMocks(flattenedBitmap);

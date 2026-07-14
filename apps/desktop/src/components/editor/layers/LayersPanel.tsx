@@ -71,6 +71,7 @@ export function LayersPanel() {
     handleMoveDown,
     handleAddLayer,
     handleDeleteActiveLayer,
+    handleApplyAdjustment,
   } = useLayerActions();
 
   const openLayerContextMenu = (event: MouseEvent, layer: LayerNode) => {
@@ -139,6 +140,12 @@ export function LayersPanel() {
         shortcut: "Ctrl+Shift+E",
         disabled: layers().length <= 1,
         onSelect: handleFlattenAllLayers,
+      },
+      {
+        kind: "item",
+        label: "Apply Adjustment",
+        disabled: !layer.hasAdjustments,
+        onSelect: handleApplyAdjustment,
       },
       { kind: "separator" },
       {

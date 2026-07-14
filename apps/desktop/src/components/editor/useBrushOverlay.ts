@@ -1,12 +1,14 @@
-import { createEffect, onCleanup } from "solid-js";
+import { createEffect, onCleanup, createSignal } from "solid-js";
 import { useEditor } from "./shell/EditorContext";
+import { useDialog } from "./dialogs/DialogProvider";
 import type { DocumentEngine } from "@/engine/document";
+import type { DocumentModel } from "@/engine/types";
 import type { CommandHistory } from "@/engine/history";
 import { getPaintToolBlockReason, resolveEraserFill, type PaintToolSettings } from "./brushToolState";
 import { commitPaintBitmap } from "./paintCommitCommand";
 import { mapPaintPointToLayerLocal } from "./paintStrokeCoordinates";
 import { showToast } from "./Toast";
-import { applyBasicAdjustmentToColor } from "@/engine/layerAdjustments";
+import { applyBasicAdjustmentToColor, inverseBasicAdjustmentToColor } from "@/engine/layerAdjustments";
 import {
   getBrushDabSpacing,
   getBrushTip,
@@ -62,6 +64,7 @@ export function useBrushOverlay() {
     activeTool, brushSize, brushHardness,
     eraserSize, eraserHardness,
   } = useEditor();
+  const dialog = useDialog();
 
   let overlayCanvasRef: HTMLCanvasElement | null = null;
   let overlayCtx: CanvasRenderingContext2D | null = null;
@@ -69,6 +72,17 @@ export function useBrushOverlay() {
   let strokeGen = 0;
 
   let paintSession: PaintStrokeSession | null = null;
+
+  // Bake-on-paint WYSIWYG: the first stroke on an adjusted layer prompts to
+  // bake the adjustment into the layer's pixels so the brush shows the exact
+  // picked color (every color, not just the reachable gamut). `bakeDecisionSig`
+  // remembers the per-(layer,adjustment) choice ("Paint as-is" sets it so we
+  // never re-prompt); `bakePromptPending` blocks re-triggering / painting while
+  // the modal is resolving. `preBake` captures the pre-bake snapshot so the
+  // stroke's undo restores the adjustment.
+  const [bakeDecisionSig, setBakeDecisionSig] = createSignal<string | null>(null);
+  let bakePromptPending = false;
+  let preBake: { layerId: string; snapshot: DocumentModel } | null = null;
 
   // ── Cached commit buffer ──
   // Reuses OffscreenCanvas across commits to avoid 107MB allocation per stroke end.
@@ -328,6 +342,52 @@ export function useBrushOverlay() {
       prevStrokePointCount === 0;
 
     if (needsReset) {
+      // Bake-on-paint WYSIWYG gate: the first stroke on an adjusted layer with
+      // a bitmap prompts to bake the adjustment into pixels so the brush shows
+      // the exact picked color. The dialog is async (modal), so the stroke is
+      // deferred to the next pointerdown; baking happens on confirm.
+      const adj = layer.basicAdjustment;
+      const bakeKey = adj ? `${activeId}:${adj.brightness},${adj.contrast},${adj.saturation}` : null;
+      if (adj && bakeDecisionSig() !== bakeKey && layer.imageBitmap) {
+        if (!bakePromptPending) {
+          bakePromptPending = true;
+          dialog
+            .confirm({
+              title: "Apply adjustment to layer?",
+              message:
+                "Painting on an adjusted layer shows the shader-adjusted color. Apply the adjustment to the layer now so your brush color appears exactly as picked?",
+              confirmLabel: "Apply & Paint",
+              cancelLabel: "Paint as-is",
+            })
+            .then((confirmed) => {
+              bakePromptPending = false;
+              if (confirmed) {
+                const snap = activeEngine.snapshot();
+                const bakeResult = activeEngine.commitBasicAdjustment(activeId, renderer);
+                // Loud fallback: the GPU bake was available but failed, so we
+                // silently dropped to the slow CPU loop — surface it so a
+                // regression to the 150–400ms hitch isn't invisible.
+                if (bakeResult === "cpu" && typeof renderer?.bakeLayerToBitmap === "function") {
+                  showToast(
+                    "Layer adjustment bake fell back to CPU — painting may stutter on large layers.",
+                    "warn",
+                  );
+                }
+                const bakedLayer = activeEngine.getLayer(activeId);
+                if (bakedLayer?.imageBitmap) renderer.uploadImage(activeId, bakedLayer.imageBitmap);
+                scheduler.requestRender();
+                // One undo restores the pre-bake model (adjustment still applied).
+                preBake = { layerId: activeId, snapshot: snap };
+              } else {
+                // Remember the choice so we don't re-prompt for this adjustment.
+                setBakeDecisionSig(bakeKey);
+              }
+            });
+        }
+        // Defer the stroke — the modal ended the gesture; the user clicks again.
+        return;
+      }
+
       // Invalidate any in-flight commit from the previous stroke so its
       // createImageBitmap result can't clobber this stroke's live overlay.
       strokeGen++;
@@ -484,8 +544,15 @@ export function useBrushOverlay() {
     // The browser upscales the preview to the correct visual size via
     // destination dimensions in drawImage (slightly blurry drag preview,
     // crisp final composite on pointerUp).
+    // WYSIWYG: store the inverse-adjusted color so the shader reproduces the
+    // picked color on display. The overlay is a plain canvas (not
+    // shader-adjusted), so the preview draws the *displayed* color directly
+    // (apply(inverse(picked)) ≈ picked when in gamut) to stay pixel-identical
+    // to the committed result — no color pop at release.
     const adj = layer.basicAdjustment;
-    const dabColor = adj ? applyBasicAdjustmentToColor(session.color, adj) : session.color;
+    const commitDabColor = adj ? inverseBasicAdjustmentToColor(session.color, adj) : session.color;
+    const previewDabColor = adj ? applyBasicAdjustmentToColor(commitDabColor, adj) : session.color;
+    const dabColor = !final ? previewDabColor : commitDabColor;
     const compositeTipCanvas = !final ? getPreviewTipCanvas(tip, dabColor) : getTipCanvas(tip, dabColor);
     const cw = compositeTipCanvas.width;
     const ch = compositeTipCanvas.height;
@@ -642,9 +709,16 @@ export function useBrushOverlay() {
       // to the preview (which draws the adjustment-applied dab color). This
       // keeps the layer non-destructive — basicAdjustment stays a live param.
       if (layer.imageBitmap) sCtx.drawImage(layer.imageBitmap, 0, 0);
-      const tip = getBrushTip({ size: paintSession.tipSize, hardness: paintSession.tipHardness, curve: "soft" });
-      if (tip && hasDirt) {
-        const rawTip = getTipCanvas(tip, paintSession.color);
+        const tip = getBrushTip({ size: paintSession.tipSize, hardness: paintSession.tipHardness, curve: "soft" });
+        if (tip && hasDirt) {
+          // Store the inverse-adjusted color so the shader re-applies the
+          // layer's basicAdjustment and the stroke displays as the picked color
+          // (WYSIWYG). With no adjustment this returns the color unchanged.
+          const dabColor = inverseBasicAdjustmentToColor(
+            paintSession.color,
+            layer.basicAdjustment ?? { brightness: 0, contrast: 0, saturation: 0 },
+          );
+          const rawTip = getTipCanvas(tip, dabColor);
         const r = tip.diameter / 2;
         for (let i = 0; i < paintSession.dabPositions.length; i++) {
           const d = paintSession.dabPositions[i];
@@ -685,8 +759,12 @@ export function useBrushOverlay() {
           dirtyRect: hasDirt
             ? { x: dirty.x0, y: dirty.y0, width: dirty.x1 - dirty.x0, height: dirty.y1 - dirty.y0 }
             : undefined,
+          // Attach the pre-bake snapshot (if this stroke followed a confirmed
+          // bake) so a single undo restores the live adjustment.
+          snapshot: preBake && preBake.layerId === layerId ? preBake.snapshot : undefined,
         },
       );
+      if (preBake && preBake.layerId === layerId) preBake = null;
       // Eraser: defer overlay clear to after the next render so the user
       // never sees a flash where the overlay clears before WebGL re-renders
       // with the committed texture (from uploadImage above).

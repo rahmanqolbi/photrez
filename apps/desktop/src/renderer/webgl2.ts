@@ -1,5 +1,6 @@
 import type { RenderBackend, RenderCapabilities, TextureRef } from "./types";
 import type { RenderState, BlendMode } from "../engine/types";
+import type { BasicAdjustment } from "../engine/layerAdjustments";
 import { setDeviceMaxTextureSize } from "../engine/types";
 import {
   VERTEX_SHADER_SOURCE,
@@ -313,6 +314,129 @@ export class WebGL2Backend implements RenderBackend {
       this.gl.deleteTexture(ref.texture);
     }
     this.textures.delete(layerId);
+  }
+
+  /**
+   * Bake a layer's basic adjustment into pixels via the GPU and return an
+   * ImageBitmap, or null when baking is unavailable (no context / test env).
+   *
+   * Renders the layer through the same adjustment shader used for live
+   * preview (u_adjustment) into a layer-sized FBO, then reads the pixels
+   * back. The layer texture is uploaded premultiplied, so the FBO readback is
+   * premultiplied + bottom-left origin; we flip rows and un-premultiply to
+   * match `bakeAdjustmentToBitmap` (top-left, straight-alpha) so the result
+   * can replace the layer's stored bitmap and re-upload cleanly.
+   */
+  bakeLayerToBitmap(
+    layerId: string,
+    width: number,
+    height: number,
+    adjustment: BasicAdjustment,
+  ): ImageBitmap | null {
+    const gl = this.gl;
+    if (!gl || !this.layerProgram || !this.layerUniforms) return null;
+    if (this.contextLost || gl.isContextLost()) return null;
+    const ref = this.textures.get(layerId);
+    if (!ref || !ref.texture) return null;
+
+    // Allocate a temporary layer-sized FBO + color texture.
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+
+    const prevBlend = gl.isEnabled(gl.BLEND);
+    gl.disable(gl.BLEND);
+
+    // Render the layer through the adjustment shader into the FBO. Mirror the
+    // first-draw compositing pass: sample the raw layer texture, no flip, full
+    // layer rect at the layer's own pixel dimensions.
+    gl.viewport(0, 0, width, height);
+    gl.useProgram(this.layerProgram);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, ref.texture);
+    gl.uniform1i(this.layerUniforms.texture, 0);
+
+    const viewProj = this.computeViewMatrix(width, height);
+    gl.uniformMatrix4fv(this.layerUniforms.viewProj, false, viewProj);
+    gl.uniform1f(this.layerUniforms.opacity, 1.0);
+    gl.uniform1i(this.layerUniforms.blendMode, 0); // Normal
+    gl.uniform1i(this.layerUniforms.useBackdrop, 0);
+    gl.uniform1i(this.layerUniforms.flipTexY, 0); // Raw layer texture, sample as-is
+    gl.uniform3f(
+      this.layerUniforms.adjustment,
+      adjustment.brightness,
+      adjustment.contrast,
+      adjustment.saturation,
+    );
+    gl.uniform4f(this.layerUniforms.layerRect, 0, 0, width, height);
+    gl.uniform2f(this.layerUniforms.layerCenter, width / 2, height / 2);
+    gl.uniform1f(this.layerUniforms.layerRotation, 0);
+    gl.uniform2f(this.layerUniforms.flipSign, 1, 1);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    const buf = new Uint8ClampedArray(width * height * 4);
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+
+    // Restore GL state.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.deleteFramebuffer(fbo);
+    gl.deleteTexture(texture);
+    if (prevBlend) gl.enable(gl.BLEND);
+
+    // FBO is bottom-left origin + premultiplied. Flip rows and un-premultiply
+    // to produce a top-left, straight-alpha bitmap (matching the CPU bake).
+    try {
+      const out = new Uint8ClampedArray(buf.length);
+      const rowBytes = width * 4;
+      for (let y = 0; y < height; y++) {
+        const src = (height - 1 - y) * rowBytes;
+        const dst = y * rowBytes;
+        for (let i = 0; i < rowBytes; i += 4) {
+          const a = buf[src + i + 3];
+          const r = buf[src + i];
+          const g = buf[src + i + 1];
+          const b = buf[src + i + 2];
+          if (a > 0 && a < 255) {
+            out[dst + i] = Math.min(255, Math.round((r * 255) / a));
+            out[dst + i + 1] = Math.min(255, Math.round((g * 255) / a));
+            out[dst + i + 2] = Math.min(255, Math.round((b * 255) / a));
+            out[dst + i + 3] = a;
+          } else {
+            out[dst + i] = r;
+            out[dst + i + 1] = g;
+            out[dst + i + 2] = b;
+            out[dst + i + 3] = a;
+          }
+        }
+      }
+
+      let canvas: OffscreenCanvas | HTMLCanvasElement;
+      try {
+        canvas = new OffscreenCanvas(width, height);
+      } catch {
+        canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+      }
+      const ctx = canvas.getContext("2d") as
+        | OffscreenCanvasRenderingContext2D
+        | CanvasRenderingContext2D
+        | null;
+      if (!ctx) return null;
+      ctx.putImageData(new ImageData(out, width, height), 0, 0);
+      return (canvas as OffscreenCanvas).transferToImageBitmap();
+    } catch {
+      return null;
+    }
   }
 
   render(state: RenderState, viewProjectionMatrix?: Float32Array): void {

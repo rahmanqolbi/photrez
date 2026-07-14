@@ -11,6 +11,7 @@ import { performCropCanvas, performApplyCrop } from "./cropApply";
 import { createSnapshot, restoreSnapshot } from "./snapshot";
 import { performPixelSampling } from "./pixelSample";
 import { normalizeBasicAdjustment, bakeAdjustmentToBitmap, type BasicAdjustment } from "./layerAdjustments";
+import type { RenderBackend } from "../renderer/types";
 
 export { drawLayerToContext };
 
@@ -686,18 +687,28 @@ export class DocumentEngine {
    * the slider drag lag-free (GPU preview) while matching the expected
    * "layer adjustment is applied to the layer's pixels" behavior.
    */
-  commitBasicAdjustment(id: LayerId): void {
+  commitBasicAdjustment(id: LayerId, renderer?: RenderBackend): "gpu" | "cpu" | "noop" {
     const layer = this.getLayer(id);
-    if (!layer || !layer.imageBitmap || !layer.basicAdjustment) return;
+    if (!layer || !layer.imageBitmap || !layer.basicAdjustment) return "noop";
 
     const adj = layer.basicAdjustment;
     // No-op adjustment: just drop the param, skip the pixel pass.
     if (adj.brightness === 0 && adj.contrast === 0 && adj.saturation === 0) {
       this.clearBasicAdjustments(id);
-      return;
+      return "noop";
     }
 
-    const baked = bakeAdjustmentToBitmap(layer.imageBitmap, layer.width, layer.height, adj);
+    // Prefer the GPU bake (fast, off the paint path) when the renderer offers
+    // it; fall back to the CPU pixel pass otherwise (export, fill, tests).
+    let baked: ImageBitmap;
+    let usedGpu = false;
+    const gpu = renderer?.bakeLayerToBitmap?.(id, layer.width, layer.height, adj);
+    if (gpu) {
+      baked = gpu;
+      usedGpu = true;
+    } else {
+      baked = bakeAdjustmentToBitmap(layer.imageBitmap, layer.width, layer.height, adj);
+    }
     // NOTE: do NOT close the old imageBitmap — an undo/redo snapshot may still
     // reference it. GC reclaims it once no snapshot/layer references remain.
     layer.imageBitmap = baked;
@@ -706,6 +717,7 @@ export class DocumentEngine {
     layer.hasAdjustments = false;
     this.model.dirty = true;
     this.markLayerDirty(id);
+    return usedGpu ? "gpu" : "cpu";
     this.notifyVisualChange();
   }
 

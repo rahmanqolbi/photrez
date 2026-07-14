@@ -1,6 +1,7 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSignal } from "solid-js";
 import * as EditorContextModule from "../shell/EditorContext";
+import * as DialogProviderModule from "../dialogs/DialogProvider";
 import { useBrushOverlay } from "../useBrushOverlay";
 import type { DocumentEngine } from "@/engine/document";
 import type { CommandHistory } from "@/engine/history";
@@ -44,6 +45,19 @@ function createImageData(width: number, height: number): ImageData {
     colorSpace: "srgb",
   } as ImageData;
 }
+
+// Dialog mock: the hook now calls useDialog(). Without a provider it throws,
+// so every test that mounts useBrushOverlay() needs this spy in place.
+const dialogConfirm = vi.fn();
+const dialogMock = {
+  confirm: dialogConfirm,
+  alert: vi.fn(),
+  quality: vi.fn(),
+  confirmWithCheckbox: vi.fn(),
+  confirmSave: vi.fn(),
+  colorPicker: vi.fn(),
+  newDocument: vi.fn(),
+} as unknown as Record<string, any>;
 
 let defaultMockEditor: Record<string, any>;
 
@@ -187,6 +201,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// Re-establish the useDialog spy for every test (afterEach restores it). The
+// default dialog resolves to "cancel" (no-op) so tests that don't care about
+// the dialog are unaffected; individual tests override dialogConfirm.
+beforeEach(() => {
+  vi.spyOn(DialogProviderModule, "useDialog").mockReturnValue(dialogMock as any);
+  dialogConfirm.mockReset();
+  dialogConfirm.mockResolvedValue(false);
+});
+
 describe("useBrushOverlay session lifecycle", () => {
   const settings = { size: 20, hardness: 1, opacity: 1, flow: 1, smoothing: 0 };
 
@@ -229,7 +252,7 @@ describe("useBrushOverlay clearPrevStrokePointCount", () => {
   });
 });
 
-describe("useBrushOverlay keeps adjustment param non-destructive on brush commit", () => {
+describe("useBrushOverlay bake-on-paint adjustment WYSIWYG", () => {
   const settings = { size: 20, hardness: 1, opacity: 1, flow: 1, smoothing: 0 };
 
   function harnessWithAdjustment(basicAdjustment: any) {
@@ -241,23 +264,27 @@ describe("useBrushOverlay keeps adjustment param non-destructive on brush commit
       imageBitmap: document.createElement("canvas") as unknown as ImageBitmap,
       basicAdjustment,
       transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
+      hasAdjustments: !!basicAdjustment,
     };
-    const commitBasicAdjustment = vi.fn();
+    // Simulates the real engine commit: drop the param, swap in a fresh bitmap.
+    const commitBasicAdjustment = vi.fn((_id: string, _renderer?: any) => {
+      layer.basicAdjustment = undefined;
+      layer.hasAdjustments = false;
+      layer.imageBitmap = document.createElement("canvas") as unknown as ImageBitmap;
+    });
     const uploadImage = vi.fn();
     const commit = vi.fn();
     const history = { commit };
+    const snapshot = vi.fn(() => ({ hasAdjustment: !!basicAdjustment }));
     const engine = {
       getActiveLayerId: () => layer.id,
       getLayer: () => layer,
       commitBasicAdjustment,
+      snapshot,
       setLayerImageBitmap: vi.fn(),
-      // Snapshot reflects the CURRENT param state at commit time. The brush no
-      // longer bakes the adjustment, so this carries hasAdjustment=true and an
-      // undo restores to the adjustment-still-applied model.
-      snapshot: vi.fn(() => ({ hasAdjustment: !!layer.basicAdjustment })),
     };
     const mockEditor = {
-      workspace: { getActiveEngine: () => engine },
+      workspace: { getActiveEngine: () => engine, getActiveHistory: () => history },
       renderer: { uploadImage },
       scheduler: { requestRender: vi.fn() },
       fgColor: () => "#ff0000",
@@ -280,54 +307,70 @@ describe("useBrushOverlay keeps adjustment param non-destructive on brush commit
     const overlay = useBrushOverlay();
     overlay.setOverlayCanvasRef(canvas);
 
-    return { overlay, layer, commitBasicAdjustment, uploadImage, commit, history, engine };
+    return { overlay, layer, commitBasicAdjustment, uploadImage, commit, history, engine, snapshot, dialog: dialogConfirm };
   }
 
-  it("brush stroke on adjusted layer keeps basicAdjustment and uploads a dirtyRect", async () => {
-    const { overlay, layer, commitBasicAdjustment, uploadImage, engine, history } =
-      harnessWithAdjustment({ brightness: 50, contrast: 0, saturation: 0 });
+  it("first paint on an adjusted layer confirms, then bakes + clears the adjustment on Apply", async () => {
+    dialogConfirm.mockResolvedValue(true);
+    const { overlay, layer, uploadImage, engine } =
+      harnessWithAdjustment({ brightness: 20, contrast: 0, saturation: 0 });
 
-    overlay.onPaintStroke([{ x: 10, y: 40 }], false, settings, false);
-    await overlay.commitBrushStroke(engine as unknown as DocumentEngine, history as unknown as CommandHistory, "layer-1", false);
+    overlay.onPaintStroke([{ x: 10, y: 10 }], false, settings, false);
+    // Let the async confirm resolve.
+    await Promise.resolve();
+    await Promise.resolve();
 
-    // The adjustment must NOT be baked away on the brush path.
-    expect(commitBasicAdjustment).not.toHaveBeenCalled();
-    expect(layer.basicAdjustment).toBeDefined();
-
-    // The GPU upload must receive the stroke's dirty rect.
-    expect(uploadImage).toHaveBeenCalled();
-    const rect = uploadImage.mock.calls[0][2];
-    expect(rect).toBeDefined();
-    expect(typeof rect.x).toBe("number");
-    expect(typeof rect.y).toBe("number");
-    expect(typeof rect.width).toBe("number");
-    expect(typeof rect.height).toBe("number");
+    expect(dialogConfirm).toHaveBeenCalledOnce();
+    expect(engine.commitBasicAdjustment).toHaveBeenCalledWith("layer-1", expect.anything());
+    expect(layer.basicAdjustment).toBeUndefined(); // baked away
+    expect(uploadImage).toHaveBeenCalled(); // baked bitmap uploaded
   });
 
-  it("brush undo checkpoint carries the adjustment (undo keeps basicAdjustment)", async () => {
-    const { overlay, layer, commit, engine, history } =
-      harnessWithAdjustment({ brightness: 50, contrast: 0, saturation: 0 });
+  it("first paint on an adjusted layer does NOT bake when cancelled (Paint as-is)", async () => {
+    dialogConfirm.mockResolvedValue(false);
+    const { overlay, layer, uploadImage, engine } =
+      harnessWithAdjustment({ brightness: 20, contrast: 0, saturation: 0 });
 
-    overlay.onPaintStroke([{ x: 50, y: 40 }], false, settings, false);
-    await overlay.commitBrushStroke(engine as unknown as DocumentEngine, history as unknown as CommandHistory, "layer-1", false);
+    overlay.onPaintStroke([{ x: 10, y: 10 }], false, settings, false);
+    await Promise.resolve();
+    await Promise.resolve();
 
-    // The committed snapshot must reflect the pre-stroke model with the
-    // adjustment still applied, so undoing the brush restores it.
-    expect(commit).toHaveBeenCalledWith(
-      expect.objectContaining({ hasAdjustment: true }),
-      expect.any(String),
-    );
-    // Sanity: the live param was NOT dropped by the stroke commit.
-    expect(layer.basicAdjustment).toBeDefined();
+    expect(dialogConfirm).toHaveBeenCalledOnce();
+    expect(engine.commitBasicAdjustment).not.toHaveBeenCalled();
+    expect(layer.basicAdjustment).toBeDefined(); // kept
+    expect(uploadImage).not.toHaveBeenCalled();
   });
 
-  it("brush stroke on a layer WITHOUT adjustment still commits normally", async () => {
+  it("a second stroke after Apply paints raw and commits with the pre-bake undo snapshot", async () => {
+    dialogConfirm.mockResolvedValue(true);
+    const { overlay, layer, uploadImage, engine, commit, snapshot, history } =
+      harnessWithAdjustment({ brightness: 20, contrast: 0, saturation: 0 });
+
+    // First stroke: dialog → bake (basicAdjustment cleared).
+    overlay.onPaintStroke([{ x: 10, y: 10 }], false, settings, false);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(layer.basicAdjustment).toBeUndefined();
+
+    // Second stroke: no dialog now, paints the raw picked color (WYSIWYG).
+    overlay.onPaintStroke([{ x: 20, y: 20 }], false, settings, false);
+    await overlay.commitBrushStroke(engine as unknown as DocumentEngine, history as unknown as CommandHistory, "layer-1", false);
+
+    expect(uploadImage).toHaveBeenCalled(); // bake uploaded, then stroke uploaded
+    // The undo checkpoint must restore the PRE-bake model (adjustment applied).
+    const preBakeSnap = snapshot.mock.results[0].value;
+    expect(commit).toHaveBeenCalledWith(preBakeSnap, "Brush Stroke");
+  });
+
+  it("brush stroke on a layer WITHOUT adjustment still commits normally (no dialog)", async () => {
+    dialogConfirm.mockResolvedValue(true);
     const { overlay, commitBasicAdjustment, uploadImage, engine, history } =
       harnessWithAdjustment(undefined);
 
-    overlay.onPaintStroke([{ x: 10, y: 40 }], false, settings, false);
+    overlay.onPaintStroke([{ x: 10, y: 10 }], false, settings, false);
     await overlay.commitBrushStroke(engine as unknown as DocumentEngine, history as unknown as CommandHistory, "layer-1", false);
 
+    expect(dialogConfirm).not.toHaveBeenCalled();
     expect(commitBasicAdjustment).not.toHaveBeenCalled();
     expect(uploadImage).toHaveBeenCalled();
   });
