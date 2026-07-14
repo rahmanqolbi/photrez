@@ -246,11 +246,36 @@ export class WebGL2Backend implements RenderBackend {
     this.currentHeight = 0;
   }
 
-  uploadImage(layerId: string, source: ImageBitmap): TextureRef {
+  uploadImage(layerId: string, source: ImageBitmap, dirtyRect?: { x: number; y: number; width: number; height: number }): TextureRef {
     const gl = this.gl;
     if (!gl) throw new Error("Renderer not initialized");
     if (this.contextLost || gl.isContextLost()) {
       throw new Error("Renderer context is lost; upload is paused until restore");
+    }
+
+    const existing = this.textures.get(layerId);
+    if (
+      dirtyRect &&
+      existing &&
+      existing.width === source.width &&
+      existing.height === source.height &&
+      dirtyRect.width > 0 &&
+      dirtyRect.height > 0
+    ) {
+      // Patch only the changed sub-rect — avoids re-uploading the full layer texture.
+      const { x, y, width, height } = dirtyRect;
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(source, x, y, width, height, 0, 0, width, height);
+        gl.bindTexture(gl.TEXTURE_2D, existing.texture);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+        return existing;
+      }
+      // ctx unavailable (e.g. test env) → fall through to full upload below.
     }
 
     this.destroyTexture(layerId); // delete existing

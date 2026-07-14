@@ -1,9 +1,10 @@
 import type { DocumentEngine } from "@/engine/document";
 import type { CommandHistory } from "@/engine/history";
 import type { DocumentModel } from "@/engine/types";
+import type { DirtyRectLike } from "@/renderer/types";
 
 export interface PaintBitmapUploader {
-  uploadImage(layerId: string, bitmap: ImageBitmap): void;
+  uploadImage(layerId: string, bitmap: ImageBitmap, dirtyRect?: DirtyRectLike): void;
 }
 
 export interface PaintBitmapCommitContext {

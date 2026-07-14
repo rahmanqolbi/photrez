@@ -7,6 +7,13 @@ export interface RenderCapabilities {
   supportsLinearFilteringFloat: boolean;
 }
 
+export interface DirtyRectLike {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface TextureRef {
   id: string;
   texture: WebGLTexture;
@@ -19,7 +26,7 @@ export interface RenderBackend {
   readonly capabilities: RenderCapabilities;
 
   initialize(canvas: HTMLCanvasElement): void;
-  uploadImage(layerId: string, source: ImageBitmap): TextureRef;
+  uploadImage(layerId: string, source: ImageBitmap, dirtyRect?: DirtyRectLike): TextureRef;
   destroyTexture(layerId: string): void;
   render(state: RenderState, viewProjectionMatrix?: Float32Array): void;
   resize(docWidth: number, docHeight: number, zoom: number, dpr: number): void;
