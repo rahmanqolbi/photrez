@@ -167,7 +167,15 @@ export function useViewportRenderer(params: UseViewportRendererParams) {
           camera.setViewportSize(entry.contentRect.width, entry.contentRect.height);
         }
         if (resizeTimer !== null) clearTimeout(resizeTimer);
-        resizeTimer = window.setTimeout(fitToScreenAndRender, 100);
+        // Preserve the user's current zoom/pan on resize instead of snapping
+        // back to fit. A transient layout shift (e.g. a panel or status bar
+        // resizing during a brush stroke) must not reset the view — that was
+        // the source of the "zoom suddenly resets to fit" bug. First-open and
+        // explicit fits (Ctrl+0, double-click, crop) still refit.
+        resizeTimer = window.setTimeout(() => {
+          resizeRenderer();
+          scheduler.requestRender();
+        }, 100);
       });
       resizeObserver.observe(container);
     }
