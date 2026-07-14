@@ -229,7 +229,7 @@ describe("useBrushOverlay clearPrevStrokePointCount", () => {
   });
 });
 
-describe("useBrushOverlay defers adjustment bake to commit (keeps first dab responsive)", () => {
+describe("useBrushOverlay keeps adjustment param non-destructive on brush commit", () => {
   const settings = { size: 20, hardness: 1, opacity: 1, flow: 1, smoothing: 0 };
 
   function harnessWithAdjustment(basicAdjustment: any) {
@@ -244,13 +244,17 @@ describe("useBrushOverlay defers adjustment bake to commit (keeps first dab resp
     };
     const commitBasicAdjustment = vi.fn();
     const uploadImage = vi.fn();
-    const history = { commit: vi.fn() };
+    const commit = vi.fn();
+    const history = { commit };
     const engine = {
       getActiveLayerId: () => layer.id,
       getLayer: () => layer,
       commitBasicAdjustment,
       setLayerImageBitmap: vi.fn(),
-      snapshot: vi.fn(() => ({})),
+      // Snapshot reflects the CURRENT param state at commit time. The brush no
+      // longer bakes the adjustment, so this carries hasAdjustment=true and an
+      // undo restores to the adjustment-still-applied model.
+      snapshot: vi.fn(() => ({ hasAdjustment: !!layer.basicAdjustment })),
     };
     const mockEditor = {
       workspace: { getActiveEngine: () => engine },
@@ -276,107 +280,56 @@ describe("useBrushOverlay defers adjustment bake to commit (keeps first dab resp
     const overlay = useBrushOverlay();
     overlay.setOverlayCanvasRef(canvas);
 
-    return { overlay, layer, commitBasicAdjustment, uploadImage, engine, history };
+    return { overlay, layer, commitBasicAdjustment, uploadImage, commit, history, engine };
   }
 
-  it("captures pre-bake snapshot at stroke start but defers the bake to commit", async () => {
+  it("brush stroke on adjusted layer keeps basicAdjustment and uploads a dirtyRect", async () => {
     const { overlay, layer, commitBasicAdjustment, uploadImage, engine, history } =
       harnessWithAdjustment({ brightness: 50, contrast: 0, saturation: 0 });
 
-    // First stroke (non-final) = destructive edit start → capture checkpoint
-    // only; DO NOT bake yet so the first dab isn't blocked by the CPU loop.
     overlay.onPaintStroke([{ x: 10, y: 40 }], false, settings, false);
-
-    expect(commitBasicAdjustment).not.toHaveBeenCalled();
-    expect(uploadImage).not.toHaveBeenCalled();
-    expect(layer.basicAdjustment).toBeDefined(); // param still present mid-stroke
-
-    // Commit the stroke → bake now happens before composite.
     await overlay.commitBrushStroke(engine as unknown as DocumentEngine, history as unknown as CommandHistory, "layer-1", false);
-    expect(commitBasicAdjustment).toHaveBeenCalledWith("layer-1");
-    expect(uploadImage).toHaveBeenCalled();
-  });
 
-  it("does NOT bake when the layer has no adjustment", () => {
-    const { overlay, commitBasicAdjustment, uploadImage } = harnessWithAdjustment(undefined);
-
-    overlay.onPaintStroke([{ x: 10, y: 40 }], false, settings, false);
-
+    // The adjustment must NOT be baked away on the brush path.
     expect(commitBasicAdjustment).not.toHaveBeenCalled();
-    expect(uploadImage).not.toHaveBeenCalled();
+    expect(layer.basicAdjustment).toBeDefined();
+
+    // The GPU upload must receive the stroke's dirty rect.
+    expect(uploadImage).toHaveBeenCalled();
+    const rect = uploadImage.mock.calls[0][2];
+    expect(rect).toBeDefined();
+    expect(typeof rect.x).toBe("number");
+    expect(typeof rect.y).toBe("number");
+    expect(typeof rect.width).toBe("number");
+    expect(typeof rect.height).toBe("number");
   });
 
-  it("bakes only once at commit (no re-bake across gesture segments)", async () => {
-    const { overlay, commitBasicAdjustment, engine, history } =
+  it("brush undo checkpoint carries the adjustment (undo keeps basicAdjustment)", async () => {
+    const { overlay, layer, commit, engine, history } =
       harnessWithAdjustment({ brightness: 50, contrast: 0, saturation: 0 });
 
-    overlay.onPaintStroke([{ x: 10, y: 40 }], false, settings, false);
-    overlay.onPaintStroke([{ x: 10, y: 40 }, { x: 22, y: 40 }], false, settings, false);
-
-    // No bake during the gesture; a single commit → a single bake.
-    expect(commitBasicAdjustment).not.toHaveBeenCalled();
-    await overlay.commitBrushStroke(engine as unknown as DocumentEngine, history as unknown as CommandHistory, "layer-1", false);
-    expect(commitBasicAdjustment).toHaveBeenCalledTimes(1);
-  });
-
-  it("brush undo checkpoint restores to adjustment-applied state (not pre-adjustment)", async () => {
-    const layer = {
-      id: "layer-1",
-      width: 100, height: 80,
-      locked: false, visible: true, lockTransparency: false,
-      imageBitmap: null as ImageBitmap | null,
-      basicAdjustment: { brightness: 50, contrast: 0, saturation: 0 } as { brightness: number; contrast: number; saturation: number } | undefined,
-      transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
-    };
-    const commit = vi.fn();
-    const uploadImage = vi.fn();
-    // snapshot() reflects the CURRENT param state at call time, so a pre-bake
-    // snapshot must carry hasAdjustment=true while the live param is still set.
-    const engine = {
-      getActiveLayerId: () => layer.id,
-      getLayer: () => layer,
-      snapshot: () => ({ hasAdjustment: !!layer.basicAdjustment }),
-      setLayerImageBitmap: vi.fn(),
-      // Bake: drop the param (mirrors production commitBasicAdjustment tail).
-      commitBasicAdjustment: vi.fn((_id: string) => { layer.basicAdjustment = undefined; }),
-    };
-    const mockEditor = {
-      workspace: { getActiveEngine: () => engine },
-      renderer: { uploadImage },
-      scheduler: { requestRender: vi.fn() },
-      fgColor: () => "#ff0000",
-      bgColor: () => "#ffffff",
-      docWidth: () => 100,
-      docHeight: () => 80,
-      activeTool: () => "brush",
-      brushSize: () => 20,
-      brushHardness: () => 1,
-      eraserSize: () => 20,
-      eraserHardness: () => 1,
-    };
-    vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockEditor as any);
-
-    const overlayCanvas = document.createElement("canvas");
-    overlayCanvas.width = 100;
-    overlayCanvas.height = 80;
-    const overlay = useBrushOverlay();
-    overlay.setOverlayCanvasRef(overlayCanvas);
-    layer.imageBitmap = await createImageBitmap(overlayCanvas);
-
-    // Start the stroke (isFinal=false) → pre-bake snapshot captured, bake deferred.
     overlay.onPaintStroke([{ x: 50, y: 40 }], false, settings, false);
-    // Commit the stroke (mirrors the pointerup path) → bake now runs.
-    await overlay.commitBrushStroke(engine as unknown as DocumentEngine, { commit } as unknown as CommandHistory, "layer-1", false);
+    await overlay.commitBrushStroke(engine as unknown as DocumentEngine, history as unknown as CommandHistory, "layer-1", false);
 
-    // The brush's undo checkpoint must be the PRE-BAKE snapshot: adjustment
-    // still applied — so undoing the brush keeps the adjustment (the
-    // adjustment has its own separate undo entry).
+    // The committed snapshot must reflect the pre-stroke model with the
+    // adjustment still applied, so undoing the brush restores it.
     expect(commit).toHaveBeenCalledWith(
       expect.objectContaining({ hasAdjustment: true }),
       expect.any(String),
     );
-    // Sanity: the live param was actually baked away by the stroke commit.
-    expect(layer.basicAdjustment).toBeUndefined();
+    // Sanity: the live param was NOT dropped by the stroke commit.
+    expect(layer.basicAdjustment).toBeDefined();
+  });
+
+  it("brush stroke on a layer WITHOUT adjustment still commits normally", async () => {
+    const { overlay, commitBasicAdjustment, uploadImage, engine, history } =
+      harnessWithAdjustment(undefined);
+
+    overlay.onPaintStroke([{ x: 10, y: 40 }], false, settings, false);
+    await overlay.commitBrushStroke(engine as unknown as DocumentEngine, history as unknown as CommandHistory, "layer-1", false);
+
+    expect(commitBasicAdjustment).not.toHaveBeenCalled();
+    expect(uploadImage).toHaveBeenCalled();
   });
 });
 
