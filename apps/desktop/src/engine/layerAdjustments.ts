@@ -11,6 +11,12 @@ const clampChannel = (value: number): number => {
   return value;
 };
 
+const clamp01 = (value: number): number => {
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
+};
+
 const clampPercent = (value: number): number => {
   if (value < -100) return -100;
   if (value > 100) return 100;
@@ -25,49 +31,83 @@ export function normalizeBasicAdjustment(adjustment: BasicAdjustment): BasicAdju
   };
 }
 
+/**
+ * Pure per-channel RGB adjustment in [0,1] straight-alpha space. Mirrors
+ * `renderer/shaders.ts::applyAdjustment` so the CPU bake and GPU preview agree.
+ */
+export function applyAdjustmentToRgb(
+  r: number,
+  g: number,
+  b: number,
+  adj: BasicAdjustment,
+): [number, number, number] {
+  const contrastFactor = (259 * (adj.contrast + 255)) / (255 * (259 - adj.contrast));
+  let cr = contrastFactor * (r - 0.5) + 0.5;
+  let cg = contrastFactor * (g - 0.5) + 0.5;
+  let cb = contrastFactor * (b - 0.5) + 0.5;
+
+  const t = adj.brightness / 100;
+  if (t >= 0) {
+    cr = cr + (1 - cr) * t * 0.5;
+    cg = cg + (1 - cg) * t * 0.5;
+    cb = cb + (1 - cb) * t * 0.5;
+  } else {
+    const f = -t;
+    cr = cr - cr * f * 0.5;
+    cg = cg - cg * f * 0.5;
+    cb = cb - cb * f * 0.5;
+  }
+
+  const luminance = cr * 0.2126 + cg * 0.7152 + cb * 0.0722;
+  const satFactor = 1 + adj.saturation / 100;
+  cr = luminance + (cr - luminance) * satFactor;
+  cg = luminance + (cg - luminance) * satFactor;
+  cb = luminance + (cb - luminance) * satFactor;
+
+  return [clamp01(cr), clamp01(cg), clamp01(cb)];
+}
+
+const hexToRgb = (hex: string): [number, number, number] => {
+  let h = hex.replace("#", "");
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  const num = parseInt(h, 16);
+  return [((num >> 16) & 255) / 255, ((num >> 8) & 255) / 255, (num & 255) / 255];
+};
+
+const rgbToHex = (r: number, g: number, b: number): string => {
+  const toHex = (v: number): string =>
+    Math.round(clamp01(v) * 255)
+      .toString(16)
+      .padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+};
+
+/** Maps a hex color string (#rgb / #rrggbb) through the same math as the pixel pass. */
+export function applyBasicAdjustmentToColor(color: string, adj: BasicAdjustment): string {
+  if (adj.brightness === 0 && adj.contrast === 0 && adj.saturation === 0) return color;
+  const [r, g, b] = hexToRgb(color);
+  const [r2, g2, b2] = applyAdjustmentToRgb(r, g, b, normalizeBasicAdjustment(adj));
+  return rgbToHex(r2, g2, b2);
+}
+
 export function applyBasicAdjustmentToPixels(
   pixels: Uint8ClampedArray,
   adjustment: BasicAdjustment,
 ): Uint8ClampedArray {
   const next = new Uint8ClampedArray(pixels);
   const normalized = normalizeBasicAdjustment(adjustment);
-  // (brightness * 2.55) shifted all pixel values equally — equivalent to a
-  // legacy brightness curve which clips highlights/shadows. This
-  // curve lifts shadows more than highlights (brighten) or pulls
-  // highlights more than shadows (darken), preserving detail at extremes.
-  const t = normalized.brightness / 100; // -1 to 1
-  const contrastFactor = (259 * (normalized.contrast + 255)) / (255 * (259 - normalized.contrast));
-  const saturationFactor = 1 + normalized.saturation / 100;
 
   for (let i = 0; i < next.length; i += 4) {
-    // Apply contrast first (standard S-curve around midtone 128)
-    let r = contrastFactor * (next[i] - 128) + 128;
-    let g = contrastFactor * (next[i + 1] - 128) + 128;
-    let b = contrastFactor * (next[i + 2] - 128) + 128;
-
-    // Nonlinear brightness: preserves highlights when brightening,
-    // preserves shadows when darkening. Scale 0.5 keeps +100/−100
-    // from reaching full white/black.
-    if (t >= 0) {
-      r = r + (255 - r) * t * 0.5;
-      g = g + (255 - g) * t * 0.5;
-      b = b + (255 - b) * t * 0.5;
-    } else {
-      const f = -t;
-      r = r - r * f * 0.5;
-      g = g - g * f * 0.5;
-      b = b - b * f * 0.5;
-    }
-
-    // Luminance-weighted saturation (ITU-R BT.709)
-    const luminance = r * 0.2126 + g * 0.7152 + b * 0.0722;
-    r = luminance + (r - luminance) * saturationFactor;
-    g = luminance + (g - luminance) * saturationFactor;
-    b = luminance + (b - luminance) * saturationFactor;
-
-    next[i] = clampChannel(r);
-    next[i + 1] = clampChannel(g);
-    next[i + 2] = clampChannel(b);
+    // Apply the same math as the GPU preview (shaders.ts::applyAdjustment).
+    const [r, g, b] = applyAdjustmentToRgb(
+      next[i] / 255,
+      next[i + 1] / 255,
+      next[i + 2] / 255,
+      normalized,
+    );
+    next[i] = clampChannel(r * 255);
+    next[i + 1] = clampChannel(g * 255);
+    next[i + 2] = clampChannel(b * 255);
   }
 
   return next;

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { applyBasicAdjustmentToPixels, normalizeBasicAdjustment } from "../layerAdjustments";
+import {
+  applyBasicAdjustmentToColor,
+  applyBasicAdjustmentToPixels,
+  normalizeBasicAdjustment,
+} from "../layerAdjustments";
 
 describe("basic layer adjustments", () => {
   it("clamps adjustment inputs to the supported range", () => {
@@ -28,5 +32,16 @@ describe("basic layer adjustments", () => {
     );
 
     expect(Array.from(adjusted)).toEqual([54, 54, 54, 255]);
+  });
+});
+
+describe("applyBasicAdjustmentToColor", () => {
+  it("returns the same color when adjustment is identity", () => {
+    expect(applyBasicAdjustmentToColor("#ff0000", { brightness: 0, contrast: 0, saturation: 0 }))
+      .toBe("#ff0000");
+  });
+  it("brightens a mid red toward white", () => {
+    const out = applyBasicAdjustmentToColor("#800000", { brightness: 100, contrast: 0, saturation: 0 });
+    expect(out).not.toBe("#800000");
   });
 });
