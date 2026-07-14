@@ -10,7 +10,7 @@ import { drawLayerToContext, compositeTwoLayers, compositeAllLayers } from "./la
 import { performCropCanvas, performApplyCrop } from "./cropApply";
 import { createSnapshot, restoreSnapshot } from "./snapshot";
 import { performPixelSampling } from "./pixelSample";
-import { normalizeBasicAdjustment, type BasicAdjustment } from "./layerAdjustments";
+import { normalizeBasicAdjustment, bakeAdjustmentToBitmap, type BasicAdjustment } from "./layerAdjustments";
 
 export { drawLayerToContext };
 
@@ -630,7 +630,11 @@ export class DocumentEngine {
       // snapshot or layer references remain.
       layer.imageBitmap = bitmap;
       layer.baseImageBitmap = null;
-      layer.basicAdjustment = undefined;
+      // NOTE: intentionally do NOT clear basicAdjustment here. Adjustments are
+      // a non-destructive layer-level effect applied in the renderer shader, so
+      // replacing the layer bitmap (paint commit, fill, etc.) must keep the
+      // adjustment param — otherwise it silently resets to zero after a brush/
+      // eraser stroke. The shader re-applies it on top of the new bitmap.
       if (bitmap) {
         layer.width = bitmap.width;
         layer.height = bitmap.height;
@@ -672,6 +676,37 @@ export class DocumentEngine {
       this.markLayerDirty(id);
       this.notifyVisualChange();
     }
+  }
+
+  /**
+   * Commits the live (GPU-previewed) adjustment into the layer's pixels. Called
+   * when the user releases the adjustment slider. The adjustment is baked via a
+   * CPU pixel pass and the param is dropped, so the stored bitmap now reflects
+   * the adjustment and any later paint shows the raw picked colors. This keeps
+   * the slider drag lag-free (GPU preview) while matching the expected
+   * "layer adjustment is applied to the layer's pixels" behavior.
+   */
+  commitBasicAdjustment(id: LayerId): void {
+    const layer = this.getLayer(id);
+    if (!layer || !layer.imageBitmap || !layer.basicAdjustment) return;
+
+    const adj = layer.basicAdjustment;
+    // No-op adjustment: just drop the param, skip the pixel pass.
+    if (adj.brightness === 0 && adj.contrast === 0 && adj.saturation === 0) {
+      this.clearBasicAdjustments(id);
+      return;
+    }
+
+    const baked = bakeAdjustmentToBitmap(layer.imageBitmap, layer.width, layer.height, adj);
+    // NOTE: do NOT close the old imageBitmap — an undo/redo snapshot may still
+    // reference it. GC reclaims it once no snapshot/layer references remain.
+    layer.imageBitmap = baked;
+    layer.baseImageBitmap = null;
+    layer.basicAdjustment = undefined;
+    layer.hasAdjustments = false;
+    this.model.dirty = true;
+    this.markLayerDirty(id);
+    this.notifyVisualChange();
   }
 
   // ─── Texture Handles ───

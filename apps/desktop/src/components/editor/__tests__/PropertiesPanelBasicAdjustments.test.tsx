@@ -322,6 +322,39 @@ describe("AdjustmentsPanel — production engine behavior (no applyBasicAdjustme
     dispose();
   });
 
+  it("releasing the slider keeps the adjustment as a live param (baked on destructive edit)", async () => {
+    const workspace = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("bake-doc", "Bake Doc", 4, 2);
+    workspace.addDocument(session);
+    const layer = session.engine.getLayers()[0];
+    const initialBitmap = { width: 4, height: 2, close: vi.fn() } as unknown as ImageBitmap;
+    session.engine.setLayerImageBitmap(layer.id, initialBitmap);
+
+    const { container, dispose } = renderAdjustmentsPanel(workspace);
+    await tick();
+
+    const brightness = container.querySelector<HTMLInputElement>("input[aria-label='Bright']");
+    if (!brightness) throw new Error("Brightness slider not found");
+
+    // Drag to 50 — during the drag the adjustment is a live GPU preview param.
+    brightness.value = "50";
+    brightness.dispatchEvent(new InputEvent("input", { bubbles: true }));
+    await tick();
+    expect(session.engine.getLayer(layer.id)!.basicAdjustment).toEqual({ brightness: 50, contrast: 0, saturation: 0 });
+
+    // Release (input `change`) — the panel no longer bakes on release; the
+    // adjustment stays a live, non-destructive param and the slider stays put.
+    brightness.dispatchEvent(new Event("change", { bubbles: true }));
+    await tick();
+
+    const released = session.engine.getLayer(layer.id)!;
+    expect(released.basicAdjustment).toEqual({ brightness: 50, contrast: 0, saturation: 0 }); // param kept
+    expect(released.imageBitmap).toBe(initialBitmap); // NOT baked on release
+    expect(brightness.value).toBe("50"); // slider stays
+
+    dispose();
+  });
+
   it("undo after adjustment resets sliders and clears adjustmentBase (bug #1)", async () => {
     const workspace = new WorkspaceManager();
     const session = WorkspaceManager.createBlankDocument("undo-doc", "Undo Doc", 4, 2);

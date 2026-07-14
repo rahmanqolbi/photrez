@@ -2,6 +2,7 @@ import type { DocumentEngine } from "@/engine/document";
 import type { CommandHistory } from "@/engine/history";
 import type { WebGL2Backend } from "@/renderer/webgl2";
 import { compositeAllLayers } from "@/engine/layerComposite";
+import { bakeAdjustmentToBitmap } from "@/engine/layerAdjustments";
 
 export function mergeActiveLayerDown(
   engine: DocumentEngine,
@@ -118,8 +119,22 @@ export function fillActiveLayerWithColor(
   }
   if (!bitmap) return false;
 
+  // Capture the pre-bake state so the fill's undo checkpoint restores to the
+  // adjustment-still-applied state (not pre-adjustment) — keeping the
+  // adjustment independently undoable from the fill.
+  const preFillSnapshot = engine.snapshot();
+
+  // Fill is a destructive edit: bake the layer's basicAdjustment into the
+  // solid fill so the result matches the layer adjustment, then drop the param.
+  if (layer.basicAdjustment) {
+    const baked = bakeAdjustmentToBitmap(bitmap, w, h, layer.basicAdjustment);
+    bitmap.close();
+    bitmap = baked;
+    engine.clearBasicAdjustments(activeId);
+  }
+
   // Commit pre-action snapshot BEFORE mutating so the fill is undoable/redoable.
-  history.commit(engine.snapshot(), "Fill Layer");
+  history.commit(preFillSnapshot, "Fill Layer");
   engine.setLayerImageBitmap(activeId, bitmap);
   renderer.uploadImage(activeId, bitmap);
   return true;

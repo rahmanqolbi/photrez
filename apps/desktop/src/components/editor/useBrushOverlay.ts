@@ -66,6 +66,11 @@ export function useBrushOverlay() {
   let overlayCtx: CanvasRenderingContext2D | null = null;
   let prevStrokePointCount = 0;
   let strokeGen = 0;
+  // Pre-bake snapshot captured at stroke start (before the adjustment is baked
+  // into pixels) so the brush/eraser undo checkpoint restores to the adjustment-
+  // still-applied state — keeping the adjustment independently undoable.
+  let preBakeSnapshot: ReturnType<DocumentEngine["snapshot"]> | null = null;
+  let bakedThisStroke = false;
 
   let paintSession: PaintStrokeSession | null = null;
 
@@ -74,6 +79,99 @@ export function useBrushOverlay() {
   // Cleared between strokes via clearRect. Reallocated only when layer dimensions change.
   let cachedCommitCanvas: OffscreenCanvas | null = null;
   let cachedCommitCtx: OffscreenCanvasRenderingContext2D | null = null;
+
+  // ── Adjustment bake Web Worker (off-main-thread rasterization) ──
+  // On large layers the CPU pixel loop is 50–200ms; running it on a worker
+  // keeps both brush-down and brush-up responsive. The live preview (shader-
+  // adjusted base + raw dabs) stays visible during the bake; the worker
+  // produces the final bitmap, which is committed when ready.
+  let adjustmentWorker: Worker | null = null;
+  let pendingWorkerCommit:
+    | {
+        gen: number;
+        engine: DocumentEngine;
+        history: CommandHistory;
+        layerId: string;
+        snapshot: ReturnType<DocumentEngine["snapshot"]> | undefined;
+      }
+    | null = null;
+
+  interface AdjustmentBakeResponse {
+    bitmap: ImageBitmap;
+    gen: number;
+    error?: string;
+  }
+
+  function getAdjustmentWorker(): Worker | null {
+    if (adjustmentWorker) return adjustmentWorker;
+    try {
+      adjustmentWorker = new Worker(new URL("./adjustmentWorker.ts", import.meta.url), { type: "module" });
+    } catch {
+      // Worker unavailable (e.g. test env / CSP) — caller falls back to the
+      // main-thread bake path.
+      return null;
+    }
+    adjustmentWorker.onmessage = (e: MessageEvent<AdjustmentBakeResponse>) => {
+      const pending = pendingWorkerCommit;
+      if (!pending) return;
+      const data = e.data;
+      if (data.error || !data.bitmap) {
+        if (data.error) showToast(`Adjustment bake failed: ${data.error}`, "error");
+        pendingWorkerCommit = null;
+        return;
+      }
+      // Superseded by a newer stroke/commit → drop the result and keep the
+      // live overlay owned by the active stroke.
+      if (data.gen !== pending.gen || data.gen !== strokeGen) {
+        data.bitmap.close();
+        return;
+      }
+      pendingWorkerCommit = null;
+      // The bake already landed in data.bitmap; drop the non-destructive param
+      // so the shader stops re-applying it (would double-adjust the result).
+      pending.engine.clearBasicAdjustments(pending.layerId);
+      commitPaintBitmap(
+        { engine: pending.engine, history: pending.history, uploader: renderer, requestRender: () => scheduler.requestRender() },
+        { layerId: pending.layerId, bitmap: data.bitmap, label: "Brush Stroke", snapshot: pending.snapshot },
+      );
+      overlayCtx?.clearRect(0, 0, overlayCanvasRef?.width ?? 0, overlayCanvasRef?.height ?? 0);
+      prevStrokePointCount = 0;
+      paintSession = null;
+      bakedThisStroke = false;
+    };
+    return adjustmentWorker;
+  }
+
+  async function runWorkerBrushCommit(
+    engine: DocumentEngine,
+    history: CommandHistory,
+    layerId: string,
+    layer: NonNullable<ReturnType<DocumentEngine["getLayer"]>>,
+    gen: number,
+    snapshot: ReturnType<DocumentEngine["snapshot"]> | undefined,
+  ): Promise<boolean> {
+    if (typeof Worker === "undefined" || !overlayCanvasRef || !layer.imageBitmap) return false;
+    const worker = getAdjustmentWorker();
+    if (!worker) return false;
+    try {
+      const w = overlayCanvasRef.width;
+      const h = overlayCanvasRef.height;
+      // Snapshot base + overlay and transfer the copies to the worker. The live
+      // bitmaps stay on the main thread (preview + any subsequent stroke).
+      // createImageBitmap is a cheap GPU copy vs. the CPU bake done off-thread.
+      const baseCopy = await createImageBitmap(layer.imageBitmap);
+      const overlayCopy = await createImageBitmap(overlayCanvasRef);
+      pendingWorkerCommit = { gen, engine, history, layerId, snapshot };
+      worker.postMessage(
+        { base: baseCopy, adjustment: layer.basicAdjustment!, overlay: overlayCopy, width: w, height: h, isEraser: false, gen },
+        [baseCopy, overlayCopy],
+      );
+      return true;
+    } catch {
+      // Snapshot failed → signal fallback to main-thread bake.
+      return false;
+    }
+  }
 
   function startHoldTimer() {
     if (holdRaf !== null) return;
@@ -327,6 +425,26 @@ export function useBrushOverlay() {
       prevStrokePointCount === 0;
 
     if (needsReset) {
+      // A new stroke session begins: clear the per-stroke bake flag so a
+      // previous stroke's pre-bake snapshot can't leak into this one.
+      bakedThisStroke = false;
+      // Invalidate any in-flight off-thread bake commit from the previous
+      // stroke, so its result can't clobber this stroke's live overlay.
+      strokeGen++;
+      // ── Capture pre-bake checkpoint for adjustment-aware undo ──
+      // A paint/erase stroke is destructive w.r.t. a non-destructive layer
+      // adjustment: the layer's basicAdjustment must be baked so dabs land on
+      // the already-adjusted base and show raw picked color. We capture the
+      // cheap pre-bake snapshot HERE (so the stroke's undo checkpoint restores
+      // to the adjustment-still-applied state, keeping the adjustment's own
+      // undo entry independent). The actual bake is DEFERRED to commit time
+      // (commitBrushStroke) so the synchronous CPU pixel loop + GPU upload
+      // never blocks the first dab on brush-down.
+      if (!isFinal && layer.basicAdjustment) {
+        preBakeSnapshot = activeEngine.snapshot();
+        bakedThisStroke = true;
+      }
+
       paintSession = {
         layerId: activeId,
         isEraser: effectiveIsEraser,
@@ -613,6 +731,32 @@ export function useBrushOverlay() {
     const eraserFill = isEraser ? resolveEraserFill(layer, true, bgColor()) : null;
     const effectiveIsEraser = eraserFill ? eraserFill.isEraser : false;
 
+    // ── Off-main-thread bake for brush strokes on an adjusted layer ──
+    // The CPU pixel loop (bakeAdjustmentToBitmap) is 50–200ms on large layers.
+    // Offloading it to a Web Worker keeps the brush-down AND brush-up
+    // responsive: the live preview (shader-adjusted base + raw dabs) stays
+    // visible during the bake, and the worker-produced bitmap is committed
+    // when ready — no main-thread freeze at either end of the stroke.
+    // Eraser keeps the param (overlay seeded from un-baked base; shader
+    // adjusts on display), so it uses the fast main-thread path below.
+    if (bakedThisStroke && !effectiveIsEraser && layer.basicAdjustment && layer.imageBitmap) {
+      const gen = ++strokeGen;
+      const offloaded = await runWorkerBrushCommit(
+        engine,
+        history,
+        layerId,
+        layer,
+        gen,
+        bakedThisStroke ? preBakeSnapshot ?? undefined : undefined,
+      );
+      if (offloaded) return;
+      // Fallback (no Worker / snapshot failure): bake on the main thread. May
+      // hitch on very large layers, but keeps the stroke correct.
+      engine.commitBasicAdjustment(layerId);
+      if (layer.imageBitmap) renderer.uploadImage(layerId, layer.imageBitmap);
+      scheduler.requestRender();
+    }
+
     // Reuse cached commit buffer to avoid 107MB allocation per commit.
     // Only reallocate when layer dimensions change.
     if (!cachedCommitCanvas || cachedCommitCanvas.width !== w || cachedCommitCanvas.height !== h) {
@@ -656,7 +800,15 @@ export function useBrushOverlay() {
       }
       commitPaintBitmap(
         { engine, history, uploader: renderer, requestRender: () => scheduler.requestRender() },
-        { layerId, bitmap: newBitmap, label: effectiveIsEraser ? "Eraser" : "Brush Stroke" },
+        {
+          layerId,
+          bitmap: newBitmap,
+          label: effectiveIsEraser ? "Eraser" : "Brush Stroke",
+          // When this stroke baked an adjustment at commit, restore to the
+          // pre-bake state (adjustment still applied) on undo — not to
+          // pre-adjustment. See commitBrushStroke's deferred bake block.
+          snapshot: bakedThisStroke ? preBakeSnapshot ?? undefined : undefined,
+        },
       );
       // Eraser: defer overlay clear to after the next render so the user
       // never sees a flash where the overlay clears before WebGL re-renders
@@ -670,6 +822,7 @@ export function useBrushOverlay() {
       }
       prevStrokePointCount = 0;
       paintSession = null;
+      bakedThisStroke = false;
     } catch (err) {
       showToast(`Brush stroke failed: ${err instanceof Error ? err.message : "unknown error"}`, "error");
       paintSession = null;

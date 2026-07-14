@@ -109,7 +109,41 @@ describe("Editable Basic Adjustments", () => {
     expect(layer.hasAdjustments).toBe(false);
   });
 
-  it("setLayerImageBitmap bakes basicAdjustment by clearing baseImageBitmap and basicAdjustment", () => {
+  it("commitBasicAdjustment bakes the param into the bitmap and drops it (Photoshop-style)", () => {
+    const engine = new DocumentEngine("doc-1", "Test Doc", 100, 100);
+    const layer = engine.addLayer("Layer 1");
+    const initialBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
+    engine.setLayerImageBitmap(layer.id, initialBitmap);
+
+    engine.applyBasicAdjustment(layer.id, { brightness: 10, contrast: 0, saturation: 0 });
+
+    // Commit (simulates slider release)
+    engine.commitBasicAdjustment(layer.id);
+
+    // Adjustment is now baked into a fresh bitmap; the param is gone so the
+    // next paint shows raw colors.
+    expect(layer.basicAdjustment).toBeUndefined();
+    expect(layer.hasAdjustments).toBe(false);
+    expect(layer.imageBitmap).not.toBe(initialBitmap); // baked into a new bitmap
+    // The old bitmap must NOT be closed — an undo snapshot may still reference it.
+    expect(initialBitmap.close).not.toHaveBeenCalled();
+  });
+
+  it("commitBasicAdjustment with a zero adjustment just drops the param (no wasted bake)", () => {
+    const engine = new DocumentEngine("doc-1", "Test Doc", 100, 100);
+    const layer = engine.addLayer("Layer 1");
+    const initialBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
+    engine.setLayerImageBitmap(layer.id, initialBitmap);
+
+    engine.applyBasicAdjustment(layer.id, { brightness: 0, contrast: 0, saturation: 0 });
+    engine.commitBasicAdjustment(layer.id);
+
+    expect(layer.basicAdjustment).toBeUndefined();
+    // No-op: the original bitmap is kept (no new baked bitmap allocated).
+    expect(layer.imageBitmap).toBe(initialBitmap);
+  });
+
+  it("setLayerImageBitmap keeps basicAdjustment as a non-destructive layer effect", () => {
     const engine = new DocumentEngine("doc-1", "Test Doc", 100, 100);
     const layer = engine.addLayer("Layer 1");
     const initialBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
@@ -119,13 +153,14 @@ describe("Editable Basic Adjustments", () => {
     const adj = { brightness: 10, contrast: 20, saturation: -30 };
     engine.applyBasicAdjustment(layer.id, adj);
 
-    // Destructive overwrite
+    // Replace the bitmap (paint commit / fill)
     const newBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
     engine.setLayerImageBitmap(layer.id, newBitmap);
 
     expect(layer.imageBitmap).toBe(newBitmap);
     expect(layer.baseImageBitmap).toBeNull();
-    expect(layer.basicAdjustment).toBeUndefined();
+    // Adjustment persists — the shader re-applies it on top of the new bitmap.
+    expect(layer.basicAdjustment).toEqual(adj);
   });
 
   it("duplicateLayerNode deep-copies basicAdjustment and clones baseImageBitmap", () => {
@@ -319,7 +354,7 @@ describe("Editable Basic Adjustments", () => {
     expect(restored.imageBitmap).toBe(initialBitmap);
   });
 
-  it("setLayerImageBitmap drops basicAdjustment and does not close the previous bitmap (snapshot safety)", () => {
+  it("setLayerImageBitmap preserves basicAdjustment (non-destructive layer effect, no reset on paint)", () => {
     const engine = new DocumentEngine("doc-1", "Test Doc", 100, 100);
     const layer = engine.addLayer("Layer 1");
     const initialBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
@@ -335,9 +370,10 @@ describe("Editable Basic Adjustments", () => {
 
     // The previous bitmap must NOT be closed — undo snapshots may still reference it.
     expect(initialBitmap.close).not.toHaveBeenCalled();
-    // Replacing the layer content bakes the adjustment away (no longer needed).
+    // Replacing the layer content must NOT drop the adjustment — it is a layer-
+    // level effect re-applied by the shader on top of the new bitmap.
     expect(layer.imageBitmap).toBe(paintBitmap);
-    expect(layer.basicAdjustment).toBeUndefined();
+    expect(layer.basicAdjustment).toEqual({ brightness: 10, contrast: 0, saturation: 0 });
     expect(layer.baseImageBitmap).toBeNull();
   });
 
@@ -404,7 +440,7 @@ describe("Editable Basic Adjustments", () => {
     engine.applyBasicAdjustment(layer.id, { brightness: 10, contrast: 0, saturation: 0 });
     const snapAfterAdj = engine.snapshot();
 
-    // Paint commit replaces bitmap entirely (clears basicAdjustment)
+    // Paint commit replaces the bitmap but keeps the adjustment (non-destructive)
     const paintBitmap = { width: 100, height: 100, close: vi.fn() } as unknown as ImageBitmap;
     engine.setLayerImageBitmap(layer.id, paintBitmap);
     const snapAfterPaint = engine.snapshot();
@@ -415,10 +451,10 @@ describe("Editable Basic Adjustments", () => {
     expect(restored1.imageBitmap).toBe(initialBitmap);
     expect(restored1.basicAdjustment).toEqual({ brightness: 10, contrast: 0, saturation: 0 });
 
-    // Redo paint — restore to snapAfterPaint
+    // Redo paint — restore to snapAfterPaint (adjustment persisted through paint)
     engine.restore(snapAfterPaint);
     const restored2 = engine.getLayer(layer.id)!;
-    expect(restored2.basicAdjustment).toBeUndefined();
+    expect(restored2.basicAdjustment).toEqual({ brightness: 10, contrast: 0, saturation: 0 });
     expect(restored2.imageBitmap).toBe(paintBitmap);
   });
 });

@@ -72,3 +72,25 @@ export function applyBasicAdjustmentToPixels(
 
   return next;
 }
+
+/**
+ * Bakes a BasicAdjustment into a fresh ImageBitmap (CPU pixel pass). Used to
+ * commit a non-destructive adjustment on release (or at export) so the layer's
+ * stored pixels reflect the adjustment and subsequent paint shows raw colors.
+ * The source bitmap is left untouched (undo snapshots may still reference it).
+ */
+export function bakeAdjustmentToBitmap(
+  bitmap: ImageBitmap,
+  width: number,
+  height: number,
+  adjustment: BasicAdjustment,
+): ImageBitmap {
+  const canvas = new OffscreenCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Failed to acquire 2D context for adjustment bake");
+  ctx.drawImage(bitmap, 0, 0);
+  const imageData = ctx.getImageData(0, 0, width, height);
+  imageData.data.set(applyBasicAdjustmentToPixels(imageData.data, adjustment));
+  ctx.putImageData(imageData, 0, 0);
+  return canvas.transferToImageBitmap();
+}

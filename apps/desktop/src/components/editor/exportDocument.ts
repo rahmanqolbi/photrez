@@ -3,7 +3,7 @@ import type { DocumentEngine } from "@/engine/document";
 import { getEffectiveMaxDim } from "@/engine/types";
 import { writeFileBytes, showSaveDialog } from "@/tauri/native";
 import { drawLayerToContext } from "@/engine/layerComposite";
-import { applyBasicAdjustmentToPixels } from "@/engine/layerAdjustments";
+import { bakeAdjustmentToBitmap } from "@/engine/layerAdjustments";
 
 export type ExportFormat = "png" | "jpeg" | "webp";
 
@@ -29,13 +29,7 @@ function getExtension(format: ExportFormat): string {
 // what the user sees. Operates on straight-alpha RGBA (getImageData), which is
 // what applyBasicAdjustmentToPixels expects.
 function bakeAdjustment(layer: LayerNode): ImageBitmap {
-  const canvas = new OffscreenCanvas(layer.width, layer.height);
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(layer.imageBitmap!, 0, 0);
-  const imageData = ctx.getImageData(0, 0, layer.width, layer.height);
-  imageData.data.set(applyBasicAdjustmentToPixels(imageData.data, layer.basicAdjustment!));
-  ctx.putImageData(imageData, 0, 0);
-  return canvas.transferToImageBitmap();
+  return bakeAdjustmentToBitmap(layer.imageBitmap!, layer.width, layer.height, layer.basicAdjustment!);
 }
 
 export async function encodeComposite(

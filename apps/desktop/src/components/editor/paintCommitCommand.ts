@@ -1,5 +1,6 @@
 import type { DocumentEngine } from "@/engine/document";
 import type { CommandHistory } from "@/engine/history";
+import type { DocumentModel } from "@/engine/types";
 
 export interface PaintBitmapUploader {
   uploadImage(layerId: string, bitmap: ImageBitmap): void;
@@ -16,6 +17,12 @@ export interface PaintBitmapCommit {
   layerId: string;
   bitmap: ImageBitmap;
   label?: string;
+  // Optional pre-captured snapshot. When set, it is used as the undo
+  // checkpoint instead of a fresh engine.snapshot() at commit time. Used by
+  // the brush/eraser so the checkpoint restores to the pre-bake state (the
+  // layer adjustment still applied as a live param) rather than the
+  // post-bake state — keeping the adjustment independently undoable.
+  snapshot?: DocumentModel;
 }
 
 function closeBitmap(bitmap: ImageBitmap): void {
@@ -32,7 +39,7 @@ export function commitPaintBitmap(context: PaintBitmapCommitContext, command: Pa
     return false;
   }
 
-  context.history.commit(context.engine.snapshot(), command.label);
+  context.history.commit(command.snapshot ?? context.engine.snapshot(), command.label);
   context.engine.setLayerImageBitmap(command.layerId, command.bitmap);
   context.uploader.uploadImage(command.layerId, command.bitmap);
   context.requestRender();
