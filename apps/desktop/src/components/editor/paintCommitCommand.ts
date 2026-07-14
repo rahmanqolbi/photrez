@@ -46,7 +46,13 @@ export function commitPaintBitmap(context: PaintBitmapCommitContext, command: Pa
 
   context.history.commit(command.snapshot ?? context.engine.snapshot(), command.label);
   context.engine.setLayerImageBitmap(command.layerId, command.bitmap);
-  context.uploader.uploadImage(command.layerId, command.bitmap, command.dirtyRect);
+  // Only forward dirtyRect when present — keeps the 2-arg call for plain
+  // commits (no sub-rect) so existing callers/tests are unaffected.
+  if (command.dirtyRect) {
+    context.uploader.uploadImage(command.layerId, command.bitmap, command.dirtyRect);
+  } else {
+    context.uploader.uploadImage(command.layerId, command.bitmap);
+  }
   context.requestRender();
   return true;
 }

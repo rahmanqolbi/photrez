@@ -35,7 +35,7 @@ describe("commitPaintBitmap", () => {
     expect(committed).toBe(true);
     expect(history.getUndoCount()).toBe(1);
     expect(engine.getLayer(layer.id)?.imageBitmap).toBe(nextBitmap);
-    expect(uploader.uploadImage).toHaveBeenCalledWith(layer.id, nextBitmap, undefined);
+    expect(uploader.uploadImage).toHaveBeenCalledWith(layer.id, nextBitmap);
     expect(requestRender).toHaveBeenCalledTimes(1);
     expect(events).toEqual(["upload", "render"]);
 
@@ -112,7 +112,7 @@ describe("commitPaintBitmap", () => {
     expect(uploader.uploadImage).toHaveBeenCalledWith(layer.id, bitmap, { x: 1, y: 2, width: 3, height: 4 });
   });
 
-  it("passes undefined dirtyRect to uploader.uploadImage when omitted", () => {
+  it("calls uploadImage without a dirtyRect arg when omitted", () => {
     const engine = new DocumentEngine("doc-1", "Paint Doc", 10, 10);
     const layer = engine.addLayer("Paint Layer", 10, 10);
     const history = new CommandHistory();
@@ -126,6 +126,6 @@ describe("commitPaintBitmap", () => {
     );
 
     expect(committed).toBe(true);
-    expect(uploader.uploadImage).toHaveBeenCalledWith(layer.id, bitmap, undefined);
+    expect(uploader.uploadImage).toHaveBeenCalledWith(layer.id, bitmap);
   });
 });

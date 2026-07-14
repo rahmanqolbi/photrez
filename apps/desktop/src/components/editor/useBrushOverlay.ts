@@ -716,8 +716,45 @@ export function useBrushOverlay() {
       if (el) {
         el.width = docWidth();
         el.height = docHeight();
+        // Eagerly allocate the commit scratch canvas at layer size so the first
+        // brush stroke doesn't pay the 107MB OffscreenCanvas allocation + first
+        // GPU readback on the paint-commit path (was a ~46ms spike).
+        const cw = el.width, ch = el.height;
+        if (!cachedCommitCanvas || cachedCommitCanvas.width !== cw || cachedCommitCanvas.height !== ch) {
+          cachedCommitCanvas = new OffscreenCanvas(cw, ch);
+          cachedCommitCtx = cachedCommitCanvas.getContext("2d");
+          // Warm the commit-context GPU path off the paint path. The first
+          // brush stroke's cold cost is (a) uploading the 27MP base bitmap into
+          // this 2D context's texture cache (drawImage) and (b) the first
+          // full-canvas readback (createImageBitmap). Replaying both here, at
+          // layer activation when the user isn't painting, makes the first real
+          // commit a cache HIT (~7ms instead of ~30ms).
+          const cctx = cachedCommitCtx;
+          const warmCanvas = cachedCommitCanvas;
+          const ric: (cb: () => void) => void =
+            typeof requestIdleCallback === "function"
+              ? (cb) => requestIdleCallback(() => cb())
+              : (cb) => setTimeout(cb, 1);
+          ric(() => {
+            const eng = workspace.getActiveEngine();
+            const id = eng?.getActiveLayerId() ?? null;
+            const bmp = id ? eng!.getLayer(id)?.imageBitmap : undefined;
+            if (!cctx || !bmp) return;
+            try {
+              cctx.drawImage(bmp, 0, 0);
+              if (typeof createImageBitmap === "function") {
+                createImageBitmap(warmCanvas).then((b) => b.close()).catch(() => {});
+              }
+              cctx.clearRect(0, 0, cw, ch);
+            } catch {
+              // Layer/bitmap not ready — first commit simply pays the cold cost.
+            }
+          });
+        }
       } else {
         paintSession = null;
+        cachedCommitCanvas = null;
+        cachedCommitCtx = null;
       }
     },
     getOverlayCanvasRef: () => overlayCanvasRef,
