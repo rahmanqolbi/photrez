@@ -4,7 +4,7 @@ import * as EditorContextModule from "../shell/EditorContext";
 import * as DialogProviderModule from "../dialogs/DialogProvider";
 import { useBrushOverlay } from "../useBrushOverlay";
 import type { DocumentEngine } from "@/engine/document";
-import type { CommandHistory } from "@/engine/history";
+import { CommandHistory } from "@/engine/history";
 
 // Polyfill createImageBitmap + OffscreenCanvas for jsdom (used by eraser pixel tests).
 // jsdom's drawImage rejects plain objects — returns a <canvas> with close() instead.
@@ -73,7 +73,11 @@ beforeAll(() => {
     imageBitmap: null,
     transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
   };
-  const history = { commit: vi.fn() };
+  const history = {
+  commit: vi.fn(),
+  setLastPaintCoords: vi.fn(),
+  getLastPaintCoords: vi.fn(() => null),
+};
   const engine = {
     getActiveLayerId: () => layer.id,
     getLayer: (_id: string) => layer,
@@ -144,7 +148,11 @@ function createSolidCanvas(width: number, height: number, color: string): HTMLCa
 
 /** Create a real overlay harness with real canvas rendering, for pixel tests. */
 function createRealHarness(layerOverrides: Record<string, any> = {}) {
-  const history = { commit: vi.fn() };
+  const history = {
+  commit: vi.fn(),
+  setLastPaintCoords: vi.fn(),
+  getLastPaintCoords: vi.fn(() => null),
+};
   const layer = {
     id: "layer-1",
     width: 100,
@@ -274,7 +282,12 @@ describe("useBrushOverlay bake-on-paint adjustment WYSIWYG", () => {
     });
     const uploadImage = vi.fn();
     const commit = vi.fn();
-    const history = { commit };
+    let _lpc: { x: number; y: number } | null = null;
+    const history = {
+      commit,
+      setLastPaintCoords: (c: { x: number; y: number } | null) => { _lpc = c; },
+      getLastPaintCoords: () => _lpc,
+    };
     const snapshot = vi.fn(() => ({ hasAdjustment: !!basicAdjustment }));
     const engine = {
       getActiveLayerId: () => layer.id,
@@ -373,6 +386,30 @@ describe("useBrushOverlay bake-on-paint adjustment WYSIWYG", () => {
     expect(dialogConfirm).not.toHaveBeenCalled();
     expect(commitBasicAdjustment).not.toHaveBeenCalled();
     expect(uploadImage).toHaveBeenCalled();
+  });
+
+  it("advances live lastPaintCoords to the stroke end and snapshotted the pre-stroke anchor (undo restores it)", async () => {
+    dialogConfirm.mockResolvedValue(true);
+    const realHistory = new CommandHistory();
+    realHistory.setLastPaintCoords({ x: 10, y: 10 }); // pre-stroke anchor (end of a prior stroke A)
+    const { overlay, engine } = harnessWithAdjustment(undefined);
+
+    // Stroke B starting from A_end(10,10), ending at (40,40).
+    overlay.onPaintStroke([{ x: 40, y: 40 }], false, settings, false);
+    await overlay.commitBrushStroke(
+      engine as unknown as DocumentEngine,
+      realHistory as unknown as CommandHistory,
+      "layer-1",
+      false,
+      { x: 10, y: 10 }, // pre-stroke anchor passed by the pointer layer
+    );
+
+    // Live connection point advances to the stroke end (40,40).
+    expect(realHistory.getLastPaintCoords()).toEqual({ x: 40, y: 40 });
+
+    // Undo must restore the PRE-stroke anchor (10,10), not the stroke's own end.
+    realHistory.undo({} as any);
+    expect(realHistory.getLastPaintCoords()).toEqual({ x: 10, y: 10 });
   });
 });
 
@@ -664,7 +701,11 @@ describe("useBrushOverlay pre-warm debounce", () => {
       imageBitmap: null,
       transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
     };
-    const history = { commit: vi.fn() };
+    const history = {
+  commit: vi.fn(),
+  setLastPaintCoords: vi.fn(),
+  getLastPaintCoords: vi.fn(() => null),
+};
     const engine = {
       getActiveLayerId: () => layer.id,
       getLayer: (_id: string) => layer,
@@ -736,7 +777,11 @@ describe("useBrushOverlay pre-warm debounce", () => {
       imageBitmap: null,
       transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
     };
-    const history = { commit: vi.fn() };
+    const history = {
+  commit: vi.fn(),
+  setLastPaintCoords: vi.fn(),
+  getLastPaintCoords: vi.fn(() => null),
+};
     const engine = {
       getActiveLayerId: () => layer.id,
       getLayer: (_id: string) => layer,

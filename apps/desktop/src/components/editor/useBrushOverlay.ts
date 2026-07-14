@@ -664,7 +664,7 @@ export function useBrushOverlay() {
     performComposite(engine, layerId, layer, true);
   }
 
-  async function commitBrushStroke(engine: DocumentEngine, history: CommandHistory, layerId: string, isEraser: boolean) {
+  async function commitBrushStroke(engine: DocumentEngine, history: CommandHistory, layerId: string, isEraser: boolean, anchor?: { x: number; y: number } | null) {
     const _t0 = performance.now();
     if (prevStrokePointCount === 0) return;
     if (!overlayCanvasRef) return;
@@ -750,6 +750,12 @@ export function useBrushOverlay() {
         paintSession = null;
         return;
       }
+      // Restore the pre-stroke anchor so the history snapshot (taken inside
+      // commitPaintBitmap, below) captures it deterministically — independent
+      // of when this async commit actually fires vs. any live `lastPaintCoords`
+      // mutation. Fallback keeps cancel-path behavior unchanged when no anchor
+      // is supplied.
+      history.setLastPaintCoords(anchor ?? history.getLastPaintCoords());
       commitPaintBitmap(
         { engine, history, uploader: renderer, requestRender: () => scheduler.requestRender() },
         {
@@ -764,6 +770,12 @@ export function useBrushOverlay() {
           snapshot: preBake && preBake.layerId === layerId ? preBake.snapshot : undefined,
         },
       );
+      // Advance live `lastPaintCoords` to the stroke end so the next Shift
+      // stroke connects from here.
+      if (paintSession && paintSession.dabPositions.length > 0) {
+        const lastDab = paintSession.dabPositions[paintSession.dabPositions.length - 1];
+        history.setLastPaintCoords({ x: lastDab.x, y: lastDab.y });
+      }
       if (preBake && preBake.layerId === layerId) preBake = null;
       // Eraser: defer overlay clear to after the next render so the user
       // never sees a flash where the overlay clears before WebGL re-renders

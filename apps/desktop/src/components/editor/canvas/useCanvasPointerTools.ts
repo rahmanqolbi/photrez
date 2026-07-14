@@ -36,7 +36,7 @@ interface UseCanvasPointerToolsParams {
   isAltPressed: () => boolean;
   stopMomentum: () => void;
   fitToScreenAndRender: () => void;
-  commitBrushStroke: (engine: DocumentEngine, history: CommandHistory, id: string, isEraser: boolean) => void;
+  commitBrushStroke: (engine: DocumentEngine, history: CommandHistory, id: string, isEraser: boolean, anchor?: { x: number; y: number } | null) => void;
   onPaintStroke?: (
     points: { x: number; y: number }[],
     isEraser: boolean,
@@ -630,6 +630,9 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     
     if (activeTool() === "brush" || activeTool() === "eraser") {
       const lp = getLastPaintCoords();
+      // Capture the pre-stroke anchor so the undo snapshot restores it
+      // deterministically (independent of commitBrushStroke's async timing).
+      interactiveState.brushStrokeAnchor = lp;
       if (e.shiftKey && lp) {
         interactiveState.strokePoints = interpolateLinePoints(lp, coords);
         interactiveState.dragStart = { ...coords };
@@ -922,8 +925,9 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     if (hasPoints) {
       const layerId = engine.getActiveLayerId();
       if (layerId) {
-        params.commitBrushStroke(engine, history, layerId, tool === "eraser");
-        setLastPaintCoords({ ...smoothed });
+        // anchor = pre-stroke `lastPaintCoords`; commitBrushStroke restores it
+        // on undo and advances live `lastPaintCoords` to the stroke end itself.
+        params.commitBrushStroke(engine, history, layerId, tool === "eraser", interactiveState.brushStrokeAnchor ?? null);
       }
     }
 

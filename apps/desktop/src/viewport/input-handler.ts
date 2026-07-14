@@ -67,6 +67,12 @@ export interface ToolContext {
   pendingHistorySnapshot?: DocumentModel | null;
   pendingOriginalLayerPos?: { x: number; y: number } | null;
   pendingOriginalSelectionPos?: { x: number; y: number } | null;
+
+  // Brush shift (Shift+drag straight line): the `lastPaintCoords` anchor that
+  // existed BEFORE this stroke began. Captured at pointerDown and committed as
+  // the undo snapshot value so undo restores the pre-stroke anchor
+  // deterministically, independent of `commitBrushStroke`'s async timing.
+  brushStrokeAnchor?: { x: number; y: number } | null;
 }
 
 export function handlePointerDown(
