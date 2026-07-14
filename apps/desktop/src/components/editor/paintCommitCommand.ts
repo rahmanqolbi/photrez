@@ -24,6 +24,10 @@ export interface PaintBitmapCommit {
   // layer adjustment still applied as a live param) rather than the
   // post-bake state — keeping the adjustment independently undoable.
   snapshot?: DocumentModel;
+  // Optional sub-rectangle of the bitmap that actually changed. When set,
+  // uploader.uploadImage can perform a texSubImage2D fast path instead of a
+  // full texture re-upload.
+  dirtyRect?: { x: number; y: number; width: number; height: number };
 }
 
 function closeBitmap(bitmap: ImageBitmap): void {
@@ -42,7 +46,7 @@ export function commitPaintBitmap(context: PaintBitmapCommitContext, command: Pa
 
   context.history.commit(command.snapshot ?? context.engine.snapshot(), command.label);
   context.engine.setLayerImageBitmap(command.layerId, command.bitmap);
-  context.uploader.uploadImage(command.layerId, command.bitmap);
+  context.uploader.uploadImage(command.layerId, command.bitmap, command.dirtyRect);
   context.requestRender();
   return true;
 }

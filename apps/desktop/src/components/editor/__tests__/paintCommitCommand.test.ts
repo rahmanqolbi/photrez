@@ -35,7 +35,7 @@ describe("commitPaintBitmap", () => {
     expect(committed).toBe(true);
     expect(history.getUndoCount()).toBe(1);
     expect(engine.getLayer(layer.id)?.imageBitmap).toBe(nextBitmap);
-    expect(uploader.uploadImage).toHaveBeenCalledWith(layer.id, nextBitmap);
+    expect(uploader.uploadImage).toHaveBeenCalledWith(layer.id, nextBitmap, undefined);
     expect(requestRender).toHaveBeenCalledTimes(1);
     expect(events).toEqual(["upload", "render"]);
 
@@ -93,5 +93,39 @@ describe("commitPaintBitmap", () => {
     expect(uploader.uploadImage).not.toHaveBeenCalled();
     expect(requestRender).not.toHaveBeenCalled();
     expect(bitmap.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("forwards a dirtyRect to uploader.uploadImage when provided", () => {
+    const engine = new DocumentEngine("doc-1", "Paint Doc", 10, 10);
+    const layer = engine.addLayer("Paint Layer", 10, 10);
+    const history = new CommandHistory();
+    const bitmap = makeBitmap("next");
+    const uploader = { uploadImage: vi.fn() };
+    const requestRender = vi.fn();
+
+    const committed = commitPaintBitmap(
+      { engine, history, uploader, requestRender },
+      { layerId: layer.id, bitmap, dirtyRect: { x: 1, y: 2, width: 3, height: 4 } },
+    );
+
+    expect(committed).toBe(true);
+    expect(uploader.uploadImage).toHaveBeenCalledWith(layer.id, bitmap, { x: 1, y: 2, width: 3, height: 4 });
+  });
+
+  it("passes undefined dirtyRect to uploader.uploadImage when omitted", () => {
+    const engine = new DocumentEngine("doc-1", "Paint Doc", 10, 10);
+    const layer = engine.addLayer("Paint Layer", 10, 10);
+    const history = new CommandHistory();
+    const bitmap = makeBitmap("next");
+    const uploader = { uploadImage: vi.fn() };
+    const requestRender = vi.fn();
+
+    const committed = commitPaintBitmap(
+      { engine, history, uploader, requestRender },
+      { layerId: layer.id, bitmap },
+    );
+
+    expect(committed).toBe(true);
+    expect(uploader.uploadImage).toHaveBeenCalledWith(layer.id, bitmap, undefined);
   });
 });
