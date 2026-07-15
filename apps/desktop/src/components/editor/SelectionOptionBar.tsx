@@ -171,6 +171,7 @@ export function SelectionOptionBar() {
         <div class="flex shrink-0 items-center gap-1">
           <EditableNumField
             label="W"
+            suffix={selectionConstraintMode() === "size" ? "px" : undefined}
             value={selectionConstraintMode() === "ratio" ? selectionRatioW() : selectionSizeW()}
             onSubmit={(v) => {
               if (v > 0) {
@@ -185,6 +186,7 @@ export function SelectionOptionBar() {
           />
           <EditableNumField
             label="H"
+            suffix={selectionConstraintMode() === "size" ? "px" : undefined}
             value={selectionConstraintMode() === "ratio" ? selectionRatioH() : selectionSizeH()}
             onSubmit={(v) => {
               if (v > 0) {
@@ -202,10 +204,13 @@ export function SelectionOptionBar() {
 
       <Divider />
 
+      <span class="hidden @min-[960px]:inline-block text-[10px] font-bold uppercase tracking-wider text-editor-text-dim shrink-0">Position</span>
+
       <div class="flex shrink-0 items-center gap-1">
         <EditableNumField
           label="X"
           labelClass="@max-[900px]:hidden"
+          suffix="px"
           value={selection()?.x ?? 0}
           onSubmit={submitX}
           disabled={!hasSelection()}
@@ -214,6 +219,7 @@ export function SelectionOptionBar() {
         <EditableNumField
           label="Y"
           labelClass="@max-[900px]:hidden"
+          suffix="px"
           value={selection()?.y ?? 0}
           onSubmit={submitY}
           disabled={!hasSelection()}
@@ -223,10 +229,13 @@ export function SelectionOptionBar() {
 
       <Divider />
 
+      <span class="hidden @min-[960px]:inline-block text-[10px] font-bold uppercase tracking-wider text-editor-text-dim shrink-0">Size</span>
+
       <div class="flex shrink-0 items-center gap-1">
         <EditableNumField
           label="W"
           labelClass="@max-[900px]:hidden"
+          suffix="px"
           value={selection()?.width ?? 0}
           onSubmit={submitW}
           disabled={!hasSelection()}
@@ -235,6 +244,7 @@ export function SelectionOptionBar() {
         <EditableNumField
           label="H"
           labelClass="@max-[900px]:hidden"
+          suffix="px"
           value={selection()?.height ?? 0}
           onSubmit={submitH}
           disabled={!hasSelection()}
@@ -243,6 +253,8 @@ export function SelectionOptionBar() {
       </div>
 
       <Divider />
+
+      <span class="hidden @min-[960px]:inline-block text-[10px] font-bold uppercase tracking-wider text-editor-text-dim shrink-0">Rotation</span>
 
       <EditableNumField
         label="R"
@@ -376,16 +388,16 @@ export function SelectionOptionBar() {
         <div class="flex flex-col gap-1.5">
           <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Position</span>
           <div class="grid grid-cols-2 gap-1.5">
-            <EditableNumField label="X" value={selection()?.x ?? 0} onSubmit={submitX} disabled={!hasSelection()} class="w-full" />
-            <EditableNumField label="Y" value={selection()?.y ?? 0} onSubmit={submitY} disabled={!hasSelection()} class="w-full" />
+            <EditableNumField label="X" value={selection()?.x ?? 0} onSubmit={submitX} disabled={!hasSelection()} suffix="px" class="w-full" />
+            <EditableNumField label="Y" value={selection()?.y ?? 0} onSubmit={submitY} disabled={!hasSelection()} suffix="px" class="w-full" />
           </div>
         </div>
 
         <div class="flex flex-col gap-1.5">
           <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Size</span>
           <div class="grid grid-cols-2 gap-1.5">
-            <EditableNumField label="W" value={selection()?.width ?? 0} onSubmit={submitW} disabled={!hasSelection()} class="w-full" />
-            <EditableNumField label="H" value={selection()?.height ?? 0} onSubmit={submitH} disabled={!hasSelection()} class="w-full" />
+            <EditableNumField label="W" value={selection()?.width ?? 0} onSubmit={submitW} disabled={!hasSelection()} suffix="px" class="w-full" />
+            <EditableNumField label="H" value={selection()?.height ?? 0} onSubmit={submitH} disabled={!hasSelection()} suffix="px" class="w-full" />
           </div>
         </div>
 

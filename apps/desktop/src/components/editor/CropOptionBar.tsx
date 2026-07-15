@@ -503,6 +503,7 @@ export function CropOptionBar() {
         <div class="flex shrink-0 items-center gap-1.5">
           <EditableNumField
             label="W"
+            suffix={cropSizeUnit()}
             value={sizeWVal()}
             onSubmit={(v) => {
               setSizeWVal(v);
@@ -529,6 +530,7 @@ export function CropOptionBar() {
           </Tooltip>
           <EditableNumField
             label="H"
+            suffix={cropSizeUnit()}
             value={sizeHVal()}
             onSubmit={(v) => {
               setSizeHVal(v);

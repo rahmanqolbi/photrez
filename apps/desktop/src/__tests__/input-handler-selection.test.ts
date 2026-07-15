@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { handlePointerDown, handlePointerMove, handlePointerUp, isPointInSelection } from "../viewport/input-handler";
 import { createMockEngine, createMockHistory, createToolContext } from "./test-builders";
+import type { DocumentEngine } from "../engine/document";
 
 describe("input-handler: selection tool draw modifiers", () => {
   describe("basic drag", () => {
@@ -74,8 +75,9 @@ describe("input-handler: selection tool draw modifiers", () => {
       handlePointerUp("selection", 250, 150, engine, createMockHistory(), vi.fn(), ctx);
       // center = (100,100), current = (250,150) → dx=150, dy=50, max=150
       // from center: anchor = center = (100,100), expanded = 150 in each dir
-      // rect = (-50, -50) to (250, 250) → x=-50, y=-50, w=300, h=300
-      expect(engine.createSelection).toHaveBeenCalledWith(-50, -50, 300, 300);
+      // raw rect = (-50, -50) to (250, 250) → x=-50, y=-50, w=300, h=300
+      // clamped to canvas (4000x4000): x,y < 0 → 0, width/height trimmed → (0,0,250,250)
+      expect(engine.createSelection).toHaveBeenCalledWith(0, 0, 250, 250);
     });
   });
 
@@ -307,8 +309,9 @@ describe("input-handler: selection tool draw modifiers", () => {
       // currentAspect = 200/200 = 1, targetAspect = 2/1 = 2
       // currentAspect < targetAspect → w = h * 2 = 400
       handlePointerMove("selection", 100, 100, engine, vi.fn(), ctx);
-      // x = 300 - 400 = -100 (dx < 0), y = 300 - 200 = 100 (dy < 0)
-      expect(ctx.onSelectionCreated).toHaveBeenCalledWith(-100, 100, 400, 200);
+      // raw rect: x = 300 - 400 = -100 (dx < 0), y = 300 - 200 = 100 (dy < 0)
+      // clamped to canvas: x < 0 → 0, width trimmed to 300 → (0, 100, 300, 200)
+      expect(ctx.onSelectionCreated).toHaveBeenCalledWith(0, 100, 300, 200);
     });
 
     it("handlePointerMove in ratio mode with Alt draws from center", () => {
@@ -532,6 +535,37 @@ describe("input-handler: selection tool draw modifiers", () => {
       // dx=100, dy=50, w=100, h=50, max=100, alt*2 → w=h=200
       // From center: x = 200 - 100 = 100, y = 200 - 100 = 100
       expect(engine.createSelection).toHaveBeenCalledWith(100, 100, 200, 200);
+    });
+  });
+
+  describe("draw clamps to canvas bounds (marquee cannot exit canvas)", () => {
+    const withCanvas = (engine: DocumentEngine, w: number, h: number) => {
+      (engine as unknown as { getWidth: () => number }).getWidth = () => w;
+      (engine as unknown as { getHeight: () => number }).getHeight = () => h;
+    };
+
+    it("clamps a rect dragged past the right/bottom edge to the canvas", () => {
+      const engine = createMockEngine(["createSelection", "snapshot"]);
+      withCanvas(engine, 300, 300);
+      const ctx = createToolContext({ selectedLayerId: null, onSelectionCreated: vi.fn() });
+      handlePointerDown("selection", 100, 100, engine, createMockHistory(), vi.fn(), ctx);
+      handlePointerMove("selection", 500, 400, engine, vi.fn(), ctx);
+      handlePointerUp("selection", 500, 400, engine, createMockHistory(), vi.fn(), ctx);
+      // Raw (100,100,400,300) → clamped to 300x300 → (100,100,200,200)
+      expect(engine.createSelection).toHaveBeenCalledWith(100, 100, 200, 200);
+      expect(ctx.onSelectionCreated).toHaveBeenCalledWith(100, 100, 200, 200);
+    });
+
+    it("clamps a rect dragged past the left/top edge to the canvas", () => {
+      const engine = createMockEngine(["createSelection", "snapshot"]);
+      withCanvas(engine, 300, 300);
+      const ctx = createToolContext({ selectedLayerId: null, onSelectionCreated: vi.fn() });
+      handlePointerDown("selection", 100, 100, engine, createMockHistory(), vi.fn(), ctx);
+      handlePointerMove("selection", -50, -50, engine, vi.fn(), ctx);
+      handlePointerUp("selection", -50, -50, engine, createMockHistory(), vi.fn(), ctx);
+      // Raw (-50,-50,150,150): far edge at doc 100 → clamped to (0,0,100,100)
+      expect(engine.createSelection).toHaveBeenCalledWith(0, 0, 100, 100);
+      expect(ctx.onSelectionCreated).toHaveBeenCalledWith(0, 0, 100, 100);
     });
   });
 

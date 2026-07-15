@@ -275,9 +275,13 @@ describe("selection tool wrap-around — screenToDocument + handler chain", () =
       const expectedH = Math.abs(end.y - start.y);
 
       if (expectedW > 2 && expectedH > 2) {
-        expect(engine.createSelection).toHaveBeenCalledWith(
-          expectedX, expectedY, expectedW, expectedH,
-        );
+        // Draw is clamped to the document (canvas) bounds — mock canvas is 4000x4000.
+        const dw = 4000, dh = 4000;
+        const cx = Math.max(0, Math.min(dw, expectedX));
+        const cy = Math.max(0, Math.min(dh, expectedY));
+        const cw = Math.max(0, Math.min(dw, expectedX + expectedW) - cx);
+        const ch = Math.max(0, Math.min(dh, expectedY + expectedH) - cy);
+        expect(engine.createSelection).toHaveBeenCalledWith(cx, cy, cw, ch);
       }
     }
   });

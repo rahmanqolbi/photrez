@@ -145,6 +145,7 @@ export function TransformOptionBar() {
                 <EditableNumField
                   label="X"
                   labelClass="@max-[900px]:hidden"
+                  suffix="px"
                   value={valueX()}
                   disabled={d}
                   onSubmit={handlePositionField("x")}
@@ -153,6 +154,7 @@ export function TransformOptionBar() {
                 <EditableNumField
                   label="Y"
                   labelClass="@max-[900px]:hidden"
+                  suffix="px"
                   value={valueY()}
                   disabled={d}
                   onSubmit={handlePositionField("y")}
@@ -164,6 +166,7 @@ export function TransformOptionBar() {
                 <EditableNumField
                   label="W"
                   labelClass="@max-[900px]:hidden"
+                  suffix="px"
                   value={curW()}
                   disabled={d}
                   onSubmit={setPreviewWidth}
@@ -172,6 +175,7 @@ export function TransformOptionBar() {
                 <EditableNumField
                   label="H"
                   labelClass="@max-[900px]:hidden"
+                  suffix="px"
                   value={curH()}
                   disabled={d}
                   onSubmit={setPreviewHeight}

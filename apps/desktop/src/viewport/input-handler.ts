@@ -6,6 +6,28 @@ import type { PaintToolSettings } from "@/components/editor/brushToolState";
 import type { ToolId } from "@/components/editor/tools/toolTypes";
 import { getLayerAabb } from "./transformGeometry";
 
+/**
+ * Clamp a freshly drawn selection rect to the document (canvas) bounds so the
+ * marquee can never extend outside the canvas — matches the standard
+ * raster-editor behavior (the rectangular marquee is constrained to the
+ * document; only selections derived from layer/mask content may exceed it).
+ */
+function clampSelectionToCanvas(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  engine: DocumentEngine
+): { x: number; y: number; w: number; h: number } {
+  const dw = engine.getWidth();
+  const dh = engine.getHeight();
+  const cx = Math.max(0, Math.min(dw, x));
+  const cy = Math.max(0, Math.min(dh, y));
+  const cw = Math.max(0, Math.min(dw, x + w) - cx);
+  const ch = Math.max(0, Math.min(dh, y + h) - cy);
+  return { x: cx, y: cy, w: cw, h: ch };
+}
+
 export type ToolType = ToolId;
 
 export interface ToolContext {
@@ -110,9 +132,10 @@ export function handlePointerDown(
       if (context.selectionConstraintMode === "size") {
         const sw = context.selectionSizeW ?? 100;
         const sh = context.selectionSizeH ?? 100;
-        const x = docX - sw / 2;
-        const y = docY - sh / 2;
-        context.onSelectionCreated?.(x, y, sw, sh);
+          const x = docX - sw / 2;
+          const y = docY - sh / 2;
+          const r = clampSelectionToCanvas(x, y, sw, sh, engine);
+          context.onSelectionCreated?.(r.x, r.y, r.w, r.h);
       } else {
         context.onSelectionCreated?.(docX, docY, 0, 0);
       }
@@ -188,7 +211,8 @@ export function handlePointerMove(
         h = sh;
         let x = centerX - w / 2;
         let y = centerY - h / 2;
-        context.onSelectionCreated?.(x, y, w, h);
+        const r = clampSelectionToCanvas(x, y, w, h, engine);
+        context.onSelectionCreated?.(r.x, r.y, r.w, r.h);
       } else if (context.selectionConstraintMode === "ratio") {
         const rw = context.selectionRatioW ?? 1;
         const rh = context.selectionRatioH ?? 1;
@@ -212,7 +236,8 @@ export function handlePointerMove(
           x = dx >= 0 ? centerX : centerX - w;
           y = dy >= 0 ? centerY : centerY - h;
         }
-        context.onSelectionCreated?.(x, y, w, h);
+        const r = clampSelectionToCanvas(x, y, w, h, engine);
+        context.onSelectionCreated?.(r.x, r.y, r.w, r.h);
       } else {
         if (context.isShiftPressed) {
           const side = Math.max(w, h);
@@ -236,7 +261,8 @@ export function handlePointerMove(
           y = Math.min(centerY, docY);
         }
 
-        context.onSelectionCreated?.(x, y, w, h);
+        const r = clampSelectionToCanvas(x, y, w, h, engine);
+        context.onSelectionCreated?.(r.x, r.y, r.w, r.h);
       }
     }
   } else if (tool === "crop") {
@@ -326,7 +352,8 @@ export function handlePointerUp(
         h = sh;
         let x = centerX - w / 2;
         let y = centerY - h / 2;
-        engine.createSelection(x, y, w, h);
+        const r = clampSelectionToCanvas(x, y, w, h, engine);
+        engine.createSelection(r.x, r.y, r.w, r.h);
       } else if (context.selectionConstraintMode === "ratio") {
         const rw = context.selectionRatioW ?? 1;
         const rh = context.selectionRatioH ?? 1;
@@ -351,7 +378,8 @@ export function handlePointerUp(
           y = dy >= 0 ? centerY : centerY - h;
         }
         if (w > 2 && h > 2) {
-          engine.createSelection(x, y, w, h);
+          const r = clampSelectionToCanvas(x, y, w, h, engine);
+        engine.createSelection(r.x, r.y, r.w, r.h);
         } else {
           engine.clearSelection();
         }
@@ -379,7 +407,8 @@ export function handlePointerUp(
         }
 
         if (w > 2 && h > 2) {
-          engine.createSelection(x, y, w, h);
+          const r = clampSelectionToCanvas(x, y, w, h, engine);
+        engine.createSelection(r.x, r.y, r.w, r.h);
         } else {
           engine.clearSelection();
         }

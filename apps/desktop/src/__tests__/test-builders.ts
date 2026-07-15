@@ -41,6 +41,10 @@ export function createMockEngine(methods: EngineMethod[] = ["snapshot", "getLaye
       stub[m] = vi.fn();
     }
   }
+  // Selection draw clamping needs document bounds; default to a large canvas
+  // so most coordinate-based tests are unaffected unless they override it.
+  stub.getWidth = vi.fn<() => number>().mockReturnValue(4000);
+  stub.getHeight = vi.fn<() => number>().mockReturnValue(4000);
   return stub as unknown as DocumentEngine;
 }
 

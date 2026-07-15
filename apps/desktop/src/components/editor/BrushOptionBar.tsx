@@ -155,10 +155,9 @@ export function BrushOptionBar() {
         </div>
       </div>
 
-      {/* Secondary Options on Main Bar (always visible) */}
+      {/* Core brush params — always visible on the bar */}
+      <Divider />
       <div class="flex items-center gap-1.5 shrink-0">
-        <Divider />
-
         <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
           <span class="text-[10px] font-medium text-editor-text-dim">Hard</span>
           <input
@@ -186,6 +185,11 @@ export function BrushOptionBar() {
           />
           <span class="text-[10px] text-editor-text-dim">%</span>
         </label>
+      </div>
+
+      {/* Overflow group — hidden at narrow widths; lives in MoreDropdown */}
+      <div class="hidden @min-[880px]:flex items-center gap-1.5 shrink-0">
+        <Divider />
 
         <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
           <span class="text-[10px] font-medium text-editor-text-dim">Flow</span>
@@ -212,6 +216,7 @@ export function BrushOptionBar() {
             onInput={(event) => setSmoothingValue(Number(event.currentTarget.value))}
             class="w-11 bg-transparent text-[11px] text-editor-text outline-none"
           />
+          <span class="text-[10px] text-editor-text-dim">%</span>
         </label>
 
         <div class="relative">
@@ -264,39 +269,7 @@ export function BrushOptionBar() {
  
       {/* Overflow dropdown for narrow container */}
       <MoreDropdown>
-        {/* Hardness */}
-        <div class="flex flex-col gap-1">
-          <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Hardness</span>
-          <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={formatPercent(hardness())}
-               onInput={(e) => setHardness(Number(e.currentTarget.value))}
-               class="w-full bg-transparent text-[11px] text-editor-text outline-none"
-             />
-             <span class="text-[10px] text-editor-text-dim">%</span>
-           </label>
-         </div>
-
-         {/* Opacity */}
-         <div class="flex flex-col gap-1">
-           <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Strength</span>
-           <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
-             <input
-               type="number"
-               min="0"
-               max="100"
-               value={formatPercent(opacity())}
-               onInput={(e) => setOpacity(Number(e.currentTarget.value))}
-               class="w-full bg-transparent text-[11px] text-editor-text outline-none"
-             />
-             <span class="text-[10px] text-editor-text-dim">%</span>
-           </label>
-         </div>
-
-         {/* Flow */}
+          {/* Flow */}
          <div class="flex flex-col gap-1">
            <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Flow</span>
            <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
@@ -316,15 +289,16 @@ export function BrushOptionBar() {
          <div class="flex flex-col gap-1">
            <span class="text-[10px] font-bold text-editor-text-dim uppercase tracking-wider">Smoothing</span>
            <label class="flex h-[24px] items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1.5">
-             <input
-               type="number"
-               min="0"
-               max="100"
-               value={smoothing()}
-               onInput={(e) => setSmoothingValue(Number(e.currentTarget.value))}
-              class="w-full bg-transparent text-[11px] text-editor-text outline-none"
-            />
-          </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={smoothing()}
+                onInput={(e) => setSmoothingValue(Number(e.currentTarget.value))}
+               class="w-full bg-transparent text-[11px] text-editor-text outline-none"
+             />
+             <span class="text-[10px] text-editor-text-dim">%</span>
+           </label>
         </div>
 
         <div class="h-px bg-editor-divider my-1" />

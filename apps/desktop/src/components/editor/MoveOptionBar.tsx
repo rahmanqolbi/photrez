@@ -232,6 +232,7 @@ export function MoveOptionBar() {
                   <EditableNumField
                     label="X"
                     labelClass="@max-[900px]:hidden"
+                    suffix="px"
                     value={layer().transform.x}
                     disabled={d}
                     onSubmit={handlePositionField("x")}
@@ -240,6 +241,7 @@ export function MoveOptionBar() {
                   <EditableNumField
                     label="Y"
                     labelClass="@max-[900px]:hidden"
+                    suffix="px"
                     value={layer().transform.y}
                     disabled={d}
                     onSubmit={handlePositionField("y")}
