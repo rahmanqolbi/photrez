@@ -384,7 +384,8 @@ export async function createNewDocsFromFiles(
       const id = `doc-${crypto.randomUUID()}`;
       const session = WorkspaceManager.createDocumentFromImage(id, name, bitmap);
       ws.addDocument(session);
-      const bgLayerId = session.engine.getLayers()[0].id;
+      const bgLayerId = session.engine.getLayers().find((l) => l.isBackground)?.id
+        ?? session.engine.getLayers()[0].id;
       created.push({ docId: id, backgroundLayerId: bgLayerId, bitmap });
     } catch (err) {
       freeDecoded();

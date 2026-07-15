@@ -118,13 +118,13 @@ export function LayersPanel() {
       {
         kind: "item",
         label: "Move Layer Up",
-        disabled: index <= 0,
+        disabled: index <= 0 || layer.isBackground,
         onSelect: (event) => handleMoveUp(event, index),
       },
       {
         kind: "item",
         label: "Move Layer Down",
-        disabled: index < 0 || index >= layers().length - 1,
+        disabled: index < 0 || index >= layers().length - 1 || layers()[index + 1]?.isBackground,
         onSelect: (event) => handleMoveDown(event, index),
       },
       {
@@ -178,18 +178,25 @@ export function LayersPanel() {
       };
     }
 
+    const bgIdx = layers().length - 1;
+    const lastIsBackground = layers()[bgIdx]?.isBackground;
+
     for (const row of rows) {
       const rect = row.getBoundingClientRect();
       if (clientY >= rect.top && clientY <= rect.bottom) {
         const idx = parseInt(row.dataset.layerIdx!, 10);
-        const position = clientY - rect.top < rect.height / 2 ? "above" : "below";
+        let position: "above" | "below" = clientY - rect.top < rect.height / 2 ? "above" : "below";
+        // Never invite a drop below the Background (always the bottom row):
+        // clamp the hint to "above" so the indicator reflects the real
+        // constraint instead of showing an impossible slot under it.
+        if (position === "below" && idx === bgIdx && lastIsBackground) position = "above";
         return { insertAt: idx, insertPosition: position };
       }
     }
 
-    // Pointer below the last row →drop at the bottom of the stack.
+    // Pointer below the last row →drop just above the Background (never below it).
     const lastIdx = parseInt(rows[rows.length - 1].dataset.layerIdx!, 10);
-    return { insertAt: lastIdx, insertPosition: "below" };
+    return { insertAt: lastIdx, insertPosition: lastIsBackground ? "above" : "below" };
   };
 
   const cancelActiveTransformSession = () => {
@@ -452,27 +459,37 @@ export function LayersPanel() {
           }
         >
           <For each={layers()}>
-            {(layer, idx) => (
-              <LayerItem
-                layer={layer}
-                idx={idx()}
-                isActive={selectedLayerId() === layer.id}
-                isEditing={editingLayerId() === layer.id}
-                editName={editName()}
-                setEditingLayerId={setEditingLayerId}
-                setEditName={setEditName}
-                onSelect={handleSelectLayer}
-                onContextMenu={openLayerContextMenu}
-                onToggleVisibility={handleToggleVisibility}
-                onToggleLock={handleToggleLock}
-                onMoveUp={handleMoveUp}
-                onMoveDown={handleMoveDown}
-                layersLength={layers().length}
-                workspace={workspace}
-                scheduler={scheduler}
-                activeDocumentId={activeDocumentId() ?? ""}
-              />
-            )}
+            {(layer, idx) => {
+              const i = idx();
+              const stack = layers();
+              // Disable Move Up at the top / for the (locked) Background;
+              // disable Move Down when the layer would land below the Background.
+              const canMoveUp = i > 0 && !layer.isBackground;
+              const canMoveDown = i < stack.length - 1 && !stack[i + 1]?.isBackground;
+              return (
+                <LayerItem
+                  layer={layer}
+                  idx={i}
+                  isActive={selectedLayerId() === layer.id}
+                  isEditing={editingLayerId() === layer.id}
+                  editName={editName()}
+                  setEditingLayerId={setEditingLayerId}
+                  setEditName={setEditName}
+                  onSelect={handleSelectLayer}
+                  onContextMenu={openLayerContextMenu}
+                  onToggleVisibility={handleToggleVisibility}
+                  onToggleLock={handleToggleLock}
+                  onMoveUp={handleMoveUp}
+                  onMoveDown={handleMoveDown}
+                  canMoveUp={canMoveUp}
+                  canMoveDown={canMoveDown}
+                  layersLength={stack.length}
+                  workspace={workspace}
+                  scheduler={scheduler}
+                  activeDocumentId={activeDocumentId() ?? ""}
+                />
+              );
+            }}
           </For>
         </Show>
       </div>

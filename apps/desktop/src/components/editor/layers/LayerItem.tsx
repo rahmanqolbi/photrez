@@ -39,6 +39,8 @@ interface LayerItemProps {
   onToggleLock: (e: MouseEvent, id: string) => void;
   onMoveUp: (e: MouseEvent, idx: number) => void;
   onMoveDown: (e: MouseEvent, idx: number) => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
   layersLength: number;
   workspace: LayerItemWorkspaceFacade;
   scheduler: LayerItemSchedulerFacade;
@@ -46,7 +48,15 @@ interface LayerItemProps {
 }
 
 export function LayerItem(props: LayerItemProps) {
-  const dragController = useDragController();
+    const dragController = useDragController();
+
+  // A layer can move up unless it's the top row or the (locked) Background;
+  // it can move down unless the immediate layer below is the Background.
+  // Production passes the exact flags from the stack; fall back to the
+  // simple "not at the array edge" check when the caller omits them.
+  const canMoveUp = props.canMoveUp ?? (props.idx > 0 && !props.layer.isBackground);
+  const canMoveDown = props.canMoveDown ?? props.idx < props.layersLength - 1;
+
 
   const commitRename = () => {
     const nextName = props.editName.trim();
@@ -214,7 +224,7 @@ export function LayerItem(props: LayerItemProps) {
       <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pr-1">
         <Tooltip content="Move Layer Up">
           <button
-            disabled={props.idx === 0}
+            disabled={!canMoveUp}
             onClick={(e) => props.onMoveUp(e, props.idx)}
             class="size-[22px] flex items-center justify-center hover:bg-white/10 rounded disabled:opacity-20 disabled:hover:bg-transparent"
           >
@@ -223,7 +233,7 @@ export function LayerItem(props: LayerItemProps) {
         </Tooltip>
         <Tooltip content="Move Layer Down">
           <button
-            disabled={props.idx === props.layersLength - 1}
+            disabled={!canMoveDown}
             onClick={(e) => props.onMoveDown(e, props.idx)}
             class="size-[22px] flex items-center justify-center hover:bg-white/10 rounded disabled:opacity-20 disabled:hover:bg-transparent"
           >

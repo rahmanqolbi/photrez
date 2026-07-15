@@ -80,7 +80,8 @@ export async function openImageFilesAsDocuments(
       const id = `doc-${crypto.randomUUID()}`;
       const session = WorkspaceManager.createDocumentFromImage(id, file.name, bitmap);
       params.workspace.addDocument(session);
-      const bgLayerId = session.engine.getLayers()[0].id;
+      const bgLayerId = session.engine.getLayers().find((l) => l.isBackground)?.id
+        ?? session.engine.getLayers()[0].id;
       params.renderer.uploadImage(bgLayerId, bitmap);
       params.scheduler.requestRender();
     } catch (err) {

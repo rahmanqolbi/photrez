@@ -222,6 +222,69 @@ describe("LayersPanel →in-panel reorder end-to-end", () => {
       document.body.replaceChildren();
     }
   });
+
+  it("never targets a drop below the Background (clamps hint to above bg)", () => {
+    const ctx = setupWithMockedRects([
+      { top: 0, height: 50 },
+      { top: 50, height: 50 },
+      { top: 100, height: 50 },
+      { top: 150, height: 50 },
+    ]);
+
+    try {
+      const panelDz = ctx.container.querySelector<HTMLElement>("[data-layers-panel-drop-zone]")!;
+      // Dragover at the lower half of the Background row (y=175) would be
+      // "below" the Background — clamp to "above" it instead.
+      ctx.probe().beginLayerDrag(getPayload(ctx.ws, 0), null);
+      fireDragEvent(panelDz, "dragover", { clientY: 175, clientX: 5 });
+      const dt = ctx.probe().state().dropTarget;
+      expect(dt?.type).toBe("layers-panel");
+      if (dt?.type === "layers-panel") {
+        expect(dt.insertAt).toBe(3);
+        expect(dt.insertPosition).toBe("above");
+      }
+
+      fireDragEvent(panelDz, "drop", { clientY: 175, clientX: 5 });
+
+      // Top lands just above the Background — a real, visible move.
+      const afterOrder = ctx.ws.getActiveEngine()!.getLayers().map((l) => l.name);
+      expect(afterOrder).toEqual(["Middle", "Bottom", "Top", "Background"]);
+    } finally {
+      ctx.dispose();
+      document.body.replaceChildren();
+    }
+  });
+
+  it("disables Move Down when a layer rests on the Background", () => {
+    const ctx = setupWithMockedRects([
+      { top: 0, height: 50 },
+      { top: 50, height: 50 },
+      { top: 100, height: 50 },
+      { top: 150, height: 50 },
+    ]);
+    try {
+      const chevrons = (rowIdx: number) => {
+        // Chevrons live in the opacity-0 hover container, independent of
+        // the lock button's DOM position.
+        const chevronContainer = ctx.rows[rowIdx].querySelector(".opacity-0");
+        const btns = Array.from(chevronContainer?.querySelectorAll<HTMLButtonElement>("button") ?? []);
+        return { up: btns[0]!, down: btns[1]! };
+      };
+      // Bottom (idx 2, resting on bg) and Background (idx 3) → Move Down disabled.
+      expect(chevrons(2).down.disabled).toBe(true);
+      expect(chevrons(3).down.disabled).toBe(true);
+      // Middle (idx 1) and Top (idx 0) can still move down.
+      expect(chevrons(1).down.disabled).toBe(false);
+      expect(chevrons(0).down.disabled).toBe(false);
+      // Top (idx 0) and Background (idx 3) cannot move up.
+      expect(chevrons(0).up.disabled).toBe(true);
+      expect(chevrons(3).up.disabled).toBe(true);
+      expect(chevrons(1).up.disabled).toBe(false);
+    } finally {
+      ctx.dispose();
+      document.body.replaceChildren();
+    }
+  });
 });
 
 function fireNativeDragStart(

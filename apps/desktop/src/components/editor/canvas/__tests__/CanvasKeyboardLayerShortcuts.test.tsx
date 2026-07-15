@@ -657,25 +657,32 @@ describe("canvas layer keyboard shortcuts", () => {
     dispose();
   });
 
-  it("moves the active layer down in the stack with Ctrl+[", async () => {
-    const session = WorkspaceManager.createBlankDocument("move-down-keyboard", "Move Down", 800, 600);
-    const middle = session.engine.addLayer("Middle");
-    session.engine.addLayer("Top");
-    session.engine.setActiveLayer(middle.id);
+    it("moves the active layer down in the stack with Ctrl+[ (never below Background)", async () => {
+      const session = WorkspaceManager.createBlankDocument("move-down-keyboard", "Move Down", 800, 600);
+      const middle = session.engine.addLayer("Middle");
+      session.engine.addLayer("Top");
+      session.engine.setActiveLayer(middle.id);
 
-    const { ws, scheduler, dispose } = renderKeyboardHarness(session);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+      const { ws, scheduler, dispose } = renderKeyboardHarness(session);
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const beforeIdx = session.engine.getLayers().findIndex((l) => l.id === middle.id);
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "[", ctrlKey: true }));
-    const afterIdx = session.engine.getLayers().findIndex((l) => l.id === middle.id);
+      const beforeIdx = session.engine.getLayers().findIndex((l) => l.id === middle.id);
+      const bgIdxBefore = session.engine.getLayers().findIndex((l) => l.isBackground);
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "[", ctrlKey: true }));
+      const afterIdx = session.engine.getLayers().findIndex((l) => l.id === middle.id);
+      const bgIdxAfter = session.engine.getLayers().findIndex((l) => l.isBackground);
 
-    expect(afterIdx).toBe(beforeIdx + 1);
-    expect(ws.getActiveHistory()?.canUndo()).toBe(true);
-    expect(scheduler.requestRender).toHaveBeenCalled();
+      // Middle starts just above the Background; "move down" must NOT push
+      // it below the (opaque) Background. It stays just above it, and the
+      // Background remains the bottommost layer.
+      expect(afterIdx).toBe(beforeIdx);
+      expect(afterIdx).toBeLessThan(bgIdxAfter);
+      expect(bgIdxAfter).toBe(session.engine.getLayers().length - 1);
+      expect(ws.getActiveHistory()?.canUndo()).toBe(true);
+      expect(scheduler.requestRender).toHaveBeenCalled();
 
-    dispose();
-  });
+      dispose();
+    });
 
   it("flips the active layer horizontally with Ctrl+G", async () => {
     const session = WorkspaceManager.createBlankDocument("flip-h-keyboard", "Flip H", 800, 600);

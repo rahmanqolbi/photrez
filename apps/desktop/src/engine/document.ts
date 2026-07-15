@@ -219,6 +219,12 @@ export class DocumentEngine {
       false,
       "normal"
     );
+    // The flattened result is the new bottom layer — flag it as the
+    // Background (with the position/rotation locks the app's real
+    // Background layers carry) so it matches the bg invariant.
+    flattenedLayer.isBackground = true;
+    flattenedLayer.lockPosition = true;
+    flattenedLayer.lockRotation = true;
 
     for (const layer of this.model.layers) {
       this.dirtyLayerIds.delete(layer.id);
@@ -275,11 +281,23 @@ export class DocumentEngine {
     }
 
     const fromLayer = this.model.layers[fromIndex];
+    // The Background layer is locked to the bottom of the stack — it can
+    // never be reordered, and no other layer may be placed below it (a
+    // layer beneath the opaque Background would be unreachable / hidden).
     if (fromLayer?.isBackground) return;
 
     const updated = [...this.model.layers];
     const [moved] = updated.splice(fromIndex, 1);
     updated.splice(toIndex, 0, moved);
+
+    // Invariant: the Background is always the bottommost layer. If the move
+    // pushed it off the bottom, re-seat it there so a normal layer can
+    // never end up hidden behind it.
+    const bgIdx = updated.findIndex((l) => l.isBackground);
+    if (bgIdx >= 0 && bgIdx !== updated.length - 1) {
+      const [bg] = updated.splice(bgIdx, 1);
+      updated.push(bg);
+    }
 
     this.model.layers = updated;
     this.model.dirty = true;
@@ -808,6 +826,19 @@ export class DocumentEngine {
     // memory is reclaimed by GC once no snapshot or layer references remain.
 
     this.model = restoreSnapshot(snapshot);
+
+    // Invariant: the Background layer is always the bottommost layer.
+    // A restored snapshot (e.g. a legacy / hand-edited saved file)
+    // could carry the Background at a non-bottom index; re-seat it so
+    // no layer is left hidden behind it.
+    const restoredLayers = [...this.model.layers];
+    const bgIdx = restoredLayers.findIndex((l) => l.isBackground);
+    if (bgIdx >= 0 && bgIdx !== restoredLayers.length - 1) {
+      const [bg] = restoredLayers.splice(bgIdx, 1);
+      restoredLayers.push(bg);
+      this.model.layers = restoredLayers;
+    }
+
     if (!options?.restoreViewport) {
       this.model.viewport = currentViewport;
     }

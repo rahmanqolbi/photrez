@@ -635,17 +635,37 @@ describe('DocumentEngine', () => {
       expect(engine.getLayers()).toHaveLength(1);
     });
 
-    it('does not reorder the Background layer away from index 0', () => {
+    it('keeps the Background layer at the bottom of the stack', () => {
       const engine = new DocumentEngine('doc-bg-test', 'BG Test', 800, 600);
       const bg = engine.addLayer('Background');
       bg.isBackground = true;
       bg.lockPosition = true;
       bg.lockRotation = true;
-      engine.addLayer('Layer 1');
+      const l1 = engine.addLayer('Layer 1'); // -> [Layer 1, Background]
 
+      // "Send to back" the normal layer: it must land just above the
+      // Background, never beneath it (which would hide it).
       engine.reorderLayer(0, 1);
       const layers = engine.getLayers();
-      expect(layers[0].id).toBe(bg.id);
+      expect(layers[layers.length - 1].id).toBe(bg.id); // bg stays bottom
+      expect(layers[layers.length - 2].id).toBe(l1.id); // layer above bg
+    });
+
+    it('prevents a normal layer from being hidden below the Background (send to back)', () => {
+      const engine = new DocumentEngine('doc-bg-bug', 'BG Test', 800, 600);
+      const bg = engine.addLayer('Background');
+      bg.isBackground = true;
+      const l1 = engine.addLayer('Layer 1'); // [Layer 1, Background]
+      const l2 = engine.addLayer('Layer 2'); // [Layer 2, Layer 1, Background]
+
+      // Simulate "Send To Back" (Ctrl+Shift+[) on the top layer.
+      engine.reorderLayer(0, engine.getLayers().length - 1);
+
+      const layers = engine.getLayers();
+      expect(layers[layers.length - 1].id).toBe(bg.id); // bg bottom
+      expect(layers[layers.length - 2].id).toBe(l2.id); // top layer just above bg
+      expect(layers.findIndex((l) => l.id === l1.id))
+        .toBeLessThan(layers.findIndex((l) => l.id === bg.id)); // l1 above bg
     });
 
     it('renaming Background removes isBackground and locks', () => {
@@ -670,6 +690,44 @@ describe('DocumentEngine', () => {
       const snap = engine.snapshot();
       const restoredLayer = snap.layers.find(l => l.id === bg.id);
       expect(restoredLayer?.isBackground).toBe(true);
+    });
+
+    it('flattenLayers produces a Background-flagged, locked bottom layer', () => {
+      const engine = new DocumentEngine('doc-flatten-bg', 'Flatten', 800, 600);
+      const bg = engine.addLayer('Background');
+      bg.isBackground = true;
+      bg.lockPosition = true;
+      bg.lockRotation = true;
+      engine.addLayer('Layer 1');
+      engine.addLayer('Layer 2');
+
+      engine.flattenLayers();
+
+      const layers = engine.getLayers();
+      expect(layers).toHaveLength(1);
+      expect(layers[0].isBackground).toBe(true);
+      expect(layers[0].lockPosition).toBe(true);
+      expect(layers[0].lockRotation).toBe(true);
+    });
+
+    it('restore re-seats a non-bottom Background to the bottom', () => {
+      const engine = new DocumentEngine('doc-restore-bg', 'Restore', 800, 600);
+      const bg = engine.addLayer('Background');
+      bg.isBackground = true;
+      engine.addLayer('Layer 1');
+      engine.addLayer('Layer 2'); // [Layer 2, Layer 1, Background]
+
+      // Simulate a legacy / hand-edited saved file with the Background
+      // at the top instead of the bottom.
+      const model = engine.snapshot();
+      const reordered = {
+        ...model,
+        layers: [model.layers[2], model.layers[0], model.layers[1]],
+      };
+      engine.restore(reordered);
+
+      const layers = engine.getLayers();
+      expect(layers.findIndex((l) => l.isBackground)).toBe(layers.length - 1);
     });
   });
 });
