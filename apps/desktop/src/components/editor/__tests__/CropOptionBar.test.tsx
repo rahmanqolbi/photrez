@@ -366,7 +366,7 @@ describe("CropOptionBar", () => {
       clickPill(container, "+");
 
       // Query inputs after clicking "+" (custom W, custom H, Angle)
-      const inputs = container.querySelectorAll("input");
+      const inputs = Array.from(container.querySelectorAll("input")).filter((i) => (i as HTMLInputElement).type === "text");
       const wInput = inputs[0] as HTMLInputElement;
       wInput.focus();
       wInput.value = "5";
@@ -883,7 +883,7 @@ describe("CropOptionBar", () => {
     // Click "+" to expand custom W:H fields
     clickPill(container, "+");
 
-    const inputs = container.querySelectorAll("input");
+    const inputs = Array.from(container.querySelectorAll("input")).filter((i) => (i as HTMLInputElement).type === "text");
     expect(inputs.length).toBeGreaterThan(0);
 
     const wInput = inputs[0]; // Custom W EditableNumField input
@@ -963,7 +963,7 @@ describe("CropOptionBar", () => {
 
     const dispose = render(() => <CropOptionBar />, container);
 
-    const inputs = container.querySelectorAll("input");
+    const inputs = Array.from(container.querySelectorAll("input")).filter((i) => (i as HTMLInputElement).type === "text");
     expect(inputs.length).toBeGreaterThan(0);
 
     const wInput = inputs[0]; // W target size input
@@ -1241,7 +1241,7 @@ describe("CropOptionBar", () => {
           modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
         }, container);
 
-        const inputs = container.querySelectorAll("input");
+        const inputs = Array.from(container.querySelectorAll("input")).filter((i) => (i as HTMLInputElement).type === "text");
         const wInput = inputs[0];
         wInput.focus();
         wInput.value = "400";
@@ -1274,7 +1274,7 @@ describe("CropOptionBar", () => {
           modernCropFrame: modernFrame, setModernCropFrame: setModernFrameSpy,
         }, container);
 
-        const inputs = container.querySelectorAll("input");
+        const inputs = Array.from(container.querySelectorAll("input")).filter((i) => (i as HTMLInputElement).type === "text");
         // W input is inputs[0], H input is inputs[1]
         const hInput = inputs[1];
         hInput.focus();
@@ -1342,7 +1342,7 @@ describe("CropOptionBar", () => {
           modernCropFrame: () => null, setModernCropFrame: vi.fn(),
         }, container);
 
-        const inputs = container.querySelectorAll("input");
+        const inputs = Array.from(container.querySelectorAll("input")).filter((i) => (i as HTMLInputElement).type === "text");
         const wInput = inputs[0] as HTMLInputElement;
         const hInput = inputs[1] as HTMLInputElement;
 
@@ -1393,7 +1393,7 @@ describe("CropOptionBar", () => {
           modernCropFrame: () => null, setModernCropFrame: vi.fn(),
         }, container);
 
-        const inputs = container.querySelectorAll("input");
+        const inputs = Array.from(container.querySelectorAll("input")).filter((i) => (i as HTMLInputElement).type === "text");
         const wInput = inputs[0] as HTMLInputElement;
         const hInput = inputs[1] as HTMLInputElement;
 
@@ -1435,7 +1435,7 @@ describe("CropOptionBar", () => {
           modernCropFrame: () => null, setModernCropFrame: vi.fn(),
         }, container);
 
-        const inputs = container.querySelectorAll("input");
+        const inputs = Array.from(container.querySelectorAll("input")).filter((i) => (i as HTMLInputElement).type === "text");
         const wInput = inputs[0] as HTMLInputElement;
         const hInput = inputs[1] as HTMLInputElement;
 
@@ -1479,7 +1479,7 @@ describe("CropOptionBar", () => {
         }, container);
 
         // Enter W=3 cm in Size mode
-        let inputs = container.querySelectorAll("input");
+        let inputs = Array.from(container.querySelectorAll("input")).filter((i) => (i as HTMLInputElement).type === "text");
         let wInput = inputs[0] as HTMLInputElement;
         wInput.focus();
         wInput.value = "3";
@@ -1493,7 +1493,7 @@ describe("CropOptionBar", () => {
         setCropMode("size");
 
         // After remount, display should still show 3
-        inputs = container.querySelectorAll("input");
+        inputs = Array.from(container.querySelectorAll("input")).filter((i) => (i as HTMLInputElement).type === "text");
         wInput = inputs[0] as HTMLInputElement;
         expect(wInput.value).toBe("3");
 
@@ -1520,7 +1520,7 @@ describe("CropOptionBar", () => {
           modernCropFrame: () => null, setModernCropFrame: vi.fn(),
         }, container);
 
-        const inputs = container.querySelectorAll("input");
+        const inputs = Array.from(container.querySelectorAll("input")).filter((i) => (i as HTMLInputElement).type === "text");
         const wInput = inputs[0] as HTMLInputElement;
         const hInput = inputs[1] as HTMLInputElement;
 
@@ -1557,7 +1557,7 @@ describe("CropOptionBar", () => {
           modernCropFrame: () => null, setModernCropFrame: vi.fn(),
         }, container);
 
-        const inputs = container.querySelectorAll("input");
+        const inputs = Array.from(container.querySelectorAll("input")).filter((i) => (i as HTMLInputElement).type === "text");
         const wInput = inputs[0] as HTMLInputElement;
         const hInput = inputs[1] as HTMLInputElement;
 
@@ -1597,7 +1597,7 @@ describe("CropOptionBar", () => {
           modernCropFrame: () => null, setModernCropFrame: vi.fn(),
         }, container);
 
-        const inputs = container.querySelectorAll("input");
+        const inputs = Array.from(container.querySelectorAll("input")).filter((i) => (i as HTMLInputElement).type === "text");
         const wInput = inputs[0] as HTMLInputElement;
         const hInput = inputs[1] as HTMLInputElement;
 
@@ -1637,7 +1637,7 @@ describe("CropOptionBar", () => {
           modernCropFrame: () => null, setModernCropFrame: vi.fn(),
         }, container);
 
-        const inputs = container.querySelectorAll("input");
+        const inputs = Array.from(container.querySelectorAll("input")).filter((i) => (i as HTMLInputElement).type === "text");
         const wInput = inputs[0] as HTMLInputElement;
         const hInput = inputs[1] as HTMLInputElement;
 
@@ -1682,33 +1682,77 @@ describe("CropOptionBar", () => {
       });
     });
 
-    it("resets modern crop frame preserving Size mode aspect ratio target", () => {
+  });
+
+  describe("crop tool UI redesign (2026-07-15)", () => {
+    it("removes the Modern paradigm toggle (no standalone 'Modern' button)", () => {
       runWithContainer((container, done) => {
-        const [cropMode] = createSignal<"free" | "ratio" | "size">("size");
-        const [cropSizeTarget] = createSignal<{ w: number; h: number } | null>({ w: 800, h: 600 });
-        const setModernFrameSpy = vi.fn();
-        const resetModernCropSpy = vi.fn();
-
-        renderOptionBar({
-          ...modernContextBase,
-          cropInteractionMode: () => "modern" as const,
-          cropMode,
-          cropSizeTarget,
-          setModernCropFrame: setModernFrameSpy,
-          resetModernCrop: resetModernCropSpy,
-        }, container);
-
-        const resetButton = Array.from(container.querySelectorAll("button")).find(
-          (b) => b.textContent?.trim() === "Reset"
+        renderOptionBar({ ...modernContextBase }, container);
+        const hasModern = Array.from(container.querySelectorAll("button")).some(
+          (b) => b.textContent?.trim() === "Modern"
         );
-        expect(resetButton).not.toBeUndefined();
-        resetButton!.click();
+        expect(hasModern).toBe(false);
+        done();
+      });
+    });
 
-        expect(resetModernCropSpy).toHaveBeenCalled();
-        expect(setModernFrameSpy).toHaveBeenCalled();
-        const frame = setModernFrameSpy.mock.lastCall?.[0];
-        // The reset frame should respect target size 800:600 = 4:3 aspect ratio
-        expect(frame.w / frame.h).toBeCloseTo(800 / 600, 1);
+    it("straighten slider updates modern image rotation", () => {
+      const setModernCropImageTransform = vi.fn();
+      const commitModernCropState = vi.fn();
+      runWithContainer((container, done) => {
+        renderOptionBar({ ...modernContextBase, setModernCropImageTransform, commitModernCropState }, container);
+        const slider = container.querySelector('input[type="range"]') as HTMLInputElement | null;
+        expect(slider).not.toBeNull();
+        slider!.value = "12.5";
+        slider!.dispatchEvent(new Event("input", { bubbles: true }));
+        expect(setModernCropImageTransform).toHaveBeenCalled();
+        done();
+      });
+    });
+
+    it("straighten slider updates classic rotation when in classic mode", () => {
+      const setCropRotation = vi.fn();
+      runWithContainer((container, done) => {
+        renderOptionBar({ ...modernContextBase, cropInteractionMode: () => "classic" as const, setCropRotation }, container);
+        const slider = container.querySelector('input[type="range"]') as HTMLInputElement | null;
+        expect(slider).not.toBeNull();
+        slider!.value = "-8";
+        slider!.dispatchEvent(new Event("input", { bubbles: true }));
+        expect(setCropRotation).toHaveBeenCalled();
+        done();
+      });
+    });
+
+    it("inline Classic toggle is reachable and switches interaction mode to classic", () => {
+      const setCropInteractionMode = vi.fn();
+      runWithContainer((container, done) => {
+        renderOptionBar({ ...modernContextBase, setCropInteractionMode }, container);
+        const classicLabel = Array.from(container.querySelectorAll("label")).find(
+          (l) => l.textContent?.trim() === "Classic"
+        );
+        expect(classicLabel).not.toBeUndefined();
+        const input = classicLabel!.querySelector("input[type='checkbox']") as HTMLInputElement;
+        input.click();
+        expect(setCropInteractionMode).toHaveBeenCalledWith("classic");
+        done();
+      });
+    });
+
+    it("Classic crop toggle in More menu switches interaction mode to classic", () => {
+      const setCropInteractionMode = vi.fn();
+      runWithContainer((container, done) => {
+        renderOptionBar({ ...modernContextBase, setCropInteractionMode }, container);
+        const moreTrigger = container.querySelector(".relative.hidden")?.querySelector("button") as HTMLButtonElement | null;
+        expect(moreTrigger).not.toBeNull();
+        moreTrigger!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        const moreContainer = container.querySelector(".relative.hidden")!;
+        const classicLabel = Array.from(moreContainer.querySelectorAll("label")).find(
+          (l) => l.textContent?.trim() === "Classic"
+        );
+        expect(classicLabel).not.toBeUndefined();
+        const input = classicLabel!.querySelector("input[type='checkbox']") as HTMLInputElement;
+        input.click();
+        expect(setCropInteractionMode).toHaveBeenCalledWith("classic");
         done();
       });
     });

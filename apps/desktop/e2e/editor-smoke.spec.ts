@@ -56,7 +56,7 @@ test.describe("editor browser smoke", () => {
     await expect(page.getByText("Selected Layer:")).toBeVisible();
 
     await page.getByRole("button", { name: "Crop Tool" }).click();
-    await expect(page.getByRole("button", { name: "Delete" })).toBeVisible();
+    await expect(page.getByText("Delete", { exact: true })).toBeVisible();
     await expect(page.getByText("Ratio: Free")).toBeVisible();
 
     await page.getByRole("button", { name: "Move Tool" }).click();
@@ -87,10 +87,12 @@ test.describe("editor browser smoke", () => {
     await page.goto("/");
     await createBlankCanvas(page);
     await page.getByRole("button", { name: "Crop Tool" }).click();
-    await page.getByRole("button", { name: "Classic" }).click();
+    // At this option-bar width the advanced controls collapse into More.
+    await page.getByRole("button", { name: "More Options" }).click();
+    await page.locator(".relative.hidden").getByText("Classic", { exact: true }).click();
 
-    await expect(page.getByRole("button", { name: "Classic" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "APPLY" })).toBeVisible();
+    await expect(page.locator(".relative.hidden").getByText("Classic", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Apply" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
     await expect(cropOverlay(page)).toBeVisible();
   });

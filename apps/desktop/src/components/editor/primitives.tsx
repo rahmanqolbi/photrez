@@ -18,7 +18,12 @@ export function NumField(props: {
       )}
     >
       <Show when={props.label}>
-        <span class={clsx("text-[10px] font-medium text-editor-text-dim", props.labelClass)}>
+        <span
+          class={clsx(
+            "text-[10px] font-medium text-editor-text-dim",
+            props.labelClass,
+          )}
+        >
           {props.label}
         </span>
       </Show>
@@ -29,7 +34,6 @@ export function NumField(props: {
     </div>
   );
 }
-
 
 export function SelectField(props: { value: string; class?: string }) {
   return (
@@ -69,7 +73,8 @@ export type SliderType =
   | "zoom"
   | "brush-size"
   | "brush-hardness"
-  | "brush-strength";
+  | "brush-strength"
+  | "straighten";
 
 export function Slider(props: {
   percent: number;
@@ -106,19 +111,23 @@ export function Slider(props: {
         };
       case "brightness":
         return {
-          "background-image": "linear-gradient(to right, #09090b, #52525b 50%, #ffffff)",
+          "background-image":
+            "linear-gradient(to right, #09090b, #52525b 50%, #ffffff)",
         };
       case "contrast":
         return {
-          "background-image": "linear-gradient(to right, #09090b, #71717a 50%, #ffffff)",
+          "background-image":
+            "linear-gradient(to right, #09090b, #71717a 50%, #ffffff)",
         };
       case "saturation":
         return {
-          "background-image": "linear-gradient(to right, #52525b, #71717a 35%, #ef4444 60%, #eab308 80%, #3b82f6 100%)",
+          "background-image":
+            "linear-gradient(to right, #52525b, #71717a 35%, #ef4444 60%, #eab308 80%, #3b82f6 100%)",
         };
       case "brush-hardness":
         return {
-          "background-image": "linear-gradient(to right, rgba(225, 90, 23, 0.15), var(--color-editor-accent, #E15A17))",
+          "background-image":
+            "linear-gradient(to right, rgba(225, 90, 23, 0.15), var(--color-editor-accent, #E15A17))",
         };
       case "brush-size":
         return {
@@ -131,7 +140,7 @@ export function Slider(props: {
   };
 
   const isCenterOrigin = () => {
-    return ["brightness", "contrast", "saturation"].includes(type());
+    return ["brightness", "contrast", "saturation", "straighten"].includes(type());
   };
 
   return (
@@ -158,6 +167,7 @@ export function Slider(props: {
               type() === "brightness" && "bg-zinc-100 shadow-[0_0_8px_rgba(255,255,255,0.45)]",
               type() === "contrast" && "bg-zinc-300 shadow-[0_0_8px_rgba(212,212,216,0.35)]",
               type() === "saturation" && "bg-gradient-to-r from-pink-500 to-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.45)]",
+              type() === "straighten" && "bg-editor-accent shadow-[0_0_8px_rgba(225,90,23,0.45)]",
             )}
             style={getCenterFillStyle()}
           />
@@ -166,7 +176,13 @@ export function Slider(props: {
         </Show>
 
         {/* Left-Aligned Fills */}
-        <Show when={!isCenterOrigin() && type() !== "opacity" && type() !== "brush-strength"}>
+        <Show
+          when={
+            !isCenterOrigin() &&
+            type() !== "opacity" &&
+            type() !== "brush-strength"
+          }
+        >
           <div
             class={clsx(
               "absolute inset-y-0 left-0 rounded-full",
@@ -180,14 +196,17 @@ export function Slider(props: {
       {/* Unified Thumb — left uses parent-relative %, translate centers the 12px dot */}
       <div
         class="absolute top-1/2 size-[12px] rounded-full border border-black/55 bg-[#d8dce2] shadow-[0_1px_2px_rgba(0,0,0,0.65),0_0_0_1px_rgba(255,255,255,0.18)] hover:scale-110 pointer-events-none"
-        style={{ left: `${props.percent}%`, transform: `translate(-50%, -50%)` }}
+        style={{
+          left: `${props.percent}%`,
+          transform: `translate(-50%, -50%)`,
+        }}
       />
     </div>
   );
 }
 
 export function EditableNumField(props: {
-  label: string;
+  label?: string;
   value: number;
   suffix?: string;
   class?: string;
@@ -241,9 +260,16 @@ export function EditableNumField(props: {
         props.class,
       )}
     >
-      <span class={clsx("text-[10px] font-medium text-editor-text-dim", props.labelClass)}>
-        {props.label}
-      </span>
+      <Show when={props.label}>
+        <span
+          class={clsx(
+            "text-[10px] font-medium text-editor-text-dim",
+            props.labelClass,
+          )}
+        >
+          {props.label}
+        </span>
+      </Show>
 
       <input
         ref={inputRef}
@@ -260,14 +286,21 @@ export function EditableNumField(props: {
           setText(e.currentTarget.value);
         }}
         onKeyDown={(e) => {
-          if (e.key === "Enter") { e.preventDefault(); commit(); }
-          if (e.key === "Escape") { e.preventDefault(); revert(); }
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commit();
+          }
+          if (e.key === "Escape") {
+            e.preventDefault();
+            revert();
+          }
           if (e.key === "ArrowUp" || e.key === "ArrowDown") {
             e.preventDefault();
             const parsed = parseFloat(text());
             if (!isNaN(parsed)) {
               const step = e.shiftKey ? 10 : 1;
-              const nextVal = e.key === "ArrowUp" ? parsed + step : parsed - step;
+              const nextVal =
+                e.key === "ArrowUp" ? parsed + step : parsed - step;
               const formatted = `${Math.round(nextVal * 100) / 100}`;
               setText(formatted);
               props.onSubmit(nextVal);

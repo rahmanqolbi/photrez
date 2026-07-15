@@ -66,6 +66,7 @@ export function MoreDropdown(props: { children: JSX.Element }) {
       <Tooltip content="More Options" placement="top">
         <button
           type="button"
+          aria-label="More Options"
           onClick={() => setIsOpen(!isOpen())}
           class="flex size-[24px] shrink-0 items-center justify-center rounded-[3px] border border-editor-field-border bg-editor-field text-editor-icon hover:border-editor-accent hover:text-editor-text transition-colors"
         >
