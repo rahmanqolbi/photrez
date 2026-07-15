@@ -112,7 +112,7 @@ describe("Tooltip Component", () => {
     root.remove();
   });
 
-  it("shows tooltip instantly on focus and hides on blur", () => {
+  it("shows tooltip after focus delay and hides on blur", () => {
     const root = document.createElement("div");
     document.body.appendChild(root);
 
@@ -127,10 +127,11 @@ describe("Tooltip Component", () => {
 
     const trigger = root.querySelector("#trigger")!;
 
-    // Focus target
+    // Focus target — opens after the same 400ms delay as hover (not instantly)
     trigger.dispatchEvent(new FocusEvent("focusin"));
+    expect(document.querySelector('[role="tooltip"]')).toBeNull();
+    vi.advanceTimersByTime(400);
 
-    // Should show instantly (no timer advance needed)
     const tooltip = document.querySelector('[role="tooltip"]')!;
     expect(tooltip).not.toBeNull();
     expect(trigger.getAttribute("aria-describedby")).toBe(tooltip.id);
@@ -159,11 +160,74 @@ describe("Tooltip Component", () => {
     const trigger = root.querySelector("#trigger")!;
 
     trigger.dispatchEvent(new FocusEvent("focusin"));
+    vi.advanceTimersByTime(400);
     expect(document.querySelector('[role="tooltip"]')).not.toBeNull();
 
     // Fire Escape keydown
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     expect(document.querySelector('[role="tooltip"]')).toBeNull();
+
+    dispose();
+    root.remove();
+  });
+
+  it("hides on window blur and does not re-show when focus is restored (alt-tab)", () => {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+
+    const dispose = render(
+      () => (
+        <Tooltip content="Test Tooltip">
+          <button id="trigger">Focus Me</button>
+        </Tooltip>
+      ),
+      root
+    );
+
+    const trigger = root.querySelector("#trigger")!;
+
+    // Show via focus
+    trigger.dispatchEvent(new FocusEvent("focusin"));
+    vi.advanceTimersByTime(400);
+    expect(document.querySelector('[role="tooltip"]')).not.toBeNull();
+
+    // Window loses focus (alt-tab away) — tooltip closes
+    window.dispatchEvent(new Event("blur"));
+    expect(document.querySelector('[role="tooltip"]')).toBeNull();
+
+    // OS returns focus to the trigger — focus re-fires but the tooltip must stay hidden
+    trigger.dispatchEvent(new FocusEvent("focusin"));
+    vi.advanceTimersByTime(400);
+    expect(document.querySelector('[role="tooltip"]')).toBeNull();
+
+    dispose();
+    root.remove();
+  });
+
+  it("closes on click", () => {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+
+    const dispose = render(
+      () => (
+        <Tooltip content="Test Tooltip">
+          <button id="trigger">Click Me</button>
+        </Tooltip>
+      ),
+      root
+    );
+
+    const trigger = root.querySelector("#trigger")!;
+
+    // Show via hover
+    trigger.dispatchEvent(new MouseEvent("mouseenter"));
+    vi.advanceTimersByTime(400);
+    expect(document.querySelector('[role="tooltip"]')).not.toBeNull();
+
+    // Clicking the trigger closes the tooltip
+    trigger.dispatchEvent(new MouseEvent("click"));
+    expect(document.querySelector('[role="tooltip"]')).toBeNull();
+    expect(trigger.getAttribute("aria-describedby")).toBeNull();
 
     dispose();
     root.remove();

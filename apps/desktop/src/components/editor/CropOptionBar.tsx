@@ -522,69 +522,7 @@ export function CropOptionBar() {
         </Show>
       </div>
 
-      <Divider />
-
-      {/* Delete pixels toggle (always visible, checkbox) */}
-      <Tooltip
-        content={
-          cropDeletePixels()
-            ? "Delete Cropped Pixels (Destructive)"
-            : "Keep Cropped Pixels (Non-Destructive)"
-        }
-      >
-        <OptionCheckbox
-          checked={cropDeletePixels()}
-          onChange={setCropDeletePixels}
-          label="Delete"
-        />
-      </Tooltip>
-
-      {/* Fill BG toggle (always visible, checkbox) + color */}
-      <Tooltip
-        content={
-          cropFillEnabled()
-            ? "Fill empty crop areas"
-            : "Leave empty crop areas transparent"
-        }
-      >
-        <OptionCheckbox
-          checked={cropFillEnabled()}
-          onChange={setCropFillEnabled}
-          label="Fill BG"
-        />
-      </Tooltip>
-
-      <Show when={cropFillEnabled()}>
-        <div
-          class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1"
-          data-crop-fill-source={cropFillSource()}
-        >
-          <Tooltip content="Crop fill color">
-            <input
-              data-crop-fill-color
-              type="color"
-              value={resolvedCropFillColor()}
-              onInput={(e) => {
-                setCropFillSource("custom");
-                setCropFillCustomColor(e.currentTarget.value);
-              }}
-              class="h-[18px] w-[22px] cursor-pointer rounded-[2px] border border-editor-field-border bg-transparent p-0"
-            />
-          </Tooltip>
-          <Tooltip content="Use Background Color">
-            <button
-              data-crop-fill-use-bg
-              type="button"
-              onClick={() => setCropFillSource("background")}
-              class="h-[18px] rounded-[2px] px-1.5 text-[10px] text-editor-text-dim hover:bg-editor-hover hover:text-editor-text"
-            >
-              Use BG
-            </button>
-          </Tooltip>
-        </div>
-      </Show>
-
-      {/* Custom W:H fields — visible when Custom ratio input is shown */}
+      {/* W/H inputs beside the Ratio dropdown (ratio + size modes) */}
       <Show when={cropMode() === "ratio"}>
         <div class="flex shrink-0 items-center gap-1">
           <EditableNumField
@@ -622,7 +560,6 @@ export function CropOptionBar() {
             class="w-[62px]"
           />
         </div>
-        <Divider />
       </Show>
 
       <Show when={cropMode() === "size"}>
@@ -717,8 +654,71 @@ export function CropOptionBar() {
             </select>
           </div>
         </div>
-        <Divider />
       </Show>
+
+      <Divider />
+
+      {/* Delete pixels toggle (always visible, checkbox) */}
+      <Tooltip
+        content={
+          cropDeletePixels()
+            ? "Delete Cropped Pixels (Destructive)"
+            : "Keep Cropped Pixels (Non-Destructive)"
+        }
+      >
+        <OptionCheckbox
+          checked={cropDeletePixels()}
+          onChange={setCropDeletePixels}
+          label="Delete"
+        />
+      </Tooltip>
+
+      {/* Fill BG toggle (always visible, checkbox) + color */}
+      <Tooltip
+        content={
+          cropFillEnabled()
+            ? "Fill empty crop areas"
+            : "Leave empty crop areas transparent"
+        }
+      >
+        <OptionCheckbox
+          checked={cropFillEnabled()}
+          onChange={setCropFillEnabled}
+          label="Fill BG"
+        />
+      </Tooltip>
+
+      <Show when={cropFillEnabled()}>
+        <div
+          class="flex h-[24px] shrink-0 items-center gap-1 rounded-[3px] border border-editor-field-border bg-editor-field px-1"
+          data-crop-fill-source={cropFillSource()}
+        >
+          <Tooltip content="Crop fill color">
+            <input
+              data-crop-fill-color
+              type="color"
+              value={resolvedCropFillColor()}
+              onInput={(e) => {
+                setCropFillSource("custom");
+                setCropFillCustomColor(e.currentTarget.value);
+              }}
+              class="h-[18px] w-[22px] cursor-pointer rounded-[2px] border border-editor-field-border bg-transparent p-0"
+            />
+          </Tooltip>
+          <Tooltip content="Use Background Color">
+            <button
+              data-crop-fill-use-bg
+              type="button"
+              onClick={() => setCropFillSource("background")}
+              class="h-[18px] rounded-[2px] px-1.5 text-[10px] text-editor-text-dim hover:bg-editor-hover hover:text-editor-text"
+            >
+              Use BG
+            </button>
+          </Tooltip>
+        </div>
+      </Show>
+
+      <Divider />
 
       {/* Advanced controls — inline when wide, collapse into More when narrow */}
       <div class="hidden @min-[880px]:flex items-center gap-1.5 shrink-0">

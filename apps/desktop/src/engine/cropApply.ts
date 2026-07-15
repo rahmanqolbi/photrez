@@ -1,5 +1,6 @@
 import type { LayerNode } from "./types";
 import { createMergedLayerNode } from "./layerFactory";
+import { compositeTwoLayers } from "./layerComposite";
 import { normalizeRotation } from "@/viewport/transformGeometry";
 
 export function performCropCanvas(layers: LayerNode[], x: number, y: number): void {
@@ -140,24 +141,59 @@ export function performApplyCrop(
 
   if (fillBackgroundColor) {
     try {
-      const offscreen = new OffscreenCanvas(finalW, finalH);
-      const ctx = offscreen.getContext("2d");
-      if (ctx) {
-        ctx.fillStyle = fillBackgroundColor;
-        ctx.fillRect(0, 0, finalW, finalH);
-        const bitmap = offscreen.transferToImageBitmap();
-        const fillLayer = createMergedLayerNode(
-          "Crop Fill Background",
-          finalW,
-          finalH,
-          bitmap,
-          false,
-          "normal",
-        );
-        layers.push(fillLayer);
+      const fillCanvas = new OffscreenCanvas(finalW, finalH);
+      const fctx = fillCanvas.getContext("2d");
+      if (fctx) {
+        fctx.fillStyle = fillBackgroundColor;
+        fctx.fillRect(0, 0, finalW, finalH);
+        const fillBitmap = fillCanvas.transferToImageBitmap();
+
+        // School A1: bake the fill into the Background layer instead of
+        // creating a separate layer below it. A separate layer below the
+        // Background fights the Background-order invariant on undo/redo
+        // (see docs/AI_HISTORY.md 2026-07-15). The Background is composited
+        // over the fill using the engine's own transform convention, so the
+        // baked result aligns exactly with the other layers.
+        let bgLayer = layers.find((l) => l.isBackground);
+        if (!bgLayer) {
+          // Unusual: document has no Background layer. Create one filled with
+          // the color so the fill becomes the canvas background (no stray layer).
+          const created = createMergedLayerNode("Background", finalW, finalH, fillBitmap, false, "normal");
+          created.isBackground = true;
+          layers.push(created);
+        } else {
+          const fillLayer: LayerNode = {
+            id: `layer-${crypto.randomUUID()}`,
+            name: "Crop Fill Background",
+            type: "raster",
+            visible: true,
+            opacity: 1.0,
+            locked: false,
+            isBackground: undefined,
+            blendMode: "normal",
+            transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
+            width: finalW,
+            height: finalH,
+            imageBitmap: fillBitmap,
+          };
+          const merged = compositeTwoLayers(bgLayer, fillLayer, finalW, finalH);
+          if (merged) {
+            bgLayer.imageBitmap = merged;
+            bgLayer.width = finalW;
+            bgLayer.height = finalH;
+            bgLayer.transform.x = 0;
+            bgLayer.transform.y = 0;
+            bgLayer.transform.scaleX = 1;
+            bgLayer.transform.scaleY = 1;
+            bgLayer.transform.rotation = 0;
+            bgLayer.transform.flipH = false;
+            bgLayer.transform.flipV = false;
+            bgLayer.baseImageBitmap = null;
+          }
+        }
       }
     } catch (err) {
-      console.error("Failed to create crop fill background:", err);
+      console.error("Failed to bake crop fill background:", err);
     }
   }
 }

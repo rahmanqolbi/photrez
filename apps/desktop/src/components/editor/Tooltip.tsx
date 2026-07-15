@@ -20,21 +20,20 @@ export function Tooltip(props: TooltipProps) {
 
   let hoverTimer: number | null = null;
   let lastClickTime = 0;
+  // Window-blur timestamp; far in the past so focus tooltips work normally.
+  // Set on window blur so the focus event that fires when the OS returns focus
+  // to the trigger (alt-tab back) doesn't re-pop the tooltip.
+  let lastWindowBlur = -1e9;
   const uniqueId = `tooltip-${Math.random().toString(36).substring(2, 9)}`;
 
-  const showTooltip = (instant = false) => {
+  const showTooltip = () => {
     if (props.disabled) return;
     // Don't show tooltip right after a click (blocks UI during rapid tool switch)
     if (Date.now() - lastClickTime < 400) return;
     if (hoverTimer) clearTimeout(hoverTimer);
-
-    if (instant) {
+    hoverTimer = window.setTimeout(() => {
       setVisible(true);
-    } else {
-      hoverTimer = window.setTimeout(() => {
-        setVisible(true);
-      }, 400);
-    }
+    }, 400);
   };
 
   const handleMouseDown = () => {
@@ -52,12 +51,24 @@ export function Tooltip(props: TooltipProps) {
     }
   };
 
-  // reference. Inline `() => showTooltip(false)` lambdas in onMount
+  // Hide on window blur (alt-tab) and record the time so the focus event that
+  // fires when focus is restored to the trigger on window refocus is ignored.
+  const handleWindowBlur = () => {
+    lastWindowBlur = Date.now();
+    hideTooltip();
+  };
+
+  // reference. Inline `() => showTooltip()` lambdas in onMount
   // were leak-cleanup blind — onCleanup could only remove the one
   // listener (window keydown) whose reference it held.
-  const onTargetEnter = () => showTooltip(false);
+  const onTargetEnter = () => showTooltip();
   const onTargetLeave = hideTooltip;
-  const onTargetFocus = () => showTooltip(true);
+  const onTargetFocus = () => {
+    // Skip focus caused by the window regaining focus (alt-tab back); only an
+    // intentional focus (keyboard tab / click) should open the tooltip.
+    if (Date.now() - lastWindowBlur < 600) return;
+    showTooltip();
+  };
   const onTargetBlur = hideTooltip;
 
   createEffect(() => {
@@ -113,7 +124,11 @@ export function Tooltip(props: TooltipProps) {
       target.addEventListener("focusin", onTargetFocus);
       target.addEventListener("focusout", onTargetBlur);
       target.addEventListener("mousedown", handleMouseDown);
+      // Close on click (matches Radix): clicking a tool shouldn't leave its
+      // tooltip pinned open.
+      target.addEventListener("click", hideTooltip);
       window.addEventListener("keydown", handleKeyDown);
+      window.addEventListener("blur", handleWindowBlur);
     }
   });
 
@@ -126,9 +141,11 @@ export function Tooltip(props: TooltipProps) {
       target.removeEventListener("focusin", onTargetFocus);
       target.removeEventListener("focusout", onTargetBlur);
       target.removeEventListener("mousedown", handleMouseDown);
+      target.removeEventListener("click", hideTooltip);
       target.removeAttribute("aria-describedby");
     }
     window.removeEventListener("keydown", handleKeyDown);
+    window.removeEventListener("blur", handleWindowBlur);
   });
 
   return (

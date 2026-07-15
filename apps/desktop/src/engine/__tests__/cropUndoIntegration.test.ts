@@ -174,31 +174,39 @@ describe("crop + undo integration", () => {
     expect(resizeMock).toHaveBeenCalledWith(preCropWidth, preCropHeight);
   });
 
-  it("undo and redo restore crop fill background layer state", () => {
+  it("undo and redo bake crop fill into the Background layer (no separate fill layer)", () => {
     setupOffscreenCanvasMock();
     const engine = new DocumentEngine("doc-fill-undo", "Fill Undo", 100, 100);
+    const bg = engine.addLayer("Background", 100, 100);
+    bg.isBackground = true;
+    bg.lockPosition = true;
+    bg.lockRotation = true;
     engine.addLayer("Photo", 100, 100);
-    const history = new CommandHistory();
 
+    const history = new CommandHistory();
     history.commit(engine.snapshot());
     const preCropSnap = engine.snapshot();
     engine.applyCrop(-10, -10, 120, 120, { fillBackgroundColor: "#123456" });
     const postCropSnap = engine.snapshot();
 
-    expect(engine.getLayers().at(-1)?.name).toBe("Crop Fill Background");
-    expect(engine.getLayers().length).toBe(2);
+    // School A1: fill is baked into the Background layer; no separate fill layer.
+    expect(engine.getLayers().find((l) => l.name === "Crop Fill Background")).toBeUndefined();
+    const bgAfter = engine.getLayers().find((l) => l.isBackground)!;
+    expect(bgAfter.imageBitmap?.width).toBe(120);
+    expect(bgAfter.imageBitmap?.height).toBe(120);
 
     const restored = history.undo(postCropSnap);
     engine.restore(restored!);
     expect(engine.getWidth()).toBe(100);
     expect(engine.getHeight()).toBe(100);
-    expect(engine.getLayers().map((layer) => layer.name)).toEqual(["Photo"]);
+    // Undo returns to pre-crop: the Background no longer has a baked fill bitmap.
+    expect(engine.getLayers().find((l) => l.isBackground)!.imageBitmap).toBeNull();
 
     const redone = history.redo(preCropSnap);
     engine.restore(redone!);
     expect(engine.getWidth()).toBe(120);
     expect(engine.getHeight()).toBe(120);
-    expect(engine.getLayers().at(-1)?.name).toBe("Crop Fill Background");
+    expect(engine.getLayers().find((l) => l.isBackground)!.imageBitmap?.width).toBe(120);
   });
 
   it("crop undo stack clear when leaving crop tool", () => {

@@ -334,7 +334,7 @@ describe("post-crop alignment for odd crop sizes", () => {
     expect(state.documentSize.height).toBe(151);
   });
 
-  it("bakes crop fill background into a bottom layer for canvas expansion", () => {
+  it("bakes crop fill into the (created) Background layer for canvas expansion", () => {
     const getInstances = setupOffscreenCanvasMock();
     const engine = new DocumentEngine("doc-fill-expand", "Fill Expand", 100, 100);
     const layer = engine.addLayer("Photo", 100, 100);
@@ -347,12 +347,12 @@ describe("post-crop alignment for odd crop sizes", () => {
 
     expect(engine.getWidth()).toBe(150);
     expect(engine.getHeight()).toBe(150);
-    const layers = engine.getLayers();
-    expect(layers.at(-1)?.name).toBe("Crop Fill Background");
-    expect(layers.at(-1)?.width).toBe(150);
-    expect(layers.at(-1)?.height).toBe(150);
-    expect(layers.at(-1)?.transform.x).toBe(0);
-    expect(layers.at(-1)?.transform.y).toBe(0);
+    // School A1: fill is baked into the Background layer, not a separate layer.
+    expect(engine.getLayers().find((l) => l.name === "Crop Fill Background")).toBeUndefined();
+    const bg = engine.getLayers().find((l) => l.isBackground);
+    expect(bg).toBeDefined();
+    expect(bg!.imageBitmap?.width).toBe(150);
+    expect(bg!.imageBitmap?.height).toBe(150);
 
     const fillCanvas = getInstances().find((canvas) => canvas.fillCalls.length > 0);
     expect(fillCanvas).toBeDefined();
@@ -365,7 +365,7 @@ describe("post-crop alignment for odd crop sizes", () => {
     });
   });
 
-  it("bakes crop fill background for rotated crop empty corners", () => {
+  it("bakes crop fill into the Background layer for rotated crop empty corners", () => {
     const getInstances = setupOffscreenCanvasMock();
     const engine = new DocumentEngine("doc-fill-rotate", "Fill Rotate", 100, 100);
     const layer = engine.addLayer("Photo", 100, 100);
@@ -377,12 +377,12 @@ describe("post-crop alignment for odd crop sizes", () => {
       fillBackgroundColor: "#abcdef",
     });
 
-    const fillLayer = engine.getLayers().at(-1);
-    expect(fillLayer?.name).toBe("Crop Fill Background");
-    expect(fillLayer?.width).toBe(100);
-    expect(fillLayer?.height).toBe(100);
-    expect(fillLayer?.imageBitmap?.width).toBe(100);
-    expect(fillLayer?.imageBitmap?.height).toBe(100);
+    // School A1: fill is baked into the Background layer, not a separate layer.
+    expect(engine.getLayers().find((l) => l.name === "Crop Fill Background")).toBeUndefined();
+    const bg = engine.getLayers().find((l) => l.isBackground);
+    expect(bg).toBeDefined();
+    expect(bg!.imageBitmap?.width).toBe(100);
+    expect(bg!.imageBitmap?.height).toBe(100);
 
     const fillCanvas = getInstances().find((canvas) => canvas.fillCalls.length > 0);
     expect(fillCanvas?.fillCalls[0].fillStyle).toBe("#abcdef");
