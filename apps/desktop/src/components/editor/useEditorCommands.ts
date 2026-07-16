@@ -15,7 +15,7 @@ import { showSaveDialog, writeFileBytes, showSaveDialogAllFormats } from "@/taur
 import { serializeAndSaveProject } from "./projectSerialize";
 import { addRecentFile } from "@/lib/recentFiles";
 import { easeOutCubic } from "@/viewport/easing";
-import { encodeComposite, type ExportFormat } from "./exportDocument";
+import { encodeComposite, getSavedQuality, setSavedQuality, type ExportFormat } from "./exportDocument";
 
 export const NATIVE_MENU_EVENT = "photrez://native-menu";
 export const EDITOR_COMMAND_EVENT = "photrez://editor-command";
@@ -325,18 +325,25 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
             } else {
               const format: ExportFormat = ext === "jpg" || ext === "jpeg" ? "jpeg"
                 : ext === "webp" ? "webp" : "png";
-              // Lossy formats: ask quality so an accidental Ctrl+S can be
-              // cancelled and the user controls file size. PNG is lossless,
-              // so it saves directly with no prompt.
+              // Lossy formats: prompt quality only the FIRST time this format is
+              // saved; the choice is persisted per-format so later saves of the
+              // same format write directly. Cancel aborts the save (anti-accidental
+              // guard). PNG is lossless and always saves directly.
               let quality = 92;
               if (format === "jpeg" || format === "webp") {
-                const chosen = await dialog.quality({
-                  title: `Save ${format.toUpperCase()} Quality`,
-                  format,
-                  defaultQuality: 92,
-                });
-                if (chosen === null) return; // user cancelled → abort save
-                quality = chosen;
+                const saved = getSavedQuality(format);
+                if (saved === null) {
+                  const chosen = await dialog.quality({
+                    title: `Save ${format.toUpperCase()} Quality`,
+                    format,
+                    defaultQuality: 92,
+                  });
+                  if (chosen === null) return; // user cancelled → abort save
+                  setSavedQuality(format, chosen);
+                  quality = chosen;
+                } else {
+                  quality = saved;
+                }
               }
               const bytes = await encodeComposite(engine, format, quality);
               await writeFileBytes(session.sourcePath!, bytes);
@@ -416,6 +423,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
                 });
                 if (chosen === null) return; // user cancelled quality dialog
                 quality = chosen;
+                setSavedQuality(format, chosen); // remember last-used for quick saves
               }
               const bytes = await encodeComposite(engine, format, quality);
               await writeFileBytes(path, bytes);

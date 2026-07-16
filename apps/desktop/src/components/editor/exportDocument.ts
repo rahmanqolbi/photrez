@@ -98,3 +98,30 @@ export async function exportActiveDocument(
 
   return path;
 }
+
+// ── Persisted last-used quality (per format) ────────────────────────────────
+// The quality dialog is shown only the first time a lossy format is saved; the
+// choice is remembered here so subsequent saves of that format write directly.
+// "Save As" always asks and also updates this value. PNG is lossless.
+const QUALITY_KEY_PREFIX = "photrez.quality.";
+
+export function getSavedQuality(format: ExportFormat): number | null {
+  if (format === "png") return null; // lossless, never prompted
+  try {
+    const raw = localStorage.getItem(QUALITY_KEY_PREFIX + format);
+    if (raw === null) return null;
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) ? Math.max(1, Math.min(100, n)) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setSavedQuality(format: ExportFormat, quality: number): void {
+  if (format === "png") return;
+  try {
+    localStorage.setItem(QUALITY_KEY_PREFIX + format, String(quality));
+  } catch {
+    // ignore storage failures (private mode / quota) — save still proceeds
+  }
+}

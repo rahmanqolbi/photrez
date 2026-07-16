@@ -5,10 +5,15 @@ import { WorkspaceManager } from "@/engine/workspace";
 import { useEditorCommands, dispatchEditorCommand } from "../useEditorCommands";
 import type { EditorCommand } from "../useEditorCommands";
 
-// Mock encodeComposite so no real canvas/OffscreenCanvas work happens.
-vi.mock("../exportDocument", () => ({
-  encodeComposite: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
-}));
+// Mock only encodeComposite so no real canvas/OffscreenCanvas work happens.
+// getSavedQuality/setSavedQuality stay real (use jsdom localStorage).
+vi.mock("../exportDocument", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../exportDocument")>();
+  return {
+    ...actual,
+    encodeComposite: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
+  };
+});
 
 // Mock native write path.
 vi.mock("@/tauri/native", () => ({
@@ -57,6 +62,7 @@ describe("file.save quality prompt (lossy vs lossless)", () => {
   beforeEach(() => {
     qualitySpy.mockReset();
     vi.clearAllMocks();
+    localStorage.clear();
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -141,5 +147,82 @@ describe("file.save quality prompt (lossy vs lossless)", () => {
 
     dispose();
     container.remove();
+  });
+
+  it("persists chosen quality and skips the dialog on the next save of the same format", async () => {
+    const { ws, session } = makeSession("C:/img/persist.jpg");
+    qualitySpy.mockResolvedValue(75);
+    const { writeFileBytes } = await import("@/tauri/native");
+    const { encodeComposite, getSavedQuality } = await import("../exportDocument");
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={{ uploadImage: vi.fn() } as any} scheduler={{ requestRender: vi.fn() } as any}>
+          {harness()}
+        </EditorProvider>
+      ),
+      container,
+    );
+
+    // First save: dialog shown, choice persisted.
+    await run("file.save");
+    expect(qualitySpy).toHaveBeenCalledTimes(1);
+    expect(getSavedQuality("jpeg")).toBe(75);
+    expect(encodeComposite).toHaveBeenLastCalledWith(session.engine, "jpeg", 75);
+
+    // Second save (same session, same format): no dialog, uses saved value.
+    qualitySpy.mockClear();
+    await run("file.save");
+    expect(qualitySpy).not.toHaveBeenCalled();
+    expect(encodeComposite).toHaveBeenLastCalledWith(session.engine, "jpeg", 75);
+    expect(writeFileBytes).toHaveBeenCalledTimes(2);
+
+    dispose();
+    container.remove();
+  });
+
+  it("keeps per-format quality independent (jpg vs webp)", async () => {
+    // First save a jpg at 70 → persisted for jpeg only.
+    const jpg = makeSession("C:/img/a.jpg");
+    qualitySpy.mockResolvedValue(70);
+    const c1 = document.createElement("div");
+    document.body.appendChild(c1);
+    const d1 = render(
+      () => (
+        <EditorProvider workspace={jpg.ws} renderer={{ uploadImage: vi.fn() } as any} scheduler={{ requestRender: vi.fn() } as any}>
+          {harness()}
+        </EditorProvider>
+      ),
+      c1,
+    );
+    await run("file.save");
+    d1();
+    c1.remove();
+
+    const { getSavedQuality } = await import("../exportDocument");
+    expect(getSavedQuality("jpeg")).toBe(70);
+    expect(getSavedQuality("webp")).toBeNull(); // untouched
+
+    // Now a webp save → still prompts (no saved webp value yet).
+    const webp = makeSession("C:/img/b.webp");
+    qualitySpy.mockClear();
+    qualitySpy.mockResolvedValue(60);
+    const c2 = document.createElement("div");
+    document.body.appendChild(c2);
+    const d2 = render(
+      () => (
+        <EditorProvider workspace={webp.ws} renderer={{ uploadImage: vi.fn() } as any} scheduler={{ requestRender: vi.fn() } as any}>
+          {harness()}
+        </EditorProvider>
+      ),
+      c2,
+    );
+    await run("file.save");
+    expect(qualitySpy).toHaveBeenCalledTimes(1);
+    expect(getSavedQuality("webp")).toBe(60);
+    d2();
+    c2.remove();
   });
 });
