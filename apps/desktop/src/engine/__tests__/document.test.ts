@@ -38,6 +38,43 @@ describe('DocumentEngine', () => {
     expect(engine.isDirty()).toBe(false);
   });
 
+  it('save then undo to a different (pre-save) state stays dirty [regression: was clean]', () => {
+    const engine = new DocumentEngine('doc-savedirty', 'Save Dirty', 800, 600);
+    engine.addLayer('Layer 1');
+    const l2 = engine.addLayer('Layer 2');
+    engine.clearDirty(); // "save" baseline = [Layer 1, Layer 2]
+
+    // Edit: remove Layer 2 (the "edit" after save)
+    const edited = engine.snapshot();
+    edited.layers = edited.layers.filter(l => l.id !== l2.id);
+    engine.restore(edited);
+    expect(engine.isDirty()).toBe(true); // differs from saved baseline
+
+    // Undo further to the pre-save state (also [Layer 1] only) — still
+    // differs from the [Layer1, Layer2] saved baseline -> must stay dirty
+    const preSave = engine.snapshot();
+    preSave.layers = preSave.layers.filter(l => l.id !== l2.id);
+    engine.restore(preSave);
+    expect(engine.getLayers().some(l => l.id === l2.id)).toBe(false);
+    expect(engine.isDirty()).toBe(true);
+  });
+
+  it('save then undo exactly to the saved baseline is clean', () => {
+    const engine = new DocumentEngine('doc-savedclean', 'Save Clean', 800, 600);
+    engine.addLayer('Layer 1');
+    engine.clearDirty(); // saved baseline = [Layer 1]
+
+    // Edit then undo back to the exact saved baseline
+    const l2 = engine.addLayer('Layer 2');
+    expect(engine.isDirty()).toBe(true);
+    engine.restore(engine.snapshot()); // no-op-ish restore of current
+    // remove l2 so we match the saved baseline exactly
+    const baseline = engine.snapshot();
+    baseline.layers = baseline.layers.filter(l => l.id !== l2.id);
+    engine.restore(baseline);
+    expect(engine.isDirty()).toBe(false);
+  });
+
   it('adds layers and updates layer list', () => {
     const engine = new DocumentEngine('doc-1', 'My Document', 800, 600);
     

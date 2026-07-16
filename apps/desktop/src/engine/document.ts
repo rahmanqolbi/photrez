@@ -20,6 +20,10 @@ export class DocumentEngine {
   private model: DocumentModel;
   private textureHandles: Map<LayerId, TextureHandle>;
   private dirtyLayerIds: Set<LayerId>;
+  // Saved baseline for dirty detection. isDirty() must compare against the
+  // last *saved* state, not a flag carried inside the model (which undo/restore
+  // would revive and falsely report clean).
+  private savedModel: DocumentModel | null = null;
   private onChangeCallback: (() => void) | null = null;
   private onVisualChangeCallback: (() => void) | null = null;
 
@@ -788,6 +792,10 @@ export class DocumentEngine {
   clearDirty(): void {
     this.dirtyLayerIds.clear();
     this.model.dirty = false;
+    // Snapshot the saved baseline so undo back to a *different* state than
+    // what was saved is still reported dirty (regression: undo to pre-edit
+    // state after save showed "clean" because the flag lived in the model).
+    this.savedModel = createSnapshot(this.model);
   }
 
   // ─── Change Notification ───
@@ -861,7 +869,54 @@ export class DocumentEngine {
     for (const layer of this.model.layers) {
       this.dirtyLayerIds.add(layer.id);
     }
-    this.notifyVisualChange();
+    // Dirty = restored state differs from the last *saved* baseline. Without
+    // this, undo to a pre-save state (whose snapshot carries dirty=false)
+    // would falsely report clean after a save.
+    this.model.dirty = this.savedModel
+      ? !DocumentEngine.modelsEqual(this.savedModel, this.model)
+      : this.model.dirty;
+      this.notifyVisualChange();
+    }
+
+  // Cheap structural equality (no pixel compare) used for dirty detection
+  // against the saved baseline. Compares refs for immutable ImageBitmaps;
+  // enough to catch any real edit.
+  private static modelsEqual(a: DocumentModel, b: DocumentModel): boolean {
+    if (a.id !== b.id || a.width !== b.width || a.height !== b.height) return false;
+    if (a.layers.length !== b.layers.length) return false;
+    for (let i = 0; i < a.layers.length; i++) {
+      const x = a.layers[i];
+      const y = b.layers[i];
+      if (
+        x.id !== y.id ||
+        x.name !== y.name ||
+        x.visible !== y.visible ||
+        x.opacity !== y.opacity ||
+        x.locked !== y.locked ||
+        x.isBackground !== y.isBackground ||
+        x.hasAdjustments !== y.hasAdjustments ||
+        x.blendMode !== y.blendMode ||
+        x.width !== y.width ||
+        x.height !== y.height ||
+        x.imageBitmap !== y.imageBitmap ||
+        x.baseImageBitmap !== y.baseImageBitmap ||
+        x.lockPosition !== y.lockPosition ||
+        x.lockRotation !== y.lockRotation ||
+        x.lockTransparency !== y.lockTransparency ||
+        // basicAdjustment is a small plain object; shallow-compare fields
+        (x.basicAdjustment?.brightness ?? 0) !== (y.basicAdjustment?.brightness ?? 0) ||
+        (x.basicAdjustment?.contrast ?? 0) !== (y.basicAdjustment?.contrast ?? 0) ||
+        (x.basicAdjustment?.saturation ?? 0) !== (y.basicAdjustment?.saturation ?? 0) ||
+        x.transform.x !== y.transform.x ||
+        x.transform.y !== y.transform.y ||
+        x.transform.scaleX !== y.transform.scaleX ||
+        x.transform.scaleY !== y.transform.scaleY ||
+        x.transform.rotation !== y.transform.rotation
+      ) {
+        return false;
+      }
+    }
+    return true;
   }
 
   // ─── Memory Budget ───
