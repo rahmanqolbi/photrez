@@ -6,10 +6,13 @@ import { WorkspaceManager } from "@/engine/workspace";
 import { ViewportCamera } from "@/viewport/viewportCamera";
 
 // Mock useViewportRenderer
+const { mockFitToScreenAndRender } = vi.hoisted(() => ({
+  mockFitToScreenAndRender: vi.fn(),
+}));
 vi.mock("../useViewportRenderer", () => ({
   useViewportRenderer: () => ({
     isFitTransition: () => false,
-    fitToScreenAndRender: vi.fn(),
+    fitToScreenAndRender: mockFitToScreenAndRender,
     resizeRenderer: vi.fn(),
   }),
 }));
@@ -274,11 +277,63 @@ describe("Space+pan global override across all tools", () => {
     expect(mockCommitBrushStroke).not.toHaveBeenCalled();
   });
 
-  it("Eraser tool + canvas: routes to pan handler when Space held", async () => {
+  // --- Double-click-to-fit guards (regression: view snapping to fit during brushing) ---
+
+  function fireDblClick(el: Element) {
+    el.dispatchEvent(new MouseEvent("dblclick", {
+      bubbles: true, cancelable: true,
+    }));
+  }
+
+  it("Brush tool: double-click does NOT snap view to fit (rapid dabs misread as dblclick)", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("brush");
+    mockFitToScreenAndRender.mockClear();
+
+    fireDblClick(getContainer());
+
+    expect(mockFitToScreenAndRender).not.toHaveBeenCalled();
+  });
+
+  it("Eraser tool: double-click does NOT snap view to fit", async () => {
     renderViewport();
     await new Promise((resolve) => setTimeout(resolve, 0));
     setTool("eraser");
+    mockFitToScreenAndRender.mockClear();
+
+    fireDblClick(getContainer());
+
+    expect(mockFitToScreenAndRender).not.toHaveBeenCalled();
+  });
+
+  it("Move tool: double-click on canvas still snaps view to fit", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("move");
+    mockFitToScreenAndRender.mockClear();
+
+    fireDblClick(getContainer());
+
+    expect(mockFitToScreenAndRender).toHaveBeenCalled();
+  });
+
+  it("Panning (Space held): double-click does NOT snap view to fit", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("move");
     mockSpacePressed = true;
+    mockFitToScreenAndRender.mockClear();
+
+    fireDblClick(getContainer());
+
+    expect(mockFitToScreenAndRender).not.toHaveBeenCalled();
+  });
+
+  it("Eraser tool + canvas: routes to pan handler when Space held", async () => {
+    renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setTool("eraser");    mockSpacePressed = true;
 
     firePointerDown(getCanvas());
 

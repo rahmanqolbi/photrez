@@ -489,6 +489,12 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
 
   const handleDoubleClick = (e: MouseEvent) => {
     if (activeTool() === "crop") return;
+    // Don't snap to fit while panning (space/middle-drag) or while a paint
+    // tool is active. Rapid repeated dabs during brushing read as a
+    // double-click and would reset the user's zoom/pan to fit — the bug this
+    // guards against. Other tools keep double-click-to-fit.
+    if (params.isPanning() || params.isSpacePressed()) return;
+    if (activeTool() === "brush" || activeTool() === "eraser") return;
     const container = params.getCanvasContainerRef();
     const canvas = params.getCanvasRef();
     if (e.target === container || e.target === canvas) {
