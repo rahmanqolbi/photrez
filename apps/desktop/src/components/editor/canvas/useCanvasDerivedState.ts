@@ -185,7 +185,11 @@ export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
       onCleanup(() => document.removeEventListener("pointermove", moveHandler));
     } else {
       setDragNativeCursor(null);
-      if (container) container.style.cursor = viewportCursorClass();
+      // For move tool, resolve the full cursor (incl. rotate handles)
+      // instead of the hard-coded "grab" from viewportCursorClass, so the
+      // dead-zone rotate cursor survives. Other tools use the viewport class.
+      const containerCursor = activeTool() === "move" ? cursorClass() : viewportCursorClass();
+      if (container) container.style.cursor = containerCursor;
       if (canvas) canvas.style.cursor = cursorClass();
       document.body.style.removeProperty("cursor");
     }

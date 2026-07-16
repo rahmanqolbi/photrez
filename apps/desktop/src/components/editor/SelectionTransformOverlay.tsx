@@ -3,7 +3,7 @@ import { useEditor } from "./shell/EditorContext";
 import type { HudMode } from "./TransformHud";
 import type { SnapRect, SnapResult } from "@/viewport/smartGuides";
 import { getCursorForHandle, documentToLayerLocal } from "@/viewport/transformGeometry";
-import { HANDLE_SIZE, HANDLE_HIT } from "@/viewport/rotateBand";
+import { HANDLE_SIZE, HANDLE_HIT, ROTATE_BAND_PX } from "@/viewport/rotateBand";
 import { useSelectionTransformDrag } from "./useSelectionTransformDrag";
 import { commitLayerTransformSession } from "./transformSession";
 
@@ -122,23 +122,13 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
   const screenW = createMemo(() => effW() * zoom());
   const screenH = createMemo(() => effH() * zoom());
 
-  // Proportional donut ring width: adjusts to the image size.
-  // - Idle: Proportional to image size (10% of smallest dimension, clamped [20px, 60px])
+  // Donut rotate-band width — mirrors the crop overlay's ROTATE_BAND_PX (100px
+  // screen-space) so the move-tool rotate zone matches other editors' feel.
+  // - Idle: fixed 100px band around the layer (was 20-60px, felt too small).
   // - Active: Infinite (10000px) to allow viewport-wide rotation clicks.
   const ringWidth = () => {
-    const sw = screenW();
-    const sh = screenH();
-    if (sw <= 0 || sh <= 0) return 20;
-
-    const dMin = Math.min(sw, sh);
     const isSessionActive = layerTransformSession() !== null;
-
-    if (!isSessionActive) {
-      const prop = dMin * 0.10;
-      return Math.max(20, Math.min(60, Math.round(prop))); // Smaller proportional width when idle
-    } else {
-      return 10000; // Virtually infinite hit zone during transform session
-    }
+    return isSessionActive ? 10000 : ROTATE_BAND_PX;
   };
 
   return (

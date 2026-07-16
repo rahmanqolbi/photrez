@@ -1487,3 +1487,37 @@ describe("documentToLayerLocal", () => {
     expect(result.flipV).toBe(true);
   });
 });
+
+describe("rotate hit zone (dead zone) detection", () => {
+  // Layer at doc origin, 800x600, zoom 1 → ROTATE_THRESHOLD expands 250px out.
+  const t: Transform2D = { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false };
+  const W = 800;
+  const H = 600;
+
+  it("detects rotate in the dead zone (60-250px outside, unrotated)", () => {
+    // 100px right of the layer edge, well inside the 250px threshold.
+    expect(detectHandle({ x: 900, y: 300 }, t, W, H, 1)).toBe("rotate");
+    // Same on the left side.
+    expect(detectHandle({ x: -100, y: 300 }, t, W, H, 1)).toBe("rotate");
+  });
+
+  it("does NOT detect rotate past the 250px threshold", () => {
+    // 300px right of the layer edge, outside the expanded rect.
+    expect(detectHandle({ x: 1100, y: 300 }, t, W, H, 1)).toBeNull();
+  });
+
+  it("detects rotate in the dead zone for a rotated layer (45deg)", () => {
+    const r: Transform2D = { ...t, rotation: 45 };
+    // A point clearly outside the unrotated bbox but inside the rotated AABB
+    // band — use the rotated AABB from getLayerAabb and probe just outside it.
+    const aabb = getLayerAabb(r, W, H);
+    const margin = 100; // inside ROTATE_THRESHOLD (250) from the AABB edge
+    const probe = { x: aabb.x + aabb.width / 2, y: aabb.y - margin };
+    expect(detectHandle(probe, r, W, H, 1)).toBe("rotate");
+  });
+
+  it("returns a valid rotate corner for a dead-zone point", () => {
+    const corner = getNearestRotateCorner({ x: 900, y: 300 }, t, W, H);
+    expect(["nw", "ne", "se", "sw"]).toContain(corner);
+  });
+});

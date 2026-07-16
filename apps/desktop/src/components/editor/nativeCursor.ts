@@ -28,9 +28,14 @@ function isTauriRuntime(): boolean {
  *  Call with `null` to restore the default.
  *  No-op outside Tauri runtime. */
 export function setDragNativeCursor(effect: "copy" | "move" | "default" | null): void {
+  // `null` means "let the webview/CSS own the cursor" — do NOT call
+  // SetCursor(IDC_ARROW). The old `effect ?? "default"` forced a Win32 arrow
+  // on every non-drag effect re-run, which overrode the SVG rotate cursor
+  // (and caused default↔rotate flicker during pointermove).
+  if (effect === null) return;
   if (!isTauriRuntime()) return;
   console.log("[nativeCursor] calling set_native_cursor with:", effect);
-  invoke("set_native_cursor", { icon: effect ?? "default" }).catch(() => {
+  invoke("set_native_cursor", { icon: effect }).catch(() => {
     console.warn("[nativeCursor] set_native_cursor failed");
   });
 }
