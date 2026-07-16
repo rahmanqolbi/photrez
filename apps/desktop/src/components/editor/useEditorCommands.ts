@@ -325,7 +325,20 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
             } else {
               const format: ExportFormat = ext === "jpg" || ext === "jpeg" ? "jpeg"
                 : ext === "webp" ? "webp" : "png";
-              const bytes = await encodeComposite(engine, format, 92);
+              // Lossy formats: ask quality so an accidental Ctrl+S can be
+              // cancelled and the user controls file size. PNG is lossless,
+              // so it saves directly with no prompt.
+              let quality = 92;
+              if (format === "jpeg" || format === "webp") {
+                const chosen = await dialog.quality({
+                  title: `Save ${format.toUpperCase()} Quality`,
+                  format,
+                  defaultQuality: 92,
+                });
+                if (chosen === null) return; // user cancelled → abort save
+                quality = chosen;
+              }
+              const bytes = await encodeComposite(engine, format, quality);
               await writeFileBytes(session.sourcePath!, bytes);
               engine.clearDirty();
               session.dirty = false;
