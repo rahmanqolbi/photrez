@@ -625,8 +625,12 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
       if (ctrl && e.shiftKey && e.altKey && key === "e") {
         e.preventDefault();
         e.stopPropagation();
-        if (stampVisibleLayers(engine, history, renderer)) {
+        if (!engine.getActiveLayerId()) {
+          showToast("No layer selected", "warn");
+        } else if (stampVisibleLayers(engine, history, renderer)) {
           scheduler.requestRender();
+        } else {
+          showToast("Nothing to stamp", "warn");
         }
         return;
       }
@@ -635,15 +639,21 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         e.preventDefault();
         e.stopPropagation();
 
-        const actionApplied = e.shiftKey
-          ? flattenAllLayers(engine, history, renderer)
-          : (() => {
-              const activeId = engine.getActiveLayerId();
-              return activeId ? mergeActiveLayerDown(engine, history, renderer, activeId) : false;
-            })();
-
-        if (actionApplied) {
-          scheduler.requestRender();
+        const activeId = engine.getActiveLayerId();
+        if (e.shiftKey) {
+          if (flattenAllLayers(engine, history, renderer)) {
+            scheduler.requestRender();
+          } else {
+            showToast("Nothing to flatten", "warn");
+          }
+        } else if (activeId) {
+          if (mergeActiveLayerDown(engine, history, renderer, activeId)) {
+            scheduler.requestRender();
+          } else {
+            showToast("Nothing to merge", "warn");
+          }
+        } else {
+          showToast("No layer selected", "warn");
         }
 
         return;

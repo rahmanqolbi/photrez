@@ -28,6 +28,10 @@ export function useLayerActions() {
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     const activeId = activeLayerId();
+    if (!activeId) {
+      showToast("No layer selected", "warn");
+      return;
+    }
     if (engine && history && activeId) {
       history.commit(engine.snapshot(), "Duplicate Layer");
       try {
@@ -47,9 +51,15 @@ export function useLayerActions() {
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     const activeId = activeLayerId();
+    if (!activeId) {
+      showToast("No layer selected", "warn");
+      return;
+    }
     if (engine && history && activeId) {
       if (mergeActiveLayerDown(engine, history, renderer, activeId)) {
         scheduler.requestRender();
+      } else {
+        showToast("Nothing to merge", "warn");
       }
     }
   };
@@ -61,6 +71,8 @@ export function useLayerActions() {
     if (engine && history) {
       if (flattenAllLayers(engine, history, renderer)) {
         scheduler.requestRender();
+      } else {
+        showToast("Nothing to flatten", "warn");
       }
     }
   };
@@ -70,6 +82,10 @@ export function useLayerActions() {
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     const activeId = activeLayerId();
+    if (!activeId) {
+      showToast("No layer selected", "warn");
+      return;
+    }
     if (engine && history && activeId) {
       // Nothing to bake if the layer has no live adjustment.
       if (!engine.getLayer(activeId)?.basicAdjustment) return;
@@ -96,6 +112,8 @@ export function useLayerActions() {
     if (engine && history) {
       if (stampVisibleLayers(engine, history, renderer)) {
         scheduler.requestRender();
+      } else {
+        showToast("Nothing to stamp", "warn");
       }
     }
   };
@@ -219,6 +237,10 @@ export function useLayerActions() {
     const engine = workspace.getActiveEngine();
     const history = workspace.getActiveHistory();
     const activeId = activeLayerId();
+    if (!activeId) {
+      showToast("No layer selected", "warn");
+      return;
+    }
     if (engine && history && activeId) {
       const layer = engine.getLayer(activeId);
       if (layer?.isBackground) {

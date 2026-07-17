@@ -9,6 +9,7 @@ import { DocumentEngine } from "@/engine/document";
 import { CommandHistory } from "@/engine/history";
 import { mergeActiveLayerDown, flattenAllLayers, fillActiveLayerWithColor } from "../layerOperations";
 import type { WebGL2Backend } from "@/renderer/webgl2";
+import * as Toast from "../../Toast";
 
 // Polyfill OffscreenCanvas for jsdom — DocumentEngine.mergeDown and
 // flattenLayers use OffscreenCanvas internally for pixel compositing.
@@ -439,5 +440,26 @@ describe("useLayerActions wiring", () => {
 
     expect(history.getUndoCount()).toBe(1);
     expect(scheduler.requestRender).toHaveBeenCalled();
+  });
+
+  it("handleDuplicateActiveLayer with no active layer shows a warning toast (no silent no-op)", () => {
+    const { engine, wrapper } = createWrapper();
+    engine.setActiveLayer(null);
+    const toastSpy = vi.spyOn(Toast, "showToast");
+
+    const { result } = renderHook(() => useLayerActions(), { wrapper });
+    result.handleDuplicateActiveLayer();
+
+    expect(toastSpy).toHaveBeenCalledWith("No layer selected", "warn");
+  });
+
+  it("handleFlattenAllLayers with a single layer shows a warning toast (no silent no-op)", () => {
+    const { engine, wrapper } = createWrapper();
+    const toastSpy = vi.spyOn(Toast, "showToast");
+
+    const { result } = renderHook(() => useLayerActions(), { wrapper });
+    result.handleFlattenAllLayers();
+
+    expect(toastSpy).toHaveBeenCalledWith("Nothing to flatten", "warn");
   });
 });
