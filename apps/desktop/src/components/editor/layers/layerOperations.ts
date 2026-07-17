@@ -3,6 +3,7 @@ import type { CommandHistory } from "@/engine/history";
 import type { WebGL2Backend } from "@/renderer/webgl2";
 import { compositeAllLayers } from "@/engine/layerComposite";
 import { applyBasicAdjustmentToColor } from "@/engine/layerAdjustments";
+import { SelectionOperations } from "@/features/selection/SelectionOperations";
 
 export function mergeActiveLayerDown(
   engine: DocumentEngine,
@@ -126,10 +127,14 @@ export function fillActiveLayerWithColor(
 
         ctx.fillStyle = fillColor;
         if (sel) {
-          const sx = Math.round(sel.x);
-          const sy = Math.round(sel.y);
-          const sw = Math.max(0, Math.round(sel.width));
-          const sh = Math.max(0, Math.round(sel.height));
+          // Selection is in document space; map it into layer-local pixel
+          // space so the fill lands under the marquee even after the layer
+          // is resized/translated/rotated. Identity transform ⇒ unchanged.
+          const aabb = SelectionOperations.selectionToLayerAabb(sel, layer.transform, w, h);
+          const sx = Math.round(aabb.x);
+          const sy = Math.round(aabb.y);
+          const sw = Math.max(0, Math.round(aabb.width));
+          const sh = Math.max(0, Math.round(aabb.height));
           if (sel.inverted) {
             // Fill everything EXCEPT the (clamped) selected rect.
             const left = Math.max(0, Math.min(w, sx));

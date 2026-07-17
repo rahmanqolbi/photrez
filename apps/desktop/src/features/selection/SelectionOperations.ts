@@ -1,5 +1,7 @@
 import { SelectionState } from "./SelectionTypes";
 import { DocumentEngine } from "../../engine/document";
+import type { Transform2D } from "../../engine/types";
+import { documentToLayerLocal } from "../../viewport/transformGeometry";
 
 /**
  * Selection pixel operations (cut/copy/paste/delete) for the active layer.
@@ -19,6 +21,47 @@ export class SelectionOperations {
     const sel = engine.getSelection();
     if (!sel) return null;
     return { ...sel, angle: 0 };
+  }
+
+  /**
+   * Map a document-space selection rect to its axis-aligned bounding box in
+   * layer-local pixel space, accounting for the layer transform (position,
+   * scale, rotation, flip). A selection is stored in document space, but pixel
+   * operations write into the layer bitmap (layer-local space); without this
+   * mapping, delete/fill/copy land in the wrong place once the layer is
+   * transformed (resized/translated/rotated). An identity transform yields
+   * the raw selection rect unchanged, so untransformed layers are unaffected.
+   */
+  static selectionToLayerAabb(
+    sel: SelectionState,
+    transform: Transform2D,
+    layerW: number,
+    layerH: number,
+  ): { x: number; y: number; width: number; height: number } {
+    const cx = sel.x + sel.width / 2;
+    const cy = sel.y + sel.height / 2;
+    const rad = (sel.angle * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const corners = [
+      { x: sel.x, y: sel.y },
+      { x: sel.x + sel.width, y: sel.y },
+      { x: sel.x + sel.width, y: sel.y + sel.height },
+      { x: sel.x, y: sel.y + sel.height },
+    ].map((c) => ({
+      x: cx + (c.x - cx) * cos - (c.y - cy) * sin,
+      y: cy + (c.x - cx) * sin + (c.y - cy) * cos,
+    }));
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const c of corners) {
+      const lp = documentToLayerLocal(c.x, c.y, transform, layerW, layerH);
+      if (lp.x < minX) minX = lp.x;
+      if (lp.y < minY) minY = lp.y;
+      if (lp.x > maxX) maxX = lp.x;
+      if (lp.y > maxY) maxY = lp.y;
+    }
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   }
 
   /**
@@ -47,6 +90,10 @@ export class SelectionOperations {
     const layerW = layer.width;
     const layerH = layer.height;
 
+    // Selection is in document space; map it into layer-local pixel space
+    // so the copy reads the pixels that are actually under the marquee.
+    const aabb = SelectionOperations.selectionToLayerAabb(sel, layer.transform, layerW, layerH);
+
     let w: number, h: number, sx: number, sy: number;
 
     if (sel.inverted) {
@@ -58,10 +105,10 @@ export class SelectionOperations {
     } else {
       // Clamp source rect to layer bounds to avoid Canvas drawImage crash
       // when the selection extends beyond the canvas.
-      sx = Math.max(0, Math.round(sel.x));
-      sy = Math.max(0, Math.round(sel.y));
-      const se = Math.min(layerW, Math.round(sel.x + sel.width));
-      const sb = Math.min(layerH, Math.round(sel.y + sel.height));
+      sx = Math.max(0, Math.round(aabb.x));
+      sy = Math.max(0, Math.round(aabb.y));
+      const se = Math.min(layerW, Math.round(aabb.x + aabb.width));
+      const sb = Math.min(layerH, Math.round(aabb.y + aabb.height));
       w = Math.max(0, se - sx);
       h = Math.max(0, sb - sy);
     }
@@ -75,7 +122,7 @@ export class SelectionOperations {
     try {
       if (sel.inverted) {
         ctx.drawImage(bitmap, 0, 0);
-        ctx.clearRect(Math.round(sel.x), Math.round(sel.y), Math.round(sel.width), Math.round(sel.height));
+        ctx.clearRect(Math.round(aabb.x), Math.round(aabb.y), Math.round(aabb.width), Math.round(aabb.height));
       } else {
         ctx.drawImage(
           bitmap,
@@ -214,12 +261,12 @@ export class SelectionOperations {
   /**
    * Helper: fill selection bounds with transparent pixels on the active layer.
    *
-   * Operates in the layer's own bitmap space (not document space). This is
-   * correct when the layer has an identity transform — the selection in
-   * document space then coincides with the selection in layer space, which
-   * is the MVP case (layers in MVP do not carry non-identity transforms
-   * that affect pixel sampling). If we later add transformed layers we
-   * will need to inverse-transform the selection rect into layer space.
+   * The selection is stored in document space, but the layer bitmap lives in
+   * layer-local pixel space. The selection rect is inverse-transformed into
+   * layer-local space (via `selectionToLayerAabb`) so the cleared region
+   * matches the marquee the user sees, even after the layer is resized,
+   * translated, or rotated. With an identity transform the result equals the
+   * raw selection rect.
    */
   private static fillSelectionWithTransparent(engine: DocumentEngine): void {
     const sel = engine.getSelection();
@@ -232,16 +279,16 @@ export class SelectionOperations {
     const bitmap = layer.imageBitmap;
     if (!bitmap) return;
 
-    const w = Math.max(0, Math.round(sel.width));
-    const h = Math.max(0, Math.round(sel.height));
-    if (w === 0 || h === 0) return;
-
-    const sx = Math.round(sel.x);
-    const sy = Math.round(sel.y);
-
     // Use the layer's own bitmap size — the layer is the unit of truth.
     const layerW = layer.width;
     const layerH = layer.height;
+
+    const aabb = SelectionOperations.selectionToLayerAabb(sel, layer.transform, layerW, layerH);
+    const sx = Math.round(aabb.x);
+    const sy = Math.round(aabb.y);
+    const w = Math.max(0, Math.round(aabb.width));
+    const h = Math.max(0, Math.round(aabb.height));
+    if (w === 0 || h === 0) return;
 
     const offscreen = new OffscreenCanvas(layerW, layerH);
     const ctx = offscreen.getContext("2d");

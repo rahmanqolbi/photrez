@@ -902,4 +902,86 @@ describe("SelectionOperations — real pixel operations", () => {
       expect(SelectionOperations.hasClipboard()).toBe(false);
     });
   });
+
+  describe("transformed layer — selection maps to layer-local space", () => {
+    function makeFilledLayer(color: string) {
+      const layer = engine.addLayer("Layer 1", 100, 100);
+      const offscreen = new OffscreenCanvas(100, 100);
+      const ctx = offscreen.getContext("2d")!;
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, 100, 100);
+      engine.setLayerImageBitmap(layer.id, offscreen.transferToImageBitmap());
+      return layer;
+    }
+
+    function alphaAt(layerId: string, x: number, y: number): number {
+      const b = engine.getLayerImageBitmap(layerId) as any;
+      return b._buffer[4 * (y * 100 + x) + 3];
+    }
+
+    it("deleteSelection clears layer-local pixels under the (translated) marquee", () => {
+      const layer = makeFilledLayer("#FF0000");
+      // Translate the layer by (+50,+50) in document space; scale/rot identity.
+      engine.transformLayer(layer.id, { x: 50, y: 50, scaleX: 1, scaleY: 1, rotation: 0 });
+
+      // Document-space selection at (60,60,20,20) maps to layer-local (10,10,20,20).
+      engine.createSelection(60, 60, 20, 20);
+      SelectionOperations.deleteSelection(engine);
+
+      // Pixels inside the mapped layer-local rect must be cleared.
+      expect(alphaAt(layer.id, 15, 15)).toBe(0);
+      expect(alphaAt(layer.id, 25, 25)).toBe(0);
+      // Pixels outside it (in the un-translated part of the layer) stay opaque.
+      expect(alphaAt(layer.id, 5, 5)).toBe(255);
+      expect(alphaAt(layer.id, 95, 95)).toBe(255);
+    });
+
+    it("deleteSelection clears layer-local pixels under the (scaled) marquee", () => {
+      const layer = makeFilledLayer("#00FF00");
+      // Scale 2x, no translate. Layer center stays at doc (50,50).
+      engine.transformLayer(layer.id, { x: 0, y: 0, scaleX: 2, scaleY: 2, rotation: 0 });
+
+      // Document-space selection (60,60,20,20) → layer-local (30,30,10,10).
+      engine.createSelection(60, 60, 20, 20);
+      SelectionOperations.deleteSelection(engine);
+
+      expect(alphaAt(layer.id, 35, 35)).toBe(0); // inside mapped rect
+      expect(alphaAt(layer.id, 5, 5)).toBe(255);  // outside
+    });
+
+    it("fillActiveLayerWithColor (via SelectionOperations path) scopes to layer-local rect", () => {
+      // The fill path lives in layerOperations; here we assert the shared
+      // mapping helper yields the correct layer-local AABB for a rotated layer.
+      const layer = makeFilledLayer("#0000FF");
+      engine.transformLayer(layer.id, { x: 50, y: 50, scaleX: 1, scaleY: 1, rotation: 0 });
+      engine.createSelection(50, 50, 40, 40); // doc rect over the layer center
+
+      const aabb = SelectionOperations.selectionToLayerAabb(
+        engine.getSelection()!,
+        layer.transform,
+        layer.width,
+        layer.height,
+      );
+      // Center doc (70,70) → layer-local (20,20); rect 40 wide → (0..40).
+      expect(Math.round(aabb.x)).toBe(0);
+      expect(Math.round(aabb.y)).toBe(0);
+      expect(Math.round(aabb.width)).toBe(40);
+      expect(Math.round(aabb.height)).toBe(40);
+    });
+
+    it("identity transform yields the raw selection rect (no regression)", () => {
+      const layer = makeFilledLayer("#FF0000");
+      engine.createSelection(10, 20, 50, 60);
+      const aabb = SelectionOperations.selectionToLayerAabb(
+        engine.getSelection()!,
+        layer.transform,
+        layer.width,
+        layer.height,
+      );
+      expect(aabb.x).toBe(10);
+      expect(aabb.y).toBe(20);
+      expect(aabb.width).toBe(50);
+      expect(aabb.height).toBe(60);
+    });
+  });
 });

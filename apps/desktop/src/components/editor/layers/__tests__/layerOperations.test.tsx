@@ -238,6 +238,37 @@ describe("fillActiveLayerWithColor (selection-aware)", () => {
     expect(pixel(layer.imageBitmap, 0, 0)).toEqual([0, 0, 255, 255]);
     expect(pixel(layer.imageBitmap, 99, 99)).toEqual([0, 0, 255, 255]);
   });
+
+  it("fills the layer-local rect under a (translated) marquee, not the doc-space rect", () => {
+    const { engine, layer, history, renderer } = setup();
+    // Translate the layer by (+50,+50); the marquee in doc space (60,60,20,20)
+    // maps to layer-local (10,10,20,20).
+    engine.transformLayer(layer.id, { x: 50, y: 50, scaleX: 1, scaleY: 1, rotation: 0 });
+    engine.createSelection(60, 60, 20, 20, 0);
+
+    const ok = fillActiveLayerWithColor(engine, history, renderer, "#00ff00");
+    expect(ok).toBe(true);
+
+    // Inside the mapped layer-local rect → green
+    expect(pixel(layer.imageBitmap, 15, 15)).toEqual([0, 255, 0, 255]);
+    expect(pixel(layer.imageBitmap, 25, 25)).toEqual([0, 255, 0, 255]);
+    // Outside it (the un-translated part of the layer) → untouched
+    expect(pixel(layer.imageBitmap, 5, 5)).toEqual([0, 0, 0, 0]);
+    expect(pixel(layer.imageBitmap, 95, 95)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("fills the layer-local rect under a (scaled) marquee", () => {
+    const { engine, layer, history, renderer } = setup();
+    // Scale 2x, no translate. Doc-space (60,60,20,20) → layer-local (30,30,10,10).
+    engine.transformLayer(layer.id, { x: 0, y: 0, scaleX: 2, scaleY: 2, rotation: 0 });
+    engine.createSelection(60, 60, 20, 20, 0);
+
+    const ok = fillActiveLayerWithColor(engine, history, renderer, "#ffff00");
+    expect(ok).toBe(true);
+
+    expect(pixel(layer.imageBitmap, 35, 35)).toEqual([255, 255, 0, 255]); // inside
+    expect(pixel(layer.imageBitmap, 5, 5)).toEqual([0, 0, 0, 0]);          // outside
+  });
 });
 
 describe("flattenAllLayers", () => {
