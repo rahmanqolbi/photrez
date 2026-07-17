@@ -45,7 +45,7 @@ describe("SelectionRenderer — base state (no edit mode)", () => {
   it("renders marquee rect with screen-space coordinates in base state", () => {
     const sel: SelectionState = { x: 100, y: 50, width: 200, height: 150, angle: 0 };
     const { container, dispose } = renderComponent({ selection: sel, zoom: 2, pan: { x: 10, y: 20 } });
-    const rect = container.querySelector("[data-selection-marquee]");
+    const rect = container.querySelector("[data-selection-marquee] rect");
     expect(rect).not.toBeNull();
     expect(rect!.getAttribute("x")).toBe("210");
     expect(rect!.getAttribute("y")).toBe("120");
@@ -57,14 +57,14 @@ describe("SelectionRenderer — base state (no edit mode)", () => {
   it("marquee rect uses animate-dash class in base state", () => {
     const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
     const { container, dispose } = renderComponent({ selection: sel });
-    expect(container.querySelector("[data-selection-marquee].animate-dash")).not.toBeNull();
+    expect(container.querySelector("[data-selection-marquee] rect.animate-dash")).not.toBeNull();
     dispose();
   });
 
   it("marquee rect uses non-scaling stroke in base state", () => {
     const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
     const { container, dispose } = renderComponent({ selection: sel, zoom: 4 });
-    const rect = container.querySelector("[data-selection-marquee]");
+    const rect = container.querySelector("[data-selection-marquee] rect");
     expect(rect!.getAttribute("vector-effect")).toBe("non-scaling-stroke");
     dispose();
   });
@@ -101,7 +101,7 @@ describe("SelectionRenderer — inverted selection", () => {
       canvasHeight: 80,
     });
 
-    const boundary = container.querySelector("[data-selection-inverted-boundary]");
+    const boundary = container.querySelector("[data-selection-inverted-boundary] rect");
     expect(boundary).not.toBeNull();
     expect(boundary!.getAttribute("x")).toBe("5");
     expect(boundary!.getAttribute("y")).toBe("7");

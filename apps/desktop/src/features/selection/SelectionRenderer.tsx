@@ -71,20 +71,36 @@ export function SelectionRenderer(props: SelectionRendererProps) {
         return (
           <>
             <Show when={sel().inverted && props.canvasWidth != null && props.canvasHeight != null}>
-              <rect
-                x={props.pan.x}
-                y={props.pan.y}
-                width={props.canvasWidth! * props.zoom}
-                height={props.canvasHeight! * props.zoom}
-                fill="none"
-                stroke="#E15A17"
-                stroke-width={1.5}
-                stroke-dasharray="5 3"
-                class="animate-dash"
-                vector-effect="non-scaling-stroke"
+              <g
                 data-selection-inverted-boundary
                 style={{ "pointer-events": "none" }}
-              />
+              >
+                <rect
+                  x={props.pan.x}
+                  y={props.pan.y}
+                  width={props.canvasWidth! * props.zoom}
+                  height={props.canvasHeight! * props.zoom}
+                  fill="none"
+                  stroke="var(--color-editor-accent, #E15A17)"
+                  stroke-width={2.5}
+                  stroke-dasharray="4 4"
+                  class="animate-dash"
+                  vector-effect="non-scaling-stroke"
+                />
+                <rect
+                  x={props.pan.x}
+                  y={props.pan.y}
+                  width={props.canvasWidth! * props.zoom}
+                  height={props.canvasHeight! * props.zoom}
+                  fill="none"
+                  stroke="white"
+                  stroke-width={1}
+                  stroke-dasharray="4 4"
+                  stroke-dashoffset={4}
+                  class="animate-dash"
+                  vector-effect="non-scaling-stroke"
+                />
+              </g>
             </Show>
             <g
               transform={`rotate(${angle()}, ${centerX()}, ${centerY()})`}
@@ -94,21 +110,37 @@ export function SelectionRenderer(props: SelectionRendererProps) {
               data-mode={editMode() ? "edit" : "base"}
               style={{ "pointer-events": editMode() && !sel().inverted ? "auto" : "none" }}
             >
-            {/* Main marquee rect - the boundary (always visible) */}
-            <rect
-              x={screenX()}
-              y={screenY()}
-              width={screenW()}
-              height={screenH()}
-              fill="none"
-              stroke="#E15A17"
-              stroke-width={1.5}
-              stroke-dasharray="5 3"
-              class="animate-dash"
-              vector-effect="non-scaling-stroke"
-              data-selection-marquee
-              style={{ "pointer-events": "none" }}
-            />
+            {/* Main marquee rect - the boundary (always visible).
+                Double stroke: a thicker accent line under a thinner white line,
+                both walking in opposite phase, so the edge stays visible over
+                any background (standard marching-ants treatment). */}
+            <g data-selection-marquee style={{ "pointer-events": "none" }}>
+              <rect
+                x={screenX()}
+                y={screenY()}
+                width={screenW()}
+                height={screenH()}
+                fill="none"
+                stroke="var(--color-editor-accent, #E15A17)"
+                stroke-width={2.5}
+                stroke-dasharray="4 4"
+                class="animate-dash"
+                vector-effect="non-scaling-stroke"
+              />
+              <rect
+                x={screenX()}
+                y={screenY()}
+                width={screenW()}
+                height={screenH()}
+                fill="none"
+                stroke="white"
+                stroke-width={1}
+                stroke-dasharray="4 4"
+                stroke-dashoffset={4}
+                class="animate-dash"
+                vector-effect="non-scaling-stroke"
+              />
+            </g>
 
             {/* Edit-mode-only: rotation connector + handles */}
             <Show when={editMode() && !sel().inverted}>
