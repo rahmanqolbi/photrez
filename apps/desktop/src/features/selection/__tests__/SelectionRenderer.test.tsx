@@ -57,7 +57,7 @@ describe("SelectionRenderer — base state (no edit mode)", () => {
   it("marquee rect uses animate-dash class in base state", () => {
     const sel: SelectionState = { x: 0, y: 0, width: 100, height: 100, angle: 0 };
     const { container, dispose } = renderComponent({ selection: sel });
-    expect(container.querySelector("[data-selection-marquee] rect.animate-dash")).not.toBeNull();
+    expect(container.querySelector("[data-selection-marquee] rect[data-march]")).not.toBeNull();
     dispose();
   });
 

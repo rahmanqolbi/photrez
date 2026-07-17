@@ -302,11 +302,7 @@ img {
 
 /* ─── Selection marquee (marching ants) ─── */
 /* Two overlapping dashed strokes (accent + white) walk in opposite phase so
-   the selection edge stays visible over any background, like similar editors.
-   Offset of one dash pattern (4+4 = 8px) makes the loop seamless (no jump). */
-@keyframes selection-march {
-  to { stroke-dashoffset: -8; }
-}
-.animate-dash {
-  animation: selection-march 1.2s linear infinite;
-}
+   the selection edge stays visible over any background. The dash walk is
+   driven by the Web Animations API in SelectionRenderer.tsx (data-march),
+   not CSS, to avoid the choppy stroke-dashoffset keyframe path in
+   Chromium/WebView2. */

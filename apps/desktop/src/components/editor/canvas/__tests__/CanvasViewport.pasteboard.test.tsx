@@ -274,12 +274,12 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     canvas.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 110, clientY: 110, button: 0 }));
 
     // Selection marquee should be visible
-    expect(container.querySelector("rect.animate-dash")).not.toBeNull();
+    expect(container.querySelector("rect[data-march]")).not.toBeNull();
 
     dispatchPasteboardClick();
 
     // Selection marquee should be cleared
-    expect(container.querySelector("rect.animate-dash")).toBeNull();
+    expect(container.querySelector("rect[data-march]")).toBeNull();
     expect(scheduler.requestRender).toHaveBeenCalled();
   });
 
@@ -301,7 +301,7 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     expect(session.engine.getSelection()).not.toBeNull();
 
     // Marquee should STILL be visible after pointer up
-    expect(container.querySelector("rect.animate-dash")).not.toBeNull();
+    expect(container.querySelector("rect[data-march]")).not.toBeNull();
   });
 
   it("clears the visible marquee when the engine is deselected outside the pointer chain", async () => {
@@ -340,12 +340,12 @@ describe("CanvasViewport Pasteboard Clicks", () => {
     canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 10, clientY: 10, button: 0, pointerId: 1 }));
 
     canvas.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 50, clientY: 50, button: 0, pointerId: 1 }));
-    const rect1 = container.querySelector("rect.animate-dash") as SVGRectElement | null;
+    const rect1 = container.querySelector("rect[data-march]") as SVGRectElement | null;
     expect(rect1).not.toBeNull();
     const w1 = parseFloat(rect1!.getAttribute("width") || "0");
 
     canvas.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 200, clientY: 200, button: 0, pointerId: 1 }));
-    const rect2 = container.querySelector("rect.animate-dash") as SVGRectElement | null;
+    const rect2 = container.querySelector("rect[data-march]") as SVGRectElement | null;
     expect(rect2).not.toBeNull();
     const w2 = parseFloat(rect2!.getAttribute("width") || "0");
 

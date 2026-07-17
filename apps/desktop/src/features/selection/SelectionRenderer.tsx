@@ -1,5 +1,10 @@
-import { For, Show } from "solid-js";
+import { For, Show, onCleanup, onMount } from "solid-js";
 import { SelectionState } from "./SelectionTypes";
+
+// WAAPI drives stroke-dashoffset on its own thread — avoids the
+// choppy CSS-keyframe path for stroke-dashoffset in Chromium/WebView2.
+const MARCH_PERIOD = 1200;
+const MARCH_OFFSET = -8; // one full dash cycle (4+4) → seamless loop
 
 interface SelectionRendererProps {
   selection: SelectionState | null;
@@ -23,6 +28,20 @@ const ROTATION_CONNECTOR_GAP = 4;
 
 export function SelectionRenderer(props: SelectionRendererProps) {
   const editMode = () => props.editMode ?? false;
+
+  let groupRef: SVGGElement | undefined;
+  onMount(() => {
+    // jsdom has no WAAPI; guard so tests + old engines don't throw.
+    const rects = groupRef?.querySelectorAll<SVGRectElement>("[data-march]") ?? [];
+    if (!rects.length || typeof rects[0].animate !== "function") return;
+    const anims = Array.from(rects).map((el) =>
+      el.animate(
+        [{ strokeDashoffset: 0 }, { strokeDashoffset: MARCH_OFFSET }],
+        { duration: MARCH_PERIOD, iterations: Infinity, easing: "linear" },
+      ),
+    );
+    onCleanup(() => anims.forEach((a) => a.cancel()));
+  });
 
   return (
     <Show when={props.selection}>
@@ -69,7 +88,7 @@ export function SelectionRenderer(props: SelectionRendererProps) {
         });
 
         return (
-          <>
+          <g ref={groupRef} data-selection-root>
             <Show when={sel().inverted && props.canvasWidth != null && props.canvasHeight != null}>
               <g
                 data-selection-inverted-boundary
@@ -84,7 +103,7 @@ export function SelectionRenderer(props: SelectionRendererProps) {
                   stroke="var(--color-editor-accent, #E15A17)"
                   stroke-width={1.5}
                   stroke-dasharray="4 4"
-                  class="animate-dash"
+                  data-march
                   vector-effect="non-scaling-stroke"
                 />
                 <rect
@@ -97,7 +116,7 @@ export function SelectionRenderer(props: SelectionRendererProps) {
                   stroke-width={1}
                   stroke-dasharray="4 4"
                   stroke-dashoffset={4}
-                  class="animate-dash"
+                  data-march
                   vector-effect="non-scaling-stroke"
                 />
               </g>
@@ -124,7 +143,7 @@ export function SelectionRenderer(props: SelectionRendererProps) {
                 stroke="var(--color-editor-accent, #E15A17)"
                 stroke-width={1.5}
                 stroke-dasharray="4 4"
-                class="animate-dash"
+                data-march
                 vector-effect="non-scaling-stroke"
               />
               <rect
@@ -137,7 +156,7 @@ export function SelectionRenderer(props: SelectionRendererProps) {
                 stroke-width={1}
                 stroke-dasharray="4 4"
                 stroke-dashoffset={4}
-                class="animate-dash"
+                data-march
                 vector-effect="non-scaling-stroke"
               />
             </g>
@@ -228,7 +247,7 @@ export function SelectionRenderer(props: SelectionRendererProps) {
               />
             </Show>
             </g>
-          </>
+          </g>
         );
       }}
     </Show>

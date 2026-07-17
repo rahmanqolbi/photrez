@@ -256,7 +256,7 @@ describe("Space+pan global override across all tools", () => {
 
     expect(mockOnViewportPointerDown).toHaveBeenCalled();
     // No selection marquee should be created
-    expect(container.querySelector("rect.animate-dash")).toBeNull();
+    expect(container.querySelector("rect[data-march]")).toBeNull();
   });
 
   it("Crop tool + canvas: routes to pan handler when Space held", async () => {
