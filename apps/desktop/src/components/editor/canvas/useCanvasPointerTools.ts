@@ -17,6 +17,7 @@ import { PaintSmoother, smoothingToWindowSize } from "../paintSmoothing";
 import { tryReleasePointerCapture, trySetPointerCapture } from "../tools/pointerCapture";
 import { getLayerAabb } from "@/viewport/transformGeometry";
 import { computeSnapAdjustment, type SnapRect } from "@/viewport/smartGuides";
+import { showToast } from "../Toast";
 import type { HudMode } from "../TransformHud";
 import { getDefaultModernCropFrame, getProjectedCanvasSize, clampFrameToProjectedBounds } from "@/viewport/modernCropGeometry";
 import { resetCropPreviewToCanvas, restoreHiddenCropPreview, createCropRectFromDocumentPoints } from "../cropToolActions";
@@ -601,7 +602,11 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
       if (layerId) {
         activePaintLayer = engine.getLayer(layerId);
       }
-      if (getPaintToolBlockReason(activePaintLayer, activeTool() === "eraser")) return;
+      const blockReason = getPaintToolBlockReason(activePaintLayer, activeTool() === "eraser");
+      if (blockReason) {
+        showToast(blockReason, "warn");
+        return;
+      }
     }
 
     // If modern crop mode →skip engine handlePointerDown (it would call

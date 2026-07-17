@@ -28,6 +28,7 @@
 | ✅ DONE | Shared constants consolidation — `HANDLE_SIZE`/`HANDLE_HIT`, `ROTATE_BAND_PX` moved to `rotateBand.ts` as single source of truth; `ModernCropOverlay` imports instead of local `RING_WIDTH`/`RING_PAD` |
 | ✅ DONE | UI Color Picker polish — fixed asymmetric padding by using responsive dialog width, removed fake non-functional radio buttons, and centered Hex input at the bottom of the right panel |
 | ✅ DONE | AdjustmentsPanel slider performance — debounce `setTimeout(100)` + `createEffect` sync-loop fix (slider leads, engine follows; no slider-vs-engine fighting) |
+| ✅ DONE | No-layer UX guard — brush/eraser pointer-down, Alt/Ctrl+Delete fill, Delete-layer, and Ctrl+G flip now show a `warn` toast ("No editable layer selected" / "No layer selected") instead of silently no-op'ing when no layer is active |
 
 ---
 

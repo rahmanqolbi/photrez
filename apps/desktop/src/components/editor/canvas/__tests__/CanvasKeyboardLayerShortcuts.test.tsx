@@ -7,6 +7,7 @@ import { useEditorCommands, dispatchEditorCommand } from "../../useEditorCommand
 import { clearRegistry } from "../../keyboardRegistry";
 import { WorkspaceManager } from "@/engine/workspace";
 import { easeOutCubic } from "@/viewport/easing";
+import * as Toast from "../../Toast";
 
 function installOffscreenCanvasMock(bitmap: ImageBitmap) {
   vi.stubGlobal("OffscreenCanvas", class {
@@ -1172,6 +1173,21 @@ describe("fill layer keyboard shortcuts (Alt+Del / Ctrl+Del)", () => {
 
     expect(fillRef.color).toBeNull();
     expect(renderer.uploadImage).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it("Alt+Delete with no active layer shows a warning toast (no silent no-op)", () => {
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const fillRef = { color: null as string | null };
+    const { getEditor, dispose } = setupFill(renderer, fillRef);
+
+    getEditor().workspace.getActiveEngine()!.setActiveLayer(null);
+    const toastSpy = vi.spyOn(Toast, "showToast");
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", altKey: true, bubbles: true }));
+
+    expect(toastSpy).toHaveBeenCalledWith("No editable layer selected", "warn");
+    expect(fillRef.color).toBeNull();
     dispose();
   });
 });

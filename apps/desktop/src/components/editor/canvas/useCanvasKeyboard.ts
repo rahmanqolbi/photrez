@@ -219,7 +219,9 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         if (e.altKey) {
           e.preventDefault();
           e.stopPropagation();
-          if (fillActiveLayerWithColor(engine, history, renderer, resolveColor(fgColor))) {
+          if (!engine.getActiveLayerId()) {
+            showToast("No editable layer selected", "warn");
+          } else if (fillActiveLayerWithColor(engine, history, renderer, resolveColor(fgColor))) {
             scheduler.requestRender();
           }
           return;
@@ -227,7 +229,9 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         if (e.ctrlKey || e.metaKey) {
           e.preventDefault();
           e.stopPropagation();
-          if (fillActiveLayerWithColor(engine, history, renderer, resolveColor(bgColor))) {
+          if (!engine.getActiveLayerId()) {
+            showToast("No editable layer selected", "warn");
+          } else if (fillActiveLayerWithColor(engine, history, renderer, resolveColor(bgColor))) {
             scheduler.requestRender();
           }
           return;
@@ -749,6 +753,10 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         e.preventDefault();
         e.stopPropagation();
         const activeId = engine.getActiveLayerId();
+        if (!activeId) {
+          showToast("No layer selected", "warn");
+          return;
+        }
         if (activeId) {
           const layer = engine.getLayer(activeId);
           if (layer && !layer.locked) {
@@ -766,6 +774,10 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         e.preventDefault();
         e.stopPropagation();
         const activeId = engine.getActiveLayerId();
+        if (!activeId) {
+          showToast("No layer selected", "warn");
+          return;
+        }
         if (activeId && engine.getLayers().length > 1) {
           history.commit(engine.snapshot(), "Delete Layer");
           engine.deleteLayer(activeId);

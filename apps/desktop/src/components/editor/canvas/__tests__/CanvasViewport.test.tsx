@@ -4,6 +4,7 @@ import { EditorProvider, useEditor } from "../../shell/EditorContext";
 import { CanvasViewport } from "../CanvasViewport";
 import { WorkspaceManager } from "@/engine/workspace";
 import { ViewportCamera } from "@/viewport/viewportCamera";
+import * as Toast from "../../Toast";
 
 // Mock useViewportRenderer
 const { mockFitToScreenAndRender } = vi.hoisted(() => ({
@@ -279,6 +280,19 @@ describe("Space+pan global override across all tools", () => {
     firePointerDown(getCanvas());
 
     expect(mockOnViewportPointerDown).toHaveBeenCalled();
+    expect(mockCommitBrushStroke).not.toHaveBeenCalled();
+  });
+
+  it("Brush tool with no active layer shows a warning toast (no silent no-op)", async () => {
+    const { session } = renderViewport();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    session.engine.setActiveLayer(null);
+    const toastSpy = vi.spyOn(Toast, "showToast");
+    setTool("brush");
+
+    firePointerDown(getCanvas());
+
+    expect(toastSpy).toHaveBeenCalledWith("No editable layer selected", "warn");
     expect(mockCommitBrushStroke).not.toHaveBeenCalled();
   });
 
