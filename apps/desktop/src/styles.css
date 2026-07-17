@@ -308,5 +308,5 @@ img {
   to { stroke-dashoffset: -8; }
 }
 .animate-dash {
-  animation: selection-march 0.8s linear infinite;
+  animation: selection-march 1.2s linear infinite;
 }

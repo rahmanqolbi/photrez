@@ -82,7 +82,7 @@ export function SelectionRenderer(props: SelectionRendererProps) {
                   height={props.canvasHeight! * props.zoom}
                   fill="none"
                   stroke="var(--color-editor-accent, #E15A17)"
-                  stroke-width={2.5}
+                  stroke-width={1.5}
                   stroke-dasharray="4 4"
                   class="animate-dash"
                   vector-effect="non-scaling-stroke"
@@ -122,7 +122,7 @@ export function SelectionRenderer(props: SelectionRendererProps) {
                 height={screenH()}
                 fill="none"
                 stroke="var(--color-editor-accent, #E15A17)"
-                stroke-width={2.5}
+                stroke-width={1.5}
                 stroke-dasharray="4 4"
                 class="animate-dash"
                 vector-effect="non-scaling-stroke"
