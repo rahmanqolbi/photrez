@@ -1,6 +1,6 @@
 import { For, Show, createSignal, createMemo } from "solid-js";
 import { Icon } from "./icons";
-import { EditableNumField, PropRow, SelectField, Slider } from "./primitives";
+import { EditableNumField, NumField, PropRow, Slider } from "./primitives";
 import { useEditor } from "./shell/EditorContext";
 import { SectionHeader } from "./layers/SectionHeader";
 import { CanvasProperties } from "./canvas/CanvasProperties";
@@ -103,21 +103,22 @@ export function PropertiesPanel() {
     commitTransform({ rotation: val }, "Rotate Layer");
   };
 
-  const handleScaleField = (axis: "x" | "y") => (val: number) => {
-    if (val <= 0) return;
-    const nextScale = val / 100;
-    const patch: Partial<Transform2D> = axis === "x" ? { scaleX: nextScale } : { scaleY: nextScale };
-    if (lockScale()) {
-      const layer = activeLayer();
-      if (layer) {
-        const ratioScale = Math.sign(
-          axis === "x" ? (layer.transform.scaleY || 1) : (layer.transform.scaleX || 1)
-        ) * Math.abs(nextScale);
-        if (axis === "x") patch.scaleY = ratioScale;
-        else patch.scaleX = ratioScale;
-      }
-    }
-    commitTransform(patch, "Resize Layer");
+  const handleFlip = (axis: "h" | "v") => {
+    const layer = activeLayer();
+    if (!layer || layer.locked) return;
+    const patch = axis === "h"
+      ? { flipH: !layer.transform.flipH }
+      : { flipV: !layer.transform.flipV };
+    commitTransform(patch, axis === "h" ? "Flip Horizontal" : "Flip Vertical");
+  };
+
+  const handleResetTransform = () => {
+    const layer = activeLayer();
+    if (!layer || layer.locked) return;
+    commitTransform(
+      { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
+      "Reset Transform",
+    );
   };
 
   const transformStatusText = () => {
@@ -174,13 +175,6 @@ export function PropertiesPanel() {
                     icon="move"
                     iconClass="text-editor-text-dim"
                     label="Transform"
-                    trailing={
-                      <Icon
-                        name="chevron-up"
-                        class="size-4 text-editor-text-dim"
-                        strokeWidth={1.75}
-                      />
-                    }
                   />
 
                   <div class="mt-3 flex flex-col gap-2.5">
@@ -194,20 +188,21 @@ export function PropertiesPanel() {
                     <PropRow label="Size">
                       <EditableNumField label="W" value={safeLayer()!.width * safeLayer()!.transform.scaleX} suffix="px" onSubmit={handleSizeField("w")} disabled={safeLayer()!.locked} class="flex-1" />
                       <EditableNumField label="H" value={safeLayer()!.height * safeLayer()!.transform.scaleY} suffix="px" onSubmit={handleSizeField("h")} disabled={safeLayer()!.locked} class="flex-1" />
+                      <button
+                        class={`flex size-[26px] shrink-0 items-center justify-center ${lockScale() ? "text-editor-accent" : "text-editor-text-dim"}`}
+                        aria-label="Constrain proportions"
+                        aria-pressed={lockScale()}
+                        onClick={() => setLockScale(!lockScale())}
+                      >
+                        <Icon name="link" class="size-3.5" strokeWidth={1.75} />
+                      </button>
                     </PropRow>
                     <PropRow label="Rotation">
                       <EditableNumField label="R" value={safeLayer()!.transform.rotation} suffix="deg" onSubmit={handleRotationField} disabled={safeLayer()!.lockRotation || safeLayer()!.locked} class="flex-1" />
                     </PropRow>
                     <PropRow label="Scale">
-                      <EditableNumField label="X" value={safeLayer()!.transform.scaleX * 100} suffix="%" onSubmit={handleScaleField("x")} disabled={safeLayer()!.locked} class="flex-1" />
-                      <EditableNumField label="Y" value={safeLayer()!.transform.scaleY * 100} suffix="%" onSubmit={handleScaleField("y")} disabled={safeLayer()!.locked} class="flex-1" />
-                      <button
-                        class={`flex size-[26px] shrink-0 items-center justify-center ${lockScale() ? "text-editor-accent" : "text-editor-text-dim"}`}
-                        aria-label="Lock scale"
-                        onClick={() => setLockScale(!lockScale())}
-                      >
-                        <Icon name="link" class="size-3.5" strokeWidth={1.75} />
-                      </button>
+                      <NumField label="X" value={`${Math.round(safeLayer()!.transform.scaleX * 100)}`} suffix="%" class="flex-1" />
+                      <NumField label="Y" value={`${Math.round(safeLayer()!.transform.scaleY * 100)}`} suffix="%" class="flex-1" />
                     </PropRow>
                     <PropRow label="Opacity">
                       <div class="flex-grow flex items-center gap-2.5">
@@ -236,6 +231,39 @@ export function PropertiesPanel() {
                       </div>
                     </PropRow>
 
+                    <PropRow label="Actions">
+                      <button
+                        type="button"
+                        aria-label="Flip horizontal"
+                        disabled={safeLayer()!.locked}
+                        onClick={() => handleFlip("h")}
+                        class="flex h-[26px] flex-1 items-center justify-center gap-1.5 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text transition-colors hover:bg-editor-field-border disabled:pointer-events-none disabled:opacity-40"
+                      >
+                        <Icon name="flip-h" class="size-3.5" strokeWidth={1.75} />
+                        Flip H
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Flip vertical"
+                        disabled={safeLayer()!.locked}
+                        onClick={() => handleFlip("v")}
+                        class="flex h-[26px] flex-1 items-center justify-center gap-1.5 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text transition-colors hover:bg-editor-field-border disabled:pointer-events-none disabled:opacity-40"
+                      >
+                        <Icon name="flip-v" class="size-3.5" strokeWidth={1.75} />
+                        Flip V
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Reset transform"
+                        disabled={safeLayer()!.locked}
+                        onClick={handleResetTransform}
+                        class="flex h-[26px] flex-1 items-center justify-center gap-1.5 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text transition-colors hover:bg-editor-field-border disabled:pointer-events-none disabled:opacity-40"
+                      >
+                        <Icon name="rotate-ccw" class="size-3.5" strokeWidth={1.75} />
+                        Reset
+                      </button>
+                    </PropRow>
+
                     <div class="flex items-start gap-2.5 pt-1">
                       <span class="w-[58px] shrink-0 text-[12px] text-editor-text-dim">
                         Anchor
@@ -243,9 +271,6 @@ export function PropertiesPanel() {
                       <AnchorGrid value={anchor()} onSelect={setAnchor} />
                     </div>
 
-                    <PropRow label="Constrain">
-                      <SelectField value="Lock Aspect Ratio" class="flex-1" />
-                    </PropRow>
                   </div>
                 </div>
               </>

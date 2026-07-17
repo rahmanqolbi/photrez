@@ -68,7 +68,14 @@ export function CanvasProperties() {
 
         <div class="mt-3 flex flex-col gap-2.5">
           <PropRow label="Size">
-            <SelectField value={`${w()} × ${h()} px`} class="flex-1" />
+            <button
+              type="button"
+              onClick={handleResizeCanvas}
+              class="flex h-[26px] w-full items-center justify-between rounded-[4px] border border-editor-field-border bg-editor-field px-2.5 text-[12px] text-editor-text transition-colors hover:bg-editor-field-border"
+            >
+              <span>{`${w()} × ${h()} px`}</span>
+              <Icon name="crop" class="size-3.5 text-editor-text-dim" strokeWidth={1.75} />
+            </button>
           </PropRow>
 
           <PropRow label="Mode">
@@ -80,7 +87,14 @@ export function CanvasProperties() {
           </PropRow>
 
           <PropRow label="Zoom">
-            <SelectField value={`${Math.round(zoom() * 100)} %`} class="flex-1" />
+            <button
+              type="button"
+              onClick={handleFitToScreen}
+              class="flex h-[26px] w-full items-center justify-between rounded-[4px] border border-editor-field-border bg-editor-field px-2.5 text-[12px] text-editor-text transition-colors hover:bg-editor-field-border"
+            >
+              <span>{`${Math.round(zoom() * 100)} %`}</span>
+              <Icon name="maximize" class="size-3.5 text-editor-text-dim" strokeWidth={1.75} />
+            </button>
           </PropRow>
         </div>
       </div>

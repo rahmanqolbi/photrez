@@ -29,6 +29,7 @@
 | ✅ DONE | UI Color Picker polish — fixed asymmetric padding by using responsive dialog width, removed fake non-functional radio buttons, and centered Hex input at the bottom of the right panel |
 | ✅ DONE | AdjustmentsPanel slider performance — debounce `setTimeout(100)` + `createEffect` sync-loop fix (slider leads, engine follows; no slider-vs-engine fighting) |
 | ✅ DONE | No-layer UX guard — brush/eraser pointer-down, Alt/Ctrl+Delete fill, Delete-layer, and Ctrl+G flip now show a `warn` toast ("No editable layer selected" / "No layer selected") instead of silently no-op'ing when no layer is active |
+| ✅ DONE | Silent no-op layer-action guard — Duplicate (Ctrl+J), Merge Down (Ctrl+E), Flatten (Ctrl+Shift+E), Stamp Visible (Ctrl+Shift+Alt+E), Delete Layer, and Apply Adjustment now show a `warn` toast ("No layer selected" / "Nothing to flatten/merge/stamp") from the toolbar buttons + keyboard shortcuts instead of swallowing the action with no feedback (context menu already disables these at boundaries) |
 
 ---
 
@@ -354,6 +355,10 @@
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ✅ DONE | Right Dock layout flexibility (Side-by-Side vs Stacked columns saved in localStorage) and unified Inspector tab structure (Library, Adjust, Presets) with compact child tabs under Adjust (Properties, Adjustments) |
 | ✅ DONE | Dynamic Info Card — "Selected Layer" details card (thumbnail, name, details) and "Selected Document" card (icon, name, canvas details) at the top of PropertiesPanel, CanvasProperties, and AdjustmentsPanel        |
+| ✅ DONE | Properties Transform tab aligned to pro-editor standard — single editable size source (W/H + constrain link), Scale X/Y shown read-only; removed dead "Constrain" dropdown                                          |
+| ✅ DONE | CanvasProperties Size/Zoom are now real actions — Size opens Resize Canvas dialog, Zoom triggers Fit to Screen (Mode/Profile stay read-only display)                                                                 |
+| ✅ DONE | Properties Transform tab actions — Flip Horizontal / Flip Vertical / Reset Transform buttons (undo-committed, disabled when layer locked), alongside editable Position/Size/Rotation and read-only Scale                                          |
+| ✅ DONE | Properties Transform header — removed decorative non-functional chevron (flat, consistent with other sections per pro-editor convention)                                                                                                  |
 | ✅ DONE | Polished Accordion Compartments — upgraded coming soon sections with detailed feature descriptions, lock/sparkle indicators, and recessed styling                                                                   |
 | ✅ DONE | Photon Amber accent (#E15A17)                                                                                                                                                                                       |
 | ✅ DONE | Zero-tint neutral gray surfaces                                                                                                                                                                                     |
