@@ -1,18 +1,16 @@
-import { For, Show, createSignal, createMemo } from "solid-js";
+import { Show, createSignal, createMemo } from "solid-js";
 import { Icon } from "./icons";
 import { EditableNumField, NumField, PropRow, Slider } from "./primitives";
 import { useEditor } from "./shell/EditorContext";
 import { SectionHeader } from "./layers/SectionHeader";
 import { CanvasProperties } from "./canvas/CanvasProperties";
 import { LayerThumb } from "./layers/LayerThumb";
+import { normalizeRotation } from "@/viewport/transformGeometry";
 import type { Transform2D } from "@/engine/types";
 
-const ANCHOR_POSITIONS = ["top-left", "top-center", "top-right", "middle-left", "center", "middle-right", "bottom-left", "bottom-center", "bottom-right"] as const;
-
 export function PropertiesPanel() {
-  const { workspace, layers, selectedLayerId, scheduler, activeDocumentId } = useEditor();
+  const { workspace, layers, selectedLayerId, scheduler, activeDocumentId, docWidth, docHeight } = useEditor();
   const [opacityEditLayerId, setOpacityEditLayerId] = createSignal<string | null>(null);
-  const [anchor, setAnchor] = createSignal<string>("center");
   const [lockScale, setLockScale] = createSignal(false);
 
   const activeLayer = () => {
@@ -119,6 +117,43 @@ export function PropertiesPanel() {
       { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
       "Reset Transform",
     );
+  };
+
+  const handleCenterHorizontal = () => {
+    const layer = activeLayer();
+    if (!layer || layer.locked || layer.lockPosition) return;
+    const effW = layer.width * Math.abs(layer.transform.scaleX);
+    commitTransform({ x: (docWidth() - effW) / 2 }, "Center Horizontal");
+  };
+
+  const handleCenterVertical = () => {
+    const layer = activeLayer();
+    if (!layer || layer.locked || layer.lockPosition) return;
+    const effH = layer.height * Math.abs(layer.transform.scaleY);
+    commitTransform({ y: (docHeight() - effH) / 2 }, "Center Vertical");
+  };
+
+  const handleFitToCanvas = () => {
+    const layer = activeLayer();
+    if (!layer || layer.locked || layer.width <= 0 || layer.height <= 0) return;
+    const dw = docWidth();
+    const dh = docHeight();
+    const ratio = Math.min(dw / layer.width, dh / layer.height);
+    const signX = Math.sign(layer.transform.scaleX) || 1;
+    const signY = Math.sign(layer.transform.scaleY) || 1;
+    const effW = layer.width * ratio;
+    const effH = layer.height * ratio;
+    commitTransform(
+      { x: (dw - effW) / 2, y: (dh - effH) / 2, scaleX: signX * ratio, scaleY: signY * ratio },
+      "Fit to Canvas",
+    );
+  };
+
+  const handleRotate90 = (dir: "cw" | "ccw") => {
+    const layer = activeLayer();
+    if (!layer || layer.locked || layer.lockRotation) return;
+    const next = normalizeRotation(layer.transform.rotation + (dir === "cw" ? 90 : -90));
+    commitTransform({ rotation: next }, dir === "cw" ? "Rotate 90° CW" : "Rotate 90° CCW");
   };
 
   const transformStatusText = () => {
@@ -264,12 +299,53 @@ export function PropertiesPanel() {
                       </button>
                     </PropRow>
 
-                    <div class="flex items-start gap-2.5 pt-1">
-                      <span class="w-[58px] shrink-0 text-[12px] text-editor-text-dim">
-                        Anchor
-                      </span>
-                      <AnchorGrid value={anchor()} onSelect={setAnchor} />
-                    </div>
+                    <PropRow label="Quick">
+                      <button
+                        type="button"
+                        aria-label="Center horizontally on canvas"
+                        disabled={safeLayer()!.locked || safeLayer()!.lockPosition}
+                        onClick={handleCenterHorizontal}
+                        class="flex h-[26px] flex-1 items-center justify-center gap-1 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text transition-colors hover:bg-editor-field-border disabled:pointer-events-none disabled:opacity-40"
+                      >
+                        <Icon name="align-h" class="size-3.5" strokeWidth={1.75} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Center vertically on canvas"
+                        disabled={safeLayer()!.locked || safeLayer()!.lockPosition}
+                        onClick={handleCenterVertical}
+                        class="flex h-[26px] flex-1 items-center justify-center gap-1 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text transition-colors hover:bg-editor-field-border disabled:pointer-events-none disabled:opacity-40"
+                      >
+                        <Icon name="align-v" class="size-3.5" strokeWidth={1.75} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Fit to canvas"
+                        disabled={safeLayer()!.locked}
+                        onClick={handleFitToCanvas}
+                        class="flex h-[26px] flex-1 items-center justify-center gap-1 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text transition-colors hover:bg-editor-field-border disabled:pointer-events-none disabled:opacity-40"
+                      >
+                        <Icon name="maximize" class="size-3.5" strokeWidth={1.75} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Rotate 90° counterclockwise"
+                        disabled={safeLayer()!.locked || safeLayer()!.lockRotation}
+                        onClick={() => handleRotate90("ccw")}
+                        class="flex h-[26px] flex-1 items-center justify-center gap-1 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text transition-colors hover:bg-editor-field-border disabled:pointer-events-none disabled:opacity-40"
+                      >
+                        <Icon name="rotate-ccw" class="size-3.5" strokeWidth={1.75} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Rotate 90° clockwise"
+                        disabled={safeLayer()!.locked || safeLayer()!.lockRotation}
+                        onClick={() => handleRotate90("cw")}
+                        class="flex h-[26px] flex-1 items-center justify-center gap-1 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text transition-colors hover:bg-editor-field-border disabled:pointer-events-none disabled:opacity-40"
+                      >
+                        <Icon name="rotate-cw" class="size-3.5" strokeWidth={1.75} />
+                      </button>
+                    </PropRow>
 
                   </div>
                 </div>
@@ -290,29 +366,3 @@ function StatusHint(props: { children: string }) {
   );
 }
 
-function AnchorGrid(props: { value: string; onSelect: (value: string) => void }) {
-  return (
-    <div class="relative h-[42px] w-[88px]">
-      <div class="absolute left-1/2 top-1/2 h-[1px] w-[72px] -translate-x-1/2 -translate-y-1/2 bg-editor-field-border" />
-      <div class="absolute left-1/2 top-1/2 h-[34px] w-[1px] -translate-x-1/2 -translate-y-1/2 bg-editor-field-border" />
-      <div class="relative grid h-full grid-cols-3 grid-rows-3">
-        <For each={ANCHOR_POSITIONS}>
-          {(pos) => (
-            <button
-              type="button"
-              aria-label={`Anchor ${pos}`}
-              onClick={() => props.onSelect(pos)}
-              class="flex items-center justify-center hover:bg-white/[0.05] rounded-[2px]"
-            >
-              {pos === props.value ? (
-                <div class="size-2.5 rounded-[2px] border border-editor-text bg-editor-panel" />
-              ) : (
-                <div class="size-[3px] rounded-full bg-editor-text-dim" />
-              )}
-            </button>
-          )}
-        </For>
-      </div>
-    </div>
-  );
-}

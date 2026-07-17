@@ -107,4 +107,60 @@ describe("PropertiesPanel transform actions (Flip / Reset)", () => {
     expect(reset?.disabled).toBe(true);
     dispose();
   });
+
+  it("Center Horizontal moves the layer to the horizontal canvas center", () => {
+    const workspace = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("ch-doc", "CH Doc", 400, 300);
+    workspace.addDocument(session);
+    const engine = session.engine;
+    const layer = engine.addLayer("Test", 100, 50); // normal layer, no position lock
+    engine.transformLayer(layer.id, { x: 10, y: 20 });
+
+    const { container, dispose } = renderWithSelectedLayer(workspace, layer.id);
+    const btn = container.querySelector<HTMLButtonElement>("button[aria-label='Center horizontally on canvas']");
+    btn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    const t = engine.getLayer(layer.id)!.transform;
+    expect(t.x).toBeCloseTo((400 - 100) / 2, 5); // = 150
+    expect(t.y).toBe(20); // untouched
+    dispose();
+  });
+
+  it("Fit to Canvas scales the layer to fit inside the canvas and centers it", () => {
+    const workspace = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("fit-doc", "Fit Doc", 800, 600);
+    workspace.addDocument(session);
+    const engine = session.engine;
+    const layer = engine.addLayer("Fit", 200, 150); // 4x smaller than canvas
+    engine.transformLayer(layer.id, { scaleX: 1, scaleY: 1, x: 0, y: 0 });
+
+    const { container, dispose } = renderWithSelectedLayer(workspace, layer.id);
+    const btn = container.querySelector<HTMLButtonElement>("button[aria-label='Fit to canvas']");
+    btn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    const t = engine.getLayer(layer.id)!.transform;
+    expect(t.scaleX).toBeCloseTo(4, 5);
+    expect(t.scaleY).toBeCloseTo(4, 5);
+    const effW = layer.width * t.scaleX;
+    expect(effW).toBeCloseTo(800, 1);
+    expect(t.x).toBeCloseTo((800 - effW) / 2, 5);
+    dispose();
+  });
+
+  it("Rotate 90 CW adds 90 degrees (normalized)", () => {
+    const workspace = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("rot-doc", "Rot Doc", 100, 100);
+    workspace.addDocument(session);
+    const engine = session.engine;
+    const layer = engine.addLayer("Rot", 100, 100); // normal layer, no rotation lock
+    engine.transformLayer(layer.id, { rotation: 170 });
+
+    const { container, dispose } = renderWithSelectedLayer(workspace, layer.id);
+    const btn = container.querySelector<HTMLButtonElement>("button[aria-label='Rotate 90° clockwise']");
+    btn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    // 170 + 90 = 260 -> normalized to -100
+    expect(engine.getLayer(layer.id)!.transform.rotation).toBe(-100);
+    dispose();
+  });
 });
