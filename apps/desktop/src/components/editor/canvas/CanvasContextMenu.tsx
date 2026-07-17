@@ -35,6 +35,7 @@ export function CanvasContextMenu() {
     { kind: "separator" },
     { kind: "item", label: "Actual Size", shortcut: "Ctrl+1", onSelect: run("view.actual-size") },
     { kind: "item", label: "Fit Canvas", shortcut: "Ctrl+0", onSelect: run("view.fit-canvas") },
+    { kind: "item", label: "Zoom to Selection", shortcut: "Ctrl+Alt+0", disabled: selection() === null, onSelect: run("view.zoom-to-selection") },
   ];
 
   onMount(() => {

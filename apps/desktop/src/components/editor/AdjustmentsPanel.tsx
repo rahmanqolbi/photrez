@@ -23,15 +23,21 @@ const COMING_SOON_SECTIONS: readonly {
 ] as const;
 
 const COMING_SOON_DESCRIPTIONS: Record<string, string> = {
-  "Tone Curve": "Non-destructive spline-based RGB tone and contrast adjustment.",
-  "HSL / Color": "Selective color tuning for Hue, Saturation, and Luminance channels.",
-  "Color Grading": "Three-way color wheels control for shadows, midtones, and highlights.",
-  "Detail": "Unsharp masking, high-pass sharpening, and bilateral noise reduction.",
-  "Lens Corrections": "Chromatic aberration control, barrel distortion, and vignette corrections.",
+  "Tone Curve":
+    "Non-destructive spline-based RGB tone and contrast adjustment.",
+  "HSL / Color":
+    "Selective color tuning for Hue, Saturation, and Luminance channels.",
+  "Color Grading":
+    "Three-way color wheels control for shadows, midtones, and highlights.",
+  Detail:
+    "Unsharp masking, high-pass sharpening, and bilateral noise reduction.",
+  "Lens Corrections":
+    "Chromatic aberration control, barrel distortion, and vignette corrections.",
 };
 
 export function AdjustmentsPanel() {
-  const { workspace, layers, selectedLayerId, scheduler, activeDocumentId } = useEditor();
+  const { workspace, layers, selectedLayerId, scheduler, activeDocumentId } =
+    useEditor();
   // Adjustment is applied non-destructively: the slider writes the adjustment
   // param to the engine and the GPU shader re-composites instantly. No CPU
   // pixel loop, no debounce needed for the live preview.
@@ -84,7 +90,7 @@ export function AdjustmentsPanel() {
   const activeLayer = () => {
     const id = selectedLayerId();
     if (!id) return null;
-    return layers().find(l => l.id === id) || null;
+    return layers().find((l) => l.id === id) || null;
   };
 
   // Commit an undo checkpoint when starting a new adjustment session or
@@ -95,12 +101,19 @@ export function AdjustmentsPanel() {
     const layer = activeLayer();
     if (!engine || !history || !layer?.imageBitmap || layer.locked) return;
 
-    const switchingProp = sessionBase !== null && sessionBase.lastProperty !== propName;
-    if (sessionBase === null || sessionBase.layerId !== layer.id || switchingProp) {
+    const switchingProp =
+      sessionBase !== null && sessionBase.lastProperty !== propName;
+    if (
+      sessionBase === null ||
+      sessionBase.layerId !== layer.id ||
+      switchingProp
+    ) {
       const label =
-        propName === "brightness" ? "Adjust Brightness"
-        : propName === "contrast" ? "Adjust Contrast"
-        : "Adjust Saturation";
+        propName === "brightness"
+          ? "Adjust Brightness"
+          : propName === "contrast"
+            ? "Adjust Contrast"
+            : "Adjust Saturation";
       history.commit(engine.snapshot(), label);
       sessionBase = { layerId: layer.id, lastProperty: propName };
     }
@@ -123,14 +136,20 @@ export function AdjustmentsPanel() {
 
   const hasPendingAdjustment = () => {
     const adjustment = basicAdjustment();
-    return adjustment.brightness !== 0 || adjustment.contrast !== 0 || adjustment.saturation !== 0;
+    return (
+      adjustment.brightness !== 0 ||
+      adjustment.contrast !== 0 ||
+      adjustment.saturation !== 0
+    );
   };
 
   const basicStatusText = () => {
     const layer = activeLayer();
     if (!layer) return null;
-    if (layer.locked) return "Layer is locked. Unlock it before applying pixel adjustments.";
-    if (!layer.imageBitmap) return "This layer has no pixels yet. Add image pixels before adjusting tone.";
+    if (layer.locked)
+      return "Layer is locked. Unlock it before applying pixel adjustments.";
+    if (!layer.imageBitmap)
+      return "This layer has no pixels yet. Add image pixels before adjusting tone.";
     return null;
   };
 
@@ -149,15 +168,26 @@ export function AdjustmentsPanel() {
 
   return (
     <section class="flex flex-1 shrink-0 flex-col overflow-hidden bg-editor-panel">
-      <div class="flex-1 overflow-y-auto" style={{ "scrollbar-gutter": "stable" }}>
+      <div
+        class="flex-1 overflow-y-auto"
+        style={{ "scrollbar-gutter": "stable" }}
+      >
         <Show
           when={activeDocumentId()}
           fallback={
             <div class="flex h-full flex-col items-center justify-center gap-3 text-center px-6">
-              <Icon name="sliders" class="size-6 text-editor-text-dim opacity-50" strokeWidth={1.5} />
+              <Icon
+                name="sliders"
+                class="size-6 text-editor-text-dim opacity-50"
+                strokeWidth={1.5}
+              />
               <div class="space-y-1">
-                <p class="text-[13px] font-medium text-editor-text">No image open</p>
-                <p class="text-[12px] text-editor-text-dim leading-snug">Open or create an image to adjust pixels.</p>
+                <p class="text-[13px] font-medium text-editor-text">
+                  No image open
+                </p>
+                <p class="text-[12px] text-editor-text-dim leading-snug">
+                  Open or create an image to adjust pixels.
+                </p>
               </div>
             </div>
           }
@@ -166,10 +196,18 @@ export function AdjustmentsPanel() {
             when={activeLayer()}
             fallback={
               <div class="flex h-full flex-col items-center justify-center gap-3 text-center px-6">
-                <Icon name="sun" class="size-6 text-editor-text-dim opacity-50" strokeWidth={1.5} />
+                <Icon
+                  name="sun"
+                  class="size-6 text-editor-text-dim opacity-50"
+                  strokeWidth={1.5}
+                />
                 <div class="space-y-1">
-                  <p class="text-[13px] font-medium text-editor-text">No layer selected</p>
-                  <p class="text-[12px] text-editor-text-dim leading-snug">Select a layer to adjust its pixels.</p>
+                  <p class="text-[13px] font-medium text-editor-text">
+                    No layer selected
+                  </p>
+                  <p class="text-[12px] text-editor-text-dim leading-snug">
+                    Select a layer to adjust its pixels.
+                  </p>
                 </div>
               </div>
             }
@@ -185,11 +223,17 @@ export function AdjustmentsPanel() {
                   <div class="mt-3 flex items-center gap-3 rounded-[4px] border border-editor-divider bg-editor-field p-2.5">
                     <LayerThumb layer={layer()} isActive={true} />
                     <div class="min-w-0 flex-1">
-                      <p class="truncate text-[12.5px] font-medium text-editor-text leading-tight" title={layer().name}>
+                      <p
+                        class="truncate text-[12.5px] font-medium text-editor-text leading-tight"
+                        title={layer().name}
+                      >
                         {layer().name}
                       </p>
                       <p class="truncate text-[11px] text-editor-text-dim leading-snug mt-0.5">
-                        {layer().type === "raster" ? "Image layer" : `${layer().type.charAt(0).toUpperCase()}${layer().type.slice(1)} layer`} Â· {layer().width} Ã— {layer().height} px
+                        {layer().type === "raster"
+                          ? "Image layer"
+                          : `${layer().type.charAt(0).toUpperCase()}${layer().type.slice(1)} layer`}{" "}
+                        · {layer().width} × {layer().height} px
                       </p>
                     </div>
                   </div>
@@ -208,11 +252,7 @@ export function AdjustmentsPanel() {
                         onClick={resetBasicAdjustment}
                         class="flex size-5 items-center justify-center rounded-[3px] text-editor-text-dim hover:bg-white/[0.045] hover:text-editor-text disabled:pointer-events-none disabled:opacity-40"
                       >
-                        <Icon
-                          name="x"
-                          class="size-3.5"
-                          strokeWidth={1.75}
-                        />
+                        <Icon name="x" class="size-3.5" strokeWidth={1.75} />
                       </button>
                     }
                   />
@@ -221,7 +261,9 @@ export function AdjustmentsPanel() {
                     <AdjustmentSliderRow
                       label="Bright"
                       value={basicAdjustment().brightness}
-                      onInput={(value) => setAdjustmentValue("brightness", value)}
+                      onInput={(value) =>
+                        setAdjustmentValue("brightness", value)
+                      }
                     />
                     <AdjustmentSliderRow
                       label="Contrast"
@@ -231,10 +273,13 @@ export function AdjustmentsPanel() {
                     <AdjustmentSliderRow
                       label="Saturate"
                       value={basicAdjustment().saturation}
-                      onInput={(value) => setAdjustmentValue("saturation", value)}
+                      onInput={(value) =>
+                        setAdjustmentValue("saturation", value)
+                      }
                     />
                     <p class="mt-1 text-[11px] leading-snug text-editor-text-dim">
-                      Drag to preview directly on the active layer. Undo restores the previous pixels.
+                      Drag to preview directly on the active layer. Undo
+                      restores the previous pixels.
                     </p>
                     <Show when={basicStatusText()}>
                       {(message) => <StatusHint>{message()}</StatusHint>}
@@ -263,7 +308,11 @@ export function AdjustmentsPanel() {
 function StatusHint(props: { children: string }) {
   return (
     <div class="flex items-start gap-2 rounded-[4px] border border-editor-divider bg-editor-field px-2.5 py-2 text-[11px] leading-snug text-editor-text-dim">
-      <Icon name="sliders" class="mt-0.5 size-3.5 shrink-0 text-editor-text-dim" strokeWidth={1.75} />
+      <Icon
+        name="sliders"
+        class="mt-0.5 size-3.5 shrink-0 text-editor-text-dim"
+        strokeWidth={1.75}
+      />
       <span>{props.children}</span>
     </div>
   );
@@ -274,7 +323,8 @@ function AdjustmentSliderRow(props: {
   value: number;
   onInput: (value: number) => void;
 }) {
-  const displayValue = () => props.value > 0 ? `+${props.value}` : `${props.value}`;
+  const displayValue = () =>
+    props.value > 0 ? `+${props.value}` : `${props.value}`;
   const type = () => {
     if (props.label === "Bright") return "brightness";
     if (props.label === "Contrast") return "contrast";
@@ -349,7 +399,8 @@ function CollapsibleSection(props: {
               <span>In Development</span>
             </div>
             <p class="text-[11.5px] leading-relaxed text-editor-text-dim">
-              {COMING_SOON_DESCRIPTIONS[props.label] || "This professional adjustment tool is currently in development."}
+              {COMING_SOON_DESCRIPTIONS[props.label] ||
+                "This professional adjustment tool is currently in development."}
             </p>
           </div>
         </div>

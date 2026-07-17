@@ -46,6 +46,7 @@ export type EditorCommand =
   | "view.zoom-out"
   | "view.actual-size"
   | "view.fit-canvas"
+  | "view.zoom-to-selection"
   | "view.toggle-side-panels"
   | "view.toggle-right-dock-layout"
   | "window.minimize"
@@ -79,6 +80,7 @@ const EDITOR_COMMANDS: ReadonlySet<string> = new Set<EditorCommand>([
   "view.zoom-out",
   "view.actual-size",
   "view.fit-canvas",
+  "view.zoom-to-selection",
   "view.toggle-side-panels",
   "view.toggle-right-dock-layout",
   "window.minimize",
@@ -114,6 +116,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
     || command === "view.zoom-out"
     || command === "view.actual-size"
     || command === "view.fit-canvas"
+    || command === "view.zoom-to-selection"
   );
 
   const isEnabled = (command: EditorCommand): boolean => {
@@ -570,6 +573,19 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
         editor.scheduler.requestRender();
         break;
       }
+      case "view.zoom-to-selection": {
+        const engine = editor.workspace.getActiveEngine();
+        if (!engine) break;
+        engine.zoomToSelection(editor.viewportWidth(), editor.viewportHeight());
+        const vp = engine.getViewport();
+        editor.camera.setState({ x: vp.panX, y: vp.panY, zoom: vp.zoom });
+        batch(() => {
+          editor.setZoom(vp.zoom);
+          editor.setPan({ x: vp.panX, y: vp.panY });
+        });
+        editor.scheduler.requestRender();
+        break;
+      }
       case "view.toggle-side-panels":
         onToggleSidePanels();
         break;
@@ -607,6 +623,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
     registerShortcut("Ctrl+Alt+E", "useEditorCommands");
     registerShortcut("Ctrl+P", "useEditorCommands");
     registerShortcut("Ctrl+1", "useEditorCommands");
+    registerShortcut("Ctrl+Alt+0", "useEditorCommands");
     registerShortcut("Ctrl+=", "useEditorCommands");
     registerShortcut("Ctrl+-", "useEditorCommands");
 
@@ -633,6 +650,7 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
       else if (commandKey && event.altKey && key === "e") command = "file.export";
       else if (commandKey && key === "p") command = "file.print";
       else if (commandKey && key === "1") command = "view.actual-size";
+      else if (commandKey && event.altKey && key === "0") command = "view.zoom-to-selection";
       else if (commandKey && (key === "=" || key === "+")) command = "view.zoom-in";
       else if (commandKey && (key === "-" || key === "_")) command = "view.zoom-out";
 

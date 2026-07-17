@@ -89,8 +89,9 @@ let setCropSizeTargetState: (target: any) => void = () => {};
 let getActiveDocId: () => string | null = () => null;
 let clearCropStacksState: () => void = () => {};
 let setBgColorState: (color: string) => void = () => {};
-let setZoomState: (z: number) => void = () => {};
-let setPanState: (p: { x: number; y: number }) => void = () => {};
+  let setZoomState: (z: number) => void = () => {};
+  let setPanState: (p: { x: number; y: number }) => void = () => {};
+  let setSelectedLayerIdState: (id: string | null) => void = () => {};
 let setCropFillEnabledState: (enabled: boolean) => void = () => {};
 let setCropFillSourceState: (source: "background" | "custom") => void = () => {};
 let setCropFillCustomColorState: (color: string) => void = () => {};
@@ -135,6 +136,7 @@ const TestConsumer = () => {
   setCropFillCustomColorState = editor.setCropFillCustomColor;
   setZoomState = editor.setZoom;
   setPanState = editor.setPan;
+  setSelectedLayerIdState = editor.setSelectedLayerId;
 
   getSelectionState = editor.selection;
   setSelectionState = editor.setSelection;
@@ -206,10 +208,13 @@ describe("Space+pan global override across all tools", () => {
     return c;
   }
 
-  function firePointerDown(el: Element, pointerId = 10, clientX = 100, clientY = 100) {
-    el.dispatchEvent(new PointerEvent("pointerdown", {
+  function firePointerDown(el: Element, pointerId = 10, clientX = 100, clientY = 100, altKey = false) {
+    const ev = new PointerEvent("pointerdown", {
       bubbles: true, cancelable: true, button: 0, pointerId, clientX, clientY,
-    }));
+    });
+    // jsdom's PointerEvent init drops MouseEvent modifiers; force-set it.
+    if (altKey) Object.defineProperty(ev, "altKey", { value: true, configurable: true });
+    el.dispatchEvent(ev);
   }
 
   function firePointerMove(el: Element, pointerId = 10, clientX = 200, clientY = 200) {
@@ -275,6 +280,106 @@ describe("Space+pan global override across all tools", () => {
 
     expect(mockOnViewportPointerDown).toHaveBeenCalled();
     expect(mockCommitBrushStroke).not.toHaveBeenCalled();
+  });
+
+  // --- Move-tool Alt+drag duplicates the active layer ---
+  // jsdom has no layout, so stub a realistic container rect and set zoom/pan so
+  // a click at (100,100) resolves INSIDE the 800x600 document (not the
+  // pasteboard, which would short-circuit onCanvasPointerDown).
+  describe("Move tool Alt+drag duplicate", () => {
+    let rectStub: ReturnType<typeof vi.spyOn> | undefined;
+    let offscreenPrev: any;
+
+    beforeEach(() => {
+      rectStub = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+        left: 0, top: 0, right: 800, bottom: 600, width: 800, height: 600, x: 0, y: 0,
+        toJSON: () => ({}),
+      } as DOMRect);
+      // duplicateLayer copies the layer bitmap via OffscreenCanvas (real browser
+      // global); jsdom lacks it, so stub a minimal version.
+      offscreenPrev = (globalThis as any).OffscreenCanvas;
+      (globalThis as any).OffscreenCanvas = class {
+        width: number; height: number;
+        constructor(w: number, h: number) { this.width = w; this.height = h; }
+        getContext() {
+          return {
+            drawImage: vi.fn(), fillRect: vi.fn(), save: vi.fn(), restore: vi.fn(),
+            translate: vi.fn(), rotate: vi.fn(), scale: vi.fn(),
+            globalAlpha: 1, globalCompositeOperation: "source-over",
+          };
+        }
+        transferToImageBitmap() {
+          return { width: this.width, height: this.height, close: vi.fn() } as unknown as ImageBitmap;
+        }
+      };
+    });
+    afterEach(() => {
+      rectStub?.mockRestore();
+      if (offscreenPrev !== undefined) (globalThis as any).OffscreenCanvas = offscreenPrev;
+    });
+
+    function setup() {
+      const { session } = renderViewport();
+      setZoomState(1);
+      setPanState({ x: 0, y: 0 });
+      setTool("move");
+      const layers = session.engine.getLayers();
+      const originalId = layers[0].id;
+      // Give the layer a large bitmap + zero transform so a click at (100,100)
+      // lands well inside its bbox regardless of camera zoom/pan in jsdom.
+      session.engine.setLayerImageBitmap(originalId, { width: 4000, height: 4000, close: () => {} } as unknown as ImageBitmap);
+      session.engine.transformLayer(originalId, { x: 0, y: 0 });
+      session.engine.setActiveLayer(originalId);
+      setSelectedLayerIdState(originalId);
+      return { session, originalId };
+    }
+
+    it("Alt+drag duplicates the active layer and DRAGS THE COPY (original stays put)", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const { session, originalId } = setup();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const before = session.engine.getLayers().length;
+      const origBefore = { x: session.engine.getLayer(originalId)!.transform.x, y: session.engine.getLayer(originalId)!.transform.y };
+
+      // Full chain: down (alt) → move (delta 60,40) → up.
+      firePointerDown(getCanvas(), 10, 100, 100, true);
+      firePointerMove(document.body, 10, 160, 140);
+      firePointerUp(document.body, 10, 160, 140);
+
+      if (warnSpy.mock.calls.length > 0) console.log("WARN MSG:", String(warnSpy.mock.calls[0][0]), String(warnSpy.mock.calls[0][1]?.message ?? warnSpy.mock.calls[0][1]));
+      const dupWarn = warnSpy.mock.calls.find((c) => String(c[0]).includes("Alt+drag duplicate failed"));
+      expect(dupWarn).toBeUndefined();
+
+      const after = session.engine.getLayers();
+      expect(after.length).toBe(before + 1);
+
+      // Copy is the new active layer.
+      const copyId = session.engine.getActiveLayerId()!;
+      expect(copyId).not.toBe(originalId);
+
+      // THE USER-REPORTED SYMPTOM: original must NOT move, copy must.
+      const origAfter = session.engine.getLayer(originalId)!.transform;
+      expect(origAfter.x).toBe(origBefore.x);
+      expect(origAfter.y).toBe(origBefore.y);
+      const copyAfter = session.engine.getLayer(copyId)!.transform;
+      expect(copyAfter.x).toBe(origBefore.x + 60);
+      expect(copyAfter.y).toBe(origBefore.y + 40);
+
+      expect(renderer.uploadImage).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it("plain drag does NOT duplicate the active layer", async () => {
+      const { session, originalId } = setup();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const before = session.engine.getLayers().length;
+      firePointerDown(getCanvas(), 10, 100, 100, false);
+
+      expect(session.engine.getLayers().length).toBe(before);
+      expect(session.engine.getActiveLayerId()).toBe(originalId);
+    });
   });
 
   // --- Double-click-to-fit guards (regression: view snapping to fit during brushing) ---
@@ -2080,10 +2185,13 @@ describe("CanvasViewport Selection Constraints Integration", () => {
     return c;
   }
 
-  function firePointerDown(el: Element, pointerId = 10, clientX = 100, clientY = 100) {
-    el.dispatchEvent(new PointerEvent("pointerdown", {
+  function firePointerDown(el: Element, pointerId = 10, clientX = 100, clientY = 100, altKey = false) {
+    const ev = new PointerEvent("pointerdown", {
       bubbles: true, cancelable: true, button: 0, pointerId, clientX, clientY,
-    }));
+    });
+    // jsdom's PointerEvent init drops MouseEvent modifiers; force-set it.
+    if (altKey) Object.defineProperty(ev, "altKey", { value: true, configurable: true });
+    el.dispatchEvent(ev);
   }
 
   function firePointerMove(el: Element, pointerId = 10, clientX = 200, clientY = 200) {

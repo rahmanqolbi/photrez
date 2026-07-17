@@ -551,6 +551,36 @@ export class DocumentEngine {
     this.notifyChange();
   }
 
+  /**
+   * Fit the active selection bounds into the viewport (centered), like a
+   * zoom-to-selection command in similar editors. Clamps the rect to the
+   * document and falls back to the whole-document fit when no selection
+   * exists (so it is always safe to call).
+   */
+  zoomToSelection(containerWidth: number, containerHeight: number): void {
+    const sel = this.model.selection;
+    if (sel) {
+      const left = Math.max(0, Math.min(this.model.width, sel.x));
+      const top = Math.max(0, Math.min(this.model.height, sel.y));
+      const right = Math.max(0, Math.min(this.model.width, sel.x + sel.width));
+      const bottom = Math.max(0, Math.min(this.model.height, sel.y + sel.height));
+      const w = Math.max(1, right - left);
+      const h = Math.max(1, bottom - top);
+      const padding = 80;
+      const zoom = Math.min(
+        (containerWidth - padding) / w,
+        (containerHeight - padding) / h,
+        10.0
+      );
+      this.model.viewport.zoom = Math.max(0.05, zoom);
+      this.model.viewport.panX = (containerWidth - w * this.model.viewport.zoom) / 2 - left * this.model.viewport.zoom;
+      this.model.viewport.panY = (containerHeight - h * this.model.viewport.zoom) / 2 - top * this.model.viewport.zoom;
+      this.notifyChange();
+      return;
+    }
+    this.fitToScreen(containerWidth, containerHeight);
+  }
+
   // ─── Canvas Operations ───
   cropCanvas(x: number, y: number, width: number, height: number): void {
     if (width <= 0 || height <= 0) return;

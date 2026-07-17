@@ -109,14 +109,43 @@ export function fillActiveLayerWithColor(
   const w = layer.width;
   const h = layer.height;
 
+  // When a selection is active, the fill is scoped to the selection bounds
+  // (matching how similar editors fill only the selected region). Without a
+  // selection the entire layer is filled, identical to the prior behavior.
+  const sel = engine.getSelection();
+
   let bitmap: ImageBitmap | null = null;
   try {
     if (typeof OffscreenCanvas !== "undefined") {
       const offscreen = new OffscreenCanvas(w, h);
       const ctx = offscreen.getContext("2d");
       if (ctx) {
+        // Preserve existing layer content outside the filled region.
+        const existing = engine.getLayerImageBitmap(activeId);
+        if (existing) ctx.drawImage(existing, 0, 0);
+
         ctx.fillStyle = fillColor;
-        ctx.fillRect(0, 0, w, h);
+        if (sel) {
+          const sx = Math.round(sel.x);
+          const sy = Math.round(sel.y);
+          const sw = Math.max(0, Math.round(sel.width));
+          const sh = Math.max(0, Math.round(sel.height));
+          if (sel.inverted) {
+            // Fill everything EXCEPT the (clamped) selected rect.
+            const left = Math.max(0, Math.min(w, sx));
+            const top = Math.max(0, Math.min(h, sy));
+            const right = Math.max(0, Math.min(w, sx + sw));
+            const bottom = Math.max(0, Math.min(h, sy + sh));
+            ctx.fillRect(0, 0, w, top);
+            ctx.fillRect(0, bottom, w, h - bottom);
+            ctx.fillRect(0, top, left, bottom - top);
+            ctx.fillRect(right, top, w - right, bottom - top);
+          } else {
+            ctx.fillRect(sx, sy, sw, sh);
+          }
+        } else {
+          ctx.fillRect(0, 0, w, h);
+        }
         bitmap = offscreen.transferToImageBitmap();
       }
     }

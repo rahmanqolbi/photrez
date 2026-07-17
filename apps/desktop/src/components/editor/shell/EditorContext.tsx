@@ -21,7 +21,7 @@ import { showToast as showToastImpl } from "../Toast";
 import { runToolSwitchCleanup } from "../tools/toolLifecycle";
 import { DialogProvider } from "../dialogs/DialogProvider";
 import type { HistoryItem } from "@/engine/history";
-import { cancelLayerTransformSession } from "../transformSession";
+import { cancelLayerTransformSession, commitLayerTransformSession } from "../transformSession";
 import { invoke } from "@tauri-apps/api/core";
 import { isTauriRuntime } from "@/lib/desktop/tauriWindow";
 
@@ -459,6 +459,17 @@ export function EditorProvider(props: {
   createEffect(() => {
     const tool = editorState.activeTool();
     if (prevActiveTool !== null && tool !== prevActiveTool) {
+      // Auto-commit an active transform session before switching tools.
+      // Otherwise the transform changes would silently persist without a
+      // history entry (the session is cleared but the engine transform is
+      // kept), and Ctrl+Z could never revert them.
+      const session = editorState.layerTransformSession();
+      if (session) {
+        const engine = props.workspace.getActiveEngine();
+        const history = props.workspace.getActiveHistory();
+        commitLayerTransformSession(session, engine, history);
+        editorState.clearTransformStacks();
+      }
       runToolSwitchCleanup(prevActiveTool, tool, {
         setHoverHandle: editorState.setHoverHandle,
         setHoverPos: editorState.setHoverPos,

@@ -4,10 +4,10 @@
 // real DocumentEngine.  If these break, layer merge/flatten silently fail
 // (user clicks "Merge Down" → nothing happens).
 
-import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll, afterEach } from "vitest";
 import { DocumentEngine } from "@/engine/document";
 import { CommandHistory } from "@/engine/history";
-import { mergeActiveLayerDown, flattenAllLayers } from "../layerOperations";
+import { mergeActiveLayerDown, flattenAllLayers, fillActiveLayerWithColor } from "../layerOperations";
 import type { WebGL2Backend } from "@/renderer/webgl2";
 
 // Polyfill OffscreenCanvas for jsdom — DocumentEngine.mergeDown and
@@ -112,6 +112,131 @@ describe("mergeActiveLayerDown", () => {
 
     expect(result).toBe(false);
     expect(history.getUndoCount()).toBe(0);
+  });
+});
+
+// ─── fillActiveLayerWithColor: selection-aware scoping ──────────────────────
+// Mirrors how similar editors fill only the selected region. The OffscreenCanvas
+// mock here tracks real pixels so we can assert which areas were painted.
+describe("fillActiveLayerWithColor (selection-aware)", () => {
+  let prevOffscreenCanvas: any;
+
+  function installPixelMock() {
+    prevOffscreenCanvas = (globalThis as any).OffscreenCanvas;
+    (globalThis as any).OffscreenCanvas = class {
+      width: number;
+      height: number;
+      _buffer: Uint8ClampedArray;
+      constructor(w: number, h: number) {
+        this.width = w;
+        this.height = h;
+        this._buffer = new Uint8ClampedArray(w * h * 4);
+      }
+      getContext() {
+        const self = this;
+        return {
+          _fs: "" as string,
+          get fillStyle() { return (this as any)._fs; },
+          set fillStyle(v: string) { (this as any)._fs = v; },
+          fillRect: function (this: any, x: number, y: number, w: number, h: number) {
+            const hex = (this._fs as string).replace("#", "");
+            const r = parseInt(hex.slice(0, 2), 16);
+            const g = parseInt(hex.slice(2, 4), 16);
+            const b = parseInt(hex.slice(4, 6), 16);
+            for (let row = y; row < y + h; row++) {
+              for (let col = x; col < x + w; col++) {
+                if (row < 0 || row >= self.height || col < 0 || col >= self.width) continue;
+                const idx = (row * self.width + col) * 4;
+                self._buffer[idx] = r;
+                self._buffer[idx + 1] = g;
+                self._buffer[idx + 2] = b;
+                self._buffer[idx + 3] = 255;
+              }
+            }
+          },
+          drawImage: vi.fn(),
+          save: vi.fn(),
+          restore: vi.fn(),
+          translate: vi.fn(),
+          rotate: vi.fn(),
+          scale: vi.fn(),
+          globalAlpha: 1,
+          globalCompositeOperation: "source-over",
+        };
+      }
+      transferToImageBitmap() {
+        const buf = this._buffer;
+        return {
+          width: this.width,
+          height: this.height,
+          getImageData: (_x: number, _y: number, _w: number, _h: number) => ({
+            data: buf, width: this.width, height: this.height, colorSpace: "srgb",
+          }),
+          close: vi.fn(),
+        } as unknown as ImageBitmap;
+      }
+    };
+  }
+
+  afterEach(() => {
+    if (prevOffscreenCanvas !== undefined) {
+      (globalThis as any).OffscreenCanvas = prevOffscreenCanvas;
+    }
+    vi.restoreAllMocks();
+  });
+
+  function setup() {
+    installPixelMock();
+    const engine = new DocumentEngine("fill-doc", "Fill", 100, 100);
+    const layer = engine.addLayer("Target", 100, 100);
+    engine.setActiveLayer(layer.id);
+    const history = new CommandHistory();
+    const renderer = makeMockRenderer();
+    return { engine, layer, history, renderer };
+  }
+
+  function pixel(bitmap: any, x: number, y: number) {
+    const d = (bitmap.getImageData as any)(0, 0, 100, 100).data;
+    const idx = (y * 100 + x) * 4;
+    return [d[idx], d[idx + 1], d[idx + 2], d[idx + 3]];
+  }
+
+  it("fills the entire layer when no selection is active", () => {
+    const { engine, layer, history, renderer } = setup();
+    const ok = fillActiveLayerWithColor(engine, history, renderer, "#ff0000");
+    expect(ok).toBe(true);
+    // Top-left and bottom-right corners both painted.
+    expect(pixel(layer.imageBitmap, 0, 0)).toEqual([255, 0, 0, 255]);
+    expect(pixel(layer.imageBitmap, 99, 99)).toEqual([255, 0, 0, 255]);
+  });
+
+  it("fills only the selection bounds when a selection is active", () => {
+    const { engine, layer, history, renderer } = setup();
+    engine.createSelection(10, 10, 20, 20, 0);
+
+    const ok = fillActiveLayerWithColor(engine, history, renderer, "#00ff00");
+    expect(ok).toBe(true);
+
+    // Inside selection → green
+    expect(pixel(layer.imageBitmap, 15, 15)).toEqual([0, 255, 0, 255]);
+    // Outside selection → untouched (transparent)
+    expect(pixel(layer.imageBitmap, 0, 0)).toEqual([0, 0, 0, 0]);
+    expect(pixel(layer.imageBitmap, 99, 99)).toEqual([0, 0, 0, 0]);
+  });
+
+  it("fills everything EXCEPT the bounds when the selection is inverted", () => {
+    const { engine, layer, history, renderer } = setup();
+    engine.createSelection(10, 10, 20, 20, 0);
+    engine.invertSelection();
+
+    const ok = fillActiveLayerWithColor(engine, history, renderer, "#0000ff");
+    expect(ok).toBe(true);
+
+    // Inside excluded rect → untouched
+    expect(pixel(layer.imageBitmap, 15, 15)).toEqual([0, 0, 0, 0]);
+    // Outside → blue
+    expect(pixel(layer.imageBitmap, 0, 0)).toEqual([0, 0, 255, 255]);
+    expect(pixel(layer.imageBitmap, 99, 99)).toEqual([0, 0, 255, 255]);
   });
 });
 

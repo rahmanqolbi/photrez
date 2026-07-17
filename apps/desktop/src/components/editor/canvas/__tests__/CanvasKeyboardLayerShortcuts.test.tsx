@@ -539,6 +539,44 @@ describe("canvas layer keyboard shortcuts", () => {
     dispose();
   });
 
+  it("dispatchEditorCommand('view.zoom-to-selection') fits the selection and requests render", async () => {
+    const ws = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("zts-menu", "ZTS Menu", 800, 600);
+    ws.addDocument(session);
+    const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+    const scheduler = { requestRender: vi.fn() };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let captured: ReturnType<typeof useEditor> | undefined;
+    const zoomToSelectionSpy = vi.spyOn(session.engine, "zoomToSelection");
+
+    const dispose = render(
+      () => (
+        <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+          <ZoomCommandHarness captureEditor={(e) => { captured = e; }} />
+        </EditorProvider>
+      ),
+      container,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const editor = captured!;
+    editor.camera.setViewportSize(1000, 700);
+    session.engine.createSelection(100, 100, 200, 200);
+    editor.camera.setState({ x: 200, y: 150, zoom: 3 });
+
+    dispatchEditorCommand("view.zoom-to-selection");
+
+    expect(zoomToSelectionSpy).toHaveBeenCalledOnce();
+    const state = editor.camera.getState();
+    expect(state.zoom).toBeGreaterThan(1); // zoomed toward the 200x200 selection
+    expect(state.x).not.toBe(200);
+    expect(state.y).not.toBe(150);
+    expect(scheduler.requestRender).toHaveBeenCalled();
+
+    dispose();
+  });
+
   it("routes Ctrl+0 to instant fit-to-screen (useCanvasKeyboard-only path)", async () => {
     const session = WorkspaceManager.createBlankDocument("fit-keyboard", "Fit Keyboard", 800, 600);
     const ws = new WorkspaceManager();
@@ -1134,6 +1172,223 @@ describe("fill layer keyboard shortcuts (Alt+Del / Ctrl+Del)", () => {
 
     expect(fillRef.color).toBeNull();
     expect(renderer.uploadImage).not.toHaveBeenCalled();
+    dispose();
+  });
+});
+
+// ─── Transform session guards: destructive shortcuts must not fire ───────────
+// During an active transform session, fill / merge / flatten / duplicate / new
+// layer / reorder / delete are all blocked. They would commit to global history
+// but Ctrl+Z during a transform only reaches the session's local undo stack,
+// leaving the action un-undoable until the session ends.
+
+function setupTransformSession() {
+  const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+  const ws = new WorkspaceManager();
+  const session = WorkspaceManager.createBlankDocument("transform-guards", "Transform", 800, 600);
+  ws.addDocument(session);
+  const engine = session.engine;
+  const extra = engine.addLayer("Top");
+  engine.setActiveLayer(extra.id);
+  const scheduler = { requestRender: vi.fn() };
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  let captured: ReturnType<typeof useEditor> | undefined;
+  const fillRef = { color: null as string | null };
+  installFillCaptureMock(fillRef);
+
+  const dispose = render(
+    () => (
+      <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+        <FillKeyboardHarness captureEditor={(e) => { captured = e; }} />
+      </EditorProvider>
+    ),
+    container,
+  );
+
+  const editor = captured!;
+  // Establish a transform session with a changed transform so commit produces a history entry.
+  engine.transformLayer(extra.id, { x: 50, y: 25, scaleX: 1.5, scaleY: 0.8, rotation: 10, flipH: false, flipV: false });
+  editor.setLayerTransformSession({
+    documentId: ws.getActiveDocumentId()!,
+    layerId: extra.id,
+    originalSnapshot: engine.snapshot(),
+    originalTransform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, flipH: false, flipV: false },
+    mode: "resize",
+    lockRatio: false,
+    startedAt: Date.now(),
+  });
+
+  return {
+    ws, engine, renderer, scheduler, editor, fillRef, extra,
+    dispose: () => {
+      dispose();
+      container.parentNode?.removeChild(container);
+    },
+  };
+}
+
+describe("transform session blocks destructive shortcuts", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    clearRegistry();
+  });
+
+  it("Alt+Backspace does NOT fill while a transform session is active", () => {
+    const { fillRef, dispose } = setupTransformSession();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace", altKey: true, bubbles: true }));
+    expect(fillRef.color).toBeNull();
+    dispose();
+  });
+
+  it("Ctrl+E (merge down) is blocked during transform session", () => {
+    const { engine, dispose } = setupTransformSession();
+    const before = engine.getLayers().length;
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "e", ctrlKey: true, bubbles: true }));
+    expect(engine.getLayers().length).toBe(before);
+    dispose();
+  });
+
+  it("Ctrl+Shift+E (flatten) is blocked during transform session", () => {
+    const { engine, dispose } = setupTransformSession();
+    const before = engine.getLayers().length;
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "E", ctrlKey: true, shiftKey: true, bubbles: true }));
+    expect(engine.getLayers().length).toBe(before);
+    dispose();
+  });
+
+  it("Ctrl+J (duplicate) is blocked during transform session", () => {
+    const { engine, dispose } = setupTransformSession();
+    const before = engine.getLayers().length;
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "j", ctrlKey: true, bubbles: true }));
+    expect(engine.getLayers().length).toBe(before);
+    dispose();
+  });
+
+  it("Ctrl+Shift+N (new layer) is blocked during transform session", () => {
+    const { engine, dispose } = setupTransformSession();
+    const before = engine.getLayers().length;
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "n", ctrlKey: true, shiftKey: true, bubbles: true }));
+    expect(engine.getLayers().length).toBe(before);
+    dispose();
+  });
+
+  it("Ctrl+] (reorder up) is blocked during transform session", () => {
+    const { engine, extra, dispose } = setupTransformSession();
+    const beforeIdx = engine.getLayers().findIndex((l) => l.id === extra.id);
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "]", ctrlKey: true, bubbles: true }));
+    expect(engine.getLayers().findIndex((l) => l.id === extra.id)).toBe(beforeIdx);
+    dispose();
+  });
+
+  it("Backspace (delete layer) is blocked during transform session", () => {
+    const { engine, extra, dispose } = setupTransformSession();
+    const before = engine.getLayers().length;
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace", bubbles: true }));
+    expect(engine.getLayers().length).toBe(before);
+    expect(engine.getLayer(extra.id)).toBeDefined();
+    dispose();
+  });
+
+  it("Arrow nudge WORKS during transform session (1px, Shift=10px)", () => {
+    const { engine, extra, dispose } = setupTransformSession();
+    const beforeX = engine.getLayer(extra.id)!.transform.x;
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+    // Nudge moves the selected layer even while the transform overlay is live.
+    expect(engine.getLayer(extra.id)!.transform.x).toBe(beforeX + 1);
+
+    const beforeY = engine.getLayer(extra.id)!.transform.y;
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", shiftKey: true, bubbles: true }));
+    expect(engine.getLayer(extra.id)!.transform.y).toBe(beforeY + 10);
+    dispose();
+  });
+
+  it("Ctrl+G (flip) is still allowed during transform (it mutates the transform)", () => {
+    const { engine, extra, dispose } = setupTransformSession();
+    const beforeFlipH = engine.getLayer(extra.id)!.transform.flipH;
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "g", ctrlKey: true, bubbles: true }));
+    expect(engine.getLayer(extra.id)!.transform.flipH).toBe(!beforeFlipH);
+    dispose();
+  });
+
+  it("tool switch during transform auto-commits the session (history entry created)", () => {
+    const { ws, editor, dispose } = setupTransformSession();
+    const history = ws.getActiveHistory()!;
+    const undoBefore = history.getUndoCount();
+
+    // Switch tool via setActiveTool — mimics keyboard tool shortcut path.
+    editor.setActiveTool("brush");
+
+    // Transform should be committed (history entry added) and session cleared.
+    expect(history.getUndoCount()).toBe(undoBefore + 1);
+    expect(editor.layerTransformSession()).toBeNull();
+    dispose();
+  });
+});
+
+// ─── Crop tool guards: destructive shortcuts must not fire ───────────────────
+// While the crop tool is active, fill / delete would commit to global history
+// but Ctrl+Z only reaches the crop mini-undo stack, leaving the action
+// un-undoable until the crop is applied. Same regression class as the
+// transform session guard above.
+
+function setupCropMode() {
+  const renderer = { uploadImage: vi.fn(), destroyTexture: vi.fn() };
+  const ws = new WorkspaceManager();
+  const session = WorkspaceManager.createBlankDocument("crop-guards", "Crop", 800, 600);
+  ws.addDocument(session);
+  const engine = session.engine;
+  const extra = engine.addLayer("Top");
+  engine.setActiveLayer(extra.id);
+  const scheduler = { requestRender: vi.fn() };
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  let captured: ReturnType<typeof useEditor> | undefined;
+  const fillRef = { color: null as string | null };
+  installFillCaptureMock(fillRef);
+
+  const dispose = render(
+    () => (
+      <EditorProvider workspace={ws} renderer={renderer as any} scheduler={scheduler as any}>
+        <FillKeyboardHarness captureEditor={(e) => { captured = e; }} />
+      </EditorProvider>
+    ),
+    container,
+  );
+
+  const editor = captured!;
+  editor.setActiveTool("crop");
+
+  return {
+    ws, engine, renderer, scheduler, editor, fillRef, extra,
+    dispose: () => {
+      dispose();
+      container.parentNode?.removeChild(container);
+    },
+  };
+}
+
+describe("crop tool blocks destructive shortcuts", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    clearRegistry();
+  });
+
+  it("Alt+Backspace does NOT fill while the crop tool is active", () => {
+    const { fillRef, dispose } = setupCropMode();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace", altKey: true, bubbles: true }));
+    expect(fillRef.color).toBeNull();
+    dispose();
+  });
+
+  it("Backspace (delete layer) is blocked while the crop tool is active", () => {
+    const { engine, extra, dispose } = setupCropMode();
+    const before = engine.getLayers().length;
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace", bubbles: true }));
+    expect(engine.getLayers().length).toBe(before);
+    expect(engine.getLayer(extra.id)).toBeDefined();
     dispose();
   });
 });

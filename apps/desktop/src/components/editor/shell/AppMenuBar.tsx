@@ -52,6 +52,7 @@ const MENU_DEFINITIONS: Record<MenuItem, readonly MenuEntry[]> = {
     { kind: "item", label: "Zoom Out", command: "view.zoom-out", shortcut: "Ctrl+-" },
     { kind: "item", label: "Actual Size", command: "view.actual-size", shortcut: "Ctrl+1" },
     { kind: "item", label: "Fit Canvas", command: "view.fit-canvas", shortcut: "Ctrl+0" },
+    { kind: "item", label: "Zoom to Selection", command: "view.zoom-to-selection", shortcut: "Ctrl+Alt+0" },
     { kind: "separator" },
     { kind: "item", label: "Toggle Side Panels", command: "view.toggle-side-panels", shortcut: "Ctrl+Shift+P" },
     { kind: "item", label: "Use Stacked Side Dock", command: "view.toggle-right-dock-layout" },

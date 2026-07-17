@@ -50,7 +50,7 @@ export interface CanvasLayerDragOptions {
  * for simplicity (matches the existing layer-helpers).
  */
 export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLayerDragApi {
-  const { workspace, renderer, camera, activeDocumentId, activeTool, scheduler, moveSnapEnabled, moveAutoSelect, selectedLayerId, zoom } = useEditor();
+  const { workspace, renderer, camera, activeDocumentId, activeTool, scheduler, moveSnapEnabled, moveAutoSelect, selectedLayerId, setSelectedLayerId, zoom } = useEditor();
   const dragController = useDragController();
 
   const [drag, setDrag] = createSignal<CanvasLayerDrag | null>(null);
@@ -363,6 +363,35 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
     let layer = findLayerAt(docPos.x, docPos.y);
     if (!layer) return;
 
+    const src = activeDocumentId();
+    if (!src) return;
+    const sourceEngine = workspace.getEngine(src);
+    if (!sourceEngine) return;
+
+    // Move-tool Alt+drag = duplicate the hit layer and drag the COPY
+    // (Photoshop-style). Duplicate here (the single drag owner) so the
+    // subsequent move operates on the fresh copy instead of the original —
+    // doing it in onCanvasPointerDown caused both the original (this drag)
+    // and the copy to be tracked, so the original moved and no duplicate
+    // appeared. preDragSnapshot is taken BEFORE the duplicate so undo
+    // reverts the move, then the duplicate, cleanly.
+    let dragLayerId = layer.id;
+    let preDragSnapshot = sourceEngine.snapshot();
+    if (e.altKey) {
+      try {
+        const dup = sourceEngine.duplicateLayer(layer.id);
+        if (dup.imageBitmap) renderer.uploadImage(dup.id, dup.imageBitmap);
+        sourceEngine.setActiveLayer(dup.id);
+        setSelectedLayerId(dup.id);
+        dragLayerId = dup.id;
+        scheduler.requestRender();
+      } catch (err) {
+        // Resource/limit errors (e.g. layer limit): fall back to a normal
+        // move of the original layer.
+        console.warn("Alt+drag duplicate failed:", err);
+      }
+    }
+
     // When auto-select is OFF, the layer under cursor may differ from the
     // selected layer. The normal move handler (input-handler.ts) always moves
     // the selected layer via engine.getActiveLayerId(). If we move a different
@@ -404,20 +433,19 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
       }
     }
 
-    const src = activeDocumentId();
-    if (!src) return;
-    const sourceEngine = workspace.getEngine(src);
-    if (!sourceEngine) return;
+    // When NOT duplicating, drag the (possibly auto-select-OFF reassigned)
+    // layer. For the Alt case dragLayerId already holds the duplicate id.
+    if (!e.altKey) dragLayerId = layer.id;
 
     setDrag({
-      layerId: layer.id,
+      layerId: dragLayerId,
       sourceDocId: src,
       startDocX: docPos.x,
       startDocY: docPos.y,
       startTransformX: layer.transform.x,
       startTransformY: layer.transform.y,
       rect: { left: rect.left, top: rect.top },
-      preDragSnapshot: sourceEngine.snapshot(),
+      preDragSnapshot,
     });
 
     // Notify the DragController so cross-cutting subscribers
@@ -430,7 +458,7 @@ export function useCanvasLayerDrag(opts: CanvasLayerDragOptions = {}): CanvasLay
       {
         version: 1,
         sourceDocId: src,
-        layerId: layer.id,
+        layerId: dragLayerId,
         sourceName: layer.name,
         isAltPressed: e.altKey,
       },

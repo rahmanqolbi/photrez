@@ -198,6 +198,22 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
       // has no modifier here, so it falls through to the existing
       // delete-layer / delete-selection behavior further below.
       if (e.key === "Delete" || e.key === "Backspace") {
+        // Block during active transform session: fill/delete commit to global
+        // history, but Ctrl+Z during a transform session only reaches the
+        // session's local undo stack, making the action un-undoable.
+        if (layerTransformSession()) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        // Same rationale for the crop tool: the crop mini-undo stack owns
+        // Ctrl+Z while a crop rect is live, so a destructive fill/delete here
+        // would not be reachable from the crop undo path.
+        if (activeTool() === "crop") {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         const resolveColor = (c: string | (() => string)) =>
           typeof c === "function" ? c() : c;
         if (e.altKey) {
@@ -582,6 +598,25 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
 
       const ctrl = e.ctrlKey || e.metaKey;
 
+      // Block destructive layer operations during an active transform session:
+      // they would commit to global history, but Ctrl+Z during a transform only
+      // reaches the session's local undo stack, making them un-undoable.
+      // (Flip / Ctrl+G is intentionally allowed — it mutates the transform and
+      // is captured by the session's mini undo stack.)
+      if (layerTransformSession()) {
+        if (
+          (ctrl && e.shiftKey && e.altKey && key === "e") ||  // Stamp Visible
+          (ctrl && key === "e") ||                            // Merge / Flatten
+          (ctrl && key === "j") ||                            // Duplicate layer
+          (ctrl && e.shiftKey && key === "n") ||              // New layer
+          (ctrl && (e.key === "]" || e.key === "["))          // Reorder (incl. shift)
+        ) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+      }
+
       // Stamp Visible: Ctrl+Shift+Alt+E — composite all visible layers into a new top layer
       if (ctrl && e.shiftKey && e.altKey && key === "e") {
         e.preventDefault();
@@ -874,7 +909,10 @@ export function useCanvasKeyboard(options: CanvasKeyboardOptions) {
         return;
       }
 
-      // Keyboard nudge for Move Tool: Arrow = 1px, Shift+Arrow = 10px
+      // Keyboard nudge for Move Tool: Arrow = 1px, Shift+Arrow = 10px.
+      // Works whether or not the layer transform overlay (handles/rotate ring)
+      // is active, matching standard raster editors — arrow nudges the selected
+      // layer 1px (10px with Shift) even while the transform session is live.
       if (activeTool() === "move" && e.key.startsWith("Arrow")) {
         const activeId = engine.getActiveLayerId();
         if (!activeId) return;

@@ -264,6 +264,50 @@ describe('DocumentEngine', () => {
     expect(engine.getSelection()).toBeNull();
   });
 
+  describe('zoomToSelection', () => {
+    const W = 800;
+    const H = 600;
+
+    it('fits the selection rect into the viewport (centered) when a selection exists', () => {
+      const engine = new DocumentEngine('doc-zts', 'ZTS', W, H);
+      engine.addLayer('Layer 1');
+      engine.createSelection(100, 100, 200, 200); // 200x200 at (100,100)
+
+      engine.zoomToSelection(W, H);
+      const vp = engine.getViewport();
+
+      // Expected: zoom = min((800-80)/200, (600-80)/200, 10) = 2.6
+      expect(vp.zoom).toBeCloseTo(2.6, 5);
+      // Selection center (200,200) must map to viewport center (400,300):
+      // panX = (800 - 200*2.6)/2 - 100*2.6 = -120
+      // panY = (600 - 200*2.6)/2 - 100*2.6 = -220
+      expect(vp.panX).toBeCloseTo(-120, 1);
+      expect(vp.panY).toBeCloseTo(-220, 1);
+    });
+
+    it('clamps the selection rect to document bounds', () => {
+      const engine = new DocumentEngine('doc-zts-clamp', 'ZTS', W, H);
+      engine.addLayer('Layer 1');
+      engine.createSelection(-50, -50, 900, 700); // extends beyond doc
+
+      engine.zoomToSelection(W, H);
+      const vp = engine.getViewport();
+      // Clamped rect = full document -> same as fitToScreen (zoom = 520/600 = 0.8666...)
+      expect(vp.zoom).toBeCloseTo(520 / 600, 5);
+    });
+
+    it('falls back to fitToScreen when no selection exists', () => {
+      const engine = new DocumentEngine('doc-zts-none', 'ZTS', W, H);
+      engine.addLayer('Layer 1');
+
+      engine.zoomToSelection(W, H);
+      const vp = engine.getViewport();
+      // Whole-doc fit: zoom = min((800-80)/800, (600-80)/600, 10) = 0.8666..., centered
+      expect(vp.zoom).toBeCloseTo(520 / 600, 5);
+      expect(vp.panX).toBeCloseTo((W - W * vp.zoom) / 2, 1);
+    });
+  });
+
   it('multiple snapshots remain independent after restore', () => {
     const engine = new DocumentEngine('doc-multi', 'Multi', 800, 600);
     engine.addLayer('A');
