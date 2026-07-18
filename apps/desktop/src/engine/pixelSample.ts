@@ -69,3 +69,37 @@ export function performPixelSampling(
 
   return composed;
 }
+
+/**
+ * Alpha of a single layer at a document-space point, accounting for the
+ * layer's transform and opacity. Returns 0 when the point is outside the
+ * layer bitmap or the layer is invisible / has no bitmap.
+ *
+ * Used for alpha-aware layer hit-testing so clicks on a layer's transparent
+ * corners fall through to the layer underneath instead of selecting the
+ * topmost bounding box.
+ */
+export function sampleSingleLayerAlpha(
+  layers: readonly LayerNode[],
+  x: number,
+  y: number,
+  layerId: string,
+): number {
+  const layer = layers.find((l) => l.id === layerId);
+  if (!layer || !layer.visible || !layer.imageBitmap) return 0;
+
+  const rx = Math.floor(x - layer.transform.x);
+  const ry = Math.floor(y - layer.transform.y);
+  if (rx < 0 || rx >= layer.width || ry < 0 || ry >= layer.height) return 0;
+
+  try {
+    const ctx = getSampleCtx();
+    if (!ctx) return 1; // jsdom: assume opaque so hit-test still selects
+    ctx.clearRect(0, 0, 1, 1);
+    ctx.drawImage(layer.imageBitmap, rx, ry, 1, 1, 0, 0, 1, 1);
+    const imgData = ctx.getImageData(0, 0, 1, 1);
+    return (imgData.data[3] / 255) * layer.opacity;
+  } catch {
+    return 1;
+  }
+}

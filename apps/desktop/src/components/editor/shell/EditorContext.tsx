@@ -1,4 +1,4 @@
-import { createContext, useContext, onMount, createEffect, createSignal, batch, JSX } from "solid-js";
+import { createContext, useContext, onMount, onCleanup, createEffect, createSignal, batch, JSX } from "solid-js";
 import { WorkspaceManager } from "@/engine/workspace";
 import { WebGL2Backend } from "@/renderer/webgl2";
 import { RenderScheduler } from "@/renderer/scheduler";
@@ -14,7 +14,9 @@ import {
   type ModernCropSnapshot,
 } from "../modernCropState";
 import { setupWorkspaceSync } from "../canvas/workspaceSync";
-import { openImage, openSingleFile } from "../editorOpenImage";
+import { openImage, openSingleFile, loadProjectFile } from "../editorOpenImage";
+import { autosaveDirtyDocs, listAutosaves, clearAllAutosaves } from "../autoSave";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { ViewportCamera } from "../../../viewport/viewportCamera";
 import { DragControllerProvider } from "../DragController";
 import { showToast as showToastImpl } from "../Toast";
@@ -300,7 +302,7 @@ export function EditorProvider(props: {
   };
 
   const [inspectorTab, setInspectorTab] = createSignal<"library" | "adjust" | "presets">("adjust");
-  const [adjustSubTab, setAdjustSubTab] = createSignal<"properties" | "adjustments">("properties");
+    const [adjustSubTab, setAdjustSubTab] = createSignal<"properties" | "adjustments">("properties");
 
   const [localRightDockOpen, setLocalRightDockOpen] = createSignal(true);
   const rightDockOpen = props.rightDockOpen || localRightDockOpen;
@@ -444,6 +446,41 @@ export function EditorProvider(props: {
       }).catch(() => {
         // command not available (e.g. older build) — silently skip
       });
+    }
+
+    // ── Auto-save / crash recovery ──
+    if (isTauriRuntime()) {
+      // Boot: offer to recover unsaved work from a previous abrupt exit.
+      listAutosaves().then(async (entries) => {
+        if (entries.length === 0) return;
+        const recover = await ask(
+          `${entries.length} document(s) were auto-saved before the last session ended. Recover them?`,
+          { title: "Recover unsaved work?" },
+        );
+        if (recover) {
+          for (const e of entries) {
+            try {
+              await loadProjectFile(e.path, {
+                workspace: props.workspace,
+                renderer: props.renderer,
+                scheduler: props.scheduler,
+                onError: (msg) => showToastImpl(msg, "error"),
+                onLoading: (msg) => editorState.setLoadingMessage(msg),
+              }, e.displayName);
+            } catch (err) {
+              showToastImpl(`Failed to recover ${e.displayName}: ${err instanceof Error ? err.message : String(err)}`, "error");
+            }
+          }
+          showToastImpl(`Recovered ${entries.length} auto-saved document(s)`, "info");
+        }
+        await clearAllAutosaves();
+      }).catch(() => { /* ignore */ });
+
+      // Periodic auto-save (debounced 60s) of dirty documents.
+      const autosaveTimer = setInterval(() => {
+        void autosaveDirtyDocs(props.workspace, (msg) => showToastImpl(msg, "error"));
+      }, 60000);
+      onCleanup(() => clearInterval(autosaveTimer));
     }
   });
 

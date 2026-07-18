@@ -5,7 +5,7 @@
 use serde_json::Value;
 use std::collections::HashMap;
 
-use crate::response::{err_response, error_value, ok_response, validate_path_extension, CONTRACT_VERSION};
+use crate::response::{err_response, error_value, ok_response, validate_no_traversal, validate_path_extension, CONTRACT_VERSION};
 use crate::CliState;
 
 const MAX_FILE_IO_BYTES: u64 = 256 * 1024 * 1024;
@@ -45,6 +45,7 @@ pub(crate) fn get_pending_open_path(state: tauri::State<'_, CliState>) -> Result
 #[tauri::command]
 pub(crate) fn read_file_bytes(path: String) -> Result<Value, Value> {
     validate_path_extension(&path, READ_FILE_EXTENSIONS, "read")?;
+    validate_no_traversal(&path)?;
 
     match std::fs::metadata(&path) {
         Ok(metadata) if metadata.len() > MAX_FILE_IO_BYTES => {
@@ -75,6 +76,7 @@ pub(crate) fn read_file_bytes(path: String) -> Result<Value, Value> {
 #[tauri::command]
 pub(crate) fn write_file_bytes(path: String, data: String) -> Result<Value, Value> {
     validate_path_extension(&path, WRITE_FILE_EXTENSIONS, "write")?;
+    validate_no_traversal(&path)?;
 
     use base64::Engine;
     let bytes = match base64::engine::general_purpose::STANDARD.decode(&data) {
@@ -104,6 +106,7 @@ pub(crate) fn save_project(
     layers: HashMap<String, String>,
 ) -> Result<Value, Value> {
     validate_path_extension(&path, &["ptz"], "save project")?;
+    validate_no_traversal(&path)?;
 
     let file = std::fs::File::create(&path)
         .map_err(|e| error_value("E_IO", &format!("Failed to create project file: {}", e)))?;
@@ -136,9 +139,48 @@ pub(crate) fn save_project(
     ok_response(serde_json::json!({ "path": path }))
 }
 
+/// Like `save_project` but accepts raw layer bytes instead of base64 strings,
+/// avoiding a large base64 round-trip over the IPC channel for big documents.
+#[tauri::command]
+pub(crate) fn save_project_binary(
+    path: String,
+    document_json: String,
+    layers: HashMap<String, Vec<u8>>,
+) -> Result<Value, Value> {
+    validate_path_extension(&path, &["ptz"], "save project")?;
+    validate_no_traversal(&path)?;
+
+    let file = std::fs::File::create(&path)
+        .map_err(|e| error_value("E_IO", &format!("Failed to create project file: {}", e)))?;
+
+    let mut zip = zip::ZipWriter::new(file);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+
+    zip.start_file("document.json", options)
+        .map_err(|e| error_value("E_IO", &format!("Failed to start document.json: {}", e)))?;
+    use std::io::Write;
+    zip.write_all(document_json.as_bytes())
+        .map_err(|e| error_value("E_IO", &format!("Failed to write document.json: {}", e)))?;
+
+    for (layer_id, bytes) in layers {
+        let zip_layer_path = format!("layers/{}.png", layer_id);
+        zip.start_file(&zip_layer_path, options)
+            .map_err(|e| error_value("E_IO", &format!("Failed to start layer file {}: {}", zip_layer_path, e)))?;
+        zip.write_all(&bytes)
+            .map_err(|e| error_value("E_IO", &format!("Failed to write layer {}: {}", layer_id, e)))?;
+    }
+
+    zip.finish()
+        .map_err(|e| error_value("E_IO", &format!("Failed to finish project archive: {}", e)))?;
+
+    ok_response(serde_json::json!({ "path": path }))
+}
+
 #[tauri::command]
 pub(crate) fn load_project(path: String) -> Result<Value, Value> {
     validate_path_extension(&path, &["ptz"], "load project")?;
+    validate_no_traversal(&path)?;
 
     let file = std::fs::File::open(&path)
         .map_err(|e| error_value("E_IO", &format!("Failed to open project file: {}", e)))?;
@@ -191,6 +233,8 @@ pub(crate) fn load_project(path: String) -> Result<Value, Value> {
 /// Delete a file from disk. Used for cleaning up temp files after print.
 #[tauri::command]
 pub(crate) fn delete_file(path: String) -> Result<Value, Value> {
+    validate_path_extension(&path, &["png", "ptz"], "delete")?;
+    validate_no_traversal(&path)?;
     match std::fs::remove_file(&path) {
         Ok(_) => ok_response(serde_json::json!({ "deleted": path })),
         Err(e) => err_response("E_IO", &format!("Failed to delete file: {}", e)),
@@ -225,6 +269,7 @@ pub(crate) fn close_splashscreen(app: tauri::AppHandle) -> Result<Value, Value> 
 #[tauri::command]
 pub(crate) fn print_image(path: String) -> Result<Value, Value> {
     validate_path_extension(&path, &["png", "jpg", "jpeg", "pdf"], "print")?;
+    validate_no_traversal(&path)?;
 
     let p = std::path::PathBuf::from(&path);
     if !p.exists() {

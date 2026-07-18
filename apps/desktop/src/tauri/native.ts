@@ -73,6 +73,16 @@ export async function saveProject(
   if (!result.ok) throw asError(result);
 }
 
+/** Binary variant of `saveProject` — avoids a large base64 IPC round-trip. */
+export async function saveProjectBinary(
+  path: string,
+  documentJson: string,
+  layers: Record<string, Uint8Array>
+): Promise<void> {
+  const result = await invoke("save_project_binary", { path, documentJson, layers }) as ApiResponse;
+  if (!result.ok) throw asError(result);
+}
+
 export async function loadProject(path: string): Promise<{ document_json: string; layers: Record<string, string> }> {
   const result = await invoke("load_project", { path }) as ApiResponse<{ document_json: string; layers: Record<string, string> }>;
   if (!result.ok) throw asError(result);

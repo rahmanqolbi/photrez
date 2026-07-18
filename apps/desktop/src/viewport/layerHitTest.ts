@@ -27,23 +27,40 @@ export interface LayerInfo {
   locked: boolean;
 }
 
+/**
+ * Alpha sampler used for alpha-aware hit-testing. Given a layer id and a
+ * document-space point, returns the layer's alpha there (0..1), or `null`
+ * when not provided / not applicable. When it returns 0 the point is treated
+ * as a miss even if it falls inside the layer's bounding box, so clicks on
+ * transparent corners fall through to the layer underneath.
+ */
+export type AlphaSampler = (layerId: string, x: number, y: number) => number | null;
+
+const ALPHA_HIT_THRESHOLD = 0.1;
+
 export function hitTestLayer(
   point: { x: number; y: number },
-  layer: LayerInfo
+  layer: LayerInfo,
+  alphaAt?: AlphaSampler
 ): boolean {
   if (!layer.visible) return false;
   const corners = getLayerCorners(layer.transform, layer.width, layer.height);
-  return pointInPolygon(point.x, point.y, corners);
+  if (!pointInPolygon(point.x, point.y, corners)) return false;
+  if (alphaAt) {
+    const a = alphaAt(layer.id, point.x, point.y);
+    if (a !== null && a < ALPHA_HIT_THRESHOLD) return false;
+  }
+  return true;
 }
 
 export function hitTestLayers(
   point: { x: number; y: number },
-  layers: LayerInfo[]
+  layers: LayerInfo[],
+  alphaAt?: AlphaSampler
 ): LayerHit | null {
   for (const layer of layers) {
     if (!layer.visible) continue;
-    const corners = getLayerCorners(layer.transform, layer.width, layer.height);
-    if (pointInPolygon(point.x, point.y, corners)) {
+    if (hitTestLayer(point, layer, alphaAt)) {
       return { id: layer.id };
     }
   }

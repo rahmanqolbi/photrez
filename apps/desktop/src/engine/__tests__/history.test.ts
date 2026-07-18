@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { CommandHistory } from '../history';
 import type { DocumentModel } from '../types';
 
@@ -232,6 +232,55 @@ describe('CommandHistory', () => {
         { label: 'Add Layer', isRedo: false },
         { label: 'Unknown Operation', isRedo: true }
       ]);
+    });
+  });
+
+  describe('VRAM bitmap disposal on eviction', () => {
+    const makeModelWithBitmap = (name: string, bitmap: { close: () => void }) => {
+      const b = bitmap as unknown as ImageBitmap;
+      return createMockModel(name, {
+        layers: [
+          { id: 'l1', name: 'L1', visible: true, opacity: 1, width: 10, height: 10, transform: { x: 0, y: 0 }, imageBitmap: b } as never,
+        ],
+      });
+    };
+
+    it('closes the evicted snapshot bitmap when it is no longer referenced', () => {
+      const close = vi.fn();
+      const history = new CommandHistory(2);
+      history.commit(makeModelWithBitmap('S1', { close }));
+      history.commit(makeModelWithBitmap('S2', { close: vi.fn() }));
+      // S3 pushes S1 out (depth 2)
+      history.commit(makeModelWithBitmap('S3', { close: vi.fn() }));
+
+      expect(close).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT close a bitmap still referenced by another snapshot', () => {
+      const shared = { close: vi.fn() };
+      const history = new CommandHistory(2);
+      const m1 = makeModelWithBitmap('S1', shared);
+      const m2 = makeModelWithBitmap('S2', shared); // same bitmap reference
+      history.commit(m1);
+      history.commit(m2);
+      history.commit(makeModelWithBitmap('S3', { close: vi.fn() })); // evicts m1
+
+      // shared bitmap still held by m2 → must survive eviction of m1
+      expect(shared.close).not.toHaveBeenCalled();
+    });
+
+    it('clear() disposes all stacked bitmaps (stacks are dropped)', () => {
+      const shared = { close: vi.fn() };
+      const other = { close: vi.fn() };
+      const history = new CommandHistory();
+      history.commit(makeModelWithBitmap('S1', shared));
+      history.commit(makeModelWithBitmap('S2', other));
+      history.clear();
+
+      // Both stacks are emptied by clear(), so every bitmap they held is
+      // unreferenced and must be closed.
+      expect(shared.close).toHaveBeenCalledTimes(1);
+      expect(other.close).toHaveBeenCalledTimes(1);
     });
   });
 });

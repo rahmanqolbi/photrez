@@ -1,5 +1,26 @@
-import type { DocumentModel } from "./types";
+import type { DocumentModel, LayerNode } from "./types";
 import { MAX_HISTORY_DEPTH } from "./types";
+
+/**
+ * Release GPU/heap-backed ImageBitmaps held by a discarded snapshot. An
+ * ImageBitmap is closed only when no other snapshot in the undo/redo stacks
+ * and no live document model still references it — shared bitmaps across
+ * snapshots must survive eviction of one entry.
+ */
+function disposeSnapshot(
+  snap: DocumentModel,
+  stillReferenced: (bitmap: unknown) => boolean,
+): void {
+  const closeIfUnused = (layer: LayerNode) => {
+    if (layer.imageBitmap && !stillReferenced(layer.imageBitmap)) {
+      try { layer.imageBitmap.close(); } catch { /* already closed */ }
+    }
+    if (layer.baseImageBitmap && !stillReferenced(layer.baseImageBitmap)) {
+      try { layer.baseImageBitmap.close(); } catch { /* already closed */ }
+    }
+  };
+  for (const layer of snap.layers) closeIfUnused(layer);
+}
 
 interface SnapshotEntry {
   snapshot: DocumentModel;
@@ -44,7 +65,12 @@ export class CommandHistory {
 
     // Enforce max depth
     if (this.undoStack.length > this.maxDepth) {
-      this.undoStack.shift(); // Evict oldest
+      const evicted = this.undoStack.shift()!; // Evict oldest
+      const live = (b: unknown) =>
+        this.undoStack.some((e) => e.snapshot.layers.some((l) => l.imageBitmap === b || l.baseImageBitmap === b)) ||
+        this.redoStack.some((e) => e.snapshot.layers.some((l) => l.imageBitmap === b || l.baseImageBitmap === b)) ||
+        snapshot.layers.some((l) => l.imageBitmap === b || l.baseImageBitmap === b);
+      disposeSnapshot(evicted.snapshot, live);
     }
   }
 
@@ -122,6 +148,11 @@ export class CommandHistory {
   }
 
   clear(): void {
+    // The stacks are about to be dropped, so every bitmap they hold becomes
+    // unreferenced — close all of them (shared references across the two stacks
+    // are still closed only once because disposeSnapshot closes per-layer).
+    for (const e of this.undoStack) disposeSnapshot(e.snapshot, () => false);
+    for (const e of this.redoStack) disposeSnapshot(e.snapshot, () => false);
     this.undoStack = [];
     this.redoStack = [];
     this.currentLastPaintCoords = null;

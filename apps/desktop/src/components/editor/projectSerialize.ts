@@ -1,9 +1,9 @@
 import { DocumentEngine } from "@/engine/document";
-import { saveProject } from "@/tauri/native";
+import { saveProjectBinary } from "@/tauri/native";
 
 export async function serializeAndSaveProject(engine: DocumentEngine, path: string): Promise<void> {
   const model = engine.snapshot();
-  const layers: Record<string, string> = {};
+  const layers: Record<string, Uint8Array> = {};
 
   for (const layer of model.layers) {
     if (layer.imageBitmap) {
@@ -16,23 +16,7 @@ export async function serializeAndSaveProject(engine: DocumentEngine, path: stri
 
       ctx.drawImage(layer.imageBitmap, 0, 0);
       const blob = await canvas.convertToBlob({ type: "image/png" });
-
-      const base64Data = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          const commaIndex = result.indexOf(",");
-          if (commaIndex !== -1) {
-            resolve(result.substring(commaIndex + 1));
-          } else {
-            resolve(result);
-          }
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-
-      layers[layer.id] = base64Data;
+      layers[layer.id] = new Uint8Array(await blob.arrayBuffer());
     }
   }
 
@@ -45,5 +29,5 @@ export async function serializeAndSaveProject(engine: DocumentEngine, path: stri
   };
 
   const documentJson = JSON.stringify(serializedModel);
-  await saveProject(path, documentJson, layers);
+  await saveProjectBinary(path, documentJson, layers);
 }

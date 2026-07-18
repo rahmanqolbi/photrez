@@ -31,6 +31,10 @@
 | ✅ DONE | No-layer UX guard — brush/eraser pointer-down, Alt/Ctrl+Delete fill, Delete-layer, and Ctrl+G flip now show a `warn` toast ("No editable layer selected" / "No layer selected") instead of silently no-op'ing when no layer is active |
 | ✅ DONE | Silent no-op layer-action guard — Duplicate (Ctrl+J), Merge Down (Ctrl+E), Flatten (Ctrl+Shift+E), Stamp Visible (Ctrl+Shift+Alt+E), Delete Layer, and Apply Adjustment now show a `warn` toast ("No layer selected" / "Nothing to flatten/merge/stamp") from the toolbar buttons + keyboard shortcuts instead of swallowing the action with no feedback (context menu already disables these at boundaries) |
 | ✅ DONE | Transform resize keeps aspect ratio ON by default on canvas (prevents accidental distortion); Shift inverts to free-resize. ALL 8 handles (corners + sides) obey the constraint — side handles scale both dims proportionally when ON, single-axis when off+Shift. The TransformOptionBar "Ratio" toggle AND the PropertiesPanel "Constrain proportions" button share ONE signal (`constrainRatio` in editorState) — toggling either updates canvas drag + both controls stay in sync (previously two disconnected controls) |
+| ✅ DONE | Alpha-aware layer hit-test — clicking a layer's transparent corner now falls through to the visible layer underneath (samples layer alpha < 0.1 = miss). Applied to Move auto-select and canvas/pasteboard click-select via `engine.sampleLayerAlpha` + optional `alphaAt` sampler on `hitTestLayers` (backward-compatible) |
+| ✅ DONE | Coalesced-event brush smoothing — paint-tool drags now iterate `PointerEvent.getCoalescedEvents()` so high-frequency pointers (stylus / 120Hz+) produce smooth curves instead of jagged segments |
+| ✅ DONE | History VRAM disposal — `CommandHistory` now closes evicted/cleared snapshot `ImageBitmap`s (shared-reference safe) to prevent GPU memory leaks during long editing sessions |
+| ✅ DONE | Parallel batch-open — multi-file import decodes images in parallel (`Promise.all`) and commits documents in a single batch, eliminating per-file render thrashing |
 
 ---
 
@@ -230,6 +234,7 @@
 | ✅ DONE         | JPEG/WebP quality dialog: custom slider (1-100, default 92) via DialogProvider.quality(); PNG uses lossless default                                                                                                                                                                      |
 | ✅ DONE         | DialogProvider extended with promise-based quality() method (slider UI, resolve number on Save, null on Cancel)                                                                                                                                                                          |
 | ✅ DONE         | `showSaveDialogAllFormats` added to native.ts for multi-filter save dialog                                                                                                                                                                                                               |
+| ✅ DONE         | Auto-save + crash recovery: dirty docs persisted to Tauri cache dir every 60s; boot-time native prompt recovers unsaved work from a prior abrupt exit (autoSave.ts + EditorContext onMount)                                                             |
 
 ## 📤 Export
 

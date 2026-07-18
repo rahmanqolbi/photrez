@@ -119,6 +119,10 @@ export class WorkspaceManager {
     return this.sessions.get(id) || null;
   }
 
+  getSessions(): DocumentSession[] {
+    return [...this.sessions.values()];
+  }
+
   getEngine(id: DocumentId): DocumentEngine | null {
     return this.getSession(id)?.engine ?? null;
   }

@@ -71,6 +71,7 @@ fn main() {
             commands::read_file_bytes,
             commands::write_file_bytes,
             commands::save_project,
+            commands::save_project_binary,
             commands::load_project,
             commands::print_image,
             commands::delete_file,

@@ -9,7 +9,7 @@ import { createLayerNode, duplicateLayerNode, createMergedLayerNode } from "./la
 import { drawLayerToContext, compositeTwoLayers, compositeAllLayers } from "./layerComposite";
 import { performCropCanvas, performApplyCrop } from "./cropApply";
 import { createSnapshot, restoreSnapshot } from "./snapshot";
-import { performPixelSampling } from "./pixelSample";
+import { performPixelSampling, sampleSingleLayerAlpha } from "./pixelSample";
 import { normalizeBasicAdjustment, bakeAdjustmentToBitmap, type BasicAdjustment } from "./layerAdjustments";
 import type { RenderBackend } from "../renderer/types";
 
@@ -966,5 +966,10 @@ export class DocumentEngine {
   // ─── Pixel Sampling (Eyedropper support) ───
   samplePixel(x: number, y: number): [number, number, number, number] {
     return performPixelSampling(this.model.layers, this.model.width, this.model.height, x, y);
+  }
+
+  /** Alpha (0..1) of a single layer at a document-space point, transform-aware. */
+  sampleLayerAlpha(layerId: string, x: number, y: number): number {
+    return sampleSingleLayerAlpha(this.model.layers, x, y, layerId);
   }
 }

@@ -50,10 +50,25 @@ export async function openImage(params: OpenImageParams) {
     params.onLoading?.(`Opening ${total} file${total > 1 ? "s" : ""}...`);
 
     try {
-      for (let i = 0; i < total; i++) {
-        const fileName = paths[i].split(/[/\\]/).pop() || `file ${i + 1}`;
-        params.onLoading?.(`Opening ${fileName} (${i + 1}/${total})...`);
-        await openSingleFile(paths[i], params);
+      // Decode + build sessions in parallel (image decoding runs in a worker
+      // thread), then add them in one batch. This avoids the per-file
+      // addDocument → activeDocumentId → full-render thrashing that the old
+      // sequential `await openSingleFile` loop caused on batch imports.
+      const sessions = await Promise.all(
+        paths.map((p) => decodeSessionFromFile(p, params)),
+      );
+      let lastBgId: string | null = null;
+      let lastBitmap: ImageBitmap | null = null;
+      for (const s of sessions) {
+        if (!s) continue;
+        params.workspace.addDocument(s.session);
+        params.renderer.uploadImage(s.bgLayerId, s.bitmap);
+        addRecentFile(s.path, s.fileName);
+        lastBgId = s.bgLayerId;
+        lastBitmap = s.bitmap;
+      }
+      if (lastBgId && lastBitmap) {
+        params.scheduler.requestRender();
       }
 
       showToast("File(s) loaded", "info");
@@ -96,6 +111,42 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+interface DecodedSession {
+  session: DocumentSession;
+  bgLayerId: string;
+  bitmap: ImageBitmap;
+  path: string;
+  fileName: string;
+}
+
+/**
+ * Decode an image file and build its DocumentSession WITHOUT adding it to the
+ * workspace. Kept side-effect-free so batch imports can decode many files in
+ * parallel (Promise.all) and commit them in a single batch.
+ * Returns null when the workspace is full or the path is a .ptz (handled
+ * separately by loadProjectFile).
+ */
+async function decodeSessionFromFile(
+  path: string,
+  params: OpenImageParams,
+): Promise<DecodedSession | null> {
+  if (params.workspace.isFull()) return null;
+  if (path.toLowerCase().endsWith(".ptz")) return null; // projects use loadProjectFile
+
+  const fileName = path.split(/[/\\]/).pop() || "Image";
+  const bytes = await readFileBytes(path);
+  const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  const blob = new Blob([buffer]);
+  const bitmap = await createImageBitmap(blob);
+
+  const id = `doc-${crypto.randomUUID()}`;
+  const session = WorkspaceManager.createDocumentFromImage(id, fileName, bitmap);
+  session.sourcePath = path;
+
+  const bgLayerId = session.engine.getLayers()[0].id;
+  return { session, bgLayerId, bitmap, path, fileName };
+}
+
 /** Open a single image or .ptz project file by path. */
 export async function openSingleFile(path: string, params: OpenImageParams): Promise<void> {
   if (params.workspace.isFull()) return;
@@ -108,29 +159,18 @@ export async function openSingleFile(path: string, params: OpenImageParams): Pro
     return;
   }
 
-  params.onLoading?.(`Reading ${fileName}...`);
-  const bytes = await readFileBytes(path);
+  const decoded = await decodeSessionFromFile(path, params);
+  if (!decoded) return;
 
-  params.onLoading?.(`Decoding ${fileName} (${formatFileSize(bytes.length)})...`);
-  const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-  const blob = new Blob([buffer]);
-  const bitmap = await createImageBitmap(blob);
-
-  const id = `doc-${crypto.randomUUID()}`;
-  const session = WorkspaceManager.createDocumentFromImage(id, fileName, bitmap);
-  session.sourcePath = path;
-
-  params.workspace.addDocument(session);
-
-  const bgLayerId = session.engine.getLayers()[0].id;
-  params.renderer.uploadImage(bgLayerId, bitmap);
+  params.workspace.addDocument(decoded.session);
+  params.renderer.uploadImage(decoded.bgLayerId, decoded.bitmap);
   params.scheduler.requestRender();
 
-  addRecentFile(path, fileName);
+  addRecentFile(decoded.path, decoded.fileName);
   await tick();
 }
 
-async function loadProjectFile(path: string, params: OpenImageParams, fileName: string) {
+export async function loadProjectFile(path: string, params: OpenImageParams, fileName: string) {
   const result = await loadProject(path);
   const model = JSON.parse(result.document_json) as DocumentModel;
 

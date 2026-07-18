@@ -13,13 +13,13 @@ import { DocumentEngine } from "@/engine/document";
 import type { DocumentModel, LayerNode } from "@/engine/types";
 
 // ─── Hoisted mocks for @/tauri/native ───
-const { mockSaveProject, mockLoadProject } = vi.hoisted(() => ({
-  mockSaveProject: vi.fn<(path: string, docJson: string, layers: Record<string, string>) => Promise<void>>(),
+const { mockSaveProjectBinary, mockLoadProject } = vi.hoisted(() => ({
+  mockSaveProjectBinary: vi.fn<(path: string, docJson: string, layers: Record<string, Uint8Array>) => Promise<void>>(),
   mockLoadProject: vi.fn<(path: string) => Promise<{ document_json: string; layers: Record<string, string> }>>(),
 }));
 
 vi.mock("@/tauri/native", () => ({
-  saveProject: mockSaveProject,
+  saveProjectBinary: mockSaveProjectBinary,
   loadProject: mockLoadProject,
 }));
 
@@ -37,7 +37,7 @@ function makeBitmap(width: number, height: number, fill: Uint8ClampedArray): Ima
 interface CapturedProject {
   path: string;
   documentJson: string;
-  layers: Record<string, string>;
+  layers: Record<string, Uint8Array>;
 }
 
 let capturedProject: CapturedProject | null = null;
@@ -63,7 +63,7 @@ function createCanvasMock(pngBytes: Uint8Array) {
   };
 }
 
-/** Stubs global OffscreenCanvas + FileReader so serializeAndSaveProject works. */
+/** Stubs global OffscreenCanvas so serializeAndSaveProject can encode layers. */
 function stubSerializeGlobals(pngBytes: Uint8Array) {
   const mockCanvas = createCanvasMock(pngBytes);
   vi.stubGlobal("OffscreenCanvas", vi.fn(function (this: any, w: number, h: number) {
@@ -71,23 +71,6 @@ function stubSerializeGlobals(pngBytes: Uint8Array) {
     this.height = h;
     this.getContext = () => mockCanvas.getContext();
     this.convertToBlob = mockCanvas.convertToBlob;
-  }));
-
-  /**
-   * Mock FileReader that reads the actual blob bytes, like a real FileReader.
-   * This avoids fragile per-layer mapping (callCount, width, etc.) between
-   * OffscreenCanvas.convertToBlob and FileReader.readAsDataURL.
-   */
-  vi.stubGlobal("FileReader", vi.fn(function (this: any) {
-    this.readAsDataURL = vi.fn(async (blob: Blob) => {
-      const buf = await blob.arrayBuffer();
-      const bytes = new Uint8Array(buf);
-      const b64 = btoa(String.fromCharCode(...bytes));
-      this.result = `data:image/png;base64,${b64}`;
-      if (this.onloadend) this.onloadend();
-    });
-    this.onloadend = null;
-    this.onerror = null;
   }));
 }
 
@@ -98,9 +81,9 @@ describe("projectSerialize — serializeAndSaveProject", () => {
 
   beforeEach(() => {
     capturedProject = null;
-    mockSaveProject.mockClear();
+    mockSaveProjectBinary.mockClear();
     mockLoadProject.mockClear();
-    mockSaveProject.mockImplementation(async (path, docJson, layers) => {
+    mockSaveProjectBinary.mockImplementation(async (path, docJson, layers) => {
       capturedProject = { path, documentJson: docJson, layers };
     });
   });
@@ -120,14 +103,12 @@ describe("projectSerialize — serializeAndSaveProject", () => {
 
     await serializeAndSaveProject(engine, "/path/to/project.ptz");
 
-    expect(mockSaveProject).toHaveBeenCalledTimes(1);
+    expect(mockSaveProjectBinary).toHaveBeenCalledTimes(1);
     expect(capturedProject).not.toBeNull();
     expect(capturedProject!.path).toBe("/path/to/project.ptz");
     expect(capturedProject!.layers[l1.id]).toBeDefined();
-    // The base64 data should be valid (decodable)
-    expect(() => atob(capturedProject!.layers[l1.id])).not.toThrow();
-    const decoded = Uint8Array.from(atob(capturedProject!.layers[l1.id]), c => c.charCodeAt(0));
-    expect(decoded).toEqual(PNG_BYTES);
+    // Binary layer bytes should match the encoded PNG (no base64 round-trip).
+    expect(capturedProject!.layers[l1.id]).toEqual(PNG_BYTES);
   });
 
   it("serialized document JSON has imageBitmap set to null for each layer", async () => {
@@ -201,7 +182,7 @@ describe("projectSerialize — serializeAndSaveProject", () => {
     const { serializeAndSaveProject } = await import("../projectSerialize");
     await serializeAndSaveProject(engine, "/path/null.ptz");
 
-    expect(mockSaveProject).toHaveBeenCalledTimes(1);
+    expect(mockSaveProjectBinary).toHaveBeenCalledTimes(1);
     const parsed = JSON.parse(capturedProject!.documentJson) as DocumentModel;
     expect(parsed.layers.length).toBe(1);
     expect(capturedProject!.layers).toEqual({});
@@ -232,7 +213,7 @@ describe("projectSerialize — deserialize and engine restore", () => {
   const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
   beforeEach(() => {
-    mockSaveProject.mockClear();
+    mockSaveProjectBinary.mockClear();
     mockLoadProject.mockClear();
   });
 
@@ -415,9 +396,9 @@ describe("projectSerialize — full roundtrip", () => {
   const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
   beforeEach(() => {
-    mockSaveProject.mockClear();
+    mockSaveProjectBinary.mockClear();
     mockLoadProject.mockClear();
-    mockSaveProject.mockImplementation(async (path, docJson, layers) => {
+    mockSaveProjectBinary.mockImplementation(async (path, docJson, layers) => {
       capturedProject = { path, documentJson: docJson, layers };
     });
   });
@@ -453,12 +434,9 @@ describe("projectSerialize — full roundtrip", () => {
     const model = JSON.parse(capturedProject!.documentJson) as DocumentModel;
 
     for (const layer of model.layers) {
-      const b64 = capturedProject!.layers[layer.id];
-      if (b64) {
-        const binaryString = atob(b64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-        const blob = new Blob([bytes], { type: "image/png" });
+      const bytes = capturedProject!.layers[layer.id];
+      if (bytes) {
+        const blob = new Blob([bytes as BlobPart], { type: "image/png" });
         layer.imageBitmap = { width: layer.width, height: layer.height, close: vi.fn() } as unknown as ImageBitmap;
       }
     }
@@ -524,19 +502,6 @@ describe("projectSerialize — full roundtrip", () => {
       this.convertToBlob = vi.fn().mockResolvedValue(new Blob([bytes], { type: "image/png" }));
     }));
 
-    // Stub FileReader — reads actual blob bytes so data matches OffscreenCanvas output
-    vi.stubGlobal("FileReader", vi.fn(function (this: any) {
-      this.readAsDataURL = vi.fn(async (blob: Blob) => {
-        const buf = await blob.arrayBuffer();
-        const bytes = new Uint8Array(buf);
-        const b64 = btoa(String.fromCharCode(...bytes));
-        this.result = `data:image/png;base64,${b64}`;
-        if (this.onloadend) this.onloadend();
-      });
-      this.onloadend = null;
-      this.onerror = null;
-    }));
-
     const engine = new DocumentEngine("doc-fidelity", "Fidelity", 200, 150);
     const l1 = engine.addLayer("A", 200, 150);
     engine.setLayerImageBitmap(l1.id, makeBitmap(200, 150, new Uint8ClampedArray(200 * 150 * 4)));
@@ -546,11 +511,9 @@ describe("projectSerialize — full roundtrip", () => {
     const { serializeAndSaveProject } = await import("../projectSerialize");
     await serializeAndSaveProject(engine, "/tmp/fidelity.ptz");
 
-    // Verify each layer's base64 data decodes to the original PNG bytes
-    const decodedA = Uint8Array.from(atob(capturedProject!.layers[l1.id]), c => c.charCodeAt(0));
-    const decodedB = Uint8Array.from(atob(capturedProject!.layers[l2.id]), c => c.charCodeAt(0));
-    expect(decodedA).toEqual(pngA);
-    expect(decodedB).toEqual(pngB);
-    expect(decodedA).not.toEqual(decodedB);
+    // Verify each layer's binary data matches the original PNG bytes
+    expect(capturedProject!.layers[l1.id]).toEqual(pngA);
+    expect(capturedProject!.layers[l2.id]).toEqual(pngB);
+    expect(capturedProject!.layers[l1.id]).not.toEqual(capturedProject!.layers[l2.id]);
   });
 });
