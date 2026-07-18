@@ -39,8 +39,8 @@ describe("LeftToolRail Tooltip Wiring", () => {
     // (native title triggers browser tooltips which causes duplicates).
     const buttons = root.querySelectorAll("button");
     
-    // There are 6 tools + 1 swap micro-button + 1 more tools button = 8 buttons in total
-    expect(buttons.length).toBeGreaterThanOrEqual(8);
+    // There are 6 tools + 1 swap micro-button = 7 buttons in total
+    expect(buttons.length).toBeGreaterThanOrEqual(7);
 
     // Verify all tool buttons do not have native title attributes
     buttons.forEach((btn) => {

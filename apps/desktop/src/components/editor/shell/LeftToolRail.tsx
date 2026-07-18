@@ -168,15 +168,6 @@ export function LeftToolRail(props: { disabled?: boolean }) {
           </button>
         </Tooltip>
       </div>
-
-      <Tooltip content="More tools" placement="right">
-        <button
-          class="flex size-9 shrink-0 items-center justify-center rounded-[5px] text-editor-icon hover:bg-white/5"
-          aria-label="More tools"
-        >
-          <Icon name="more" class="size-[18px]" strokeWidth={1.6} />
-        </button>
-      </Tooltip>
     </aside>
   );
 }
