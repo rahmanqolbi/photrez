@@ -129,8 +129,11 @@ docs/decisions/
 docs/risk-registers/
 docs/AUDIT_REPORT.md
 docs/DEEP_AUDIT_REPORT.md
+docs/DEEP_PROJECT_REVIEW.md
 docs/PERF_UX_AUDIT_REPORT.md
 docs/UNWIRED_LOGIC_AUDIT_REPORT.md
+docs/photrez-brush-performance-analysis.md
+docs/plans/
 
 # Playwright test artifacts (root, in addition to apps/desktop/test-results/)
 test-results/
