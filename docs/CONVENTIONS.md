@@ -301,3 +301,37 @@ When user switches from tool A to tool B, tool A **must**:
 - Restore default cursor
 
 Test pattern: see `CanvasViewport.test.tsx` §"Phase 3 Tool Switch Contracts" for 4 round-trip test examples.
+
+---
+
+## 7. Repository Hygiene — What Stays Out of Git
+
+### `.gitignore` — clean, no internal commentary
+
+The `.gitignore` should look like any other open-source project. Do not add verbose comments about internal workflows, AI tools, or "files kept on disk for local dev."
+
+- Group entries by standard category (build, env, IDE, OS, logs)
+- Use glob patterns over listing individual files: `docs/AI_*.md` not `docs/AI_CONTEXT.md`
+- No explanatory comments about WHY something is ignored — the pattern says enough
+- No `# kept on disk for local dev only` or `# NOT for public repository` — redundant
+
+### Internal docs stay untracked
+
+These directories/files are in `.gitignore` and must NOT be committed:
+
+| Category | Ignored paths |
+|---|---|
+| AI agent session docs | `docs/AI_*.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` |
+| Plans & archive | `docs/plans/`, `docs/archive/` |
+| Decision logs | `docs/decisions/` |
+| Risk registers | `docs/risk-registers/` |
+| Audit reports | `docs/*AUDIT_REPORT.md`, `docs/DEEP_PROJECT_REVIEW.md` |
+| Analysis docs | `docs/photrez-brush-*.md` |
+| Icon history | `docs/icon-history/` |
+| Superpowers | `docs/superpowers/` |
+
+If a new internal-only doc is added, update `.gitignore` before committing — do not let it leak into tracking. Use `git rm --cached` if it was accidentally committed, then add to `.gitignore`.
+
+### Screenshots
+
+`docs/screenshots/*.png` are explicitly un-ignored (`!docs/screenshots/*.png`) for README/ documentation use. Only production-facing screenshots belong here; internal dev screenshots go under `docs/archive/` (which is gitignored).
