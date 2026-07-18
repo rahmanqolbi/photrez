@@ -208,10 +208,10 @@ export function applyResizeHandle(
   const oldVh = vh;
 
   const corner = ["nw", "ne", "se", "sw"].includes(handle);
-  const shouldKeepAspect = corner && !shiftKey;
+  const shouldKeepAspect = !shiftKey;
 
   // Step 1: Apply independent-axis delta (non-proportional handles only).
-  // For proportional corners, visual-diagonal projection handles everything.
+  // For proportional handles (corners + sides), scaling handles everything.
   if (!shouldKeepAspect) {
     if (handle.includes("e")) vw = Math.max(1, vw + localDx);
     if (handle.includes("w")) {
@@ -227,47 +227,72 @@ export function applyResizeHandle(
     }
   }
 
-  // Step 2: Proportional resize — VISUAL-DIAGONAL PROJECTION.
+  // Step 2: Proportional resize.
   //
-  // Project the screen-space drag delta onto the visual diagonal (from the
-  // anchor corner to the dragged corner). This single approach works for
-  // ANY rotation:
+  // For CORNERS: visual-diagonal projection. Project the screen-space drag
+  // delta onto the visual diagonal (from anchor corner to dragged corner).
+  // This works for ANY rotation — the dragged corner tracks the cursor, the
+  // anchor corner stays fixed, and both dimensions scale by the same factor.
   //
-  // - The dragged visual corner tracks the cursor along the correct axis
-  // - The anchor (opposite) corner stays fixed — the vx/vy adjustment
-  //   keeps the anchor side in place
-  // - Aspect ratio is always maintained because both dimensions scale by
-  //   the same factor
-  // - No dominant-axis flip-flop, no center-rotation correction needed
-  // - Perpendicular movement is ignored (correct proportional behavior)
+  // For SIDES: scale both dimensions by the same factor, derived from the
+  // handle's primary axis (localDx for e/w, localDy for n/s). The opposite
+  // edge stays fixed; the perpendicular axis stays centered.
   //
   if (shouldKeepAspect) {
-    const corners = getLayerCorners(transform, layerW, layerH);
-    const handleIdx: Record<string, number> = { nw: 0, ne: 1, se: 2, sw: 3 };
-    const anchorIdx: Record<string, number> = { nw: 2, ne: 3, se: 0, sw: 1 };
-    const idx = handleIdx[handle];
-    const aidx = anchorIdx[handle];
-    const vCorner = corners[idx];
-    const vAnchor = corners[aidx];
+    if (corner) {
+      const corners = getLayerCorners(transform, layerW, layerH);
+      const handleIdx: Record<string, number> = { nw: 0, ne: 1, se: 2, sw: 3 };
+      const anchorIdx: Record<string, number> = { nw: 2, ne: 3, se: 0, sw: 1 };
+      const idx = handleIdx[handle];
+      const aidx = anchorIdx[handle];
+      const vCorner = corners[idx];
+      const vAnchor = corners[aidx];
 
-    const diagX = vCorner.x - vAnchor.x;
-    const diagY = vCorner.y - vAnchor.y;
-    const diagLen = Math.sqrt(diagX * diagX + diagY * diagY);
+      const diagX = vCorner.x - vAnchor.x;
+      const diagY = vCorner.y - vAnchor.y;
+      const diagLen = Math.sqrt(diagX * diagX + diagY * diagY);
 
-    if (diagLen > 0) {
-      // Project screen delta onto the visual diagonal
-      let projected = (screenDx * diagX + screenDy * diagY) / diagLen;
-      if (altKey) projected *= 2;
-      // Scale factor: how much the diagonal length changes
+      if (diagLen > 0) {
+        // Project screen delta onto the visual diagonal
+        let projected = (screenDx * diagX + screenDy * diagY) / diagLen;
+        if (altKey) projected *= 2;
+        // Scale factor: how much the diagonal length changes
+        const factor = Math.max(
+          1 / oldVw, 1 / oldVh,
+          (diagLen + projected) / diagLen
+        );
+        vw = oldVw * factor;
+        vh = oldVh * factor;
+        // Adjust vx/vy so the anchor-side stays fixed
+        if (handle.includes("w")) vx = transform.x + oldVw - vw;
+        if (handle.includes("n")) vy = transform.y + oldVh - vh;
+      }
+    } else {
+      // Side handle proportional: scale both dims by same factor.
+      // Primary axis determines the factor; opposite edge is fixed,
+      // perpendicular axis stays centered.
+      const isHorizontalSide = handle === "e" || handle === "w";
+      const along = isHorizontalSide
+        ? (handle === "e" ? localDx : -localDx)
+        : (handle === "s" ? localDy : -localDy);
+      const baseV = isHorizontalSide ? oldVw : oldVh;
       const factor = Math.max(
         1 / oldVw, 1 / oldVh,
-        (diagLen + projected) / diagLen
+        (baseV + along) / baseV
       );
       vw = oldVw * factor;
       vh = oldVh * factor;
-      // Adjust vx/vy so the anchor-side stays fixed
-      if (handle.includes("w")) vx = transform.x + oldVw - vw;
-      if (handle.includes("n")) vy = transform.y + oldVh - vh;
+      // Opposite edge fixed
+      if (handle === "w") vx = transform.x + oldVw - vw;
+      if (handle === "n") vy = transform.y + oldVh - vh;
+      // Perpendicular center fixed
+      if (isHorizontalSide) {
+        const oldCY = transform.y + oldVh / 2;
+        vy = oldCY - vh / 2;
+      } else {
+        const oldCX = transform.x + oldVw / 2;
+        vx = oldCX - vw / 2;
+      }
     }
   }
 

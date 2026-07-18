@@ -30,6 +30,7 @@
 | ✅ DONE | AdjustmentsPanel slider performance — debounce `setTimeout(100)` + `createEffect` sync-loop fix (slider leads, engine follows; no slider-vs-engine fighting) |
 | ✅ DONE | No-layer UX guard — brush/eraser pointer-down, Alt/Ctrl+Delete fill, Delete-layer, and Ctrl+G flip now show a `warn` toast ("No editable layer selected" / "No layer selected") instead of silently no-op'ing when no layer is active |
 | ✅ DONE | Silent no-op layer-action guard — Duplicate (Ctrl+J), Merge Down (Ctrl+E), Flatten (Ctrl+Shift+E), Stamp Visible (Ctrl+Shift+Alt+E), Delete Layer, and Apply Adjustment now show a `warn` toast ("No layer selected" / "Nothing to flatten/merge/stamp") from the toolbar buttons + keyboard shortcuts instead of swallowing the action with no feedback (context menu already disables these at boundaries) |
+| ✅ DONE | Transform resize keeps aspect ratio ON by default on canvas (prevents accidental distortion); Shift inverts to free-resize. ALL 8 handles (corners + sides) obey the constraint — side handles scale both dims proportionally when ON, single-axis when off+Shift. The TransformOptionBar "Ratio" toggle AND the PropertiesPanel "Constrain proportions" button share ONE signal (`constrainRatio` in editorState) — toggling either updates canvas drag + both controls stay in sync (previously two disconnected controls) |
 
 ---
 
@@ -465,6 +466,7 @@
 | Status  | Fitur |
 | ------- | ----- |
 | ✅ DONE | Tooltip migration: replaced ~50 native `title` attributes with `<Tooltip>` component across 12 files (shell, option bars, layers panel, dialogs). Uses warm delay, Escape dismiss, viewport boundary clamping, and `shortcut` prop for keyboard shortcuts (Ctrl+C/X/V/I, Del, Esc, Enter). Removed unused `title` prop from `ToggleBtn`. |
+| ✅ DONE | Unit selector (px, in, cm, mm, pt) for all W/H inputs — New Document and Resize Canvas dialogs. 96 DPI base conversion, uncontrolled inputs with onBlur commit. |
 
 ## 🪟 Desktop / Window
 

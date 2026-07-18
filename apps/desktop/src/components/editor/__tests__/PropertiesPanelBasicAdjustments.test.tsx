@@ -130,6 +130,39 @@ describe("PropertiesPanel basic adjustments", () => {
     dispose();
   });
 
+  it("Constrain button toggles the shared constrainRatio signal (unified with canvas drag + option bar)", async () => {
+    const workspace = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("constrain-doc", "Constrain Doc", 20, 10);
+    workspace.addDocument(session);
+
+    const { container, dispose } = renderPropertiesPanel(workspace);
+    await tick();
+
+    const debug = (window as unknown as { __photrezEditor: any }).__photrezEditor;
+    // Default is ON (keep aspect by default)
+    expect(debug.constrainRatio()).toBe(true);
+
+    const constrainBtn = container.querySelector<HTMLButtonElement>(
+      "button[aria-label='Constrain proportions']"
+    );
+    if (!constrainBtn) throw new Error("Constrain button was not rendered");
+    expect(constrainBtn.getAttribute("aria-pressed")).toBe("true");
+
+    constrainBtn.click();
+    await tick();
+
+    // The SAME signal the canvas drag and TransformOptionBar read/write
+    expect(debug.constrainRatio()).toBe(false);
+    expect(constrainBtn.getAttribute("aria-pressed")).toBe("false");
+
+    // Toggle back ON via the same button
+    constrainBtn.click();
+    await tick();
+    expect(debug.constrainRatio()).toBe(true);
+
+    dispose();
+  });
+
   it("commits one undo checkpoint for an opacity slider edit session", async () => {
     const workspace = new WorkspaceManager();
     const session = WorkspaceManager.createBlankDocument("opacity-doc", "Opacity Doc", 20, 10);

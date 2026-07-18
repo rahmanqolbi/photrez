@@ -593,34 +593,52 @@ describe("applyResizeHandle", () => {
       expect(Math.abs(result.scaleX)).toBeCloseTo(result.scaleY, 4);
     });
 
-    it("non-corner handles do NOT keep aspect ratio", () => {
+    it("side handles keep aspect ratio when constrained", () => {
       const start = { ...BASE_TRANSFORM, scaleX: 1, scaleY: 1, x: 100, y: 100 };
+      // E handle: drag right 50px → both dims scale proportionally
       const eResult = applyResizeHandle(start, LAYER_W, LAYER_H, "e", 50, 0, false, false);
+      // vw = 200 * (200+50)/200 = 250 → scaleX = 250/200 = 1.25
+      // vh = 100 * 1.25 = 125 → scaleY = 125/100 = 1.25
+      expect(eResult.scaleX).toBeCloseTo(1.25, 4);
+      expect(eResult.scaleY).toBeCloseTo(1.25, 4);
+      // West edge fixed: vx should stay at 100
+      expect(eResult.x).toBeCloseTo(100, 4);
+      // Vertical center fixed: vy = oldCY - vh/2 = 150 - 125/2 = 87.5
+      expect(eResult.y).toBeCloseTo(87.5, 4);
+      // N handle: drag down 20px → both dims scale proportionally (along = -localDy = -20)
+      const nResult = applyResizeHandle(start, LAYER_W, LAYER_H, "n", 0, 20, false, false);
+      // factor = max(1/200, 1/100, (100-20)/100) = 0.8
+      // scaleX = 200*0.8/200 = 0.8, scaleY = 100*0.8/100 = 0.8
+      expect(nResult.scaleX).toBeCloseTo(0.8, 4);
+      expect(nResult.scaleY).toBeCloseTo(0.8, 4);
+      // South edge fixed: vy = transform.y + oldVh - vh = 100 + 100 - 80 = 120
+      expect(nResult.y).toBeCloseTo(120, 4);
+      // Horizontal center fixed: vx = oldCX - vw/2 = 200 - 160/2 = 120
+      expect(nResult.x).toBeCloseTo(120, 4);
+    });
+
+    it("side handles Shift inverts constraint → free resize", () => {
+      const start = { ...BASE_TRANSFORM, scaleX: 1, scaleY: 1, x: 100, y: 100 };
+      // E handle + Shift → free (single-axis)
+      const eResult = applyResizeHandle(start, LAYER_W, LAYER_H, "e", 50, 0, true, false);
       expect(eResult.scaleX).toBeCloseTo(1.25, 4);
       expect(eResult.scaleY).toBe(1);
-      // positive dy = drag DOWN in Y-down coords; "n" handle shrinks from top
-      const nResult = applyResizeHandle(start, LAYER_W, LAYER_H, "n", 0, 20, false, false);
-      expect(nResult.scaleX).toBe(1);
-      expect(nResult.scaleY).toBeCloseTo(0.8, 4);
     });
   });
 
   // ── Resize edge cases ──
   describe("resize edge cases", () => {
-    it("edge handles on rotated layer do independent axis (not proportional)", () => {
+    it("edge handles on rotated layer keep aspect ratio (proportional)", () => {
       const start = { ...BASE_TRANSFORM, scaleX: 1, scaleY: 1, x: 100, y: 100, rotation: 45 };
-      // E handle: drag right 50px in screen space
+      // E handle: drag right 50px in screen space → proportional
       const eResult = applyResizeHandle(start, LAYER_W, LAYER_H, "e", 50, 0, false, false);
-      // localDx = 50*cos(45°) = 35.355, vw = 200 + 35.355 = 235.355
-      expect(eResult.scaleX).toBeCloseTo(1.17678, 4);
-      expect(eResult.scaleY).toBe(1); // Y unchanged for E handle
-      // N handle: drag down 20px → shrinks from top
+      // Both dims scale by same factor
+      expect(eResult.scaleX).toBeCloseTo(eResult.scaleY, 4);
+      // N handle: drag down 20px → proportional
       const nResult = applyResizeHandle(start, LAYER_W, LAYER_H, "n", 0, 20, false, false);
-      // localDy = 20*cos(45°) = 14.142, vh = 100 - 14.142 = 85.858
-      expect(nResult.scaleY).toBeLessThan(1);
-      expect(nResult.scaleX).toBe(1); // X unchanged for N handle
-      // Both must have independent scaleX/scaleY (not equal)
-      const wResult = applyResizeHandle(start, LAYER_W, LAYER_H, "w", 50, 0, false, false);
+      expect(nResult.scaleX).toBeCloseTo(nResult.scaleY, 4);
+      // W handle + Shift → free (independent axes)
+      const wResult = applyResizeHandle(start, LAYER_W, LAYER_H, "w", 50, 0, true, false);
       expect(wResult.scaleX).not.toBeCloseTo(wResult.scaleY, 4);
     });
 

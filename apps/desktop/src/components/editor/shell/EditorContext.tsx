@@ -153,6 +153,10 @@ export interface EditorContextValue {
   layerTransformSession: Accessor<LayerTransformSession | null>;
   setLayerTransformSession: Setter<LayerTransformSession | null>;
 
+  // Aspect-ratio lock (single source of truth: PropertiesPanel + TransformOptionBar + canvas drag)
+  constrainRatio: Accessor<boolean>;
+  setConstrainRatio: Setter<boolean>;
+
   // Paint tool settings
   brushSize: Accessor<number>;
   setBrushSize: Setter<number>;

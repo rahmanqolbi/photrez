@@ -86,12 +86,12 @@ describe("ResizeCanvasModal", () => {
     const dialog = view.dialog()!;
     const inputs = dialog.querySelectorAll<HTMLInputElement>('input[type="number"]');
     inputs[0].value = "400";
-    inputs[0].dispatchEvent(new Event("input", { bubbles: true }));
+    inputs[0].dispatchEvent(new FocusEvent("blur", { bubbles: false }));
     expect(inputs[1].value).toBe("300");
     button(dialog, "Keep proportions").click();
     expect(dialog.querySelector('[aria-pressed="false"]')).toBeTruthy();
     inputs[0].value = "200";
-    inputs[0].dispatchEvent(new Event("input", { bubbles: true }));
+    inputs[0].dispatchEvent(new FocusEvent("blur", { bubbles: false }));
     expect(inputs[1].value).toBe("300");
     view.dispose();
   });
@@ -101,7 +101,7 @@ describe("ResizeCanvasModal", () => {
     const dialog = view.dialog()!;
     const width = dialog.querySelector<HTMLInputElement>("#resize-canvas-width")!;
     width.value = "400";
-    width.dispatchEvent(new Event("input", { bubbles: true }));
+    width.dispatchEvent(new FocusEvent("blur", { bubbles: false }));
     button(dialog, "Resize").click();
     expect(view.session.engine.getWidth()).toBe(400);
     expect(view.session.engine.getHeight()).toBe(300);
@@ -124,17 +124,26 @@ describe("ResizeCanvasModal", () => {
     view.dispose();
   });
 
-  it.each(["Cancel", "Escape", "Backdrop"])("dismisses via %s and restores focus", async (method) => {
+  it.each(["Cancel", "Escape"])("dismisses via %s and restores focus", async (method) => {
     const view = renderModal();
     await tick();
     const dialog = view.dialog()!;
     if (method === "Cancel") button(dialog, "Cancel").click();
     if (method === "Escape") document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-    if (method === "Backdrop") document.querySelector("[data-dialog-backdrop]")?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
     await tick();
     expect(view.dialog()).toBeNull();
     expect(view.renderer.resizeToViewport).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(view.trigger);
+    view.dispose();
+  });
+
+  it("does not dismiss on backdrop click", async () => {
+    const view = renderModal();
+    await tick();
+    expect(view.dialog()).not.toBeNull();
+    document.querySelector("[data-dialog-backdrop]")?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    await tick();
+    expect(view.dialog()).not.toBeNull(); // still open
     view.dispose();
   });
 });

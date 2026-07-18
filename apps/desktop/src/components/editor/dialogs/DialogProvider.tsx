@@ -643,7 +643,7 @@ export function DialogProvider(props: ParentProps) {
         kind="quality"
         tone="default"
         bodyClass="min-h-[68px]"
-        onBackdropPointerDown={handleCancel}
+        onDismiss={handleCancel}
         onKeyDown={handleKeyDown}
         actions={<>
           <DesktopDialogButton
@@ -711,7 +711,7 @@ export function DialogProvider(props: ParentProps) {
         kind="confirm-checkbox"
         tone={props.request.options.tone ?? "default"}
         bodyClass="min-h-[68px] whitespace-pre-line"
-        onBackdropPointerDown={handleCancel}
+        onDismiss={handleCancel}
         onKeyDown={handleKeyDown}
         actions={<>
           <DesktopDialogButton
@@ -783,7 +783,7 @@ export function DialogProvider(props: ParentProps) {
         kind="confirm-save"
         tone="default"
         bodyClass="min-h-[68px] whitespace-pre-line"
-        onBackdropPointerDown={handleCancel}
+        onDismiss={handleCancel}
         onKeyDown={handleKeyDown}
         actions={<>
           <DesktopDialogButton
@@ -833,7 +833,7 @@ export function DialogProvider(props: ParentProps) {
                   kind={r.kind}
                   tone={isDangerRequest(r) ? "danger" : "default"}
                   bodyClass="min-h-[68px] whitespace-pre-line"
-                  onBackdropPointerDown={() => complete(false)}
+                  onDismiss={() => complete(false)}
                   onKeyDown={handleKeyDown}
                   actions={<>
                     {r.kind === "confirm" && (

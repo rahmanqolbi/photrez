@@ -42,6 +42,12 @@ export function createEditorState() {
   const [hoverPos, setHoverPos] = createSignal<{ x: number; y: number } | null>(null);
   const [layerTransformSession, setLayerTransformSession] = createSignal<LayerTransformSession | null>(null);
 
+  // Single source of truth for aspect-ratio locking across the app:
+  // the PropertiesPanel "Constrain proportions" toggle, the TransformOptionBar
+  // "Ratio" toggle, and on-canvas resize drag all read/write this. Default ON
+  // (keep aspect ratio by default; Shift inverts on canvas drag).
+  const [constrainRatio, setConstrainRatio] = createSignal(true);
+
   const [brushSize, setBrushSize] = createSignal(20);
   const [brushHardness, setBrushHardness] = createSignal(0.8);
   const [brushOpacity, setBrushOpacity] = createSignal(1);
@@ -152,6 +158,7 @@ export function createEditorState() {
     cropInteractionMode, setCropInteractionMode,
     hoverPos, setHoverPos,
     layerTransformSession, setLayerTransformSession,
+    constrainRatio, setConstrainRatio,
     brushSize, setBrushSize,
     brushHardness, setBrushHardness,
     brushOpacity, setBrushOpacity,

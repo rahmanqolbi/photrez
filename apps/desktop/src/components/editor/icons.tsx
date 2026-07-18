@@ -1,4 +1,5 @@
 import type { LucideIcon, LucideProps } from "lucide-solid";
+import { Dynamic } from "solid-js/web";
 import {
   AlignCenterHorizontal,
   AlignCenterVertical,
@@ -34,6 +35,7 @@ import {
   Layers,
   Link,
   Lock,
+  Unlink,
   Maximize2,
   Minus,
   MoreHorizontal,
@@ -80,6 +82,7 @@ export type IconName =
   | "chevron-right"
   | "plus"
   | "link"
+  | "unlink"
   | "align-v"
   | "align-h"
   | "align-left"
@@ -154,6 +157,7 @@ const ICONS: Record<IconName, LucideIcon> = {
   "chevron-right": ChevronRight,
   plus: Plus,
   link: Link,
+  unlink: Unlink,
   "align-v": AlignCenterVertical,
   "align-h": AlignCenterHorizontal,
   "align-left": AlignStartVertical,
@@ -213,11 +217,11 @@ const ICONS: Record<IconName, LucideIcon> = {
 };
 
 export function Icon(props: IconProps) {
-  const Component = ICONS[props.name];
   const { name: _name, fillCurrent, ...svgProps } = props;
 
   return (
-    <Component
+    <Dynamic
+      component={ICONS[props.name]}
       aria-hidden="true"
       fill={fillCurrent ? "currentColor" : "none"}
       stroke-width={props.strokeWidth ?? 2}

@@ -8,6 +8,16 @@ import { WorkspaceManager } from "@/engine/workspace";
 
 import { DialogProvider } from "../dialogs/DialogProvider";
 
+// OffscreenCanvas not available in jsdom; tests that call createBlankDocument need it
+if (typeof OffscreenCanvas === "undefined") {
+  (globalThis as any).OffscreenCanvas = class MockOffscreenCanvas {
+    width = 0; height = 0;
+    getContext() { return null; }
+    transferToImageBitmap() { return null; }
+    convertToBlob() { return Promise.resolve(new Blob()); }
+  };
+}
+
 function renderWithEditor(renderChildren: () => any, workspace = new WorkspaceManager()) {
   const renderer = {
     uploadImage: vi.fn(),

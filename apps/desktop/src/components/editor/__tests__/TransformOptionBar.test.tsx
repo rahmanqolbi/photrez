@@ -51,6 +51,8 @@ function makeMockValue(overrides: Record<string, unknown> = {}) {
     activeLayerId: () => "layer-1",
     layerTransformSession,
     setLayerTransformSession,
+    constrainRatio: () => false,
+    setConstrainRatio: vi.fn(),
     ...overrides,
   };
 }
@@ -105,6 +107,8 @@ describe("TransformOptionBar", () => {
       activeLayerId: () => "layer-1",
       layerTransformSession,
       setLayerTransformSession,
+      constrainRatio: () => false,
+      setConstrainRatio: vi.fn(),
     };
 
     vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
@@ -170,6 +174,8 @@ describe("TransformOptionBar", () => {
       activeLayerId: () => "layer-1",
       layerTransformSession,
       setLayerTransformSession: setSessionSpy,
+      constrainRatio: () => false,
+      setConstrainRatio: vi.fn(),
     };
 
     vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
@@ -224,6 +230,8 @@ describe("TransformOptionBar", () => {
       activeLayerId: () => "layer-1",
       layerTransformSession,
       setLayerTransformSession: setSessionSpy,
+      constrainRatio: () => false,
+      setConstrainRatio: vi.fn(),
     };
 
     vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
@@ -285,6 +293,8 @@ describe("TransformOptionBar", () => {
       activeLayerId: () => "layer-1",
       layerTransformSession,
       setLayerTransformSession: setSessionSpy,
+      constrainRatio: () => false,
+      setConstrainRatio: vi.fn(),
     };
 
     vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mockValue as any);
@@ -434,6 +444,8 @@ describe("TransformOptionBar", () => {
       activeLayerId: () => "layer-1",
       layerTransformSession,
       setLayerTransformSession: vi.fn(),
+      constrainRatio: () => false,
+      setConstrainRatio: vi.fn(),
     };
     vi.spyOn(EditorContextModule, "useEditor").mockReturnValue(mv as any);
     const container = document.createElement("div");

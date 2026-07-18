@@ -9,6 +9,16 @@ import { EditorProvider, useEditor } from "../EditorContext";
 import { DialogProvider } from "../../dialogs/DialogProvider";
 import { AppTitleBar } from "../AppTitleBar";
 
+// OffscreenCanvas not available in jsdom; tests that call createBlankDocument need it
+if (typeof OffscreenCanvas === "undefined") {
+  (globalThis as any).OffscreenCanvas = class MockOffscreenCanvas {
+    width = 0; height = 0;
+    getContext() { return null; }
+    transferToImageBitmap() { return null; }
+    convertToBlob() { return Promise.resolve(new Blob()); }
+  };
+}
+
 function Probe() {
   const editor = useEditor();
   return (

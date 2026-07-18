@@ -15,6 +15,8 @@ export function TransformOptionBar() {
     activeLayerId,
     layerTransformSession,
     setLayerTransformSession,
+    constrainRatio,
+    setConstrainRatio,
   } = useEditor();
 
   const [transformTick, setTransformTick] = createSignal(0);
@@ -87,7 +89,7 @@ export function TransformOptionBar() {
     const currentSign = Math.sign(layer.transform.scaleX || 1);
     const nextScaleX = currentSign * (nextWidth / layer.width);
     const next: Partial<Transform2D> = { scaleX: nextScaleX };
-    if (currentSession.lockRatio && layer.height > 0) {
+    if (constrainRatio() && layer.height > 0) {
       const ratioScale = Math.sign(layer.transform.scaleY || 1) * Math.abs(nextScaleX);
       next.scaleY = ratioScale;
     }
@@ -106,19 +108,13 @@ export function TransformOptionBar() {
     const currentSign = Math.sign(layer.transform.scaleY || 1);
     const nextScaleY = currentSign * (nextHeight / layer.height);
     const next: Partial<Transform2D> = { scaleY: nextScaleY };
-    if (currentSession.lockRatio && layer.width > 0) {
+    if (constrainRatio() && layer.width > 0) {
       const ratioScale = Math.sign(layer.transform.scaleX || 1) * Math.abs(nextScaleY);
       next.scaleX = ratioScale;
     }
     current.transformLayer(currentSession.layerId, next);
     setTransformTick(t => t + 1);
     scheduler.requestRender();
-  };
-
-  const setLockRatio = (next: boolean) => {
-    const currentSession = session();
-    if (!currentSession) return;
-    setLayerTransformSession({ ...currentSession, lockRatio: next });
   };
 
   return (
@@ -197,14 +193,14 @@ export function TransformOptionBar() {
               <div class="hidden @min-[880px]:flex items-center gap-1.5 shrink-0">
                 <Show when={session()}>
                   {(s) => (
-                    <Tooltip content="Lock Aspect Ratio">
-                      <ToggleBtn
-                        active={s().lockRatio}
-                        onChange={setLockRatio}
-                        icon="link"
-                        label="Ratio"
-                      />
-                    </Tooltip>
+                  <Tooltip content="Lock Aspect Ratio">
+                    <ToggleBtn
+                      active={constrainRatio()}
+                      onChange={setConstrainRatio}
+                      icon={constrainRatio() ? "link" : "unlink"}
+                      label="Ratio"
+                    />
+                  </Tooltip>
                   )}
                 </Show>
 
@@ -237,9 +233,9 @@ export function TransformOptionBar() {
               <div class="flex items-center gap-2 bg-editor-field/30 p-1.5 rounded-[4px] border border-editor-field-border">
                 <Tooltip content="Lock Aspect Ratio">
                   <ToggleBtn
-                    active={s().lockRatio}
-                    onChange={setLockRatio}
-                    icon="link"
+                    active={constrainRatio()}
+                    onChange={setConstrainRatio}
+                    icon={constrainRatio() ? "link" : "unlink"}
                     label="Ratio"
                   />
                 </Tooltip>

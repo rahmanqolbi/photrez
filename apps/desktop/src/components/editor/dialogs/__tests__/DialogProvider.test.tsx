@@ -269,9 +269,16 @@ describe("DialogProvider", () => {
       root.querySelector<HTMLButtonElement>("[data-open-new-doc]")!.click();
       await new Promise<void>((resolve) => queueMicrotask(resolve));
 
-      // Click the "FB Page Cover" preset button
+      // Switch to Social Media tab (default tab is now Paper)
+      const socialTab = Array.from(document.querySelectorAll("button"))
+        .find((btn) => btn.textContent?.trim() === "Social Media");
+      expect(socialTab).toBeTruthy();
+      socialTab!.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+      // Click the "Facebook Cover" preset button
       const fbCoverBtn = Array.from(document.querySelectorAll("button"))
-        .find((btn) => btn.textContent?.includes("FB Page Cover"));
+        .find((btn) => btn.textContent?.includes("Facebook Cover"));
       expect(fbCoverBtn).toBeTruthy();
       fbCoverBtn!.click();
       await new Promise<void>((resolve) => queueMicrotask(resolve));
@@ -280,7 +287,7 @@ describe("DialogProvider", () => {
       const nameInput = dialog.querySelector<HTMLInputElement>('input[type="text"]');
       const numInputs = dialog.querySelectorAll<HTMLInputElement>('input[type="number"]');
 
-      expect(nameInput?.value).toBe("FB Page Cover");
+      expect(nameInput?.value).toBe("Facebook Cover");
       expect(numInputs[0].value).toBe("1640");
       expect(numInputs[1].value).toBe("664");
 
@@ -304,7 +311,7 @@ describe("DialogProvider", () => {
       // Check that "HD" and "4K" are present
       expect(document.body.textContent).toContain("HD");
       expect(document.body.textContent).toContain("4K");
-      expect(document.body.textContent).not.toContain("FB Page Cover"); // Social Media tab should be inactive
+      expect(document.body.textContent).not.toContain("Facebook Cover"); // Social Media tab should be inactive
 
       dispose();
     });
@@ -326,7 +333,7 @@ describe("DialogProvider", () => {
       expect(root.querySelector("[data-dialog-result]")?.textContent).toContain('"name":"New Project"');
       expect(root.querySelector("[data-dialog-result]")?.textContent).toContain('"width":1080');
       expect(root.querySelector("[data-dialog-result]")?.textContent).toContain('"height":1080');
-      expect(root.querySelector("[data-dialog-result]")?.textContent).toContain('"backgroundColor":"transparent"');
+      expect(root.querySelector("[data-dialog-result]")?.textContent).toContain('"backgroundColor":"white"');
 
       dispose();
     });
@@ -383,9 +390,9 @@ describe("DialogProvider", () => {
       nameInput.value = "Custom Name";
       nameInput.dispatchEvent(new Event("input", { bubbles: true }));
       widthInput.value = "800";
-      widthInput.dispatchEvent(new Event("input", { bubbles: true }));
+      widthInput.dispatchEvent(new FocusEvent("blur", { bubbles: false }));
       heightInput.value = "600";
-      heightInput.dispatchEvent(new Event("input", { bubbles: true }));
+      heightInput.dispatchEvent(new FocusEvent("blur", { bubbles: false }));
       bgSelect.value = "white";
       bgSelect.dispatchEvent(new Event("change", { bubbles: true }));
 
@@ -418,7 +425,7 @@ describe("DialogProvider", () => {
 
       // Enter empty values (which parse to NaN)
       widthInput.value = "";
-      widthInput.dispatchEvent(new Event("input"));
+      widthInput.dispatchEvent(new FocusEvent("blur", { bubbles: false }));
 
       await new Promise<void>((resolve) => queueMicrotask(resolve));
 
@@ -441,8 +448,15 @@ describe("DialogProvider", () => {
       root.querySelector<HTMLButtonElement>("[data-open-new-doc]")!.click();
       await new Promise<void>((resolve) => queueMicrotask(resolve));
 
+      // Switch to Social Media tab (default tab is Paper)
+      const socialTab = Array.from(document.querySelectorAll("button"))
+        .find((btn) => btn.textContent?.trim() === "Social Media");
+      expect(socialTab).toBeTruthy();
+      socialTab!.click();
+      await new Promise<void>((resolve) => queueMicrotask(resolve));
+
       const fbCoverBtn = Array.from(document.querySelectorAll("button"))
-        .find((btn) => btn.textContent?.includes("FB Page Cover"))!;
+        .find((btn) => btn.textContent?.includes("Facebook Cover"))!;
       
       // Initially, it should not have the active border style
       expect(fbCoverBtn.className.split(" ")).not.toContain("border-editor-accent");

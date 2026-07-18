@@ -165,6 +165,7 @@ function setupHook(
     moveSnapEnabled: opts.snapEnabled ?? false,
     commitTransformState: vi.fn(),
     layerTransformSession: null,
+    constrainRatio: true,
     docWidth: 800,
     docHeight: 600,
   };
@@ -448,7 +449,34 @@ describe("useSelectionTransformDrag", () => {
       dispose();
     });
 
-    it("passes shiftKey to applyResizeHandle for aspect ratio lock", () => {
+    it("default ON + no Shift keeps aspect ratio locked on canvas drag", () => {
+      const { result, engine, dispose } = setupHook();
+      const resizeSpy = vi.spyOn(
+        TransformGeometryModule,
+        "applyResizeHandle"
+      );
+      result.handlePointerDown(
+        makePointerEvent({ clientX: 100, clientY: 100 }),
+        "se"
+      );
+      engine.transformLayer.mockClear();
+
+      const moveE = makePointerEvent({
+        clientX: 200,
+        clientY: 150,
+        pointerId: 1,
+      });
+      result.handlePointerMove(moveE);
+      expect(resizeSpy).toHaveBeenCalled();
+      const args = resizeSpy.mock.calls[resizeSpy.mock.calls.length - 1];
+      // applyResizeHandle(transform, layerW, layerH, handle, screenDx, screenDy, breakAspect, altKey)
+      // Default session lockRatio is ON, no Shift -> breakAspect false (ratio preserved)
+      expect(args[6]).toBe(false);
+      resizeSpy.mockRestore();
+      dispose();
+    });
+
+    it("default ON + Shift breaks aspect ratio (Shift inverts the default)", () => {
       const { result, engine, dispose } = setupHook();
       const resizeSpy = vi.spyOn(
         TransformGeometryModule,
@@ -469,7 +497,37 @@ describe("useSelectionTransformDrag", () => {
       result.handlePointerMove(shiftE);
       expect(resizeSpy).toHaveBeenCalled();
       const args = resizeSpy.mock.calls[resizeSpy.mock.calls.length - 1];
-      // applyResizeHandle(transform, layerW, layerH, handle, screenDx, screenDy, shiftKey, altKey)
+      // Default ON + Shift held -> breakAspect true (free resize)
+      expect(args[6]).toBe(true);
+      resizeSpy.mockRestore();
+      dispose();
+    });
+
+    it("toggling constrainRatio OFF frees the canvas drag", () => {
+      const { result, engine, editorSignals, dispose } = setupHook();
+      const resizeSpy = vi.spyOn(
+        TransformGeometryModule,
+        "applyResizeHandle"
+      );
+      result.handlePointerDown(
+        makePointerEvent({ clientX: 100, clientY: 100 }),
+        "se"
+      );
+      // Simulate either the TransformOptionBar "Ratio" toggle or the
+      // PropertiesPanel "Constrain proportions" toggle turning OFF — both
+      // write the single shared constrainRatio signal.
+      editorSignals.setConstrainRatio(false);
+      engine.transformLayer.mockClear();
+
+      const moveE = makePointerEvent({
+        clientX: 200,
+        clientY: 150,
+        pointerId: 1,
+      });
+      result.handlePointerMove(moveE);
+      expect(resizeSpy).toHaveBeenCalled();
+      const args = resizeSpy.mock.calls[resizeSpy.mock.calls.length - 1];
+      // constrainRatio false + no Shift -> breakAspect true (free resize)
       expect(args[6]).toBe(true);
       resizeSpy.mockRestore();
       dispose();

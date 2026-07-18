@@ -38,7 +38,7 @@ interface UseSelectionTransformDragParams {
 }
 
 export function useSelectionTransformDrag(props: UseSelectionTransformDragParams) {
-  const { workspace, selectedLayerId, layers, zoom, pan, scheduler, activeTool, hoverHandle, setHoverHandle, moveSnapEnabled, setHoverPos, hoverPos, layerTransformSession, setLayerTransformSession, commitTransformState } = useEditor();
+  const { workspace, selectedLayerId, layers, zoom, pan, scheduler, activeTool, hoverHandle, setHoverHandle, moveSnapEnabled, setHoverPos, hoverPos, layerTransformSession, setLayerTransformSession, commitTransformState, constrainRatio } = useEditor();
 
   const activeLayer = createMemo(() => {
     const id = selectedLayerId();
@@ -207,7 +207,7 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
           originalSnapshot,
           originalTransform: { ...layer.transform },
           mode: type === "rotate" ? "rotate" : "resize",
-          lockRatio: false,
+          lockRatio: constrainRatio(),
           startedAt: Date.now(),
         });
       }
@@ -304,6 +304,13 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
         deltaX: 0, deltaY: 0, width: 0, height: 0, scalePercent: 0, snapActive: props.snapActive ?? false,
       });
     } else {
+      // applyResizeHandle treats its `shiftKey` arg as "break aspect ratio":
+      // true = free resize, false = keep aspect. We want constrainRatio ON to
+      // KEEP aspect by default; holding Shift INVERTS that. So the effective
+      // "break" state is: constrainRatio ? shiftKey : !shiftKey.
+      // This is the single source of truth shared with PropertiesPanel's
+      // "Constrain proportions" toggle and TransformOptionBar's "Ratio" toggle.
+      const breakAspect = constrainRatio() ? e.shiftKey : !e.shiftKey;
       const newTransform = applyResizeHandle(
         drag.startTransform,
         layer.width,
@@ -311,7 +318,7 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
         drag.type,
         dx,
         dy,
-        e.shiftKey,
+        breakAspect,
         e.altKey
       );
       engine.transformLayer(layer.id, newTransform);

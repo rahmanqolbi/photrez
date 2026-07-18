@@ -10,9 +10,8 @@ import { normalizeRotation } from "@/viewport/transformGeometry";
 import type { Transform2D } from "@/engine/types";
 
 export function PropertiesPanel() {
-  const { workspace, layers, selectedLayerId, scheduler, activeDocumentId, docWidth, docHeight } = useEditor();
+  const { workspace, layers, selectedLayerId, scheduler, activeDocumentId, docWidth, docHeight, constrainRatio, setConstrainRatio } = useEditor();
   const [opacityEditLayerId, setOpacityEditLayerId] = createSignal<string | null>(null);
-  const [lockScale, setLockScale] = createSignal(false);
 
   const activeLayer = () => {
     const id = selectedLayerId();
@@ -86,7 +85,7 @@ export function PropertiesPanel() {
     if (!layer || val <= 0) return;
     const nextScale = axis === "w" ? val / layer.width : val / layer.height;
     const patch: Partial<Transform2D> = axis === "w" ? { scaleX: nextScale } : { scaleY: nextScale };
-    if (lockScale()) {
+    if (constrainRatio()) {
       const ratioScale = Math.sign(
         axis === "w" ? (layer.transform.scaleY || 1) : (layer.transform.scaleX || 1)
       ) * Math.abs(nextScale);
@@ -225,12 +224,12 @@ export function PropertiesPanel() {
                       <EditableNumField label="W" value={safeLayer()!.width * safeLayer()!.transform.scaleX} suffix="px" onSubmit={handleSizeField("w")} disabled={safeLayer()!.locked} class="flex-1" />
                       <EditableNumField label="H" value={safeLayer()!.height * safeLayer()!.transform.scaleY} suffix="px" onSubmit={handleSizeField("h")} disabled={safeLayer()!.locked} class="flex-1" />
                       <button
-                        class={`flex size-[26px] shrink-0 items-center justify-center ${lockScale() ? "text-editor-accent" : "text-editor-text-dim"}`}
+                        class={`flex size-[26px] shrink-0 items-center justify-center ${constrainRatio() ? "text-editor-accent" : "text-editor-text-dim"}`}
                         aria-label="Constrain proportions"
-                        aria-pressed={lockScale()}
-                        onClick={() => setLockScale(!lockScale())}
+                        aria-pressed={constrainRatio()}
+                        onClick={() => setConstrainRatio(!constrainRatio())}
                       >
-                        <Icon name="link" class="size-3.5" strokeWidth={1.75} />
+                        <Icon name={constrainRatio() ? "link" : "unlink"} class="size-3.5" strokeWidth={1.75} />
                       </button>
                     </PropRow>
                     <PropRow label="Rotation">

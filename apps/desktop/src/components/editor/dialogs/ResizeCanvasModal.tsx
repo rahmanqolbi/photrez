@@ -1,11 +1,13 @@
 import { Show, createEffect, createSignal, on } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useEditor } from "../shell/EditorContext";
+import { For } from "solid-js";
 import { Icon } from "../icons";
 import { Tooltip } from "../Tooltip";
 import { DesktopDialog, DesktopDialogButton, desktopDialogFieldClass } from "./DesktopDialog";
 import { getEffectiveMaxDim } from "@/engine/types";
 import { showToast } from "../Toast";
+import { type Unit, UNITS, formatUnit, unitToPx, pxToUnit } from "@/lib/units";
 
 export function ResizeCanvasModal() {
   const {
@@ -21,59 +23,75 @@ export function ResizeCanvasModal() {
     syncViewport,
   } = useEditor();
 
-  const [w, setW] = createSignal(800);
-  const [h, setH] = createSignal(600);
+  // Always stored in pixels
+  const [wPx, setWPx] = createSignal(800);
+  const [hPx, setHPx] = createSignal(600);
+  const [unit, setUnit] = createSignal<Unit>("px");
   const [aspectLocked, setAspectLocked] = createSignal(true);
   const [aspect, setAspect] = createSignal(1);
+
+  let wRef!: HTMLInputElement;
+  let hRef!: HTMLInputElement;
+
+  // Sync DOM display when unit or px values change
+  createEffect(on([unit, wPx], () => {
+    if (wRef) wRef.value = formatUnit(wPx(), unit());
+  }));
+  createEffect(on([unit, hPx], () => {
+    if (hRef) hRef.value = formatUnit(hPx(), unit());
+  }));
 
   const openDialog = () => {
     const cw = docWidth();
     const ch = docHeight();
-    setW(cw);
-    setH(ch);
+    setWPx(cw);
+    setHPx(ch);
     setAspect(cw / ch);
     setAspectLocked(true);
+    setUnit("px");
   };
 
   createEffect(on(showResizeDialog, (visible) => {
     if (visible) openDialog();
   }));
 
-  const handleWChange = (val: string) => {
-    const nw = parseInt(val, 10);
-    if (isNaN(nw) || nw < 1) return;
+  const commitW = () => {
+    const raw = parseFloat(wRef.value);
+    if (isNaN(raw) || raw <= 0) return;
     const max = getEffectiveMaxDim();
+    const nw = unitToPx(raw, unit());
     if (nw > max) {
       showToast(`Maximum dimension is ${max}px`, "warn");
-      setW(max);
-      if (aspectLocked()) setH(Math.max(1, Math.round(max / aspect())));
+      setWPx(max);
+      if (aspectLocked()) setHPx(Math.max(1, Math.round(max / aspect())));
       return;
     }
-    setW(nw);
+    setWPx(nw);
     if (aspectLocked()) {
-      setH(Math.max(1, Math.round(nw / aspect())));
+      setHPx(Math.max(1, Math.round(nw / aspect())));
     }
   };
 
-  const handleHChange = (val: string) => {
-    const nh = parseInt(val, 10);
-    if (isNaN(nh) || nh < 1) return;
+  const commitH = () => {
+    const raw = parseFloat(hRef.value);
+    if (isNaN(raw) || raw <= 0) return;
     const max = getEffectiveMaxDim();
+    const nh = unitToPx(raw, unit());
     if (nh > max) {
       showToast(`Maximum dimension is ${max}px`, "warn");
-      setH(max);
-      if (aspectLocked()) setW(Math.max(1, Math.round(max * aspect())));
+      setHPx(max);
+      if (aspectLocked()) setWPx(Math.max(1, Math.round(max * aspect())));
       return;
     }
-    setH(nh);
+    setHPx(nh);
     if (aspectLocked()) {
-      setW(Math.max(1, Math.round(nh * aspect())));
+      setWPx(Math.max(1, Math.round(nh * aspect())));
     }
   };
 
   const handleApply = () => {
-    const newW = w();
-    const newH = h();
+    const newW = wPx();
+    const newH = hPx();
     if (newW < 1 || newH < 1) return;
     const max = getEffectiveMaxDim();
     if (newW > max || newH > max) {
@@ -119,7 +137,6 @@ export function ResizeCanvasModal() {
           kind="resize-canvas"
           manageFocus
           onDismiss={handleCancel}
-          onBackdropPointerDown={handleCancel}
           actions={<>
             <DesktopDialogButton onClick={handleCancel}>Cancel</DesktopDialogButton>
             <DesktopDialogButton variant="primary" onClick={handleApply}>Resize</DesktopDialogButton>
@@ -133,17 +150,28 @@ export function ResizeCanvasModal() {
               <label for="resize-canvas-width" class="w-[52px] text-[11px] font-medium text-editor-text-dim">Width</label>
               <input
                 id="resize-canvas-width"
+                ref={wRef!}
                 type="number"
-                min={1}
-                value={w()}
-                onInput={(e) => handleWChange(e.currentTarget.value)}
                 data-dialog-initial-focus
-                class={`${desktopDialogFieldClass} flex-1 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                class={`${desktopDialogFieldClass} flex-1 min-w-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                value={formatUnit(wPx(), unit())}
+                onBlur={commitW}
+                onKeyDown={(e) => { if (e.key === "Enter") commitW(); }}
+                min="0.01"
+                step={unit() === "px" ? "1" : "0.01"}
               />
-              <span class="text-[11px] text-editor-text-dim">px</span>
+              <div class="w-[60px] shrink-0">
+                <select
+                  class={`${desktopDialogFieldClass} text-center`}
+                  value={unit()}
+                  onChange={(e) => setUnit(e.currentTarget.value as Unit)}
+                >
+                  <For each={UNITS}>{(u) => <option value={u}>{u}</option>}</For>
+                </select>
+              </div>
             </div>
 
-            <div class="flex h-6 items-center pl-[60px]">
+            <div class="flex h-6 items-center pl-[52px]">
               <Tooltip content={aspectLocked() ? "Unlock aspect ratio" : "Lock aspect ratio"}>
                 <button
                   type="button"
@@ -155,7 +183,7 @@ export function ResizeCanvasModal() {
                       : "border border-transparent bg-transparent text-editor-text-dim hover:bg-white/[0.05] hover:text-editor-text"
                   }`}
                 >
-                  <Icon name={aspectLocked() ? "link" : "unlock"} class="size-3.5" strokeWidth={1.75} />
+                  <Icon name={aspectLocked() ? "link" : "unlink"} class="size-3.5" strokeWidth={1.75} />
                   Keep proportions
                 </button>
               </Tooltip>
@@ -165,13 +193,24 @@ export function ResizeCanvasModal() {
               <label for="resize-canvas-height" class="w-[52px] text-[11px] font-medium text-editor-text-dim">Height</label>
               <input
                 id="resize-canvas-height"
+                ref={hRef!}
                 type="number"
-                min={1}
-                value={h()}
-                onInput={(e) => handleHChange(e.currentTarget.value)}
-                class={`${desktopDialogFieldClass} flex-1 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                class={`${desktopDialogFieldClass} flex-1 min-w-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                value={formatUnit(hPx(), unit())}
+                onBlur={commitH}
+                onKeyDown={(e) => { if (e.key === "Enter") commitH(); }}
+                min="0.01"
+                step={unit() === "px" ? "1" : "0.01"}
               />
-              <span class="text-[11px] text-editor-text-dim">px</span>
+              <div class="w-[60px] shrink-0">
+                <select
+                  class={`${desktopDialogFieldClass} text-center`}
+                  value={unit()}
+                  onChange={(e) => setUnit(e.currentTarget.value as Unit)}
+                >
+                  <For each={UNITS}>{(u) => <option value={u}>{u}</option>}</For>
+                </select>
+              </div>
             </div>
           </div>
         </DesktopDialog>
