@@ -1,12 +1,12 @@
-# Node / Dependencies
+# Dependencies
 node_modules/
-npm-debug.log
-yarn-error.log
-yarn-debug.log
-pnpm-debug.log
 .pnpm-store/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+pnpm-debug.log
 
-# Vite / Frontend Build Output
+# Build output
 dist/
 dist-ssr/
 build/
@@ -15,22 +15,22 @@ apps/desktop/test-results/
 apps/desktop/playwright-report/
 apps/desktop/blob-report/
 apps/desktop/playwright/.cache/
-
-# Tauri / Rust Core Build Output
 src-tauri/target/
 src-tauri/Cargo.lock
 target/
 target_test/
 **/*.rs.bk
+**/src-tauri/gen/
+src-tauri/wix/
 
-# Environment Variables & Secrets
+# Environment
 .env
 .env.*
 !.env.example
 *.pem
 *.key
 
-# Editor & IDE Directories
+# IDE / Editor
 .vscode/
 .idea/
 *.suo
@@ -38,102 +38,85 @@ target_test/
 *.njsproj
 *.sln
 *.sw?
+
+# OS
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Logs & Runtime Data
+# Logs
 logs/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 responses.txt
 
-# Local AI agent, workflow, and security context artifacts
-.agent/
-.agents/
-.antigravitycli/
-.codex/
-.cursor/
-.gemini/
-.gemini_security/
-.gsd/
-.github/instructions/
-.github/prompts/
-.github/copilot-instructions.md
-.impeccable/
-.opencode/
-.superpowers/
-.cursorrules
-.mcp.json
-.opencode.json
-opencode.json
-.windsurf/
-model_capabilities.yaml
-skills-lock.json
-AGENTS.md
-CLAUDE.md
-GEMINI.md
-docs/AI_CONTEXT.md
-docs/AI_CURRENT_TASK.md
-docs/AI_HISTORY.md
-docs/archive/AI_CURRENT_TASK_ARCHIVE.md
-docs/archive/AI_HISTORY_ARCHIVE.md
-docs/archive/audits/ponytail-doctrine/
-docs/archive/superpowers-plans/
-docs/archive/superpowers-specs/
-docs/plans/task.md
-docs/superpowers/
+# Test artifacts
+test-results/
 
-# Tauri specific (optional, usually handled by src-tauri/.gitignore if exists, but safe to add globally)
-**/src-tauri/gen/
-src-tauri/wix/
-
-# Workspace Cleanliness: Scratch Scripts, Reference Files & Archives
-scripts/fix-mojibake.ts
-scripts/dev.ps1
-Detail-Design-Spec.zip
-RapidRAW-main/
-photrez-solid-tailwind/
+# Images / binaries (screenshots excluded)
 *.png
 !docs/screenshots/*.png
 *.jpg
 *.jpeg
 !apps/desktop/src/assets/**/*
 *.py
+*.zip
 rtk.exe
+
+# Binary / archive reference files
+Detail-Design-Spec.zip
+RapidRAW-main/
+photrez-solid-tailwind/
+
+# Local dev scripts
+scripts/fix-mojibake.ts
+scripts/dev.ps1
+
+# Dotfile tool configs (language servers, local tools)
 .codegraph/
+.codex/
+.cursor/
+.gemini*/
+.gsd/
+.mcp.json
 .omo/
+.opencode/
+.opencode.json
 .playwright-mcp/
-
-# Icon design history / backup
-docs/icon-history/
-
-# Git Worktrees (isolated workspaces)
+.windsurf/
 .worktrees/
-worktrees/
+model_capabilities.yaml
+skills-lock.json
+opencode.json
 
-# Local AI agent tools (vendor — clone manually, see AGENTS.md)
+# AI agent workflow files (local, not distributed)
+.agent/
+.agents/
+.antigravitycli/
+.impeccable/
+.superpowers/
 .tools/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.cursorrules
+.github/instructions/
+.github/prompts/
+.github/copilot-instructions.md
+
+# Internal docs (not for distribution)
+docs/AI_*.md
+docs/archive/
+docs/decisions/
+docs/icon-history/
+docs/plans/
+docs/risk-registers/
+docs/superpowers/
+docs/*AUDIT_REPORT.md
+docs/DEEP_PROJECT_REVIEW.md
+docs/photrez-brush-*.md
+
+# Git worktrees
+worktrees/
 
 # Reserved Windows device name
 nul
-
-docs/archive/logo-design-history/
-
-# Internal dev / AI-agent docs — NOT for public repository
-# (untracked via `git rm --cached`; kept on disk for local dev only)
-docs/archive/
-docs/decisions/
-docs/risk-registers/
-docs/AUDIT_REPORT.md
-docs/DEEP_AUDIT_REPORT.md
-docs/DEEP_PROJECT_REVIEW.md
-docs/PERF_UX_AUDIT_REPORT.md
-docs/UNWIRED_LOGIC_AUDIT_REPORT.md
-docs/photrez-brush-performance-analysis.md
-docs/plans/
-
-# Playwright test artifacts (root, in addition to apps/desktop/test-results/)
-test-results/
