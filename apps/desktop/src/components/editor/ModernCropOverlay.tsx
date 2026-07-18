@@ -139,6 +139,11 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
       return "crosshair";
     }
     const bb = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
+    if (svgRef) {
+      const svgRect = svgRef.getBoundingClientRect();
+      const localHp = { x: hp.x - svgRect.left, y: hp.y - svgRect.top };
+      return getRotateCursorByPos(localHp, bb);
+    }
     return getRotateCursorByPos(hp, bb);
   });
 
@@ -258,7 +263,14 @@ export function ModernCropOverlay(props: ModernCropOverlayProps) {
           offsetY: drag.startTransform.offsetY + offsetDelta.y,
         });
       }
-      setTooltip({ x: e.clientX, y: e.clientY, w: frame.w, h: frame.h });
+      let cx = e.clientX;
+      let cy = e.clientY;
+      if (svgRef) {
+        const svgRect = svgRef.getBoundingClientRect();
+        cx -= svgRect.left;
+        cy -= svgRect.top;
+      }
+      setTooltip({ x: cx, y: cy, w: frame.w, h: frame.h });
       return;
     }
 

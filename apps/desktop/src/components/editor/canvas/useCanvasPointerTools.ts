@@ -289,6 +289,16 @@ export function useCanvasPointerTools(params: UseCanvasPointerToolsParams) {
     // Coordinates must remain in screen/client space — do NOT convert to document space.
     // The previous conversion (screenToDocument) caused the HUD to appear far from the
     // cursor when the document is zoomed or panned.
+    if (hud) {
+      const rect = getCachedContainerRect();
+      if (rect) {
+        hud = {
+          ...hud,
+          clientX: hud.clientX - rect.left,
+          clientY: hud.clientY - rect.top,
+        };
+      }
+    }
     setHudInfoInner(hud);
   };
 

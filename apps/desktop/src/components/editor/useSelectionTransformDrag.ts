@@ -130,6 +130,12 @@ export function useSelectionTransformDrag(props: UseSelectionTransformDragParams
       w: effW() * z,
       h: effH() * z,
     };
+    const svg = props.getSvgRef();
+    if (svg) {
+      const rect = svg.getBoundingClientRect();
+      const localHp = { x: hp.x - rect.left, y: hp.y - rect.top };
+      return getRotateCursorByPos(localHp, bb);
+    }
     return getRotateCursorByPos(hp, bb);
   });
 
