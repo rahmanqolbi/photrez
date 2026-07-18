@@ -1,6 +1,7 @@
 import { Show, createSignal, createMemo } from "solid-js";
 import { Icon } from "./icons";
 import { EditableNumField, NumField, PropRow, Slider } from "./primitives";
+import { Tooltip } from "./Tooltip";
 import { useEditor } from "./shell/EditorContext";
 import { SectionHeader } from "./layers/SectionHeader";
 import { CanvasProperties } from "./canvas/CanvasProperties";
@@ -300,51 +301,61 @@ export function PropertiesPanel() {
                     </PropRow>
 
                     <PropRow label="Quick">
-                      <button
+                      <Tooltip content={safeLayer()!.lockPosition ? "Position locked for this layer" : "Center horizontally on canvas"}>
+                        <button
                         type="button"
                         aria-label="Center horizontally on canvas"
                         disabled={safeLayer()!.locked || safeLayer()!.lockPosition}
                         onClick={handleCenterHorizontal}
                         class="flex h-[26px] flex-1 items-center justify-center gap-1 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text transition-colors hover:bg-editor-field-border disabled:pointer-events-none disabled:opacity-40"
-                      >
-                        <Icon name="align-h" class="size-3.5" strokeWidth={1.75} />
-                      </button>
-                      <button
+                        >
+                          <Icon name="align-h" class="size-3.5" strokeWidth={1.75} />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content={safeLayer()!.lockPosition ? "Position locked for this layer" : "Center vertically on canvas"}>
+                        <button
                         type="button"
                         aria-label="Center vertically on canvas"
                         disabled={safeLayer()!.locked || safeLayer()!.lockPosition}
                         onClick={handleCenterVertical}
                         class="flex h-[26px] flex-1 items-center justify-center gap-1 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text transition-colors hover:bg-editor-field-border disabled:pointer-events-none disabled:opacity-40"
-                      >
-                        <Icon name="align-v" class="size-3.5" strokeWidth={1.75} />
-                      </button>
-                      <button
+                        >
+                          <Icon name="align-v" class="size-3.5" strokeWidth={1.75} />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content={safeLayer()!.lockPosition ? "Position locked for this layer" : "Fit to canvas (scale + center)"}>
+                        <button
                         type="button"
                         aria-label="Fit to canvas"
-                        disabled={safeLayer()!.locked}
+                        disabled={safeLayer()!.locked || safeLayer()!.lockPosition}
                         onClick={handleFitToCanvas}
                         class="flex h-[26px] flex-1 items-center justify-center gap-1 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text transition-colors hover:bg-editor-field-border disabled:pointer-events-none disabled:opacity-40"
-                      >
-                        <Icon name="maximize" class="size-3.5" strokeWidth={1.75} />
-                      </button>
-                      <button
+                        >
+                          <Icon name="maximize" class="size-3.5" strokeWidth={1.75} />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content={safeLayer()!.lockRotation ? "Rotation locked for this layer" : "Rotate 90° counterclockwise"}>
+                        <button
                         type="button"
                         aria-label="Rotate 90° counterclockwise"
                         disabled={safeLayer()!.locked || safeLayer()!.lockRotation}
                         onClick={() => handleRotate90("ccw")}
                         class="flex h-[26px] flex-1 items-center justify-center gap-1 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text transition-colors hover:bg-editor-field-border disabled:pointer-events-none disabled:opacity-40"
-                      >
-                        <Icon name="rotate-ccw" class="size-3.5" strokeWidth={1.75} />
-                      </button>
-                      <button
+                        >
+                          <Icon name="rotate-ccw" class="size-3.5" strokeWidth={1.75} />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content={safeLayer()!.lockRotation ? "Rotation locked for this layer" : "Rotate 90° clockwise"}>
+                        <button
                         type="button"
                         aria-label="Rotate 90° clockwise"
                         disabled={safeLayer()!.locked || safeLayer()!.lockRotation}
                         onClick={() => handleRotate90("cw")}
                         class="flex h-[26px] flex-1 items-center justify-center gap-1 rounded-[4px] border border-editor-field-border bg-editor-field px-2 text-[11px] text-editor-text transition-colors hover:bg-editor-field-border disabled:pointer-events-none disabled:opacity-40"
-                      >
-                        <Icon name="rotate-cw" class="size-3.5" strokeWidth={1.75} />
-                      </button>
+                        >
+                          <Icon name="rotate-cw" class="size-3.5" strokeWidth={1.75} />
+                        </button>
+                      </Tooltip>
                     </PropRow>
 
                   </div>

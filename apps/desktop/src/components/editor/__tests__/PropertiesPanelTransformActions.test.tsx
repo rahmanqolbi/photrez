@@ -163,4 +163,31 @@ describe("PropertiesPanel transform actions (Flip / Reset)", () => {
     expect(engine.getLayer(layer.id)!.transform.rotation).toBe(-100);
     dispose();
   });
+
+  it("Quick buttons are disabled on the Background layer (position+rotation locked)", () => {
+    const workspace = new WorkspaceManager();
+    const session = WorkspaceManager.createBlankDocument("bg-doc", "BG Doc", 800, 600);
+    workspace.addDocument(session);
+    const engine = session.engine;
+    const bg = engine.getLayers()[0]; // Background: isBackground, lockPosition, lockRotation
+    expect(bg.isBackground).toBe(true);
+    expect(bg.lockPosition).toBe(true);
+    expect(bg.lockRotation).toBe(true);
+
+    const { container, dispose } = renderWithSelectedLayer(workspace, bg.id);
+
+    const centerH = container.querySelector<HTMLButtonElement>("button[aria-label='Center horizontally on canvas']");
+    const centerV = container.querySelector<HTMLButtonElement>("button[aria-label='Center vertically on canvas']");
+    const fit = container.querySelector<HTMLButtonElement>("button[aria-label='Fit to canvas']");
+    const rotCcw = container.querySelector<HTMLButtonElement>("button[aria-label='Rotate 90° counterclockwise']");
+    const rotCw = container.querySelector<HTMLButtonElement>("button[aria-label='Rotate 90° clockwise']");
+
+    expect(centerH?.disabled).toBe(true);
+    expect(centerV?.disabled).toBe(true);
+    expect(fit?.disabled).toBe(true);
+    expect(rotCcw?.disabled).toBe(true);
+    expect(rotCw?.disabled).toBe(true);
+
+    dispose();
+  });
 });
