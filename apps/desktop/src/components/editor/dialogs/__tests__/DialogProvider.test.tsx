@@ -94,7 +94,7 @@ describe("DialogProvider", () => {
   it("renders informational alerts with a single action", async () => {
     function AlertHarness() {
       const dialog = useDialog();
-      return <button onClick={() => void dialog.alert({ title: "About", message: "Photrez 0.2.0" })}>About</button>;
+      return <button onClick={() => void dialog.alert({ title: "About", message: "Photrez 0.1.0" })}>About</button>;
     }
     const root = document.createElement("div");
     document.body.appendChild(root);
@@ -102,7 +102,7 @@ describe("DialogProvider", () => {
     root.querySelector("button")!.click();
     await new Promise<void>((resolve) => queueMicrotask(resolve));
 
-    expect(document.querySelector('[role="dialog"]')).toHaveTextContent("Photrez 0.2.0");
+    expect(document.querySelector('[role="dialog"]')).toHaveTextContent("Photrez 0.1.0");
     expect(document.querySelector("[data-dialog-cancel]")).toBeNull();
     expect(document.querySelectorAll("[data-dialog-confirm]")).toHaveLength(1);
     dispose();

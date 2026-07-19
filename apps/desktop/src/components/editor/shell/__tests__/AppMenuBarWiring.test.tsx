@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "solid-js/web";
+vi.mock("@tauri-apps/api/app", () => ({ getVersion: () => Promise.resolve("0.1.0") }));
 import type { WebGL2Backend } from "@/renderer/webgl2";
 import type { RenderScheduler } from "@/renderer/scheduler";
 import { WorkspaceManager } from "@/engine/workspace";
@@ -195,7 +196,7 @@ describe("custom application menu wiring", () => {
     await new Promise<void>((resolve) => queueMicrotask(resolve));
 
     const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
-    expect(dialog).toHaveTextContent("Photrez 0.2.0");
+    expect(dialog).toHaveTextContent("Photrez 0.1.0");
     expect(dialog).toHaveTextContent("lightweight image editor");
     expect(document.activeElement).toBe(document.querySelector("[data-dialog-confirm]"));
     document.querySelector<HTMLButtonElement>("[data-dialog-confirm]")!.click();

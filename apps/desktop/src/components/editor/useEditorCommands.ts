@@ -1,6 +1,7 @@
 import { batch, onCleanup, onMount } from "solid-js";
 import { registerShortcut } from "./keyboardRegistry";
 import { listen } from "@tauri-apps/api/event";
+import { getVersion } from "@tauri-apps/api/app";
 import { isEditableTarget } from "@/lib/dom";
 import { isTauriRuntime, runTauriWindowAction } from "@/lib/desktop";
 import { WorkspaceManager } from "@/engine/workspace";
@@ -598,11 +599,21 @@ export function useEditorCommands(onToggleSidePanels: () => void) {
         void runTauriWindowAction("close");
         break;
       case "help.about":
-        void dialog.alert({
-          title: "About Photrez",
-          message: "Photrez 0.2.0\nA lightweight image editor for Windows.",
-          confirmLabel: "Close",
-        });
+        void getVersion()
+          .then((version) =>
+            dialog.alert({
+              title: "About Photrez",
+              message: `Photrez ${version}\nA lightweight image editor for Windows.`,
+              confirmLabel: "Close",
+            }),
+          )
+          .catch(() =>
+            dialog.alert({
+              title: "About Photrez",
+              message: "Photrez\nA lightweight image editor for Windows.",
+              confirmLabel: "Close",
+            }),
+          );
         break;
     }
   };
