@@ -49,6 +49,9 @@
     "publisher": "Rahman Qolbi",
     "copyright": "Copyright © 2026 Rahman Qolbi",
     "licenseFile": "../../../LICENSE",
+    "resources": {
+      "../../../target/release/WebView2Loader.dll": "WebView2Loader.dll"
+    },
     "icon": [
       "icons/icon.ico",
       "icons/32x32.png",
