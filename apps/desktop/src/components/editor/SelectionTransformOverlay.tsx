@@ -148,7 +148,10 @@ export function SelectionTransformOverlay(props: SelectionTransformOverlayProps 
             width: "100%",
             height: "100%",
             overflow: "visible",
-            "pointer-events": props.isNavigationMode || activeTool() === "crop" ? "none" : "auto",
+            // Root stays click-through; interactive handles/ring set their own
+            // pointer-events:"all" below. This lets clicks on empty pasteboard
+            // fall through to the canvas so Move-tool deselect still works.
+            "pointer-events": "none",
             "z-index": 40,
             cursor: activeDragCursor() ?? "default",
           }}

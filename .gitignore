@@ -120,3 +120,6 @@ worktrees/
 
 # Reserved Windows device name
 nul
+
+# Tauri/NSIS build output
+$out/

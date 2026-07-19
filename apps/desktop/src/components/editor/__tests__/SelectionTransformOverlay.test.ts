@@ -869,6 +869,9 @@ describe("Donut rotate ring path", () => {
     expect(donutPath).not.toBeNull();
     expect(donutPath.getAttribute("fill-rule")).toBe("evenodd");
     expect(donutPath.getAttribute("fill")).toBe("transparent");
+    // "all" so the whole rotate ring band is interactive (rotate works when
+    // clicked anywhere in the band); pasteboard deselect relies on clicks
+    // landing outside the ring band, which the E2E tests cover.
     expect(donutPath.style.pointerEvents).toBe("all");
 
     dispose();

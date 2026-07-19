@@ -73,6 +73,8 @@ test.describe("Precision Workbench dialogs", () => {
     await page.keyboard.press("Tab");
     await expect(width).toBeFocused();
     await width.fill("640");
+    // commitW runs on blur/Enter (not on input); move focus to link Height.
+    await width.press("Tab");
     await expect(resize.getByLabel("Height")).toHaveValue("640");
     await resize.screenshot({ path: testInfo.outputPath("resize-canvas-dialog.png") });
     await resize.getByRole("button", { name: "Resize", exact: true }).click();
