@@ -1,11 +1,12 @@
-// ─── Tauri IPC Commands ───
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// â”€â”€â”€ Tauri IPC Commands â”€â”€â”€
 //
 // All `#[tauri::command]` handlers exposed to the frontend.
 
 use serde_json::Value;
 use std::collections::HashMap;
 
-use crate::response::{err_response, error_value, ok_response, validate_no_traversal, validate_path_extension, CONTRACT_VERSION};
+use crate::response::{err_response, error_value, ok_response, validate_no_traversal, validate_path_extension, validate_path_safe, CONTRACT_VERSION};
 use crate::CliState;
 
 const MAX_FILE_IO_BYTES: u64 = 256 * 1024 * 1024;
@@ -45,7 +46,7 @@ pub(crate) fn get_pending_open_path(state: tauri::State<'_, CliState>) -> Result
 #[tauri::command]
 pub(crate) fn read_file_bytes(path: String) -> Result<Value, Value> {
     validate_path_extension(&path, READ_FILE_EXTENSIONS, "read")?;
-    validate_no_traversal(&path)?;
+    let path = validate_path_safe(&path, "read")?;
 
     match std::fs::metadata(&path) {
         Ok(metadata) if metadata.len() > MAX_FILE_IO_BYTES => {
@@ -76,7 +77,7 @@ pub(crate) fn read_file_bytes(path: String) -> Result<Value, Value> {
 #[tauri::command]
 pub(crate) fn write_file_bytes(path: String, data: String) -> Result<Value, Value> {
     validate_path_extension(&path, WRITE_FILE_EXTENSIONS, "write")?;
-    validate_no_traversal(&path)?;
+    let path = validate_path_safe(&path, "write")?;
 
     use base64::Engine;
     let bytes = match base64::engine::general_purpose::STANDARD.decode(&data) {
@@ -106,7 +107,7 @@ pub(crate) fn save_project(
     layers: HashMap<String, String>,
 ) -> Result<Value, Value> {
     validate_path_extension(&path, &["ptz"], "save project")?;
-    validate_no_traversal(&path)?;
+    let path = validate_path_safe(&path, "save project")?;
 
     let file = std::fs::File::create(&path)
         .map_err(|e| error_value("E_IO", &format!("Failed to create project file: {}", e)))?;
@@ -148,7 +149,7 @@ pub(crate) fn save_project_binary(
     layers: HashMap<String, Vec<u8>>,
 ) -> Result<Value, Value> {
     validate_path_extension(&path, &["ptz"], "save project")?;
-    validate_no_traversal(&path)?;
+    let path = validate_path_safe(&path, "save project")?;
 
     let file = std::fs::File::create(&path)
         .map_err(|e| error_value("E_IO", &format!("Failed to create project file: {}", e)))?;
@@ -180,7 +181,7 @@ pub(crate) fn save_project_binary(
 #[tauri::command]
 pub(crate) fn load_project(path: String) -> Result<Value, Value> {
     validate_path_extension(&path, &["ptz"], "load project")?;
-    validate_no_traversal(&path)?;
+    let path = validate_path_safe(&path, "load project")?;
 
     let file = std::fs::File::open(&path)
         .map_err(|e| error_value("E_IO", &format!("Failed to open project file: {}", e)))?;
@@ -230,13 +231,25 @@ pub(crate) fn load_project(path: String) -> Result<Value, Value> {
     }))
 }
 
-/// Delete a file from disk. Used for cleaning up temp files after print.
+/// Delete a file from disk. Restricted to the temp directory for safety â€”
+/// used for cleaning up temp files (e.g. exported print spool) after print.
 #[tauri::command]
 pub(crate) fn delete_file(path: String) -> Result<Value, Value> {
     validate_path_extension(&path, &["png", "ptz"], "delete")?;
-    validate_no_traversal(&path)?;
+    let path = validate_path_safe(&path, "delete")?;
+
+    // Alpha mitigation: only allow delete inside the OS temp directory.
+    let temp_dir = std::env::temp_dir();
+    let canonical_temp = std::fs::canonicalize(&temp_dir).unwrap_or(temp_dir);
+    if !path.starts_with(&canonical_temp) {
+        return err_response(
+            "E_VALIDATION",
+            "Delete is only allowed inside the temporary directory",
+        );
+    }
+
     match std::fs::remove_file(&path) {
-        Ok(_) => ok_response(serde_json::json!({ "deleted": path })),
+        Ok(_) => ok_response(serde_json::json!({ "deleted": path.to_string_lossy() })),
         Err(e) => err_response("E_IO", &format!("Failed to delete file: {}", e)),
     }
 }
@@ -268,12 +281,12 @@ pub(crate) fn close_splashscreen(app: tauri::AppHandle) -> Result<Value, Value> 
 /// Windows print dialog (same one used by Paint, Photoshop, etc.)
 #[tauri::command]
 pub(crate) fn print_image(path: String) -> Result<Value, Value> {
-    validate_path_extension(&path, &["png", "jpg", "jpeg", "pdf"], "print")?;
-    validate_no_traversal(&path)?;
+    validate_path_extension(&path, &["png", "jpg", "jpeg"], "print")?;
+    let path = validate_path_safe(&path, "print")?;
 
-    let p = std::path::PathBuf::from(&path);
+    let p = path;
     if !p.exists() {
-        return err_response("E_IO", &format!("File not found: {}", path));
+        return err_response("E_IO", &format!("File not found: {}", p.display()));
     }
 
     #[cfg(target_os = "windows")]
@@ -325,7 +338,7 @@ pub(crate) fn print_image(path: String) -> Result<Value, Value> {
         }
     }
 
-    ok_response(serde_json::json!({ "printed": path }))
+    ok_response(serde_json::json!({ "printed": p.to_string_lossy() }))
 }
 
 #[cfg(test)]
@@ -436,7 +449,13 @@ mod tests {
         let result = read_file_bytes("Z:\\nonexistent_file_12345.png".to_string());
         assert!(result.is_err(), "reading nonexistent file should error");
         let err_value = result.unwrap_err();
-        assert!(err_value.to_string().contains("E_IO"));
+        // The path cannot be canonicalized (drive Z: does not exist), so the
+        // error may come from path validation (E_VALIDATION) rather than the
+        // later metadata stat (E_IO). Either is an acceptable rejection.
+        assert!(
+            err_value.to_string().contains("E_IO")
+                || err_value.to_string().contains("E_VALIDATION")
+        );
     }
 
     #[test]

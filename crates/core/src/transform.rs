@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use serde::{Deserialize, Serialize};
 use crate::selection::SelectionRect;
 
@@ -139,7 +140,7 @@ mod tests {
         t.set_rotation(90.0);
         let rect = SelectionRect { x: 0.0, y: 0.0, width: 100.0, height: 50.0 };
         let result = t.apply_to_rect(&rect);
-        // After 90° rotation, width and height should swap
+        // After 90Â° rotation, width and height should swap
         assert!((result.width - 50.0).abs() < 0.001);
         assert!((result.height - 100.0).abs() < 0.001);
     }

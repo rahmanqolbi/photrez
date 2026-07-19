@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 use crate::layers::Layer;
@@ -97,7 +98,7 @@ impl Document {
         Ok(())
     }
 
-    // ── Selection Operations ──
+    // â”€â”€ Selection Operations â”€â”€
 
     pub fn create_selection(&mut self, x: f32, y: f32, width: f32, height: f32) {
         let rect = SelectionRect { x, y, width, height }.normalize();
@@ -127,7 +128,7 @@ impl Document {
         self.selection
     }
 
-    // ── Layer Transform Operations ──
+    // â”€â”€ Layer Transform Operations â”€â”€
 
     pub fn move_layer(&mut self, id: &str, x: f32, y: f32) -> Result<(), String> {
         let layer = self.layers.iter_mut().find(|l| l.id == id)

@@ -12,7 +12,7 @@ Photrez is maintained through lightweight maintainer-led governance.
 
 1. Open a proposal, issue, or pull request with scope and rationale.
 2. Review it against `docs/spec/product-scope.md`, `docs/ARCHITECTURE.md`, and relevant reference docs.
-3. For cross-module, breaking, or long-lived architectural decisions, record the decision in `docs/decisions/`.
+3. For cross-module, breaking, or long-lived architectural decisions, record the decision in a decision log maintained alongside this repository.
 4. Maintainer approval is required before merge.
 
 ## Technical Authority

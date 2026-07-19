@@ -398,21 +398,21 @@ export class WebGL2Backend implements RenderBackend {
     // buf is already top-down straight-alpha: flipTexY flips the sample and
     // u_outputStraight un-premultiplies in-shader, so no JS post-pass is needed.
     try {
-      let canvas: OffscreenCanvas | HTMLCanvasElement;
+      let scratchCanvas: OffscreenCanvas | HTMLCanvasElement;
       try {
-        canvas = new OffscreenCanvas(width, height);
+        scratchCanvas = new OffscreenCanvas(width, height);
       } catch {
-        canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
+        scratchCanvas = document.createElement("canvas");
+        scratchCanvas.width = width;
+        scratchCanvas.height = height;
       }
-      const ctx = canvas.getContext("2d") as
+      const ctx = scratchCanvas.getContext("2d") as
         | OffscreenCanvasRenderingContext2D
         | CanvasRenderingContext2D
         | null;
       if (!ctx) return null;
-      ctx.putImageData(new ImageData(buf, width, height), 0, 0);
-      return (canvas as OffscreenCanvas).transferToImageBitmap();
+      ctx.putImageData(new ImageData(buf, width, height),0,0);
+      return (scratchCanvas as OffscreenCanvas).transferToImageBitmap();
     } catch {
       return null;
     }

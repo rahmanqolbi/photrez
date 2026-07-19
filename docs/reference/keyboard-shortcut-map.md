@@ -5,8 +5,6 @@ This document defines the baseline keyboard shortcuts for Photrez MVP.
 Shortcuts follow familiar desktop editor conventions where applicable,
 but Photrez reserves the right to diverge for unique product identity.
 
-Reference: Existing implementation in `aplikasi-cetak-massal` studio.
-
 ## 1) Design Principles
 
 1. Single-key shortcuts for tool switching.
@@ -206,4 +204,3 @@ Both hooks register `registerShortcut(...)` at the top of their `onMount` block.
 
 - Adding or changing a shortcut requires updating this document first.
 - Conflicts with existing shortcuts must be explicitly resolved.
-- Reference: `docs/archive/planning/22-ui-style-guide.md` section 6 (keyboard and focus flow).

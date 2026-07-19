@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use crate::document::Document;
@@ -354,7 +355,7 @@ mod tests {
         assert_eq!(ws.active_document_id(), Some("doc-3"));
 
         ws.remove_document("doc-3");
-        // nearest is doc-2 (index 2 was removed, now len=2, min(2, 1)=1 → doc-2)
+        // nearest is doc-2 (index 2 was removed, now len=2, min(2, 1)=1 â†’ doc-2)
         assert_eq!(ws.active_document_id(), Some("doc-2"));
         assert_eq!(ws.open_count(), 2);
     }

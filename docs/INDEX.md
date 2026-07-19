@@ -10,9 +10,6 @@ These are loaded via `AGENTS.md` read order on every task:
 
 | File | Purpose |
 |---|---|
-| `AI_CONTEXT.md` | **START HERE** — strict AI rules, stack, protocol |
-| `AI_CURRENT_TASK.md` | Active task tracking |
-| `AI_HISTORY.md` | Change history log |
 | `FEATURES.md` | Feature implementation status |
 | `ARCHITECTURE.md` | Runtime architecture reference |
 | `CONVENTIONS.md` | Code patterns, SolidJS, Tauri IPC, Move Tool |

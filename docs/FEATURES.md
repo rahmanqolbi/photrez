@@ -1,8 +1,7 @@
 # FEATURES.md — Photrez
 
 > Update this file whenever a new feature is completed or in progress.
-> AI agents must read this file before touching any code.
-> Also read: `AI_CONTEXT.md` (rule), `AI_CURRENT_TASK.md` (status), `AI_HISTORY.md` (history), `ARCHITECTURE.md` (architecture)
+> Architecture and runtime reference: `ARCHITECTURE.md`.
 
 ---
 
@@ -254,7 +253,7 @@
 | ✅ DONE         | Blend mode parity gate: UI exposes only the typed MVP registry (`Normal`, `Multiply`, `Screen`, `Overlay`), export compositing uses the same registry mapping, and unsupported shader-only modes are blocked until parity tests exist (`docs/reference/render-export-parity-matrix.md`). |
 | ✅ DONE         | Rust unit tests: write_file_bytes creates file, read_file_bytes roundtrip, error handling (7 tests)                                                                                                                                                                                      |
 | ✅ DONE         | E2E data flow test: encodeComposite → base64 → decode → byte-for-byte match + valid PNG image                                                                                                                                                                                            |
-| ✅ CLOSED      | Native Tauri smoke checklist — superseded by automated E2E grand-tour test (`e2e/native-e2e-smoke.spec.ts`). Historical checklist at `docs/archive/audits/faang-review/2026-06-18-native-runtime-smoke-checklist.md`                                                                           |
+| ✅ CLOSED      | Native Tauri smoke checklist — superseded by automated E2E grand-tour test (`e2e/native-e2e-smoke.spec.ts`). Historical checklist archived in the project archive.                                                                           |
 
 ---
 
@@ -428,7 +427,7 @@
 
 | Status     | Item                                                                                                                                                                                                                                                          |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ✅ DONE    | Post-MVP UI backlog: all 6 items (window persistence, native menu, tooltip, context menu, dialog system, history panel) implemented, tested, shipped. `docs/archive/plans/2026-06-20-post-mvp-ui-backlog.md` updated to COMPLETED status                                                                                                                                     |
+| ✅ DONE    | Post-MVP UI backlog: all 6 items (window persistence, native menu, tooltip, context menu, dialog system, history panel) implemented, tested, shipped. Plan archived in the project archive.                                                                                                                                     |
 | ✅ DONE    | Native Tauri release smoke evidence: NATIVE-001 (launch) passed; NATIVE-002 through NATIVE-007 superseded by automated grand-tour E2E smoke test (`apps/desktop/e2e/native-e2e-smoke.spec.ts`) + existing unit/E2E coverage. Checklist status updated to CLOSED    |
 | DONE       | FAANG review pointer capture helper: canvas pointer tools now use shared safe capture/release helpers with focused pointer regression tests                                                                                                                   |
 | DONE       | FAANG review paint command boundary: brush/eraser bitmap commits now share `commitPaintBitmap()` for history snapshot, engine mutation, texture upload, and render scheduling                                                                                 |
@@ -450,19 +449,19 @@
 | DONE       | Cross-doc drag drop position aligned to plan: tab/layers-panel drops land at doc center; canvas-on-target drop lands at cursor (was using garbage tab-screen coords). Covered by crossDocLayerOps.test.ts center assertion + new useCanvasLayerDrag.test.tsx canvas cross-doc wiring test
 | DONE       | Ponytail refactor-from-scratch doctrine: rules enforced via `AGENTS.md` + `opencode.json` ponytail plugin (no standalone directory created)                                                                                                                 |
 | DONE       | 6-month maintainability risk register created: `docs/risk-registers/maintainability/` with per-area ownership, refactor, and governance risks                                                                                                                 |
-| DONE       | FAANG-style review findings: per-PR review checklists; standalone `docs/faang-review-rejections/` directory not created (see decision log); archive at `docs/archive/audits/faang-review/`                                                                     |
+| DONE       | FAANG-style review findings: per-PR review checklists; standalone rejection directory not created (see decision log); archive in the project archive.                                                                     |
 | DONE       | Production bug risk register created: `docs/risk-registers/production/` with release gates and per-feature/tool risk checklists                                                                                                                               |
 | DONE       | Viewport tool alignment browser QA hardened: Playwright smoke now covers Move Tool transform geometry across fit, zoom, and pan                                                                                                                               |
 | DONE       | Viewport camera regression recovery executed: one viewport there ispter + reactive overlay alignment fixes                                                                                                                                                    |
-| DONE       | Viewport camera regression recovery todo created: `docs/archive/plans/2026-06-13-viewport-camera-regression-recovery-todo.md`                                                                                                                                 |
-| SUPERSEDED | GPU-Accelerated smooth zoom viewport camera implementation plan: `docs/archive/plans/2026-06-13-gpu-smooth-zoom-transitions-design.md`                                                                                                                        |
+| DONE       | Viewport camera regression recovery todo created (archived in the project archive).                                                                                                                                 |
+| SUPERSEDED | GPU-Accelerated smooth zoom viewport camera implementation plan (archived in the project archive).                                                                                                                        |
 | DONE       | Brush visual calibration and pixel QA plan executed: `docs/superpowers/plans/2026-06-11-brush-visual-calibration-and-qa.md`                                                                                                                                   |
 | DONE       | CPU brush-tip rasterizer refactored to cached single-channel Float32 alpha with calibrated padded support, pixel-center sampling, and preserved Uint8 mask/WebGL2 production wiring                                                                           |
 | DONE       | Brush-tip mask engine implementation plan executed: `docs/superpowers/plans/2026-06-11-brush-tip-mask-engine.md`                                                                                                                                              |
 | DONE       | Brush hardness distance-field soft-edge implementation: `docs/superpowers/plans/2026-06-11-brush-hardness-distance-field-soft-edge.md`                                                                                                                        |
 | DONE       | Brush and Eraser tool improvement plan created: `docs/superpowers/plans/2026-06-06-brush-eraser-tool-improvements.md`                                                                                                                                         |
 | DONE       | Crop Hidden Preview Restore correction plan created: `docs/superpowers/plans/2026-06-05-crop-interaction-model-plan.md`                                                                                                                                       |
-| DONE       | Scalability and maintainability refactor plan created: `docs/archive/plans/2026-06-04-scalability-maintainability-refactor-plan.md`
+| DONE       | Scalability and maintainability refactor plan created (archived in the project archive).
 
 ---
 

@@ -1,4 +1,5 @@
-// ─── Native Application Menu ───
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// â”€â”€â”€ Native Application Menu â”€â”€â”€
 //
 // Builds the native OS menu bar and defines which menu IDs are
 // forwarded to the frontend as `photrez://native-menu` events.
@@ -35,10 +36,10 @@ pub(crate) fn build_native_menu<R: Runtime, M: Manager<R>>(
     let new_document = MenuItemBuilder::with_id("file.new", "&New Document")
         .accelerator("CmdOrCtrl+N")
         .build(manager)?;
-    let open = MenuItemBuilder::with_id("file.open", "&Open Image…")
+    let open = MenuItemBuilder::with_id("file.open", "&Open Imageâ€¦")
         .accelerator("CmdOrCtrl+O")
         .build(manager)?;
-    let export = MenuItemBuilder::with_id("file.export", "&Export…")
+    let export = MenuItemBuilder::with_id("file.export", "&Exportâ€¦")
         .accelerator("CmdOrCtrl+S")
         .build(manager)?;
     let undo = MenuItemBuilder::with_id("edit.undo", "&Undo")
@@ -47,7 +48,7 @@ pub(crate) fn build_native_menu<R: Runtime, M: Manager<R>>(
     let redo = MenuItemBuilder::with_id("edit.redo", "&Redo")
         .accelerator("CmdOrCtrl+Shift+Z")
         .build(manager)?;
-    let resize = MenuItemBuilder::with_id("image.resize", "Resize &Canvas…")
+    let resize = MenuItemBuilder::with_id("image.resize", "Resize &Canvasâ€¦")
         .build(manager)?;
     let new_layer = MenuItemBuilder::with_id("layer.new", "&New Layer")
         .accelerator("CmdOrCtrl+Shift+N")

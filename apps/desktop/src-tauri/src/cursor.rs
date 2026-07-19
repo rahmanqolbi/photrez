@@ -1,4 +1,5 @@
-// ─── Native OS Cursor Override ───
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// â”€â”€â”€ Native OS Cursor Override â”€â”€â”€
 //
 // On Windows, WebView2 overrides the CSS cursor by handling WM_SETCURSOR
 // in its own child window.  Tauri's built-in setCursorIcon calls SetCursor

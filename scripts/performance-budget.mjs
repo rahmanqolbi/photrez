@@ -1,5 +1,5 @@
 // Performance budget check — fail CI if bundle exceeds thresholds.
-// ponytail: three thresholds, zero dependencies.
+// Three thresholds, zero dependencies.
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';

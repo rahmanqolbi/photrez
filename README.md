@@ -23,7 +23,12 @@
 
 Photrez is an open-source desktop image editor with a compact, familiar workflow: layers, selection, transform, crop, brush, eraser, export, history, and a WebGL2 canvas. It is built with Tauri, SolidJS, TypeScript, and Rust (for future core compute).
 
-Photrez is currently **pre-release software**. The editor is usable in development, but APIs, document internals, and UI details may change before the first stable release.
+Photrez is currently in **alpha** (`v0.1.0-alpha.1`). The editor is usable, but expect bugs, breaking changes, and incomplete features. Not recommended for production use.
+
+- **Supported platform:** Windows 10/11 (macOS/Linux planned for beta)
+- **Known issues:** See [KNOWN_ISSUES.md](KNOWN_ISSUES.md)
+- **Bug reports:** [GitHub Issues](https://github.com/rahmanqolbi/photrez/issues)
+- **Security:** See [SECURITY.md](SECURITY.md)
 
 ## Why Photrez
 
@@ -62,7 +67,7 @@ Photrez is currently **pre-release software**. The editor is usable in developme
 - **Styling:** Tailwind CSS v4
 - **Renderer:** WebGL2 for the current MVP runtime
 - **Core:** TypeScript `DocumentEngine` for the current editor hot path
-- **Rust (future):** `photrez-core` and `photrez-render` crates
+- **Rust (future):** `photrez-core` domain crate (WASM compile target)
 
 ## Runtime Architecture
 
@@ -128,11 +133,9 @@ cargo test --workspace
 
 ```text
 apps/desktop/       Tauri desktop app and SolidJS editor UI
-crates/core/        Rust core domain model and tests
-crates/render/      Future Rust renderer crate
+crates/core/        Rust core domain model and tests (WASM compile target)
 docs/spec/          Product and technical specifications
 docs/reference/     Runtime contracts, shortcuts, file formats, and inventories
-docs/decisions/     Architecture and project decision records
 docs/ARCHITECTURE.md
 docs/FEATURES.md
 docs/DESIGN.md      Visual design system
@@ -141,6 +144,7 @@ docs/PRODUCT.md     Product context
 
 ## Documentation
 
+- [Known Issues (Alpha)](KNOWN_ISSUES.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Feature Status](docs/FEATURES.md)
 - [Product Scope](docs/spec/product-scope.md)
