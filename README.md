@@ -7,7 +7,7 @@
 </h1>
 
 <p align="center">
-  A precise, lightweight desktop image editor built for practical image work.
+  A small, lightweight desktop image editor for everyday image work.
 </p>
 
 <p align="center">
@@ -21,6 +21,8 @@
 
 ---
 
+> **Note:** Photrez is a small open-source project. It started as a focused attempt to build a fast, no-nonsense desktop image editor without the bloat. If you find it useful or just want to poke around the code, welcome! Bug reports and small contributions are appreciated.
+
 Photrez is an open-source desktop image editor with a compact, familiar workflow: layers, selection, transform, crop, brush, eraser, export, history, and a WebGL2 canvas. It is built with Tauri, SolidJS, TypeScript, and Rust (for future core compute).
 
 Photrez is currently in **alpha** (`v0.1.0-alpha.1`). The editor is usable, but expect bugs, breaking changes, and incomplete features. Not recommended for production use.
@@ -32,11 +34,13 @@ Photrez is currently in **alpha** (`v0.1.0-alpha.1`). The editor is usable, but 
 
 ## Why Photrez
 
-- **Lightweight desktop feel:** Tauri shell, compact editor chrome, and a tool-first workflow.
-- **Practical editing core:** Layers, transforms, crop, brush, eraser, color, export, and history.
-- **Fast feedback loop:** Focused unit, component, pointer-chain, browser, and Rust tests.
-- **Clear boundaries:** SolidJS owns UI, TypeScript owns the current MVP document engine, WebGL2 owns active rendering, and Rust crates track core domain work.
-- **Open-source first:** Public contribution, security, governance, issue, and pull request docs are included.
+A few things we care about:
+
+- **Lightweight desktop feel:** a Tauri shell, compact editor chrome, and a tool-first workflow.
+- **Practical editing core:** layers, transforms, crop, brush, eraser, color, export, and history.
+- **Fast feedback loop:** focused unit, component, pointer-chain, browser, and Rust tests.
+- **Clear boundaries:** SolidJS owns the UI, TypeScript owns the current MVP document engine, WebGL2 owns active rendering, and the Rust crates track core domain work.
+- **Open-source first:** public contribution, security, governance, issue, and pull request docs are all included.
 
 ## Screenshots
 
@@ -71,20 +75,20 @@ Photrez is currently in **alpha** (`v0.1.0-alpha.1`). The editor is usable, but 
 
 ## Runtime Architecture
 
-Below is the active runtime data flow mapping user input, frontend rendering, and desktop backend coordination:
+Here is how the pieces talk to each other at runtime:
 
 ```mermaid
 flowchart TD
-    User([User Events / Pointer Inputs]) --> Shell[SolidJS UI Shell]
-    Shell --> Workspace[Workspace Sync Manager]
-    Workspace --> Engine[TypeScript Document Engine]
-    
-    Shell --> Viewport[WebGL2 Projection Camera Viewport]
-    Engine -- Active Bitmaps --> Viewport
-    
-    Shell -- IPC invoke --> Tauri[Tauri 2 main.rs Command Bridge]
-    Tauri --> FileIO[Rust safe File Import/Export]
-    Tauri -. Reference Domain/Tests .-> RustCore[crates/core Rust Crate]
+    User([User / Pointer Input]) --> Shell[SolidJS UI]
+    Shell --> Workspace[Workspace Manager]
+    Workspace --> Engine[Document Engine - TS]
+
+    Shell --> Viewport[WebGL2 Canvas]
+    Engine -- Bitmaps --> Viewport
+
+    Shell -- IPC --> Tauri[Tauri Bridge]
+    Tauri --> FileIO[Rust File I/O]
+    Tauri -. Reference .-> RustCore[photrez-core crate]
 ```
 
 ## Getting Started
@@ -161,11 +165,11 @@ docs/PRODUCT.md     Product context
 
 Near-term work is focused on:
 
-- ~~Public README screenshots~~ and release notes.
 - First-run and empty workspace polish.
 - Native runtime smoke evidence.
 - UI cleanup for placeholder-looking surfaces.
 - Continued test coverage around real user wiring paths.
+- Release notes and packaging polish.
 
 See [Feature Status](docs/FEATURES.md) for the current implementation map.
 
