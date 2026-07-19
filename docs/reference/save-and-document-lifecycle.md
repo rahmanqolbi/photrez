@@ -59,12 +59,9 @@ stateDiagram-v2
 
 ## 3) Open File Flow
 
-Defined in `docs/archive/planning/27-key-user-flows.md` (Flow A).
-
 Additional specifications:
 
 - Supported formats: see `docs/reference/file-format-support.md`.
-- Multi-document workspace recovery spec: see `docs/superpowers/specs/2026-05-29-multi-document-workspace-design.md`.
 - Opening one image creates one document tab.
 - Opening multiple images creates one document tab per valid image.
 - If a document is already open, opening more images does not replace it; the new images open as additional document tabs.
@@ -136,13 +133,11 @@ Per `docs/spec/data-model.md` section 7:
 
 ## 7) Open Questions
 
-- [x] **Multiple documents**: MVP recovery uses document tabs. See `docs/superpowers/specs/2026-05-29-multi-document-workspace-design.md`.
+- [x] **Multiple documents**: MVP recovery uses document tabs.
 - [x] **Recent files list**: Not in MVP. Empty state remains minimal and canvas-centered.
 
 ## 8) Change Control
 
 - Save strategy changes require update to:
   1. This document.
-  2. `docs/decisions/decision-log.md`.
-  3. `docs/archive/planning/27-key-user-flows.md` (if flow changes).
-  4. `docs/reference/command-contract-spec.md` (if new commands needed).
+  2. `docs/reference/command-contract-spec.md` (if new commands needed).

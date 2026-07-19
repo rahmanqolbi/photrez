@@ -37,7 +37,7 @@ Status labels:
 | Crate | Purpose | Version Target | License | Status | Size Impact | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | `tauri` | Desktop shell framework | `2.x` | MIT/Apache-2.0 | Approved | High (expected) | Core framework, non-negotiable |
-| `wgpu` | GPU rendering | Latest stable | MIT/Apache-2.0 | Approved | High (expected) | Core renderer, non-negotiable |
+| WebGL2 | GPU rendering | Platform standard | Khronos | Approved | High (expected) | Core renderer, non-negotiable |
 | `serde` | Serialization/deserialization | `1.x` | MIT/Apache-2.0 | Approved | Low | Used for command payloads and config |
 | `serde_json` | JSON encoding/decoding | `1.x` | MIT/Apache-2.0 | Approved | Low | IPC transport format |
 | `uuid` | Unique ID generation | `1.x` | MIT/Apache-2.0 | Approved | Low | Document/layer/history IDs |
@@ -164,4 +164,3 @@ Track rejected dependencies with rationale to avoid re-evaluation cycles.
 - Adding a new dependency requires updating this file first.
 - Removing an approved dependency requires noting the reason.
 - Status changes must include date and brief rationale.
-- Major dependency decisions should be recorded in `docs/decisions/decision-log.md`.

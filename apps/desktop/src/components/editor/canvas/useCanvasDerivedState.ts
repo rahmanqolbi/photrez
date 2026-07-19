@@ -166,13 +166,8 @@ export function useCanvasDerivedState(params: UseCanvasDerivedStateParams) {
     const container = params.getCanvasContainerRef();
     const canvas = params.getCanvasRef();
 
-    // console.log is intentional for debugging cursor state during drag.
-    // Remove once confirmed working.
-    console.log("[cursor] dragCursor:", dragCursor, "activeTool:", activeTool(), "hoverHandle:", hoverHandle());
-
     if (dragCursor) {
       const css = dragEffectToCssCursor(dragCursor);
-      console.log("[cursor] SET copy/move CSS:", css);
       if (container) container.style.setProperty("cursor", css, "important");
       if (canvas) canvas.style.cursor = css;
       document.body.style.setProperty("cursor", css, "important");

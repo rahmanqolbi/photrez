@@ -1,7 +1,6 @@
 # CONVENTIONS.md — Photrez Code Patterns & Domain Knowledge
 
-> Detailed code patterns, API examples, and domain-specific assumptions extracted from `AI_CONTEXT.md`.
-> AI agents: read this when working on related subsystems. `AI_CONTEXT.md` has pointers here.
+> Detailed code patterns, API examples, and domain-specific assumptions for working on Photrez subsystems.
 
 ---
 
@@ -181,14 +180,13 @@ fn add_layer(name: String, state: tauri::State<'_, EditorState>) -> Result<Value
 
 ---
 
-## 4. GPU Resource Lifecycle (wgpu — Future)
+## 4. GPU Resource Lifecycle
 
 ```rust
-// wgpu resource lifecycle:
-// 1. Adapter → Device + Queue (once at init)
-// 2. Surface ← Device (for window rendering)
-// 3. Texture/Buffer ← Device (per-resource, freed on drop)
-// 4. RenderPipeline ← Device (compiled shader + state)
+// GPU resource lifecycle (WebGL2):
+// 1. Context acquired once at init; lost-context recovery handled by the renderer
+// 2. Texture/Buffer allocated per resource, freed on drop / disposal
+// 3. RenderPipeline state is implicit in WebGL2 draw calls
 
 // ❌ FORBIDDEN — leaking GPU resources
 let texture = device.create_texture(&desc);
@@ -223,7 +221,6 @@ Rules specific to the Move Tool subsystem:
 ## 6. Tool Creation Recipe (9-12 wiring steps)
 
 > **Origin:** This pattern was extracted after repeated investigation of "every new tool passes test but fails in frontend". Root cause is always the same: **wiring missed 1+ steps**, usually step 3 (pointer handler) or step 5 (option bar).
-> Reference: `docs/archive/plans/2026-06-14-test-overhaul-reference.md` §Phase 2.
 
 ### Recipe
 
@@ -272,10 +269,8 @@ Rules specific to the Move Tool subsystem:
     → 1 CanvasViewport integration test for real pointer chain
     → 1 tool switch round-trip test (A→B→A, no orphan state)
 
-11. Docs
-    → docs/AI_HISTORY.md: FEATURE or BUG FIX entry with Root Cause + Fix Rationale
-    → docs/FEATURES.md: status update
-    → docs/AI_CURRENT_TASK.md: status COMPLETE
+ 11. Docs
+    → FEATURES.md: status update
 
 12. Verification
     → bun run --filter photrez-desktop test --run

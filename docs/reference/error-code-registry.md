@@ -3,7 +3,7 @@
 This document maps specific error scenarios to error codes and user-facing messages.
 
 Base error codes are defined in `docs/reference/command-contract-spec.md`.
-UI message format follows `docs/archive/planning/28-ui-copy-guidelines.md`.
+UI message format follows the copy guidelines defined in `docs/spec/trd.md`.
 
 ## 1) Message Format
 
@@ -91,4 +91,4 @@ UI message format follows `docs/archive/planning/28-ui-copy-guidelines.md`.
 
 - New error scenarios must be added to this file.
 - Error codes must match `docs/reference/command-contract-spec.md`.
-- User messages must follow `docs/archive/planning/28-ui-copy-guidelines.md` format.
+- User messages must follow the copy guidelines defined in `docs/spec/trd.md`.

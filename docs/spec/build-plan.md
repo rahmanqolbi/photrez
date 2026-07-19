@@ -62,8 +62,6 @@ Definition of done:
 
 - App boots under budget target envelope baseline measurement recorded.
 
-Detailed execution plan: `docs/archive/planning/08-milestone-1-execution.md`.
-
 ## Milestone 2 - Document and Layer Core
 
 Estimated effort: `5-7 days`
@@ -155,9 +153,7 @@ Definition of done:
 
 | Factor | Impact | Mitigation |
 | --- | --- | --- |
-| wgpu compatibility on target hardware | May extend M1/M4 | Early smoke tests, fallback renderer research |
+| Renderer compatibility on target hardware | May extend M1/M4 | Early smoke tests, fallback renderer research |
 | Brush performance on low-end devices | May extend M4 | Keep first implementation simple, benchmark early |
 | Scope creep requests during execution | May extend any milestone | Enforce `AGENTS.md` scope guard |
-| Dependency build issues (Tauri/wgpu) | May extend M1 | Pin dependency versions, test in CI early |
-
-See `docs/decisions/risk-register.md` for full risk tracking.
+| Dependency build issues (Tauri) | May extend M1 | Pin dependency versions, test in CI early |

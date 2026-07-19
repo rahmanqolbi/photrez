@@ -83,6 +83,7 @@ See `KNOWN_ISSUES.md` for the full list. Highlights:
 ### Changed
 
 - Public repository hygiene: local agent workflows, personal tool configs, prompt databases, AI task logs, local binaries, and build artifacts are ignored and no longer tracked.
+- Re-tag fix: removed leftover debug `console.log` calls from editor command/cursor paths; aligned Tauri crate version to `0.1.0`; removed internal-only doc references (gitignored `docs/archive`, `docs/decisions`, `docs/superpowers`, `docs/plans`) from published reference docs.
 
 ### Notes
 

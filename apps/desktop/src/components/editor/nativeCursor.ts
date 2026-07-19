@@ -34,7 +34,6 @@ export function setDragNativeCursor(effect: "copy" | "move" | "default" | null):
   // (and caused default↔rotate flicker during pointermove).
   if (effect === null) return;
   if (!isTauriRuntime()) return;
-  console.log("[nativeCursor] calling set_native_cursor with:", effect);
   invoke("set_native_cursor", { icon: effect }).catch(() => {
     console.warn("[nativeCursor] set_native_cursor failed");
   });

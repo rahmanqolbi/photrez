@@ -245,5 +245,4 @@ At minimum, contract tests must verify:
 - Primary owner: Core + Shell maintainers.
 - Any change to envelope, versioning semantics, or error code set must update:
 1. `docs/spec/trd.md`
-2. `docs/decisions/adr/0002-command-contract-versioning.md` (if breaking/major behavior)
-3. Contract tests and evidence in milestone report.
+2. Contract tests and evidence in milestone report.
