@@ -91,6 +91,16 @@ flowchart TD
     Tauri -. Reference .-> RustCore[photrez-core crate]
 ```
 
+## Download (Alpha)
+
+> **Note:** Pre-release — for testing only, not for production use.
+
+**Windows 10/11:**
+- MSI installer: [Photrez_0.1.0_x64_en-US.msi](https://github.com/rahmanqolbi/photrez/releases/download/v0.1.0-alpha.1/Photrez_0.1.0_x64_en-US.msi)
+- NSIS installer: [Photrez_0.1.0_x64-setup.exe](https://github.com/rahmanqolbi/photrez/releases/download/v0.1.0-alpha.1/Photrez_0.1.0_x64-setup.exe)
+
+All releases: https://github.com/rahmanqolbi/photrez/releases
+
 ## Getting Started
 
 ### Requirements
