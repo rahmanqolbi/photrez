@@ -31,6 +31,7 @@ breaking changes, and incomplete features. Not recommended for production use.
 - Rust `photrez-core` domain crate (reference implementation).
 - Automated frontend tests (2499 cases), Rust tests (113: 84 core + 29 desktop), Playwright E2E specs.
 - Public documentation: architecture, features, PRD, TRD, design system, contributing, security, governance.
+- Help ▸ About dialog shows the current version dynamically (read from `tauri.conf.json` via Tauri `getVersion()`).
 
 ### 🐛 Known Issues
 
