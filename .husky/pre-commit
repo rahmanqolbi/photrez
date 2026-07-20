@@ -19,7 +19,7 @@ fi
 
 # 1. TypeScript type-check only (faster than full build)
 echo ""
-echo "[1/3] Running TypeScript Type Check..."
+echo "[1/5] Running TypeScript Type Check..."
 bun run type-check || {
   echo ""
   echo "ERROR: TypeScript type check failed!"
@@ -28,7 +28,7 @@ bun run type-check || {
 
 # 2. Frontend unit tests (node-only — fast, ~10s)
 echo ""
-echo "[2/3] Running Frontend Unit Tests..."
+echo "[2/5] Running Frontend Unit Tests..."
 bun run --filter photrez-desktop test:unit || {
   echo ""
   echo "ERROR: Frontend unit tests failed!"
@@ -37,10 +37,40 @@ bun run --filter photrez-desktop test:unit || {
 
 # 3. Rust core unit tests
 echo ""
-echo "[3/3] Running Rust Core Tests..."
+echo "[3/5] Running Rust Core Tests..."
 cargo test -p photrez-core || {
   echo ""
   echo "ERROR: Rust core tests failed!"
+  exit 1
+}
+
+# 4. Full build (catches vite / TS / bundler errors the type-check alone misses)
+echo ""
+echo "[4/5] Running Build..."
+bun run build || {
+  echo ""
+  echo "ERROR: Build failed!"
+  exit 1
+}
+
+# 5. Component tests (jsdom) — mirrors the CI component-tests job
+echo ""
+echo "[5/5] Running Component Tests..."
+bun run --filter photrez-desktop test:component || {
+  echo ""
+  echo "ERROR: Component tests failed!"
+  exit 1
+}
+
+# 6. Lockfile guard — ensure bun.lock is in sync with package.json so the
+#    CI `bun install --frozen-lockfile` step does not fail after a dependency
+#    change. If this fails, run `bun install` and re-stage bun.lock.
+echo ""
+echo "[6/6] Verifying bun.lock is in sync..."
+bun install --frozen-lockfile || {
+  echo ""
+  echo "ERROR: bun.lock is out of sync with package.json."
+  echo "       Run 'bun install' and stage the updated bun.lock before committing."
   exit 1
 }
 
