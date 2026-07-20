@@ -171,60 +171,46 @@ test.describe("editor browser smoke", () => {
     await page.keyboard.up("Space");
   });
 
-  // KNOWN ISSUE (tracked, not fixed this session): the Move transform box is
-  // bound to the engine active layer, not the UI selectedLayerId signal, so
-  // deselect via Escape, pasteboard click, or Layers-panel selection currently
-  // does not clear the visible box. These two specs document the expected
-  // behavior and are skipped until the overlay selection binding is corrected.
-  test.skip("deselects the Move transform box when Move Tool clicks outside the artboard", async ({ page }) => {
+  // Deselect via pasteboard click. The new layer defaults to the full document
+  // size, so a click "just outside the artboard" can still hit the layer bbox
+  // (auto-select re-picks it). Zoom out first so the layer shrinks on screen,
+  // then click a canvas-container corner well clear of the layer.
+  test("deselects the Move transform box when Move Tool clicks empty pasteboard", async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 820 });
     await page.goto("/");
     await createBlankCanvas(page);
     await page.getByRole("button", { name: "Move Tool" }).click();
-    // Background is transform-locked (no box); add a real layer to select.
     await page.getByRole("button", { name: "New Layer" }).click();
     await expect(page.locator("[data-layer-idx]")).toHaveCount(2);
-    // Disable auto-select so a click on empty pasteboard really deselects.
-    await page.getByText("Auto-Select", { exact: true }).click();
 
     const initial = await getTransformBox(page);
     expect(initial.width).toBeGreaterThan(0);
     expect(initial.height).toBeGreaterThan(0);
 
-    // Deselect by selecting the Background layer in the Layers panel: the
-    // Background is transform-locked, so its Move transform box is never shown.
-    // (Empty-pasteboard-click and Escape deselect paths are tracked separately
-    // as a known issue — the overlay binds to the engine active layer.)
-    await page.locator('[data-layer-idx="0"]').click();
+    // Zoom out so the layer occupies a small portion of the viewport.
+    await page.keyboard.press("Control+-");
+    await page.keyboard.press("Control+-");
+    await page.waitForTimeout(250);
+
+    const container = page.locator("#canvas-container");
+    const box = await container.boundingBox();
+    expect(box).not.toBeNull();
+    // Click a corner of the container, far from the (now small) layer.
+    await page.mouse.click(box!.x + 12, box!.y + 12);
     await expect(page.locator("[data-transform-box]")).toHaveCount(0);
   });
 
-  test.skip("deselects the Move transform box when Move Tool clicks outside at zoom ≠ 1", async ({ page }) => {
+  // Deselect via the Escape key in the Move tool (single press clears the
+  // active selection; see useCanvasKeyboard.ts:926).
+  test("deselects the Move transform box via Escape in Move Tool", async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 820 });
     await page.goto("/");
     await createBlankCanvas(page);
     await page.getByRole("button", { name: "Move Tool" }).click();
-    // Background is transform-locked (no box); add a real layer to select.
     await page.getByRole("button", { name: "New Layer" }).click();
-    await expect(page.locator("[data-layer-idx]")).toHaveCount(2);
-    // Disable auto-select so a click on empty pasteboard really deselects.
-    await page.getByText("Auto-Select", { exact: true }).click();
-
-    const initial = await getTransformBox(page);
-    expect(initial.width).toBeGreaterThan(0);
-    expect(initial.height).toBeGreaterThan(0);
-
-    // Use the keyboard zoom path so the deselect check covers zoom != 1.
-    const container = page.locator("#canvas-container");
-    const containerBox = await container.boundingBox();
-    expect(containerBox).not.toBeNull();
-    await page.keyboard.press("Control+-");
-    await page.waitForTimeout(250);
     await expect(page.locator("[data-transform-box]")).toBeVisible();
 
-    // Deselect by selecting the Background layer (transform-locked → no box).
-    // Pasteboard-click/Escape deselect is a tracked known issue.
-    await page.locator('[data-layer-idx="0"]').click();
+    await page.keyboard.press("Escape");
     await expect(page.locator("[data-transform-box]")).toHaveCount(0);
   });
 
