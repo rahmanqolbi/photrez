@@ -38,7 +38,7 @@
     "esbuild": "^0.28.0",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.2.2",
+    "typescript": "^7.0.2",
     "vite": "^8.0.16",
     "vite-plugin-solid": "^2.8.0",
     "vitest": "^4.1.7"
